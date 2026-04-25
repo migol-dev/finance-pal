@@ -4,7 +4,7 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { AppShell } from "@/components/app/AppShell";
-import Index from "./pages/Index.tsx";
+import Dashboard from "./pages/Dashboard";
 import Movimientos from "./pages/Movimientos";
 import Metas from "./pages/Metas";
 import Anual from "./pages/Anual";
@@ -20,7 +20,7 @@ const App = () => (
       <Sonner />
       <BrowserRouter>
         <Routes>
-          <Route path="/" element={<Index />} />
+          <Route path="/" element={<AppShell><Dashboard /></AppShell>} />
           <Route path="/movimientos" element={<AppShell><Movimientos /></AppShell>} />
           <Route path="/metas" element={<AppShell><Metas /></AppShell>} />
           <Route path="/anual" element={<AppShell><Anual /></AppShell>} />
