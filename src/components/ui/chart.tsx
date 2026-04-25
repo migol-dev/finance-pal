@@ -100,7 +100,6 @@ const ChartTooltipContent = React.forwardRef<
       labelKey?: string;
     }
 >(
-  // @ts-expect-error recharts payload types
   (
     {
       active,
