@@ -10,7 +10,6 @@ import Metas from "./pages/Metas";
 import Anual from "./pages/Anual";
 import Ajustes from "./pages/Ajustes";
 import NotFound from "./pages/NotFound.tsx";
-import { AppShell } from "@/components/app/AppShell";
 
 const queryClient = new QueryClient();
 
