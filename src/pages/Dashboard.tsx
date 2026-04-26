@@ -1,21 +1,21 @@
 import { useMemo, useState } from "react";
 import { useFinance } from "@/store/finance-store";
-import { fmt, monthlyAmount, MONTHS, emojiFor } from "@/lib/finance";
-import { Header } from "@/components/app/Header";
+import { fmt, monthlyAmount, MONTHS, isFixedActiveInMonth, iconFor } from "@/lib/finance";
 import { Eye, EyeOff, TrendingUp, TrendingDown, PiggyBank, Plus, Bell } from "lucide-react";
 import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
 import appIcon from "@/assets/app-icon.png";
+import { MonthSwitcher } from "@/components/app/MonthSwitcher";
+import { IconDisplay } from "@/components/app/IconDisplay";
 
 export default function Dashboard() {
-  const { fixedItems, transactions, goals } = useFinance();
+  const { fixedItems, transactions, goals, activeYear, activeMonth } = useFinance();
   const [hide, setHide] = useState(false);
-  const now = new Date();
-  const monthIdx = now.getMonth();
 
   const monthStats = useMemo(() => {
     let income = 0, expense = 0, saving = 0;
     for (const i of fixedItems) {
+      if (!isFixedActiveInMonth(i, activeYear, activeMonth)) continue;
       const m = monthlyAmount(i);
       if (i.type === "income_fixed") income += m;
       else if (i.type === "saving_fixed") saving += m;
@@ -23,7 +23,7 @@ export default function Dashboard() {
     }
     for (const t of transactions) {
       const d = new Date(t.date);
-      if (d.getMonth() !== monthIdx || d.getFullYear() !== now.getFullYear()) continue;
+      if (d.getMonth() !== activeMonth || d.getFullYear() !== activeYear) continue;
       if (t.type === "income") income += t.amount;
       else if (t.type === "saving") saving += t.amount;
       else expense += t.amount;
@@ -31,20 +31,28 @@ export default function Dashboard() {
     const net = income - expense - saving;
     const savingRate = income > 0 ? (saving / income) * 100 : 0;
     return { income, expense, saving, net, savingRate };
-  }, [fixedItems, transactions, monthIdx, now]);
+  }, [fixedItems, transactions, activeMonth, activeYear]);
+
+  const today = new Date();
+  const isCurrentMonth = today.getFullYear() === activeYear && today.getMonth() === activeMonth;
 
   const upcoming = useMemo(() => {
-    const today = now.getDate();
+    if (!isCurrentMonth) return [];
+    const day = today.getDate();
     return fixedItems
-      .filter((i) => i.active && i.payDay && i.type !== "income_fixed")
-      .map((i) => ({ ...i, daysLeft: ((i.payDay! - today + 30) % 30) }))
+      .filter((i) => isFixedActiveInMonth(i, activeYear, activeMonth) && i.payDay && i.type !== "income_fixed")
+      .map((i) => ({ ...i, daysLeft: ((i.payDay! - day + 30) % 30) }))
       .sort((a, b) => a.daysLeft - b.daysLeft)
       .slice(0, 3);
-  }, [fixedItems, now]);
+  }, [fixedItems, activeYear, activeMonth, isCurrentMonth, today]);
 
-  const recent = transactions.slice(0, 4);
+  const recent = useMemo(() => transactions
+    .filter((t) => { const d = new Date(t.date); return d.getMonth() === activeMonth && d.getFullYear() === activeYear; })
+    .slice(0, 4), [transactions, activeMonth, activeYear]);
+
   const mainGoal = goals[0];
   const mask = (s: string) => hide ? "•••••" : s;
+  const hasAnyData = fixedItems.length > 0 || transactions.length > 0;
 
   return (
     <div>
@@ -53,7 +61,7 @@ export default function Dashboard() {
           <img src={appIcon} alt="" width={40} height={40} className="size-10 rounded-2xl shadow-glow" />
           <div>
             <p className="text-xs text-muted-foreground">Hola 👋</p>
-            <p className="text-sm font-semibold">{MONTHS[monthIdx]} {now.getFullYear()}</p>
+            <p className="text-sm font-semibold">{MONTHS[activeMonth]} {activeYear}</p>
           </div>
         </div>
         <button onClick={() => setHide((h) => !h)} className="size-10 rounded-2xl bg-muted flex items-center justify-center text-muted-foreground hover:text-foreground transition">
@@ -61,7 +69,10 @@ export default function Dashboard() {
         </button>
       </header>
 
-      {/* Balance hero */}
+      <div className="px-5 mt-2 flex justify-center">
+        <MonthSwitcher />
+      </div>
+
       <motion.section
         initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}
         className="mx-5 mt-3 rounded-3xl gradient-primary text-primary-foreground p-6 shadow-glow relative overflow-hidden"
@@ -79,7 +90,6 @@ export default function Dashboard() {
         </div>
       </motion.section>
 
-      {/* Saving rate */}
       <section className="px-5 mt-5">
         <div className="rounded-2xl bg-card border border-border p-4 shadow-soft">
           <div className="flex items-center justify-between mb-2">
@@ -97,7 +107,6 @@ export default function Dashboard() {
         </div>
       </section>
 
-      {/* Quick actions */}
       <section className="px-5 mt-5 grid grid-cols-2 gap-3">
         <Link to="/movimientos?new=expense" className="rounded-2xl bg-card border border-border p-4 shadow-soft active:scale-95 transition flex items-center gap-3">
           <div className="size-10 rounded-xl bg-destructive/10 text-destructive flex items-center justify-center"><Plus className="size-5" /></div>
@@ -109,7 +118,16 @@ export default function Dashboard() {
         </Link>
       </section>
 
-      {/* Main goal */}
+      {!hasAnyData && (
+        <section className="px-5 mt-6">
+          <div className="rounded-3xl gradient-mesh border border-border p-6 text-center">
+            <p className="text-4xl mb-2">🎉</p>
+            <p className="font-bold text-base">Bienvenido a Migol Finanzas</p>
+            <p className="text-xs text-muted-foreground mt-1">Empieza creando tus ingresos, gastos fijos y metas en <Link to="/ajustes" className="text-primary font-semibold">Ajustes</Link>, o registra un movimiento ahora.</p>
+          </div>
+        </section>
+      )}
+
       {mainGoal && (
         <section className="px-5 mt-6">
           <div className="flex items-center justify-between mb-2">
@@ -119,7 +137,7 @@ export default function Dashboard() {
           <Link to="/metas" className={`block rounded-3xl p-5 text-primary-foreground shadow-pop ${mainGoal.color} relative overflow-hidden`}>
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-3xl">{mainGoal.emoji}</p>
+                <div className="mb-1"><IconDisplay icon={iconFor(mainGoal)} size="lg" className="bg-white/20" /></div>
                 <p className="font-bold text-lg mt-1">{mainGoal.name}</p>
                 <p className="text-xs opacity-90">{mask(fmt(mainGoal.saved))} de {mask(fmt(mainGoal.target))}</p>
               </div>
@@ -140,7 +158,6 @@ export default function Dashboard() {
         </section>
       )}
 
-      {/* Upcoming */}
       {upcoming.length > 0 && (
         <section className="px-5 mt-6">
           <div className="flex items-center gap-2 mb-2">
@@ -150,7 +167,7 @@ export default function Dashboard() {
           <div className="space-y-2">
             {upcoming.map((u) => (
               <div key={u.id} className="rounded-2xl bg-card border border-border p-3 shadow-soft flex items-center gap-3">
-                <div className="size-10 rounded-xl bg-muted flex items-center justify-center text-lg">{emojiFor(u.category)}</div>
+                <IconDisplay icon={iconFor(u)} />
                 <div className="flex-1 min-w-0">
                   <p className="font-semibold text-sm truncate">{u.concept}</p>
                   <p className="text-xs text-muted-foreground">Día {u.payDay} del mes</p>
@@ -165,7 +182,6 @@ export default function Dashboard() {
         </section>
       )}
 
-      {/* Recent */}
       <section className="px-5 mt-6">
         <div className="flex items-center justify-between mb-2">
           <h2 className="text-base font-bold">Movimientos recientes</h2>
@@ -173,13 +189,13 @@ export default function Dashboard() {
         </div>
         {recent.length === 0 ? (
           <div className="rounded-2xl bg-muted/50 border border-dashed border-border p-6 text-center">
-            <p className="text-sm text-muted-foreground">Aún no hay movimientos. Registra tu primer gasto o ingreso ✨</p>
+            <p className="text-sm text-muted-foreground">Sin movimientos en {MONTHS[activeMonth]}. Registra tu primer gasto o ingreso ✨</p>
           </div>
         ) : (
           <div className="space-y-2">
             {recent.map((t) => (
               <div key={t.id} className="rounded-2xl bg-card border border-border p-3 shadow-soft flex items-center gap-3">
-                <div className="size-10 rounded-xl bg-muted flex items-center justify-center text-lg">{emojiFor(t.category)}</div>
+                <IconDisplay icon={iconFor(t)} />
                 <div className="flex-1 min-w-0">
                   <p className="font-semibold text-sm truncate">{t.concept}</p>
                   <p className="text-xs text-muted-foreground">{new Date(t.date).toLocaleDateString("es-MX", { day: "numeric", month: "short" })}</p>
