@@ -2,6 +2,12 @@ export type ItemType = "income_fixed" | "expense_fixed" | "expense_variable" | "
 export type Frequency = "monthly" | "weekly" | "yearly" | "one_time";
 export type Priority = "low" | "medium" | "high";
 
+/** Visual identity: either an emoji OR a cropped image (dataURL) */
+export interface IconRef {
+  kind: "emoji" | "image";
+  value: string; // emoji char or dataURL
+}
+
 export interface FixedItem {
   id: string;
   type: ItemType;
@@ -11,10 +17,11 @@ export interface FixedItem {
   frequency: Frequency;
   active: boolean;
   note?: string;
-  startDate: string; // ISO
-  endDate: string;   // ISO
+  startDate: string;
+  endDate: string;
   priority: Priority;
-  payDay?: number;   // day of month for reminders 1-28
+  payDay?: number;
+  icon?: IconRef;
 }
 
 export interface Transaction {
@@ -25,6 +32,7 @@ export interface Transaction {
   amount: number;
   date: string; // ISO
   note?: string;
+  icon?: IconRef;
 }
 
 export interface Goal {
@@ -32,9 +40,10 @@ export interface Goal {
   name: string;
   target: number;
   saved: number;
-  emoji: string;
-  color: string; // tailwind gradient utility class
+  emoji: string;          // legacy fallback
+  color: string;          // tailwind gradient utility class
   deadline?: string;
+  icon?: IconRef;         // new — preferred
 }
 
 export const TYPE_LABEL: Record<ItemType, string> = {
@@ -56,6 +65,8 @@ export const MONTHS = [
   "Julio","Agosto","Septiembre","Octubre","Noviembre","Diciembre",
 ];
 
+export const MONTHS_SHORT = ["Ene","Feb","Mar","Abr","May","Jun","Jul","Ago","Sep","Oct","Nov","Dic"];
+
 export function monthlyAmount(item: FixedItem): number {
   if (!item.active) return 0;
   switch (item.frequency) {
@@ -64,6 +75,23 @@ export function monthlyAmount(item: FixedItem): number {
     case "yearly": return item.amount / 12;
     case "one_time": return 0;
   }
+}
+
+/** Whether a fixed item is "active" in a given (year, month) based on its date range and frequency. */
+export function isFixedActiveInMonth(item: FixedItem, year: number, month: number): boolean {
+  if (!item.active) return false;
+  const start = new Date(item.startDate);
+  const end = new Date(item.endDate);
+  const monthStart = new Date(year, month, 1);
+  const monthEnd = new Date(year, month + 1, 0, 23, 59, 59);
+  if (end < monthStart || start > monthEnd) return false;
+  if (item.frequency === "yearly") {
+    return start.getMonth() === month;
+  }
+  if (item.frequency === "one_time") {
+    return start.getFullYear() === year && start.getMonth() === month;
+  }
+  return true;
 }
 
 export function fmt(n: number): string {
@@ -82,4 +110,22 @@ export const CATEGORY_EMOJI: Record<string, string> = {
   Ropa: "👕", Café: "☕", Mascotas: "🐾", Regalos: "🎁",
 };
 
+export const COMMON_EMOJIS = [
+  "💼","💰","💵","💸","🪙","🏦","💳","🧾","📈","📉",
+  "🏠","🏡","🛋️","🛏️","🚿","💡","🔌","🔥","💧","🧹",
+  "🛒","🍎","🍞","🥩","🥗","🍕","🍔","🍣","☕","🍻",
+  "⛽","🚗","🚙","🏍️","🛵","🚲","🚌","🚕","✈️","🚆",
+  "📱","💻","🖥️","🎧","📺","🎮","📷","🖨️","📡","💿",
+  "💪","🏥","💊","🩺","🦷","🧴","💄","✂️","👕","👟",
+  "🎉","🎂","🎁","🎵","🎬","🎟️","🎨","📚","✏️","🎓",
+  "🐾","🐶","🐱","🌱","🌳","🌸","🛟","🧳","🏖️","⛰️",
+];
+
 export const emojiFor = (cat: string) => CATEGORY_EMOJI[cat] ?? "💸";
+
+/** Resolve display info for any record that might carry an icon. */
+export function iconFor(rec: { icon?: IconRef; category?: string; emoji?: string }): IconRef {
+  if (rec.icon) return rec.icon;
+  if (rec.emoji) return { kind: "emoji", value: rec.emoji };
+  return { kind: "emoji", value: emojiFor(rec.category ?? "") };
+}
