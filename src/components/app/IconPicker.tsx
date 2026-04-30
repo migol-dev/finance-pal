@@ -15,10 +15,18 @@ interface Props {
 
 /**
  * Crops a portion of `src` and returns a square thumbnail dataURL.
- * Always 256×256 so every icon renders consistently in lists.
- * Tries WebP first (smaller) and falls back to JPEG.
+ * Always a square (default 192×192) so every icon — incluido el avatar —
+ * se ve idéntico en listas, headers y diálogos.
+ * Optimiza el tamaño en disco: WebP con calidad 0.72 (≈4–10 KB típicos),
+ * con fallback a JPEG 0.78. Si el resultado supera `maxBytes`, recomprime
+ * progresivamente hasta entrar en el presupuesto.
  */
-export async function getCroppedThumbnail(src: string, area: Area, size = 256): Promise<string> {
+export async function getCroppedThumbnail(
+  src: string,
+  area: Area,
+  size = 192,
+  maxBytes = 60 * 1024,
+): Promise<string> {
   const img = await new Promise<HTMLImageElement>((res, rej) => {
     const i = new Image();
     i.crossOrigin = "anonymous";
@@ -30,15 +38,32 @@ export async function getCroppedThumbnail(src: string, area: Area, size = 256): 
   canvas.width = size; canvas.height = size;
   const ctx = canvas.getContext("2d");
   if (!ctx) throw new Error("Canvas no disponible");
-  // White background to avoid transparent flicker on jpg fallback
+  // Fondo blanco para evitar parpadeo transparente en el fallback JPEG.
   ctx.fillStyle = "#ffffff";
   ctx.fillRect(0, 0, size, size);
+  // Mejor remuestreo para miniaturas pequeñas.
+  ctx.imageSmoothingEnabled = true;
+  ctx.imageSmoothingQuality = "high";
   ctx.drawImage(img, area.x, area.y, area.width, area.height, 0, 0, size, size);
-  try {
-    const webp = canvas.toDataURL("image/webp", 0.82);
-    if (webp.startsWith("data:image/webp")) return webp;
-  } catch { /* fall through */ }
-  return canvas.toDataURL("image/jpeg", 0.85);
+
+  // dataURL en base64 ≈ 1.37× el tamaño binario.
+  const approxBytes = (dataUrl: string) => Math.ceil((dataUrl.length - dataUrl.indexOf(",") - 1) * 0.75);
+
+  // 1) Intento WebP (mucho más pequeño).
+  const webpQualities = [0.72, 0.6, 0.5, 0.4];
+  for (const q of webpQualities) {
+    try {
+      const out = canvas.toDataURL("image/webp", q);
+      if (out.startsWith("data:image/webp") && approxBytes(out) <= maxBytes) return out;
+    } catch { /* continue */ }
+  }
+  // 2) Fallback JPEG con calidades decrecientes.
+  for (const q of [0.78, 0.65, 0.5, 0.4]) {
+    const out = canvas.toDataURL("image/jpeg", q);
+    if (approxBytes(out) <= maxBytes) return out;
+  }
+  // 3) Último recurso: JPEG mínimo aceptable.
+  return canvas.toDataURL("image/jpeg", 0.35);
 }
 
 export function IconPicker({ value, onChange }: Props) {
