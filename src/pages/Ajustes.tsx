@@ -193,6 +193,36 @@ function InfoRow({ icon, title, desc }: { icon: React.ReactNode; title: string; 
   );
 }
 
+function ProfileForm({ onSave }: { onSave: (p: { name: string; email?: string; currency: Currency; avatar?: IconRef }) => void }) {
+  const profile = useFinance((s) => s.profile);
+  const [name, setName] = useState(profile.name);
+  const [email, setEmail] = useState(profile.email ?? "");
+  const [currency, setCurrency] = useState<Currency>(profile.currency);
+  const [avatar, setAvatar] = useState<IconRef | undefined>(profile.avatar);
+  const currencies: Currency[] = ["MXN","USD","EUR","COP","ARS","CLP","PEN","BRL"];
+
+  return (
+    <form onSubmit={(e) => {
+      e.preventDefault();
+      onSave({ name: name.trim(), email: email.trim() || undefined, currency, avatar });
+    }} className="space-y-3">
+      <div className="flex justify-center"><IconPicker value={avatar} onChange={setAvatar} /></div>
+      <div><Label className="text-xs">Tu nombre</Label><Input autoFocus value={name} onChange={(e) => setName(e.target.value)} placeholder="Ej. María" className="h-11 rounded-2xl" /></div>
+      <div><Label className="text-xs">Email (opcional)</Label><Input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="tucorreo@ejemplo.com" className="h-11 rounded-2xl" /></div>
+      <div>
+        <Label className="text-xs">Moneda</Label>
+        <Select value={currency} onValueChange={(v) => setCurrency(v as Currency)}>
+          <SelectTrigger className="h-11 rounded-2xl"><SelectValue /></SelectTrigger>
+          <SelectContent>
+            {currencies.map((c) => <SelectItem key={c} value={c}>{c}</SelectItem>)}
+          </SelectContent>
+        </Select>
+      </div>
+      <Button type="submit" className="w-full h-12 rounded-2xl gradient-primary text-primary-foreground border-0 shadow-glow font-bold">Guardar</Button>
+    </form>
+  );
+}
+
 function FixedForm({ initial, onSave }: { initial: FixedItem | null; onSave: (i: Omit<FixedItem, "id">) => void }) {
   const cats = Object.keys(CATEGORY_EMOJI);
   const [type, setType] = useState<ItemType>(initial?.type ?? "expense_fixed");
