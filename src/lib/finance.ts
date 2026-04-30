@@ -1,6 +1,21 @@
 export type ItemType = "income_fixed" | "expense_fixed" | "expense_variable" | "saving_fixed";
-export type Frequency = "monthly" | "weekly" | "yearly" | "one_time";
+export type Frequency = "monthly" | "weekly" | "yearly" | "one_time" | "bimonthly" | "quarterly" | "fourmonthly" | "biannual";
 export type Priority = "low" | "medium" | "high";
+export type PaymentMethod = "cash" | "transfer" | "card" | "other";
+
+export const PAYMENT_METHOD_LABEL: Record<PaymentMethod, string> = {
+  cash: "Efectivo",
+  transfer: "Transferencia",
+  card: "Tarjeta",
+  other: "Otro",
+};
+
+export const PAYMENT_METHOD_EMOJI: Record<PaymentMethod, string> = {
+  cash: "💵",
+  transfer: "🏦",
+  card: "💳",
+  other: "🔁",
+};
 
 /** Visual identity: either an emoji OR a cropped image (dataURL) */
 export interface IconRef {
@@ -22,6 +37,7 @@ export interface FixedItem {
   priority: Priority;
   payDay?: number;
   icon?: IconRef;
+  paymentMethod?: PaymentMethod;
 }
 
 export interface Transaction {
@@ -33,6 +49,7 @@ export interface Transaction {
   date: string; // ISO
   note?: string;
   icon?: IconRef;
+  paymentMethod?: PaymentMethod;
 }
 
 export interface Goal {
@@ -44,6 +61,41 @@ export interface Goal {
   color: string;          // tailwind gradient utility class
   deadline?: string;
   icon?: IconRef;         // new — preferred
+}
+
+/** Records a payment received against a debt */
+export interface DebtPayment {
+  id: string;
+  amount: number;
+  date: string;
+  note?: string;
+  paymentMethod?: PaymentMethod;
+}
+
+/** Money someone owes you */
+export interface Debt {
+  id: string;
+  person: string;
+  concept: string;
+  amount: number;       // total owed
+  date: string;         // when the debt was created
+  dueDate?: string;
+  note?: string;
+  icon?: IconRef;
+  payments: DebtPayment[];
+}
+
+export type ChangeAction = "create" | "update" | "delete";
+export type ChangeEntity = "transaction" | "fixed" | "goal" | "debt";
+
+export interface ChangeLogEntry {
+  id: string;
+  at: string;            // ISO
+  entity: ChangeEntity;
+  entityId: string;
+  action: ChangeAction;
+  label: string;         // human readable summary
+  changes?: { field: string; from?: unknown; to?: unknown }[];
 }
 
 export const TYPE_LABEL: Record<ItemType, string> = {
@@ -58,6 +110,10 @@ export const FREQ_LABEL: Record<Frequency, string> = {
   weekly: "Semanal",
   yearly: "Anual",
   one_time: "Una vez",
+  bimonthly: "Bimestral",
+  quarterly: "Trimestral",
+  fourmonthly: "Cuatrimestral",
+  biannual: "Semestral",
 };
 
 export const MONTHS = [
@@ -74,6 +130,10 @@ export function monthlyAmount(item: FixedItem): number {
     case "weekly": return item.amount * 4.345;
     case "yearly": return item.amount / 12;
     case "one_time": return 0;
+    case "bimonthly": return item.amount / 2;
+    case "quarterly": return item.amount / 3;
+    case "fourmonthly": return item.amount / 4;
+    case "biannual": return item.amount / 6;
   }
 }
 
@@ -91,6 +151,13 @@ export function isFixedActiveInMonth(item: FixedItem, year: number, month: numbe
   if (item.frequency === "one_time") {
     return start.getFullYear() === year && start.getMonth() === month;
   }
+  // Periodic frequencies that hit only on certain months relative to startDate
+  const monthsSinceStart = (year - start.getFullYear()) * 12 + (month - start.getMonth());
+  if (monthsSinceStart < 0) return false;
+  if (item.frequency === "bimonthly") return monthsSinceStart % 2 === 0;
+  if (item.frequency === "quarterly") return monthsSinceStart % 3 === 0;
+  if (item.frequency === "fourmonthly") return monthsSinceStart % 4 === 0;
+  if (item.frequency === "biannual") return monthsSinceStart % 6 === 0;
   return true;
 }
 
