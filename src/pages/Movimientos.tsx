@@ -114,7 +114,10 @@ export default function Movimientos() {
                     <IconDisplay icon={iconFor(t)} />
                     <button onClick={() => openEdit(t)} className="flex-1 min-w-0 text-left">
                       <p className="font-semibold text-sm truncate">{t.concept}</p>
-                      <p className="text-xs text-muted-foreground">{t.category}</p>
+                      <p className="text-xs text-muted-foreground truncate">
+                        {t.category}
+                        {t.paymentMethod && <span className="ml-1.5">· {PAYMENT_METHOD_EMOJI[t.paymentMethod]} {PAYMENT_METHOD_LABEL[t.paymentMethod]}</span>}
+                      </p>
                     </button>
                     <div className="text-right">
                       <p className={`font-bold text-sm ${t.type === "income" ? "text-success" : t.type === "saving" ? "text-secondary" : "text-destructive"}`}>
