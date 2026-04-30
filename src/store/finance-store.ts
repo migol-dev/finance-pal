@@ -90,6 +90,10 @@ function sanitizeIcon(v: unknown): IconRef | undefined {
   return { kind, value: v.value };
 }
 
+function inSet<T extends string>(set: readonly T[], v: unknown): v is T {
+  return typeof v === "string" && (set as readonly string[]).includes(v);
+}
+
 function sanitizeFixed(raw: any): FixedItem | null {
   if (!isObj(raw) || !isStr(raw.concept) || !isNum(raw.amount)) return null;
   const types = ["income_fixed","expense_fixed","expense_variable","saving_fixed"] as const;
@@ -98,20 +102,20 @@ function sanitizeFixed(raw: any): FixedItem | null {
   const pays = ["cash","transfer","card","other"] as const;
   return {
     id: isStr(raw.id) ? raw.id : id(),
-    type: (types as readonly string[]).includes(raw.type) ? raw.type : "expense_fixed",
+    type: inSet(types, raw.type) ? raw.type : "expense_fixed",
     category: isStr(raw.category) ? raw.category : "Otros",
     concept: raw.concept,
     amount: raw.amount,
-    frequency: (freqs as readonly string[]).includes(raw.frequency) ? raw.frequency : "monthly",
+    frequency: inSet(freqs, raw.frequency) ? raw.frequency : "monthly",
     active: isBool(raw.active) ? raw.active : true,
     note: isStr(raw.note) ? raw.note : undefined,
     startDate: isStr(raw.startDate) ? raw.startDate : new Date().toISOString(),
     endDate: isStr(raw.endDate) ? raw.endDate : `${new Date().getFullYear() + 5}-12-31T00:00:00.000Z`,
-    priority: (prios as readonly string[]).includes(raw.priority) ? raw.priority : "medium",
+    priority: inSet(prios, raw.priority) ? raw.priority : "medium",
     payDay: isNum(raw.payDay) ? raw.payDay : undefined,
     icon: sanitizeIcon(raw.icon),
-    paymentMethod: (pays as readonly string[]).includes(raw.paymentMethod) ? raw.paymentMethod : undefined,
-  } as FixedItem;
+    paymentMethod: inSet(pays, raw.paymentMethod) ? raw.paymentMethod : undefined,
+  };
 }
 
 function sanitizeTx(raw: any): Transaction | null {
@@ -120,15 +124,15 @@ function sanitizeTx(raw: any): Transaction | null {
   const pays = ["cash","transfer","card","other"] as const;
   return {
     id: isStr(raw.id) ? raw.id : id(),
-    type: (types as readonly string[]).includes(raw.type) ? raw.type : "expense",
+    type: inSet(types, raw.type) ? raw.type : "expense",
     category: isStr(raw.category) ? raw.category : "Otros",
     concept: raw.concept,
     amount: raw.amount,
     date: isStr(raw.date) ? raw.date : new Date().toISOString(),
     note: isStr(raw.note) ? raw.note : undefined,
     icon: sanitizeIcon(raw.icon),
-    paymentMethod: (pays as readonly string[]).includes(raw.paymentMethod) ? raw.paymentMethod : undefined,
-  } as Transaction;
+    paymentMethod: inSet(pays, raw.paymentMethod) ? raw.paymentMethod : undefined,
+  };
 }
 
 function sanitizeGoal(raw: any): Goal | null {
@@ -153,10 +157,10 @@ function sanitizeDebt(raw: any): Debt | null {
       .filter((p) => isObj(p) && isNum(p.amount))
       .map((p) => ({
         id: isStr(p.id) ? p.id : id(),
-        amount: p.amount,
+        amount: p.amount as number,
         date: isStr(p.date) ? p.date : new Date().toISOString(),
         note: isStr(p.note) ? p.note : undefined,
-        paymentMethod: (pays as readonly string[]).includes(p.paymentMethod) ? p.paymentMethod : undefined,
+        paymentMethod: inSet(pays, p.paymentMethod) ? p.paymentMethod : undefined,
       }))
     : [];
   return {
@@ -202,8 +206,11 @@ export const useFinance = create<State>()(
       debts: [],
       changeLog: [],
       theme: "light",
+      profile: { name: "", currency: "MXN" },
       activeYear: now.getFullYear(),
       activeMonth: now.getMonth(),
+
+      setProfile: (p) => set((s) => ({ profile: { ...s.profile, ...p } })),
 
       setTheme: (t) => set({ theme: t }),
       toggleTheme: () => set((s) => ({ theme: s.theme === "light" ? "dark" : "light" })),
@@ -298,7 +305,7 @@ export const useFinance = create<State>()(
         const s = get();
         const payload = {
           app: "migol-finanzas",
-          version: 3,
+          version: SCHEMA_VERSION,
           exportedAt: new Date().toISOString(),
           data: {
             fixedItems: s.fixedItems,
@@ -307,6 +314,7 @@ export const useFinance = create<State>()(
             debts: s.debts,
             changeLog: s.changeLog,
             theme: s.theme,
+            profile: s.profile,
           },
         };
         return JSON.stringify(payload, null, 2);
@@ -315,30 +323,66 @@ export const useFinance = create<State>()(
       importData: (json) => {
         try {
           const parsed = JSON.parse(json);
-          const d = parsed?.data ?? parsed;
-          if (!d || typeof d !== "object") return { ok: false, error: "Formato inválido" };
-          set({
-            fixedItems: Array.isArray(d.fixedItems) ? d.fixedItems : [],
-            transactions: Array.isArray(d.transactions) ? d.transactions : [],
-            goals: Array.isArray(d.goals) ? d.goals : [],
-            debts: Array.isArray(d.debts) ? d.debts.map((x: any) => ({ ...x, payments: x.payments ?? [] })) : [],
-            changeLog: Array.isArray(d.changeLog) ? d.changeLog : [],
-            theme: d.theme === "dark" ? "dark" : "light",
-          });
-          return { ok: true };
+          if (!isObj(parsed) && !isObj(parsed?.data)) {
+            return { ok: false, error: "Formato inválido: se esperaba un objeto JSON" };
+          }
+          if (parsed?.app && parsed.app !== "migol-finanzas") {
+            return { ok: false, error: `Este archivo no pertenece a Migol Finanzas (app="${parsed.app}")` };
+          }
+          const { data, warnings } = migrateImported(parsed);
+
+          const fixedItems = (Array.isArray(data.fixedItems) ? data.fixedItems : [])
+            .map(sanitizeFixed).filter((x: FixedItem | null): x is FixedItem => !!x);
+          const transactions = (Array.isArray(data.transactions) ? data.transactions : [])
+            .map(sanitizeTx).filter((x: Transaction | null): x is Transaction => !!x);
+          const goals = (Array.isArray(data.goals) ? data.goals : [])
+            .map(sanitizeGoal).filter((x: Goal | null): x is Goal => !!x);
+          const debts = (Array.isArray(data.debts) ? data.debts : [])
+            .map(sanitizeDebt).filter((x: Debt | null): x is Debt => !!x);
+          const changeLog: ChangeLogEntry[] = Array.isArray(data.changeLog)
+            ? (data.changeLog as any[]).filter((e) => isObj(e) && isStr(e.id) && isStr(e.label)).slice(0, 500) as ChangeLogEntry[]
+            : [];
+          const theme: ThemeMode = data.theme === "dark" ? "dark" : "light";
+          const profile = sanitizeProfile(data.profile);
+
+          set({ fixedItems, transactions, goals, debts, changeLog, theme, profile });
+          return { ok: true, warnings };
         } catch (e: any) {
           return { ok: false, error: e?.message ?? "JSON inválido" };
         }
       },
 
-      resetAll: () => { const d = new Date(); set({ fixedItems: [], transactions: [], goals: [], debts: [], changeLog: [], activeYear: d.getFullYear(), activeMonth: d.getMonth() }); },
+      resetAll: () => {
+        const d = new Date();
+        set({ fixedItems: [], transactions: [], goals: [], debts: [], changeLog: [], activeYear: d.getFullYear(), activeMonth: d.getMonth() });
+      },
     }),
     {
       name: "migol-finanzas-v2",
-      version: 3,
-      migrate: (state: any) => {
+      version: SCHEMA_VERSION,
+      migrate: (state: any, fromVersion: number) => {
         if (!state) return state;
-        return { debts: [], changeLog: [], theme: "light", ...state };
+        // Add new fields with defaults — never lose existing user data.
+        const next = {
+          debts: [],
+          changeLog: [],
+          theme: "light" as ThemeMode,
+          profile: { name: "", currency: "MXN" } as UserProfile,
+          ...state,
+        };
+        // Re-sanitize collections from older versions to drop malformed entries.
+        if (fromVersion < SCHEMA_VERSION) {
+          next.fixedItems = (Array.isArray(next.fixedItems) ? next.fixedItems : [])
+            .map(sanitizeFixed).filter(Boolean);
+          next.transactions = (Array.isArray(next.transactions) ? next.transactions : [])
+            .map(sanitizeTx).filter(Boolean);
+          next.goals = (Array.isArray(next.goals) ? next.goals : [])
+            .map(sanitizeGoal).filter(Boolean);
+          next.debts = (Array.isArray(next.debts) ? next.debts : [])
+            .map(sanitizeDebt).filter(Boolean);
+          next.profile = sanitizeProfile(next.profile);
+        }
+        return next;
       },
     }
   )
