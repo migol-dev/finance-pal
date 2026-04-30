@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useFinance } from "@/store/finance-store";
-import { fmt, CATEGORY_EMOJI, MONTHS, iconFor, IconRef, Transaction } from "@/lib/finance";
+import { fmt, CATEGORY_EMOJI, MONTHS, iconFor, IconRef, Transaction, PaymentMethod, PAYMENT_METHOD_LABEL, PAYMENT_METHOD_EMOJI } from "@/lib/finance";
 import { Header } from "@/components/app/Header";
 import { Plus, Trash2, Search, Pencil } from "lucide-react";
 import { useSearchParams } from "react-router-dom";
@@ -114,7 +114,10 @@ export default function Movimientos() {
                     <IconDisplay icon={iconFor(t)} />
                     <button onClick={() => openEdit(t)} className="flex-1 min-w-0 text-left">
                       <p className="font-semibold text-sm truncate">{t.concept}</p>
-                      <p className="text-xs text-muted-foreground">{t.category}</p>
+                      <p className="text-xs text-muted-foreground truncate">
+                        {t.category}
+                        {t.paymentMethod && <span className="ml-1.5">· {PAYMENT_METHOD_EMOJI[t.paymentMethod]} {PAYMENT_METHOD_LABEL[t.paymentMethod]}</span>}
+                      </p>
                     </button>
                     <div className="text-right">
                       <p className={`font-bold text-sm ${t.type === "income" ? "text-success" : t.type === "saving" ? "text-secondary" : "text-destructive"}`}>
@@ -144,6 +147,7 @@ function TxForm({ initial, onSave }: { initial: Partial<Transaction> & { type: T
   const [date, setDate] = useState((initial.date ?? new Date().toISOString()).slice(0, 10));
   const [note, setNote] = useState(initial.note ?? "");
   const [icon, setIcon] = useState<IconRef | undefined>(initial.icon);
+  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>(initial.paymentMethod ?? "transfer");
   const cats = Object.keys(CATEGORY_EMOJI);
 
   return (
@@ -151,7 +155,7 @@ function TxForm({ initial, onSave }: { initial: Partial<Transaction> & { type: T
       e.preventDefault();
       const a = parseFloat(amount);
       if (!a || !concept) { toast.error("Completa monto y concepto"); return; }
-      onSave({ type, category, concept, amount: a, date: new Date(date).toISOString(), note: note || undefined, icon });
+      onSave({ type, category, concept, amount: a, date: new Date(date).toISOString(), note: note || undefined, icon, paymentMethod });
     }} className="space-y-3">
       <div className="grid grid-cols-3 gap-2">
         {(["expense", "income", "saving"] as const).map((t) => (
@@ -184,6 +188,17 @@ function TxForm({ initial, onSave }: { initial: Partial<Transaction> & { type: T
           <Label className="text-xs">Fecha</Label>
           <Input type="date" value={date} onChange={(e) => setDate(e.target.value)} className="h-11 rounded-2xl" />
         </div>
+      </div>
+      <div>
+        <Label className="text-xs">Método de pago</Label>
+        <Select value={paymentMethod} onValueChange={(v) => setPaymentMethod(v as PaymentMethod)}>
+          <SelectTrigger className="h-11 rounded-2xl"><SelectValue /></SelectTrigger>
+          <SelectContent>
+            {(Object.keys(PAYMENT_METHOD_LABEL) as PaymentMethod[]).map((k) => (
+              <SelectItem key={k} value={k}>{PAYMENT_METHOD_EMOJI[k]} {PAYMENT_METHOD_LABEL[k]}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
       </div>
       <div>
         <Label className="text-xs">Nota (opcional)</Label>

@@ -1,8 +1,8 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useFinance } from "@/store/finance-store";
-import { fmt, monthlyAmount, TYPE_LABEL, FREQ_LABEL, ItemType, Frequency, Priority, iconFor, IconRef, FixedItem, CATEGORY_EMOJI } from "@/lib/finance";
+import { fmt, monthlyAmount, TYPE_LABEL, FREQ_LABEL, ItemType, Frequency, Priority, iconFor, IconRef, FixedItem, CATEGORY_EMOJI, PaymentMethod, PAYMENT_METHOD_LABEL, PAYMENT_METHOD_EMOJI } from "@/lib/finance";
 import { Header } from "@/components/app/Header";
-import { Plus, Trash2, Power, Smartphone, Database, RotateCcw, Pencil } from "lucide-react";
+import { Plus, Trash2, Power, Smartphone, Database, RotateCcw, Pencil, Download, Upload, Sun, Moon, Target, History, HandCoins } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -12,16 +12,36 @@ import { toast } from "sonner";
 import { motion } from "framer-motion";
 import { IconPicker } from "@/components/app/IconPicker";
 import { IconDisplay } from "@/components/app/IconDisplay";
+import { Link } from "react-router-dom";
 
 export default function Ajustes() {
-  const { fixedItems, addFixed, updateFixed, removeFixed, toggleFixed, resetAll } = useFinance();
+  const { fixedItems, addFixed, updateFixed, removeFixed, toggleFixed, resetAll, exportData, importData, theme, toggleTheme } = useFinance();
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<FixedItem | null>(null);
   const [tab, setTab] = useState<"all" | ItemType>("all");
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const filtered = fixedItems.filter((i) => tab === "all" || i.type === tab);
   const openNew = () => { setEditing(null); setOpen(true); };
   const openEdit = (i: FixedItem) => { setEditing(i); setOpen(true); };
+
+  const handleExport = () => {
+    const json = exportData();
+    const blob = new Blob([json], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `migol-finanzas-${new Date().toISOString().slice(0, 10)}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+    toast.success("Datos exportados");
+  };
+  const handleImportFile = async (file: File) => {
+    if (!confirm("Esto reemplazará todos tus datos actuales. ¿Continuar?")) return;
+    const text = await file.text();
+    const r = importData(text);
+    if (r.ok) toast.success("Datos importados"); else toast.error(r.error ?? "No se pudo importar");
+  };
 
   return (
     <div>
@@ -86,6 +106,37 @@ export default function Ajustes() {
       </div>
 
       <section className="px-5 mt-8 space-y-3">
+        <h2 className="text-xs uppercase tracking-wider font-bold text-muted-foreground">Apariencia</h2>
+        <button onClick={toggleTheme} className="w-full rounded-2xl bg-card border border-border p-4 shadow-soft flex items-center gap-3 hover:bg-muted/50 transition">
+          <div className="size-9 rounded-xl bg-primary/10 text-primary flex items-center justify-center">
+            {theme === "dark" ? <Moon className="size-4" /> : <Sun className="size-4" />}
+          </div>
+          <div className="flex-1 text-left">
+            <p className="font-semibold text-sm">Tema {theme === "dark" ? "oscuro" : "claro"}</p>
+            <p className="text-xs text-muted-foreground">Toca para cambiar a {theme === "dark" ? "claro" : "oscuro azul"}</p>
+          </div>
+        </button>
+
+        <h2 className="text-xs uppercase tracking-wider font-bold text-muted-foreground pt-2">Más</h2>
+        <div className="grid grid-cols-3 gap-2">
+          <Link to="/metas" className="rounded-2xl bg-card border border-border p-3 shadow-soft flex flex-col items-center gap-1.5 hover:bg-muted/50 transition">
+            <Target className="size-5 text-primary" /><span className="text-[11px] font-semibold">Metas</span>
+          </Link>
+          <Link to="/deudas" className="rounded-2xl bg-card border border-border p-3 shadow-soft flex flex-col items-center gap-1.5 hover:bg-muted/50 transition">
+            <HandCoins className="size-5 text-primary" /><span className="text-[11px] font-semibold">Deudas</span>
+          </Link>
+          <Link to="/historial" className="rounded-2xl bg-card border border-border p-3 shadow-soft flex flex-col items-center gap-1.5 hover:bg-muted/50 transition">
+            <History className="size-5 text-primary" /><span className="text-[11px] font-semibold">Historial</span>
+          </Link>
+        </div>
+
+        <h2 className="text-xs uppercase tracking-wider font-bold text-muted-foreground pt-2">Datos</h2>
+        <div className="grid grid-cols-2 gap-2">
+          <Button onClick={handleExport} variant="secondary" className="rounded-2xl h-12 font-semibold"><Download className="size-4 mr-1" />Exportar</Button>
+          <Button onClick={() => fileInputRef.current?.click()} variant="secondary" className="rounded-2xl h-12 font-semibold"><Upload className="size-4 mr-1" />Importar</Button>
+          <input ref={fileInputRef} type="file" accept="application/json,.json" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; if (f) handleImportFile(f); e.target.value = ""; }} />
+        </div>
+
         <h2 className="text-xs uppercase tracking-wider font-bold text-muted-foreground">Aplicación</h2>
         <InfoRow icon={<Smartphone className="size-4" />} title="App nativa Android" desc="Configurada con Capacitor. Sigue las instrucciones para compilar." />
         <InfoRow icon={<Database className="size-4" />} title="Almacenamiento local" desc="Tus datos se guardan en tu dispositivo. Privado y sin nube." />
@@ -120,13 +171,14 @@ function FixedForm({ initial, onSave }: { initial: FixedItem | null; onSave: (i:
   const [icon, setIcon] = useState<IconRef | undefined>(initial?.icon);
   const [startDate, setStartDate] = useState(initial?.startDate?.slice(0, 10) ?? new Date().toISOString().slice(0, 10));
   const [endDate, setEndDate] = useState(initial?.endDate?.slice(0, 10) ?? `${new Date().getFullYear() + 5}-12-31`);
+  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>(initial?.paymentMethod ?? "transfer");
 
   return (
     <form onSubmit={(e) => {
       e.preventDefault();
       const a = parseFloat(amount);
       if (!a || !concept) { toast.error("Completa concepto y monto"); return; }
-      onSave({ type, category, concept, amount: a, frequency, active: initial?.active ?? true, startDate: new Date(startDate).toISOString(), endDate: new Date(endDate).toISOString(), priority, payDay: payDay ? parseInt(payDay) : undefined, note: note || undefined, icon });
+      onSave({ type, category, concept, amount: a, frequency, active: initial?.active ?? true, startDate: new Date(startDate).toISOString(), endDate: new Date(endDate).toISOString(), priority, payDay: payDay ? parseInt(payDay) : undefined, note: note || undefined, icon, paymentMethod });
     }} className="space-y-3">
       <div className="flex justify-center"><IconPicker value={icon} onChange={setIcon} /></div>
       <div>
@@ -161,6 +213,10 @@ function FixedForm({ initial, onSave }: { initial: FixedItem | null; onSave: (i:
             <SelectContent>
               <SelectItem value="monthly">Mensual</SelectItem>
               <SelectItem value="weekly">Semanal</SelectItem>
+              <SelectItem value="bimonthly">Bimestral</SelectItem>
+              <SelectItem value="quarterly">Trimestral</SelectItem>
+              <SelectItem value="fourmonthly">Cuatrimestral</SelectItem>
+              <SelectItem value="biannual">Semestral</SelectItem>
               <SelectItem value="yearly">Anual</SelectItem>
               <SelectItem value="one_time">Una vez</SelectItem>
             </SelectContent>
@@ -177,6 +233,17 @@ function FixedForm({ initial, onSave }: { initial: FixedItem | null; onSave: (i:
             </SelectContent>
           </Select>
         </div>
+      </div>
+      <div>
+        <Label className="text-xs">Método de pago</Label>
+        <Select value={paymentMethod} onValueChange={(v) => setPaymentMethod(v as PaymentMethod)}>
+          <SelectTrigger className="h-11 rounded-2xl"><SelectValue /></SelectTrigger>
+          <SelectContent>
+            {(Object.keys(PAYMENT_METHOD_LABEL) as PaymentMethod[]).map((k) => (
+              <SelectItem key={k} value={k}>{PAYMENT_METHOD_EMOJI[k]} {PAYMENT_METHOD_LABEL[k]}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
       </div>
       <div className="grid grid-cols-2 gap-2">
         <div><Label className="text-xs">Desde</Label><Input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} className="h-11 rounded-2xl" /></div>

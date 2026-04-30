@@ -9,6 +9,8 @@ import Movimientos from "./pages/Movimientos";
 import Metas from "./pages/Metas";
 import Anual from "./pages/Anual";
 import Ajustes from "./pages/Ajustes";
+import Deudas from "./pages/Deudas";
+import Historial from "./pages/Historial";
 import NotFound from "./pages/NotFound.tsx";
 
 const queryClient = new QueryClient();
@@ -23,7 +25,9 @@ const App = () => (
           <Route path="/" element={<AppShell><Dashboard /></AppShell>} />
           <Route path="/movimientos" element={<AppShell><Movimientos /></AppShell>} />
           <Route path="/metas" element={<AppShell><Metas /></AppShell>} />
+          <Route path="/deudas" element={<AppShell><Deudas /></AppShell>} />
           <Route path="/anual" element={<AppShell><Anual /></AppShell>} />
+          <Route path="/historial" element={<AppShell><Historial /></AppShell>} />
           <Route path="/ajustes" element={<AppShell><Ajustes /></AppShell>} />
           <Route path="*" element={<NotFound />} />
         </Routes>
