@@ -1,11 +1,11 @@
 import { NavLink } from "react-router-dom";
-import { Home, ListTree, Target, BarChart3, Settings } from "lucide-react";
+import { Home, ListTree, HandCoins, BarChart3, Settings } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const items = [
   { to: "/", icon: Home, label: "Inicio" },
   { to: "/movimientos", icon: ListTree, label: "Movimientos" },
-  { to: "/metas", icon: Target, label: "Metas" },
+  { to: "/deudas", icon: HandCoins, label: "Deudas" },
   { to: "/anual", icon: BarChart3, label: "Anual" },
   { to: "/ajustes", icon: Settings, label: "Ajustes" },
 ];
