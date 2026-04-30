@@ -1,8 +1,19 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
-import { FixedItem, Transaction, Goal, Debt, DebtPayment, ChangeLogEntry, ChangeAction, ChangeEntity } from "@/lib/finance";
+import { FixedItem, Transaction, Goal, Debt, DebtPayment, ChangeLogEntry, ChangeAction, ChangeEntity, IconRef } from "@/lib/finance";
 
 export type ThemeMode = "light" | "dark";
+export type Currency = "MXN" | "USD" | "EUR" | "COP" | "ARS" | "CLP" | "PEN" | "BRL";
+
+export interface UserProfile {
+  name: string;
+  email?: string;
+  currency: Currency;
+  avatar?: IconRef;
+}
+
+/** Current schema version of persisted/exported data. */
+export const SCHEMA_VERSION = 4;
 
 interface State {
   fixedItems: FixedItem[];
@@ -11,6 +22,8 @@ interface State {
   debts: Debt[];
   changeLog: ChangeLogEntry[];
   theme: ThemeMode;
+  profile: UserProfile;
+  setProfile: (p: Partial<UserProfile>) => void;
   setTheme: (t: ThemeMode) => void;
   toggleTheme: () => void;
   // Active month/year context (defaults to today on first load)
@@ -41,7 +54,7 @@ interface State {
 
   clearChangeLog: () => void;
   exportData: () => string;
-  importData: (json: string) => { ok: boolean; error?: string };
+  importData: (json: string) => { ok: boolean; error?: string; warnings?: string[] };
 
   resetAll: () => void;
 }
@@ -63,6 +76,127 @@ function logEntry(entity: ChangeEntity, entityId: string, action: ChangeAction, 
   return { id: id(), at: new Date().toISOString(), entity, entityId, action, label, changes };
 }
 
+/* ─────────────────────────────  Schema validation  ───────────────────────────── */
+
+const isStr = (v: unknown): v is string => typeof v === "string";
+const isNum = (v: unknown): v is number => typeof v === "number" && Number.isFinite(v);
+const isBool = (v: unknown): v is boolean => typeof v === "boolean";
+const isObj = (v: unknown): v is Record<string, unknown> => !!v && typeof v === "object" && !Array.isArray(v);
+
+function sanitizeIcon(v: unknown): IconRef | undefined {
+  if (!isObj(v)) return undefined;
+  const kind = v.kind === "image" ? "image" : v.kind === "emoji" ? "emoji" : null;
+  if (!kind || !isStr(v.value)) return undefined;
+  return { kind, value: v.value };
+}
+
+function inSet<T extends string>(set: readonly T[], v: unknown): v is T {
+  return typeof v === "string" && (set as readonly string[]).includes(v);
+}
+
+function sanitizeFixed(raw: any): FixedItem | null {
+  if (!isObj(raw) || !isStr(raw.concept) || !isNum(raw.amount)) return null;
+  const types = ["income_fixed","expense_fixed","expense_variable","saving_fixed"] as const;
+  const freqs = ["monthly","weekly","yearly","one_time","bimonthly","quarterly","fourmonthly","biannual"] as const;
+  const prios = ["low","medium","high"] as const;
+  const pays = ["cash","transfer","card","other"] as const;
+  return {
+    id: isStr(raw.id) ? raw.id : id(),
+    type: inSet(types, raw.type) ? raw.type : "expense_fixed",
+    category: isStr(raw.category) ? raw.category : "Otros",
+    concept: raw.concept,
+    amount: raw.amount,
+    frequency: inSet(freqs, raw.frequency) ? raw.frequency : "monthly",
+    active: isBool(raw.active) ? raw.active : true,
+    note: isStr(raw.note) ? raw.note : undefined,
+    startDate: isStr(raw.startDate) ? raw.startDate : new Date().toISOString(),
+    endDate: isStr(raw.endDate) ? raw.endDate : `${new Date().getFullYear() + 5}-12-31T00:00:00.000Z`,
+    priority: inSet(prios, raw.priority) ? raw.priority : "medium",
+    payDay: isNum(raw.payDay) ? raw.payDay : undefined,
+    icon: sanitizeIcon(raw.icon),
+    paymentMethod: inSet(pays, raw.paymentMethod) ? raw.paymentMethod : undefined,
+  };
+}
+
+function sanitizeTx(raw: any): Transaction | null {
+  if (!isObj(raw) || !isStr(raw.concept) || !isNum(raw.amount)) return null;
+  const types = ["income","expense","saving"] as const;
+  const pays = ["cash","transfer","card","other"] as const;
+  return {
+    id: isStr(raw.id) ? raw.id : id(),
+    type: inSet(types, raw.type) ? raw.type : "expense",
+    category: isStr(raw.category) ? raw.category : "Otros",
+    concept: raw.concept,
+    amount: raw.amount,
+    date: isStr(raw.date) ? raw.date : new Date().toISOString(),
+    note: isStr(raw.note) ? raw.note : undefined,
+    icon: sanitizeIcon(raw.icon),
+    paymentMethod: inSet(pays, raw.paymentMethod) ? raw.paymentMethod : undefined,
+  };
+}
+
+function sanitizeGoal(raw: any): Goal | null {
+  if (!isObj(raw) || !isStr(raw.name) || !isNum(raw.target)) return null;
+  return {
+    id: isStr(raw.id) ? raw.id : id(),
+    name: raw.name,
+    target: raw.target,
+    saved: isNum(raw.saved) ? raw.saved : 0,
+    emoji: isStr(raw.emoji) ? raw.emoji : "🎯",
+    color: isStr(raw.color) ? raw.color : "gradient-primary",
+    deadline: isStr(raw.deadline) ? raw.deadline : undefined,
+    icon: sanitizeIcon(raw.icon),
+  } as Goal;
+}
+
+function sanitizeDebt(raw: any): Debt | null {
+  if (!isObj(raw) || !isStr(raw.person) || !isNum(raw.amount)) return null;
+  const pays = ["cash","transfer","card","other"] as const;
+  const payments: DebtPayment[] = Array.isArray(raw.payments)
+    ? (raw.payments as any[])
+      .filter((p) => isObj(p) && isNum(p.amount))
+      .map((p) => ({
+        id: isStr(p.id) ? p.id : id(),
+        amount: p.amount as number,
+        date: isStr(p.date) ? p.date : new Date().toISOString(),
+        note: isStr(p.note) ? p.note : undefined,
+        paymentMethod: inSet(pays, p.paymentMethod) ? p.paymentMethod : undefined,
+      }))
+    : [];
+  return {
+    id: isStr(raw.id) ? raw.id : id(),
+    person: raw.person,
+    concept: isStr(raw.concept) ? raw.concept : "Préstamo",
+    amount: raw.amount,
+    date: isStr(raw.date) ? raw.date : new Date().toISOString(),
+    dueDate: isStr(raw.dueDate) ? raw.dueDate : undefined,
+    note: isStr(raw.note) ? raw.note : undefined,
+    icon: sanitizeIcon(raw.icon),
+    payments,
+  } as Debt;
+}
+
+function sanitizeProfile(raw: any): UserProfile {
+  const currencies: Currency[] = ["MXN","USD","EUR","COP","ARS","CLP","PEN","BRL"];
+  if (!isObj(raw)) return { name: "", currency: "MXN" };
+  return {
+    name: isStr(raw.name) ? raw.name : "",
+    email: isStr(raw.email) ? raw.email : undefined,
+    currency: currencies.includes(raw.currency as Currency) ? (raw.currency as Currency) : "MXN",
+    avatar: sanitizeIcon(raw.avatar),
+  };
+}
+
+/** Upgrade an older payload to current schema. Pure: returns sanitized data. */
+function migrateImported(payload: any): { data: any; warnings: string[] } {
+  const warnings: string[] = [];
+  const version: number = isNum(payload?.version) ? payload.version : 1;
+  const d = payload?.data ?? payload ?? {};
+  if (version > SCHEMA_VERSION) warnings.push(`Importando datos de una versión más nueva (${version}). Algunos campos podrían ignorarse.`);
+  if (version < SCHEMA_VERSION) warnings.push(`Migrando datos de versión ${version} a ${SCHEMA_VERSION}.`);
+  return { data: d, warnings };
+}
+
 export const useFinance = create<State>()(
   persist(
     (set, get) => ({
@@ -72,8 +206,11 @@ export const useFinance = create<State>()(
       debts: [],
       changeLog: [],
       theme: "light",
+      profile: { name: "", currency: "MXN" },
       activeYear: now.getFullYear(),
       activeMonth: now.getMonth(),
+
+      setProfile: (p) => set((s) => ({ profile: { ...s.profile, ...p } })),
 
       setTheme: (t) => set({ theme: t }),
       toggleTheme: () => set((s) => ({ theme: s.theme === "light" ? "dark" : "light" })),
@@ -168,7 +305,7 @@ export const useFinance = create<State>()(
         const s = get();
         const payload = {
           app: "migol-finanzas",
-          version: 3,
+          version: SCHEMA_VERSION,
           exportedAt: new Date().toISOString(),
           data: {
             fixedItems: s.fixedItems,
@@ -177,6 +314,7 @@ export const useFinance = create<State>()(
             debts: s.debts,
             changeLog: s.changeLog,
             theme: s.theme,
+            profile: s.profile,
           },
         };
         return JSON.stringify(payload, null, 2);
@@ -185,30 +323,66 @@ export const useFinance = create<State>()(
       importData: (json) => {
         try {
           const parsed = JSON.parse(json);
-          const d = parsed?.data ?? parsed;
-          if (!d || typeof d !== "object") return { ok: false, error: "Formato inválido" };
-          set({
-            fixedItems: Array.isArray(d.fixedItems) ? d.fixedItems : [],
-            transactions: Array.isArray(d.transactions) ? d.transactions : [],
-            goals: Array.isArray(d.goals) ? d.goals : [],
-            debts: Array.isArray(d.debts) ? d.debts.map((x: any) => ({ ...x, payments: x.payments ?? [] })) : [],
-            changeLog: Array.isArray(d.changeLog) ? d.changeLog : [],
-            theme: d.theme === "dark" ? "dark" : "light",
-          });
-          return { ok: true };
+          if (!isObj(parsed) && !isObj(parsed?.data)) {
+            return { ok: false, error: "Formato inválido: se esperaba un objeto JSON" };
+          }
+          if (parsed?.app && parsed.app !== "migol-finanzas") {
+            return { ok: false, error: `Este archivo no pertenece a Migol Finanzas (app="${parsed.app}")` };
+          }
+          const { data, warnings } = migrateImported(parsed);
+
+          const fixedItems = (Array.isArray(data.fixedItems) ? data.fixedItems : [])
+            .map(sanitizeFixed).filter((x: FixedItem | null): x is FixedItem => !!x);
+          const transactions = (Array.isArray(data.transactions) ? data.transactions : [])
+            .map(sanitizeTx).filter((x: Transaction | null): x is Transaction => !!x);
+          const goals = (Array.isArray(data.goals) ? data.goals : [])
+            .map(sanitizeGoal).filter((x: Goal | null): x is Goal => !!x);
+          const debts = (Array.isArray(data.debts) ? data.debts : [])
+            .map(sanitizeDebt).filter((x: Debt | null): x is Debt => !!x);
+          const changeLog: ChangeLogEntry[] = Array.isArray(data.changeLog)
+            ? (data.changeLog as any[]).filter((e) => isObj(e) && isStr(e.id) && isStr(e.label)).slice(0, 500) as ChangeLogEntry[]
+            : [];
+          const theme: ThemeMode = data.theme === "dark" ? "dark" : "light";
+          const profile = sanitizeProfile(data.profile);
+
+          set({ fixedItems, transactions, goals, debts, changeLog, theme, profile });
+          return { ok: true, warnings };
         } catch (e: any) {
           return { ok: false, error: e?.message ?? "JSON inválido" };
         }
       },
 
-      resetAll: () => { const d = new Date(); set({ fixedItems: [], transactions: [], goals: [], debts: [], changeLog: [], activeYear: d.getFullYear(), activeMonth: d.getMonth() }); },
+      resetAll: () => {
+        const d = new Date();
+        set({ fixedItems: [], transactions: [], goals: [], debts: [], changeLog: [], activeYear: d.getFullYear(), activeMonth: d.getMonth() });
+      },
     }),
     {
       name: "migol-finanzas-v2",
-      version: 3,
-      migrate: (state: any) => {
+      version: SCHEMA_VERSION,
+      migrate: (state: any, fromVersion: number) => {
         if (!state) return state;
-        return { debts: [], changeLog: [], theme: "light", ...state };
+        // Add new fields with defaults — never lose existing user data.
+        const next = {
+          debts: [],
+          changeLog: [],
+          theme: "light" as ThemeMode,
+          profile: { name: "", currency: "MXN" } as UserProfile,
+          ...state,
+        };
+        // Re-sanitize collections from older versions to drop malformed entries.
+        if (fromVersion < SCHEMA_VERSION) {
+          next.fixedItems = (Array.isArray(next.fixedItems) ? next.fixedItems : [])
+            .map(sanitizeFixed).filter(Boolean);
+          next.transactions = (Array.isArray(next.transactions) ? next.transactions : [])
+            .map(sanitizeTx).filter(Boolean);
+          next.goals = (Array.isArray(next.goals) ? next.goals : [])
+            .map(sanitizeGoal).filter(Boolean);
+          next.debts = (Array.isArray(next.debts) ? next.debts : [])
+            .map(sanitizeDebt).filter(Boolean);
+          next.profile = sanitizeProfile(next.profile);
+        }
+        return next;
       },
     }
   )

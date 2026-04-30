@@ -1,8 +1,8 @@
 import { useRef, useState } from "react";
-import { useFinance } from "@/store/finance-store";
+import { useFinance, Currency } from "@/store/finance-store";
 import { fmt, monthlyAmount, TYPE_LABEL, FREQ_LABEL, ItemType, Frequency, Priority, iconFor, IconRef, FixedItem, CATEGORY_EMOJI, PaymentMethod, PAYMENT_METHOD_LABEL, PAYMENT_METHOD_EMOJI } from "@/lib/finance";
 import { Header } from "@/components/app/Header";
-import { Plus, Trash2, Power, Smartphone, Database, RotateCcw, Pencil, Download, Upload, Sun, Moon, Target, History, HandCoins } from "lucide-react";
+import { Plus, Trash2, Power, Smartphone, Database, RotateCcw, Pencil, Download, Upload, Sun, Moon, Target, History, HandCoins, User } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -15,11 +15,12 @@ import { IconDisplay } from "@/components/app/IconDisplay";
 import { Link } from "react-router-dom";
 
 export default function Ajustes() {
-  const { fixedItems, addFixed, updateFixed, removeFixed, toggleFixed, resetAll, exportData, importData, theme, toggleTheme } = useFinance();
+  const { fixedItems, addFixed, updateFixed, removeFixed, toggleFixed, resetAll, exportData, importData, theme, toggleTheme, profile, setProfile } = useFinance();
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<FixedItem | null>(null);
   const [tab, setTab] = useState<"all" | ItemType>("all");
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [profileOpen, setProfileOpen] = useState(false);
 
   const filtered = fixedItems.filter((i) => tab === "all" || i.type === tab);
   const openNew = () => { setEditing(null); setOpen(true); };
@@ -38,9 +39,19 @@ export default function Ajustes() {
   };
   const handleImportFile = async (file: File) => {
     if (!confirm("Esto reemplazará todos tus datos actuales. ¿Continuar?")) return;
-    const text = await file.text();
-    const r = importData(text);
-    if (r.ok) toast.success("Datos importados"); else toast.error(r.error ?? "No se pudo importar");
+    try {
+      if (file.size > 20 * 1024 * 1024) { toast.error("El archivo es demasiado grande (máx 20 MB)"); return; }
+      const text = await file.text();
+      const r = importData(text);
+      if (r.ok) {
+        toast.success("Datos importados");
+        r.warnings?.forEach((w) => toast(w));
+      } else {
+        toast.error(r.error ?? "No se pudo importar");
+      }
+    } catch (e: any) {
+      toast.error(e?.message ?? "No se pudo leer el archivo");
+    }
   };
 
   return (
@@ -48,6 +59,30 @@ export default function Ajustes() {
       <Header title="Ajustes" subtitle="Configura tus fijos del mes" action={
         <Button onClick={openNew} className="rounded-2xl gradient-primary text-primary-foreground border-0 shadow-glow h-11"><Plus className="size-4 mr-1" />Agregar</Button>
       } />
+
+      <Dialog open={profileOpen} onOpenChange={setProfileOpen}>
+        <DialogContent className="rounded-3xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader><DialogTitle>Tu perfil</DialogTitle></DialogHeader>
+          <ProfileForm onSave={(p) => { setProfile(p); setProfileOpen(false); toast.success("Perfil actualizado"); }} />
+        </DialogContent>
+      </Dialog>
+
+      <section className="px-5 mb-4">
+        <button onClick={() => setProfileOpen(true)} className="w-full rounded-3xl bg-card border border-border p-4 shadow-soft flex items-center gap-3 hover:bg-muted/40 transition text-left">
+          {profile.avatar ? (
+            <IconDisplay icon={profile.avatar} size="lg" />
+          ) : (
+            <div className="size-14 rounded-2xl gradient-primary text-primary-foreground flex items-center justify-center"><User className="size-6" /></div>
+          )}
+          <div className="flex-1 min-w-0">
+            <p className="font-bold text-base truncate">{profile.name || "Configura tu perfil"}</p>
+            <p className="text-xs text-muted-foreground truncate">
+              {profile.email ? `${profile.email} • ` : ""}Moneda {profile.currency}
+            </p>
+          </div>
+          <Pencil className="size-4 text-muted-foreground" />
+        </button>
+      </section>
 
       <Dialog open={open} onOpenChange={(v) => { setOpen(v); if (!v) setEditing(null); }}>
         <DialogContent className="rounded-3xl max-h-[90vh] overflow-y-auto">
@@ -155,6 +190,36 @@ function InfoRow({ icon, title, desc }: { icon: React.ReactNode; title: string; 
       <div className="size-9 rounded-xl bg-primary/10 text-primary flex items-center justify-center">{icon}</div>
       <div><p className="font-semibold text-sm">{title}</p><p className="text-xs text-muted-foreground mt-0.5">{desc}</p></div>
     </div>
+  );
+}
+
+function ProfileForm({ onSave }: { onSave: (p: { name: string; email?: string; currency: Currency; avatar?: IconRef }) => void }) {
+  const profile = useFinance((s) => s.profile);
+  const [name, setName] = useState(profile.name);
+  const [email, setEmail] = useState(profile.email ?? "");
+  const [currency, setCurrency] = useState<Currency>(profile.currency);
+  const [avatar, setAvatar] = useState<IconRef | undefined>(profile.avatar);
+  const currencies: Currency[] = ["MXN","USD","EUR","COP","ARS","CLP","PEN","BRL"];
+
+  return (
+    <form onSubmit={(e) => {
+      e.preventDefault();
+      onSave({ name: name.trim(), email: email.trim() || undefined, currency, avatar });
+    }} className="space-y-3">
+      <div className="flex justify-center"><IconPicker value={avatar} onChange={setAvatar} /></div>
+      <div><Label className="text-xs">Tu nombre</Label><Input autoFocus value={name} onChange={(e) => setName(e.target.value)} placeholder="Ej. María" className="h-11 rounded-2xl" /></div>
+      <div><Label className="text-xs">Email (opcional)</Label><Input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="tucorreo@ejemplo.com" className="h-11 rounded-2xl" /></div>
+      <div>
+        <Label className="text-xs">Moneda</Label>
+        <Select value={currency} onValueChange={(v) => setCurrency(v as Currency)}>
+          <SelectTrigger className="h-11 rounded-2xl"><SelectValue /></SelectTrigger>
+          <SelectContent>
+            {currencies.map((c) => <SelectItem key={c} value={c}>{c}</SelectItem>)}
+          </SelectContent>
+        </Select>
+      </div>
+      <Button type="submit" className="w-full h-12 rounded-2xl gradient-primary text-primary-foreground border-0 shadow-glow font-bold">Guardar</Button>
+    </form>
   );
 }
 
