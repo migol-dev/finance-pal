@@ -1,8 +1,19 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
-import { FixedItem, Transaction, Goal, Debt, DebtPayment, ChangeLogEntry, ChangeAction, ChangeEntity } from "@/lib/finance";
+import { FixedItem, Transaction, Goal, Debt, DebtPayment, ChangeLogEntry, ChangeAction, ChangeEntity, IconRef } from "@/lib/finance";
 
 export type ThemeMode = "light" | "dark";
+export type Currency = "MXN" | "USD" | "EUR" | "COP" | "ARS" | "CLP" | "PEN" | "BRL";
+
+export interface UserProfile {
+  name: string;
+  email?: string;
+  currency: Currency;
+  avatar?: IconRef;
+}
+
+/** Current schema version of persisted/exported data. */
+export const SCHEMA_VERSION = 4;
 
 interface State {
   fixedItems: FixedItem[];
@@ -11,6 +22,8 @@ interface State {
   debts: Debt[];
   changeLog: ChangeLogEntry[];
   theme: ThemeMode;
+  profile: UserProfile;
+  setProfile: (p: Partial<UserProfile>) => void;
   setTheme: (t: ThemeMode) => void;
   toggleTheme: () => void;
   // Active month/year context (defaults to today on first load)
@@ -41,7 +54,7 @@ interface State {
 
   clearChangeLog: () => void;
   exportData: () => string;
-  importData: (json: string) => { ok: boolean; error?: string };
+  importData: (json: string) => { ok: boolean; error?: string; warnings?: string[] };
 
   resetAll: () => void;
 }
@@ -61,6 +74,123 @@ function diffFields<T extends Record<string, any>>(prev: T, next: Partial<T>) {
 
 function logEntry(entity: ChangeEntity, entityId: string, action: ChangeAction, label: string, changes?: { field: string; from?: unknown; to?: unknown }[]): ChangeLogEntry {
   return { id: id(), at: new Date().toISOString(), entity, entityId, action, label, changes };
+}
+
+/* ─────────────────────────────  Schema validation  ───────────────────────────── */
+
+const isStr = (v: unknown): v is string => typeof v === "string";
+const isNum = (v: unknown): v is number => typeof v === "number" && Number.isFinite(v);
+const isBool = (v: unknown): v is boolean => typeof v === "boolean";
+const isObj = (v: unknown): v is Record<string, unknown> => !!v && typeof v === "object" && !Array.isArray(v);
+
+function sanitizeIcon(v: unknown): IconRef | undefined {
+  if (!isObj(v)) return undefined;
+  const kind = v.kind === "image" ? "image" : v.kind === "emoji" ? "emoji" : null;
+  if (!kind || !isStr(v.value)) return undefined;
+  return { kind, value: v.value };
+}
+
+function sanitizeFixed(raw: any): FixedItem | null {
+  if (!isObj(raw) || !isStr(raw.concept) || !isNum(raw.amount)) return null;
+  const types = ["income_fixed","expense_fixed","expense_variable","saving_fixed"] as const;
+  const freqs = ["monthly","weekly","yearly","one_time","bimonthly","quarterly","fourmonthly","biannual"] as const;
+  const prios = ["low","medium","high"] as const;
+  const pays = ["cash","transfer","card","other"] as const;
+  return {
+    id: isStr(raw.id) ? raw.id : id(),
+    type: (types as readonly string[]).includes(raw.type) ? raw.type : "expense_fixed",
+    category: isStr(raw.category) ? raw.category : "Otros",
+    concept: raw.concept,
+    amount: raw.amount,
+    frequency: (freqs as readonly string[]).includes(raw.frequency) ? raw.frequency : "monthly",
+    active: isBool(raw.active) ? raw.active : true,
+    note: isStr(raw.note) ? raw.note : undefined,
+    startDate: isStr(raw.startDate) ? raw.startDate : new Date().toISOString(),
+    endDate: isStr(raw.endDate) ? raw.endDate : `${new Date().getFullYear() + 5}-12-31T00:00:00.000Z`,
+    priority: (prios as readonly string[]).includes(raw.priority) ? raw.priority : "medium",
+    payDay: isNum(raw.payDay) ? raw.payDay : undefined,
+    icon: sanitizeIcon(raw.icon),
+    paymentMethod: (pays as readonly string[]).includes(raw.paymentMethod) ? raw.paymentMethod : undefined,
+  } as FixedItem;
+}
+
+function sanitizeTx(raw: any): Transaction | null {
+  if (!isObj(raw) || !isStr(raw.concept) || !isNum(raw.amount)) return null;
+  const types = ["income","expense","saving"] as const;
+  const pays = ["cash","transfer","card","other"] as const;
+  return {
+    id: isStr(raw.id) ? raw.id : id(),
+    type: (types as readonly string[]).includes(raw.type) ? raw.type : "expense",
+    category: isStr(raw.category) ? raw.category : "Otros",
+    concept: raw.concept,
+    amount: raw.amount,
+    date: isStr(raw.date) ? raw.date : new Date().toISOString(),
+    note: isStr(raw.note) ? raw.note : undefined,
+    icon: sanitizeIcon(raw.icon),
+    paymentMethod: (pays as readonly string[]).includes(raw.paymentMethod) ? raw.paymentMethod : undefined,
+  } as Transaction;
+}
+
+function sanitizeGoal(raw: any): Goal | null {
+  if (!isObj(raw) || !isStr(raw.name) || !isNum(raw.target)) return null;
+  return {
+    id: isStr(raw.id) ? raw.id : id(),
+    name: raw.name,
+    target: raw.target,
+    saved: isNum(raw.saved) ? raw.saved : 0,
+    emoji: isStr(raw.emoji) ? raw.emoji : "🎯",
+    color: isStr(raw.color) ? raw.color : "gradient-primary",
+    deadline: isStr(raw.deadline) ? raw.deadline : undefined,
+    icon: sanitizeIcon(raw.icon),
+  } as Goal;
+}
+
+function sanitizeDebt(raw: any): Debt | null {
+  if (!isObj(raw) || !isStr(raw.person) || !isNum(raw.amount)) return null;
+  const pays = ["cash","transfer","card","other"] as const;
+  const payments: DebtPayment[] = Array.isArray(raw.payments)
+    ? (raw.payments as any[])
+      .filter((p) => isObj(p) && isNum(p.amount))
+      .map((p) => ({
+        id: isStr(p.id) ? p.id : id(),
+        amount: p.amount,
+        date: isStr(p.date) ? p.date : new Date().toISOString(),
+        note: isStr(p.note) ? p.note : undefined,
+        paymentMethod: (pays as readonly string[]).includes(p.paymentMethod) ? p.paymentMethod : undefined,
+      }))
+    : [];
+  return {
+    id: isStr(raw.id) ? raw.id : id(),
+    person: raw.person,
+    concept: isStr(raw.concept) ? raw.concept : "Préstamo",
+    amount: raw.amount,
+    date: isStr(raw.date) ? raw.date : new Date().toISOString(),
+    dueDate: isStr(raw.dueDate) ? raw.dueDate : undefined,
+    note: isStr(raw.note) ? raw.note : undefined,
+    icon: sanitizeIcon(raw.icon),
+    payments,
+  } as Debt;
+}
+
+function sanitizeProfile(raw: any): UserProfile {
+  const currencies: Currency[] = ["MXN","USD","EUR","COP","ARS","CLP","PEN","BRL"];
+  if (!isObj(raw)) return { name: "", currency: "MXN" };
+  return {
+    name: isStr(raw.name) ? raw.name : "",
+    email: isStr(raw.email) ? raw.email : undefined,
+    currency: currencies.includes(raw.currency as Currency) ? (raw.currency as Currency) : "MXN",
+    avatar: sanitizeIcon(raw.avatar),
+  };
+}
+
+/** Upgrade an older payload to current schema. Pure: returns sanitized data. */
+function migrateImported(payload: any): { data: any; warnings: string[] } {
+  const warnings: string[] = [];
+  const version: number = isNum(payload?.version) ? payload.version : 1;
+  const d = payload?.data ?? payload ?? {};
+  if (version > SCHEMA_VERSION) warnings.push(`Importando datos de una versión más nueva (${version}). Algunos campos podrían ignorarse.`);
+  if (version < SCHEMA_VERSION) warnings.push(`Migrando datos de versión ${version} a ${SCHEMA_VERSION}.`);
+  return { data: d, warnings };
 }
 
 export const useFinance = create<State>()(
