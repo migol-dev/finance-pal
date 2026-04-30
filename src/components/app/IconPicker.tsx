@@ -1,4 +1,4 @@
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useMemo, useRef, useState } from "react";
 import Cropper, { Area } from "react-easy-crop";
 import { IconRef, COMMON_EMOJIS } from "@/lib/finance";
 import { Button } from "@/components/ui/button";
@@ -13,19 +13,31 @@ interface Props {
   onChange: (i: IconRef) => void;
 }
 
-async function getCroppedDataUrl(src: string, area: Area): Promise<string> {
+/**
+ * Crops a portion of `src` and returns a square thumbnail dataURL.
+ * Always 256×256 so every icon renders consistently in lists.
+ * Tries WebP first (smaller) and falls back to JPEG.
+ */
+export async function getCroppedThumbnail(src: string, area: Area, size = 256): Promise<string> {
   const img = await new Promise<HTMLImageElement>((res, rej) => {
     const i = new Image();
     i.crossOrigin = "anonymous";
     i.onload = () => res(i);
-    i.onerror = rej;
+    i.onerror = () => rej(new Error("No se pudo cargar la imagen"));
     i.src = src;
   });
-  const size = 256;
   const canvas = document.createElement("canvas");
   canvas.width = size; canvas.height = size;
-  const ctx = canvas.getContext("2d")!;
+  const ctx = canvas.getContext("2d");
+  if (!ctx) throw new Error("Canvas no disponible");
+  // White background to avoid transparent flicker on jpg fallback
+  ctx.fillStyle = "#ffffff";
+  ctx.fillRect(0, 0, size, size);
   ctx.drawImage(img, area.x, area.y, area.width, area.height, 0, 0, size, size);
+  try {
+    const webp = canvas.toDataURL("image/webp", 0.82);
+    if (webp.startsWith("data:image/webp")) return webp;
+  } catch { /* fall through */ }
   return canvas.toDataURL("image/jpeg", 0.85);
 }
 
@@ -49,12 +61,19 @@ export function IconPicker({ value, onChange }: Props) {
 
   const saveImage = async () => {
     if (!imgSrc || !area) return;
-    const data = await getCroppedDataUrl(imgSrc, area);
-    onChange({ kind: "image", value: data });
-    setOpen(false); setImgSrc(null); setZoom(1); setCrop({ x: 0, y: 0 });
+    try {
+      const data = await getCroppedThumbnail(imgSrc, area);
+      onChange({ kind: "image", value: data });
+      setOpen(false); setImgSrc(null); setZoom(1); setCrop({ x: 0, y: 0 });
+    } catch (e) {
+      console.error(e);
+    }
   };
 
-  const filtered = search ? COMMON_EMOJIS : COMMON_EMOJIS;
+  const filtered = useMemo(
+    () => (search ? COMMON_EMOJIS.filter((e) => e.includes(search)) : COMMON_EMOJIS),
+    [search]
+  );
   const display: IconRef = value ?? { kind: "emoji", value: "✨" };
 
   return (
