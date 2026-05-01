@@ -1,4 +1,4 @@
-# 💰 My Finance Mate (MI FINANZAS MATE)
+# 💰 My Finance Mate (MI COMPAÑERO DE FINANZAS)
 
 [![Versión](https://img.shields.io/badge/version-beta-orange.svg)](https://github.com/migol-dev/my-finance-mate/releases/tag/beta)
 [![Plataforma](https://img.shields.io/badge/platform-Android-green.svg)](https://capacitorjs.com/)
