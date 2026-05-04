@@ -6,7 +6,7 @@ import { Bar, BarChart, CartesianGrid, Cell, Pie, PieChart, ResponsiveContainer,
 import { ChevronLeft, ChevronRight } from "lucide-react";
 
 export default function Anual() {
-  const { fixedItems, transactions, activeYear, setActive, activeMonth } = useFinance();
+  const { fixedItems, transactions, debts, activeYear, setActive, activeMonth } = useFinance();
 
   const data = useMemo(() => {
     return MONTHS.map((m, idx) => {
@@ -25,9 +25,17 @@ export default function Anual() {
         else if (t.type === "saving") saving += t.amount;
         else expense += t.amount;
       }
+      for (const dt of debts) {
+        const dd = new Date(dt.date);
+        if (dd.getFullYear() === activeYear && dd.getMonth() === idx) expense += dt.amount;
+        for (const p of dt.payments) {
+          const pd = new Date(p.date);
+          if (pd.getFullYear() === activeYear && pd.getMonth() === idx) income += p.amount;
+        }
+      }
       return { mes: m.slice(0, 3), Ingresos: Math.round(income), Gastos: Math.round(expense), Ahorros: Math.round(saving), Neto: Math.round(income - expense - saving) };
     });
-  }, [fixedItems, transactions, activeYear]);
+  }, [fixedItems, transactions, debts, activeYear]);
 
   const totals = data.reduce((a, b) => ({ income: a.income + b.Ingresos, expense: a.expense + b.Gastos, saving: a.saving + b.Ahorros, net: a.net + b.Neto }), { income: 0, expense: 0, saving: 0, net: 0 });
 
