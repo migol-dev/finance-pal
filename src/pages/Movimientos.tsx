@@ -155,7 +155,8 @@ function TxForm({ initial, onSave }: { initial: Partial<Transaction> & { type: T
       e.preventDefault();
       const a = parseFloat(amount);
       if (!a || !concept) { toast.error("Completa monto y concepto"); return; }
-      onSave({ type, category, concept, amount: a, date: new Date(date).toISOString(), note: note || undefined, icon, paymentMethod });
+      // Parse as LOCAL date (noon) to avoid timezone shifting the day backwards
+      onSave({ type, category, concept, amount: a, date: new Date(`${date}T12:00:00`).toISOString(), note: note || undefined, icon, paymentMethod });
     }} className="space-y-3">
       <div className="grid grid-cols-3 gap-2">
         {(["expense", "income", "saving"] as const).map((t) => (

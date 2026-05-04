@@ -9,7 +9,7 @@ import { MonthSwitcher } from "@/components/app/MonthSwitcher";
 import { IconDisplay } from "@/components/app/IconDisplay";
 
 export default function Dashboard() {
-  const { fixedItems, transactions, goals, activeYear, activeMonth } = useFinance();
+  const { fixedItems, transactions, goals, debts, activeYear, activeMonth } = useFinance();
   const [hide, setHide] = useState(false);
 
   const monthStats = useMemo(() => {
@@ -28,10 +28,23 @@ export default function Dashboard() {
       else if (t.type === "saving") saving += t.amount;
       else expense += t.amount;
     }
+    // Debts owed to you: prestar dinero = sale capital (gasto); abono recibido = entra capital (ingreso)
+    for (const d of debts) {
+      const dd = new Date(d.date);
+      if (dd.getFullYear() === activeYear && dd.getMonth() === activeMonth) {
+        expense += d.amount;
+      }
+      for (const p of d.payments) {
+        const pd = new Date(p.date);
+        if (pd.getFullYear() === activeYear && pd.getMonth() === activeMonth) {
+          income += p.amount;
+        }
+      }
+    }
     const net = income - expense - saving;
     const savingRate = income > 0 ? (saving / income) * 100 : 0;
     return { income, expense, saving, net, savingRate };
-  }, [fixedItems, transactions, activeMonth, activeYear]);
+  }, [fixedItems, transactions, debts, activeMonth, activeYear]);
 
   const today = new Date();
   const isCurrentMonth = today.getFullYear() === activeYear && today.getMonth() === activeMonth;
