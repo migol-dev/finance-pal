@@ -2,8 +2,8 @@ import { useEffect, useMemo, useState } from "react";
 import { useFinance } from "@/store/finance-store";
 import { fmt, CATEGORY_EMOJI, MONTHS, iconFor, IconRef, Transaction, PaymentMethod, PAYMENT_METHOD_LABEL, PAYMENT_METHOD_EMOJI } from "@/lib/finance";
 import { Header } from "@/components/app/Header";
-import { Plus, Trash2, Search, Pencil } from "lucide-react";
-import { useSearchParams } from "react-router-dom";
+import { Plus, Trash2, Search, Pencil, HandCoins } from "lucide-react";
+import { useSearchParams, useNavigate } from "react-router-dom";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -18,7 +18,8 @@ import { IconPicker } from "@/components/app/IconPicker";
 type TxType = "income" | "expense" | "saving";
 
 export default function Movimientos() {
-  const { transactions, addTx, updateTx, removeTx, activeYear, activeMonth } = useFinance();
+  const { transactions, addTx, updateTx, removeTx, activeYear, activeMonth, debts } = useFinance();
+  const navigate = useNavigate();
   const [params, setParams] = useSearchParams();
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<Transaction | null>(null);
@@ -39,10 +40,44 @@ export default function Movimientos() {
     return d.getFullYear() === activeYear && d.getMonth() === activeMonth;
   }), [transactions, activeYear, activeMonth]);
 
-  const filtered = useMemo(() => inMonth
+  // Virtual rows for debts: loan-out as expense, each payment received as income.
+  type Row = (Transaction & { _virtual?: false }) | {
+    id: string; type: "income" | "expense" | "saving"; category: string; concept: string;
+    amount: number; date: string; note?: string; icon?: IconRef; paymentMethod?: PaymentMethod;
+    _virtual: true; _debtId: string;
+  };
+  const debtRows: Row[] = useMemo(() => {
+    const rows: Row[] = [];
+    debts.forEach((d) => {
+      const dd = new Date(d.date);
+      if (dd.getFullYear() === activeYear && dd.getMonth() === activeMonth) {
+        rows.push({
+          id: `debt-${d.id}`, type: "expense", category: "Préstamo",
+          concept: `Préstamo a ${d.person}`, amount: d.amount, date: d.date,
+          note: d.concept, icon: d.icon, _virtual: true, _debtId: d.id,
+        });
+      }
+      d.payments.forEach((p) => {
+        const pd = new Date(p.date);
+        if (pd.getFullYear() === activeYear && pd.getMonth() === activeMonth) {
+          rows.push({
+            id: `pay-${p.id}`, type: "income", category: "Abono",
+            concept: `Abono de ${d.person}`, amount: p.amount, date: p.date,
+            note: p.note, icon: d.icon, paymentMethod: p.paymentMethod, _virtual: true, _debtId: d.id,
+          });
+        }
+      });
+    });
+    return rows;
+  }, [debts, activeYear, activeMonth]);
+
+  const allRows: Row[] = useMemo(() => [...inMonth.map((t) => t as Row), ...debtRows], [inMonth, debtRows]);
+
+  const filtered = useMemo(() => allRows
     .filter((t) => filter === "all" || t.type === filter)
-    .filter((t) => !query || t.concept.toLowerCase().includes(query.toLowerCase()) || t.category.toLowerCase().includes(query.toLowerCase())),
-    [inMonth, filter, query]);
+    .filter((t) => !query || t.concept.toLowerCase().includes(query.toLowerCase()) || t.category.toLowerCase().includes(query.toLowerCase()))
+    .sort((a, b) => +new Date(b.date) - +new Date(a.date)),
+    [allRows, filter, query]);
 
   const grouped = useMemo(() => {
     const g: Record<string, typeof filtered> = {};
@@ -112,10 +147,10 @@ export default function Movimientos() {
                 {items.map((t) => (
                   <motion.div key={t.id} layout className="rounded-2xl bg-card border border-border p-3 shadow-soft flex items-center gap-3">
                     <IconDisplay icon={iconFor(t)} />
-                    <button onClick={() => openEdit(t)} className="flex-1 min-w-0 text-left">
+                    <button onClick={() => (t as any)._virtual ? navigate("/deudas") : openEdit(t as Transaction)} className="flex-1 min-w-0 text-left">
                       <p className="font-semibold text-sm truncate">{t.concept}</p>
                       <p className="text-xs text-muted-foreground truncate">
-                        {t.category}
+                        {(t as any)._virtual && <HandCoins className="size-3 inline mr-1" />}{t.category}
                         {t.paymentMethod && <span className="ml-1.5">· {PAYMENT_METHOD_EMOJI[t.paymentMethod]} {PAYMENT_METHOD_LABEL[t.paymentMethod]}</span>}
                       </p>
                     </button>
@@ -124,10 +159,14 @@ export default function Movimientos() {
                         {t.type === "income" ? "+" : "-"}{fmt(t.amount)}
                       </p>
                     </div>
-                    <div className="flex flex-col gap-0.5">
-                      <button onClick={() => openEdit(t)} className="text-muted-foreground hover:text-primary p-1"><Pencil className="size-4" /></button>
-                      <button onClick={() => { if (confirm("¿Eliminar este movimiento?")) { removeTx(t.id); toast("Eliminado"); } }} className="text-muted-foreground hover:text-destructive p-1"><Trash2 className="size-4" /></button>
-                    </div>
+                    {(t as any)._virtual ? (
+                      <button onClick={() => navigate("/deudas")} className="text-[10px] font-bold uppercase text-muted-foreground px-2">Deuda</button>
+                    ) : (
+                      <div className="flex flex-col gap-0.5">
+                        <button onClick={() => openEdit(t as Transaction)} className="text-muted-foreground hover:text-primary p-1"><Pencil className="size-4" /></button>
+                        <button onClick={() => { if (confirm("¿Eliminar este movimiento?")) { removeTx(t.id); toast("Eliminado"); } }} className="text-muted-foreground hover:text-destructive p-1"><Trash2 className="size-4" /></button>
+                      </div>
+                    )}
                   </motion.div>
                 ))}
               </div>

@@ -28,14 +28,35 @@ export default function Ajustes() {
 
   const handleExport = () => {
     const json = exportData();
+    const filename = `migol-finanzas-${new Date().toISOString().slice(0, 10)}.json`;
     const blob = new Blob([json], { type: "application/json" });
+    // Try modern File System Access API to let the user pick the folder
+    const anyWin = window as any;
+    if (typeof anyWin.showSaveFilePicker === "function") {
+      (async () => {
+        try {
+          const handle = await anyWin.showSaveFilePicker({
+            suggestedName: filename,
+            types: [{ description: "JSON", accept: { "application/json": [".json"] } }],
+          });
+          const writable = await handle.createWritable();
+          await writable.write(blob);
+          await writable.close();
+          toast.success("Datos guardados en la carpeta elegida");
+        } catch (e: any) {
+          if (e?.name === "AbortError") return;
+          toast.error("No se pudo guardar: " + (e?.message ?? "error"));
+        }
+      })();
+      return;
+    }
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = `migol-finanzas-${new Date().toISOString().slice(0, 10)}.json`;
+    a.download = filename;
     a.click();
     URL.revokeObjectURL(url);
-    toast.success("Datos exportados");
+    toast.success("Datos exportados (revisa Descargas)");
   };
   const handleImportFile = async (file: File) => {
     if (!confirm("Esto reemplazará todos tus datos actuales. ¿Continuar?")) return;

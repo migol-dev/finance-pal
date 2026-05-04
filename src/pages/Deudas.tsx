@@ -2,7 +2,7 @@ import { useMemo, useState } from "react";
 import { useFinance } from "@/store/finance-store";
 import { fmt, iconFor, IconRef, Debt, PaymentMethod, PAYMENT_METHOD_LABEL, PAYMENT_METHOD_EMOJI } from "@/lib/finance";
 import { Header } from "@/components/app/Header";
-import { Plus, Pencil, Trash2, HandCoins } from "lucide-react";
+import { Plus, Pencil, Trash2, HandCoins, CheckCircle2, Search } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -21,12 +21,42 @@ export default function Deudas() {
   const [editing, setEditing] = useState<Debt | null>(null);
   const [payOpen, setPayOpen] = useState<Debt | null>(null);
   const [detail, setDetail] = useState<Debt | null>(null);
+  const [filter, setFilter] = useState<"all" | "pending" | "settled">("all");
+  const [query, setQuery] = useState("");
+  const [personFilter, setPersonFilter] = useState<string | null>(null);
 
   const totals = useMemo(() => {
     let owed = 0, paid = 0;
     debts.forEach((d) => { owed += d.amount; paid += totalPaid(d); });
     return { owed, paid, pending: owed - paid };
   }, [debts]);
+
+  /** Aggregate by person */
+  const perPerson = useMemo(() => {
+    const map = new Map<string, { person: string; total: number; paid: number; pending: number; count: number; settled: number }>();
+    debts.forEach((d) => {
+      const key = d.person.trim().toLowerCase();
+      const cur = map.get(key) ?? { person: d.person, total: 0, paid: 0, pending: 0, count: 0, settled: 0 };
+      const p = totalPaid(d);
+      cur.total += d.amount; cur.paid += p; cur.pending += d.amount - p; cur.count += 1;
+      if (d.amount - p <= 0.0001) cur.settled += 1;
+      map.set(key, cur);
+    });
+    return Array.from(map.values()).sort((a, b) => b.pending - a.pending);
+  }, [debts]);
+
+  const visible = useMemo(() => debts.filter((d) => {
+    const paid = totalPaid(d);
+    const settled = d.amount - paid <= 0.0001;
+    if (filter === "pending" && settled) return false;
+    if (filter === "settled" && !settled) return false;
+    if (personFilter && d.person.trim().toLowerCase() !== personFilter) return false;
+    if (query) {
+      const q = query.toLowerCase();
+      if (!d.person.toLowerCase().includes(q) && !d.concept.toLowerCase().includes(q)) return false;
+    }
+    return true;
+  }), [debts, filter, personFilter, query]);
 
   return (
     <div>
@@ -38,6 +68,58 @@ export default function Deudas() {
         <SumCard label="Total" value={fmt(totals.owed)} tone="primary" />
         <SumCard label="Cobrado" value={fmt(totals.paid)} tone="success" />
         <SumCard label="Pendiente" value={fmt(totals.pending)} tone="warning" />
+      </div>
+
+      {perPerson.length > 0 && (
+        <section className="px-5 mt-4">
+          <div className="flex items-center justify-between mb-2">
+            <h2 className="text-xs uppercase tracking-wider font-bold text-muted-foreground">Por persona</h2>
+            {personFilter && (
+              <button onClick={() => setPersonFilter(null)} className="text-[11px] text-primary font-semibold">Limpiar filtro</button>
+            )}
+          </div>
+          <div className="flex gap-2 overflow-x-auto no-scrollbar pb-1">
+            {perPerson.map((p) => {
+              const key = p.person.trim().toLowerCase();
+              const active = personFilter === key;
+              const allSettled = p.settled === p.count;
+              return (
+                <button key={key} onClick={() => setPersonFilter(active ? null : key)}
+                  className={`shrink-0 rounded-2xl border p-3 min-w-[150px] text-left transition ${active ? "border-primary bg-primary/5 shadow-glow" : "border-border bg-card"}`}>
+                  <div className="flex items-center gap-1.5">
+                    <p className="font-bold text-sm truncate flex-1">{p.person}</p>
+                    {allSettled && <CheckCircle2 className="size-3.5 text-success shrink-0" />}
+                  </div>
+                  <p className="text-[10px] text-muted-foreground">{p.count} deuda{p.count !== 1 ? "s" : ""}</p>
+                  <div className="mt-1.5 space-y-0.5">
+                    <div className="flex justify-between text-[11px]"><span className="text-muted-foreground">Pendiente</span><span className="font-bold">{fmt(p.pending)}</span></div>
+                    <div className="flex justify-between text-[10px]"><span className="text-muted-foreground">Prestado</span><span>{fmt(p.total)}</span></div>
+                    <div className="flex justify-between text-[10px]"><span className="text-muted-foreground">Abonos</span><span className="text-success">{fmt(p.paid)}</span></div>
+                  </div>
+                </button>
+              );
+            })}
+          </div>
+        </section>
+      )}
+
+      <div className="px-5 mt-4 space-y-2">
+        <div className="relative">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
+          <Input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Buscar persona o concepto..." className="pl-9 h-11 rounded-2xl bg-card border-border" />
+        </div>
+        <div className="flex gap-2">
+          {([
+            { k: "all", label: "Todas" },
+            { k: "pending", label: "Pendientes" },
+            { k: "settled", label: "Saldadas" },
+          ] as const).map((f) => (
+            <button key={f.k} onClick={() => setFilter(f.k)}
+              className={`flex-1 h-9 rounded-full text-xs font-semibold transition ${filter === f.k ? "gradient-primary text-primary-foreground shadow-glow" : "bg-muted text-muted-foreground"}`}>
+              {f.label}
+            </button>
+          ))}
+        </div>
       </div>
 
       <Dialog open={open} onOpenChange={(v) => { setOpen(v); if (!v) setEditing(null); }}>
@@ -88,16 +170,25 @@ export default function Deudas() {
             <p className="text-sm text-muted-foreground">Aún no hay deudas registradas</p>
           </div>
         )}
-        {debts.map((d) => {
+        {debts.length > 0 && visible.length === 0 && (
+          <div className="rounded-2xl bg-muted/50 border border-dashed border-border p-6 text-center">
+            <p className="text-sm text-muted-foreground">No hay deudas con ese filtro</p>
+          </div>
+        )}
+        {visible.map((d) => {
           const paid = totalPaid(d);
           const pct = d.amount > 0 ? Math.min(100, (paid / d.amount) * 100) : 0;
           const pending = d.amount - paid;
+          const settled = pending <= 0.0001;
           return (
-            <motion.div key={d.id} layout className="rounded-3xl bg-card border border-border p-4 shadow-soft">
+            <motion.div key={d.id} layout className={`rounded-3xl border p-4 shadow-soft transition ${settled ? "bg-success/5 border-success/30 opacity-90" : "bg-card border-border"}`}>
               <div className="flex items-center gap-3">
                 <IconDisplay icon={iconFor({ icon: d.icon, category: "Otros" })} size="lg" />
                 <div className="flex-1 min-w-0">
-                  <p className="font-bold truncate">{d.person}</p>
+                  <div className="flex items-center gap-1.5">
+                    <p className={`font-bold truncate ${settled ? "line-through text-muted-foreground" : ""}`}>{d.person}</p>
+                    {settled && <span className="shrink-0 text-[9px] uppercase font-bold bg-success text-white px-1.5 py-0.5 rounded-full flex items-center gap-0.5"><CheckCircle2 className="size-2.5" />Saldada</span>}
+                  </div>
                   <p className="text-xs text-muted-foreground truncate">{d.concept}</p>
                 </div>
                 <div className="flex flex-col gap-0.5">
@@ -119,7 +210,7 @@ export default function Deudas() {
                 </div>
               </div>
               <div className="flex gap-2 mt-3">
-                <Button onClick={() => setPayOpen(d)} className="flex-1 h-10 rounded-xl gradient-primary text-primary-foreground border-0 font-bold text-sm"><HandCoins className="size-4 mr-1" />Registrar abono</Button>
+                <Button disabled={settled} onClick={() => setPayOpen(d)} className="flex-1 h-10 rounded-xl gradient-primary text-primary-foreground border-0 font-bold text-sm disabled:opacity-50"><HandCoins className="size-4 mr-1" />{settled ? "Saldada" : "Registrar abono"}</Button>
                 <Button variant="secondary" onClick={() => setDetail(d)} className="h-10 rounded-xl text-sm">Ver ({d.payments.length})</Button>
               </div>
             </motion.div>
