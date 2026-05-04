@@ -154,7 +154,7 @@ function DebtForm({ initial, onSave }: { initial: Debt | null; onSave: (d: Omit<
       e.preventDefault();
       const a = parseFloat(amount);
       if (!a || !person) { toast.error("Completa nombre y monto"); return; }
-      onSave({ person, concept: concept || "Préstamo", amount: a, date: new Date(date).toISOString(), dueDate: dueDate ? new Date(dueDate).toISOString() : undefined, note: note || undefined, icon });
+      onSave({ person, concept: concept || "Préstamo", amount: a, date: new Date(`${date}T12:00:00`).toISOString(), dueDate: dueDate ? new Date(`${dueDate}T12:00:00`).toISOString() : undefined, note: note || undefined, icon });
     }} className="space-y-3">
       <div className="flex justify-center"><IconPicker value={icon} onChange={setIcon} /></div>
       <div><Label className="text-xs">Persona</Label><Input autoFocus value={person} onChange={(e) => setPerson(e.target.value)} placeholder="Ej. Juan" className="h-11 rounded-2xl" /></div>
@@ -182,7 +182,7 @@ function PaymentForm({ debt, onSave }: { debt: Debt; onSave: (p: { amount: numbe
       e.preventDefault();
       const a = parseFloat(amount);
       if (!a) { toast.error("Ingresa el monto"); return; }
-      onSave({ amount: a, date: new Date(date).toISOString(), note: note || undefined, paymentMethod });
+      onSave({ amount: a, date: new Date(`${date}T12:00:00`).toISOString(), note: note || undefined, paymentMethod });
     }} className="space-y-3">
       <p className="text-xs text-muted-foreground">Pendiente: <span className="font-bold text-foreground">{fmt(pending)}</span></p>
       <div><Label className="text-xs">Monto</Label><Input autoFocus type="number" value={amount} onChange={(e) => setAmount(e.target.value)} className="h-12 text-xl font-bold rounded-2xl" /></div>
