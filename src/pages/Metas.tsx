@@ -15,6 +15,7 @@ import { IconPicker } from "@/components/app/IconPicker";
 import { IconDisplay } from "@/components/app/IconDisplay";
 import { Area, AreaChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis, ReferenceLine, Line } from "recharts";
 import { cn } from "@/lib/utils";
+import { PillTabs } from "@/components/app/PillTabs";
 
 const PALETTES = ["gradient-sunset", "gradient-ocean", "gradient-secondary", "gradient-success", "gradient-primary"];
 
@@ -188,12 +189,13 @@ function GoalCard({ goal, index, onEdit, onDelete, onContribute }: {
         </div>
 
         {/* Tabs */}
-        <div className="mt-4 flex gap-1 rounded-2xl bg-white/15 p-1 text-[11px] font-bold">
-          {(["resumen", "calendario", "simular"] as const).map((t) => (
-            <button key={t} onClick={() => setTab(t)}
-               className={cn("flex-1 py-1.5 rounded-xl transition capitalize", tab === t ? "bg-white text-primary-foreground" : "text-primary-foreground/90")}>{t}</button>
-          ))}
-        </div>
+        <PillTabs
+          className="mt-4"
+          ariaLabel={`Vistas de meta ${goal.name}`}
+          tabs={["resumen", "calendario", "simular"] as const}
+          value={tab}
+          onChange={setTab}
+        />
 
         <AnimatePresence mode="wait">
           <motion.div key={tab}
