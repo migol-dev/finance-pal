@@ -30,10 +30,10 @@ function Calendar({ className, classNames, showOutsideDays = true, ...props }: C
         row: "flex w-full mt-2",
         cell: cn(
           "h-9 w-9 text-center text-sm p-0 relative",
-          // Range continuity: middle cells get full primary tint with no rounded corners
-          "[&:has([aria-selected].day-range-middle)]:bg-primary/15",
-          "[&:has([aria-selected].day-range-start)]:bg-primary/15 [&:has([aria-selected].day-range-start)]:rounded-l-md",
-          "[&:has([aria-selected].day-range-end)]:bg-primary/15 [&:has([aria-selected].day-range-end)]:rounded-r-md",
+          // Range continuity uses semantic primary token, no hardcoded colors
+          "[&:has([aria-selected].day-range-middle)]:bg-primary/20",
+          "[&:has([aria-selected].day-range-start)]:bg-primary/20 [&:has([aria-selected].day-range-start)]:rounded-l-md",
+          "[&:has([aria-selected].day-range-end)]:bg-primary/20 [&:has([aria-selected].day-range-end)]:rounded-r-md",
           "[&:has([aria-selected].day-outside)]:bg-accent/20",
           "first:[&:has([aria-selected])]:rounded-l-md last:[&:has([aria-selected])]:rounded-r-md",
           "focus-within:relative focus-within:z-20",
@@ -46,12 +46,12 @@ function Calendar({ className, classNames, showOutsideDays = true, ...props }: C
         day_range_start: "day-range-start",
         day_selected:
           "bg-primary text-primary-foreground font-semibold hover:bg-primary hover:text-primary-foreground focus:bg-primary focus:text-primary-foreground rounded-md",
-        day_today: "bg-accent/30 text-foreground font-bold ring-1 ring-accent/60 rounded-md",
+        day_today: "bg-accent/20 text-foreground font-bold ring-1 ring-accent/60 rounded-md",
         day_outside:
-          "day-outside text-muted-foreground/70 opacity-60 aria-selected:bg-accent/30 aria-selected:text-muted-foreground aria-selected:opacity-40",
+          "day-outside text-muted-foreground opacity-50 aria-selected:bg-accent/20 aria-selected:text-muted-foreground aria-selected:opacity-40",
         day_disabled: "text-muted-foreground opacity-40",
         day_range_middle:
-          "aria-selected:bg-primary/20 aria-selected:text-foreground aria-selected:rounded-none hover:aria-selected:bg-primary/30",
+          "aria-selected:bg-primary/20 aria-selected:text-primary aria-selected:font-semibold aria-selected:rounded-none hover:aria-selected:bg-primary/30",
         day_hidden: "invisible",
         ...classNames,
       }}
