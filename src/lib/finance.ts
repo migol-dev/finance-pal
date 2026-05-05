@@ -61,6 +61,11 @@ export interface Goal {
   color: string;          // tailwind gradient utility class
   deadline?: string;
   icon?: IconRef;         // new — preferred
+  purchaseUrl?: string;
+  /** Per-contribution log used for charts and calendar views. */
+  contributions?: { id: string; date: string; amount: number }[];
+  /** When the goal was created — used as the start of the ideal plan. */
+  createdAt?: string;
 }
 
 /** Records a payment received against a debt */
