@@ -336,7 +336,7 @@ function CalendarioTab({ goal, onContribute }: { goal: Goal; onContribute: (amou
   const dayContrib = dayKey ? (contribsByDay.get(dayKey) ?? 0) : 0;
 
   return (
-    <div className="rounded-2xl bg-white/95 text-foreground p-3 space-y-3">
+    <div className="rounded-2xl bg-card text-card-foreground p-3 space-y-3 shadow-sm">
       <Calendar
         mode="single"
         selected={selected}
