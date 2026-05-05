@@ -189,10 +189,10 @@ function GoalCard({ goal, index, onEdit, onDelete, onContribute }: {
         </div>
 
         {/* Tabs */}
-        <PillTabs
+        <PillTabs<"resumen" | "calendario" | "simular">
           className="mt-4"
           ariaLabel={`Vistas de meta ${goal.name}`}
-          tabs={["resumen", "calendario", "simular"] as const}
+          tabs={["resumen", "calendario", "simular"]}
           value={tab}
           onChange={setTab}
         />
