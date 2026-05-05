@@ -304,7 +304,7 @@ export const useFinance = create<State>()(
       exportData: () => {
         const s = get();
         const payload = {
-          app: "migol-finanzas",
+          app: "finance-pal",
           version: SCHEMA_VERSION,
           exportedAt: new Date().toISOString(),
           data: {
@@ -326,8 +326,8 @@ export const useFinance = create<State>()(
           if (!isObj(parsed) && !isObj(parsed?.data)) {
             return { ok: false, error: "Formato inválido: se esperaba un objeto JSON" };
           }
-          if (parsed?.app && parsed.app !== "migol-finanzas") {
-            return { ok: false, error: `Este archivo no pertenece a Migol Finanzas (app="${parsed.app}")` };
+          if (parsed?.app && parsed.app !== "finance-pal" && parsed.app !== "migol-finanzas") {
+            return { ok: false, error: `Este archivo no pertenece a Finance Pal (app="${parsed.app}")` };
           }
           const { data, warnings } = migrateImported(parsed);
 

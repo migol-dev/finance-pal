@@ -135,7 +135,7 @@ export default function Dashboard() {
         <section className="px-5 mt-6">
           <div className="rounded-3xl gradient-mesh border border-border p-6 text-center">
             <p className="text-4xl mb-2">🎉</p>
-            <p className="font-bold text-base">Bienvenido a Migol Finanzas</p>
+            <p className="font-bold text-base">Bienvenido a Finance Pal</p>
             <p className="text-xs text-muted-foreground mt-1">Empieza creando tus ingresos, gastos fijos y metas en <Link to="/ajustes" className="text-primary font-semibold">Ajustes</Link>, o registra un movimiento ahora.</p>
           </div>
         </section>
