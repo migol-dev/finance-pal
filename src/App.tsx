@@ -31,19 +31,27 @@ function PageFade({ children }: { children: React.ReactNode }) {
 
 function AnimatedRoutes() {
   const location = useLocation();
-  return (
-    <AnimatePresence mode="wait" initial={false}>
-      <Routes location={location} key={location.pathname}>
-        <Route path="/" element={<AppShell><PageFade><Dashboard /></PageFade></AppShell>} />
-        <Route path="/movimientos" element={<AppShell><PageFade><Movimientos /></PageFade></AppShell>} />
-        <Route path="/metas" element={<AppShell><PageFade><Metas /></PageFade></AppShell>} />
-        <Route path="/deudas" element={<AppShell><PageFade><Deudas /></PageFade></AppShell>} />
-        <Route path="/anual" element={<AppShell><PageFade><Anual /></PageFade></AppShell>} />
-        <Route path="/historial" element={<AppShell><PageFade><Historial /></PageFade></AppShell>} />
-        <Route path="/ajustes" element={<AppShell><PageFade><Ajustes /></PageFade></AppShell>} />
+  if (location.pathname === "/404" || !["/", "/movimientos", "/metas", "/deudas", "/anual", "/historial", "/ajustes"].includes(location.pathname)) {
+    return (
+      <Routes location={location}>
         <Route path="*" element={<NotFound />} />
       </Routes>
-    </AnimatePresence>
+    );
+  }
+  return (
+    <AppShell>
+      <AnimatePresence mode="wait" initial={false}>
+        <Routes location={location} key={location.pathname}>
+          <Route path="/" element={<PageFade><Dashboard /></PageFade>} />
+          <Route path="/movimientos" element={<PageFade><Movimientos /></PageFade>} />
+          <Route path="/metas" element={<PageFade><Metas /></PageFade>} />
+          <Route path="/deudas" element={<PageFade><Deudas /></PageFade>} />
+          <Route path="/anual" element={<PageFade><Anual /></PageFade>} />
+          <Route path="/historial" element={<PageFade><Historial /></PageFade>} />
+          <Route path="/ajustes" element={<PageFade><Ajustes /></PageFade>} />
+        </Routes>
+      </AnimatePresence>
+    </AppShell>
   );
 }
 
