@@ -1,0 +1,43 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`PillTabs > regression: rendered DOM structure (snapshot) 1`] = `
+<div
+  aria-label="test"
+  class="flex gap-1 rounded-2xl bg-white/15 p-1 text-[11px] font-bold backdrop-blur-sm"
+  role="tablist"
+>
+  <button
+    aria-selected="true"
+    class="flex-1 py-1.5 rounded-xl transition capitalize select-none bg-white text-primary-foreground shadow-sm"
+    role="tab"
+    type="button"
+  >
+    resumen
+  </button>
+  <button
+    aria-selected="false"
+    class="flex-1 py-1.5 rounded-xl transition capitalize select-none text-primary-foreground/90 hover:text-primary-foreground"
+    role="tab"
+    type="button"
+  >
+    calendario
+  </button>
+  <button
+    aria-selected="false"
+    class="flex-1 py-1.5 rounded-xl transition capitalize select-none text-primary-foreground/90 hover:text-primary-foreground"
+    role="tab"
+    type="button"
+  >
+    simular
+  </button>
+</div>
+`;
+
+exports[`PillTabs > regression: shared style constants stay in sync (snapshot) 1`] = `
+{
+  "active": "bg-white text-primary-foreground shadow-sm",
+  "base": "flex-1 py-1.5 rounded-xl transition capitalize select-none",
+  "container": "flex gap-1 rounded-2xl bg-white/15 p-1 text-[11px] font-bold backdrop-blur-sm",
+  "inactive": "text-primary-foreground/90 hover:text-primary-foreground",
+}
+`;
