@@ -1,6 +1,6 @@
 {
-  "name": "Migol Finanzas",
-  "short_name": "Migol",
+  "name": "Finance Pal",
+  "short_name": "Finance Pal",
   "description": "Gestión personal de ingresos, gastos, ahorros y metas.",
   "start_url": "/",
   "display": "standalone",

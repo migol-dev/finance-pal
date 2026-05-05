@@ -9,7 +9,7 @@ export function SplashScreen() {
         <span className="absolute size-28 rounded-3xl bg-primary/20 animate-pulse-ring" style={{ animationDelay: "0.5s" }} />
         <motion.img
           src={appIcon}
-          alt="Migol"
+          alt="Finance Pal"
           width={88}
           height={88}
           initial={{ scale: 0.6, opacity: 0 }}
@@ -25,7 +25,7 @@ export function SplashScreen() {
         transition={{ delay: 0.3 }}
         className="mt-8 text-center"
       >
-        <p className="text-xl font-extrabold tracking-tight">Migol Finanzas</p>
+        <p className="text-xl font-extrabold tracking-tight">Finance Pal</p>
         <div className="mt-3 flex items-center justify-center gap-1.5">
           {[0, 1, 2].map((i) => (
             <motion.span

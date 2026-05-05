@@ -28,7 +28,7 @@ export default function Ajustes() {
 
   const handleExport = () => {
     const json = exportData();
-    const filename = `migol-finanzas-${new Date().toISOString().slice(0, 10)}.json`;
+    const filename = `finance-pal-${new Date().toISOString().slice(0, 10)}.json`;
     const blob = new Blob([json], { type: "application/json" });
     // Try modern File System Access API to let the user pick the folder
     const anyWin = window as any;
