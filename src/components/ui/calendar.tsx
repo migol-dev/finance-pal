@@ -20,7 +20,7 @@ function Calendar({ className, classNames, showOutsideDays = true, ...props }: C
         nav: "space-x-1 flex items-center",
         nav_button: cn(
           buttonVariants({ variant: "outline" }),
-          "h-7 w-7 bg-transparent p-0 opacity-70 hover:opacity-100 text-foreground",
+          "h-7 w-7 bg-background p-0 opacity-100 text-foreground border-border hover:bg-accent hover:text-accent-foreground",
         ),
         nav_button_previous: "absolute left-1",
         nav_button_next: "absolute right-1",
@@ -40,7 +40,7 @@ function Calendar({ className, classNames, showOutsideDays = true, ...props }: C
         ),
         day: cn(
           buttonVariants({ variant: "ghost" }),
-          "h-9 w-9 p-0 font-normal text-foreground hover:bg-accent hover:text-accent-foreground aria-selected:opacity-100",
+          "h-9 w-9 p-0 font-normal text-foreground/80 hover:bg-accent hover:text-accent-foreground aria-selected:opacity-100",
         ),
         day_range_end: "day-range-end",
         day_range_start: "day-range-start",

@@ -26,7 +26,7 @@ exports[`Calendar > renders a single-mode calendar (snapshot) 1`] = `
         >
           <button
             aria-label="Go to previous month"
-            class="rdp-button_reset rdp-button inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 border border-input hover:bg-accent hover:text-accent-foreground h-7 w-7 bg-transparent p-0 opacity-70 hover:opacity-100 text-foreground absolute left-1"
+            class="rdp-button_reset rdp-button inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 border h-7 w-7 bg-background p-0 opacity-100 text-foreground border-border hover:bg-accent hover:text-accent-foreground absolute left-1"
             name="previous-month"
             type="button"
           >
@@ -49,7 +49,7 @@ exports[`Calendar > renders a single-mode calendar (snapshot) 1`] = `
           </button>
           <button
             aria-label="Go to next month"
-            class="rdp-button_reset rdp-button inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 border border-input hover:bg-accent hover:text-accent-foreground h-7 w-7 bg-transparent p-0 opacity-70 hover:opacity-100 text-foreground absolute right-1"
+            class="rdp-button_reset rdp-button inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 border h-7 w-7 bg-background p-0 opacity-100 text-foreground border-border hover:bg-accent hover:text-accent-foreground absolute right-1"
             name="next-month"
             type="button"
           >
@@ -145,7 +145,7 @@ exports[`Calendar > renders a single-mode calendar (snapshot) 1`] = `
               role="presentation"
             >
               <button
-                class="rdp-button_reset rdp-button inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 h-9 w-9 p-0 font-normal text-foreground hover:bg-accent hover:text-accent-foreground aria-selected:opacity-100 day-outside text-muted-foreground/70 opacity-60 aria-selected:bg-accent/30 aria-selected:text-muted-foreground aria-selected:opacity-40"
+                class="rdp-button_reset rdp-button inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 h-9 w-9 p-0 font-normal text-foreground/80 hover:bg-accent hover:text-accent-foreground aria-selected:opacity-100 day-outside text-muted-foreground/70 opacity-60 aria-selected:bg-accent/30 aria-selected:text-muted-foreground aria-selected:opacity-40"
                 name="day"
                 role="gridcell"
                 tabindex="-1"
@@ -159,7 +159,7 @@ exports[`Calendar > renders a single-mode calendar (snapshot) 1`] = `
               role="presentation"
             >
               <button
-                class="rdp-button_reset rdp-button inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 h-9 w-9 p-0 font-normal text-foreground hover:bg-accent hover:text-accent-foreground aria-selected:opacity-100 day-outside text-muted-foreground/70 opacity-60 aria-selected:bg-accent/30 aria-selected:text-muted-foreground aria-selected:opacity-40"
+                class="rdp-button_reset rdp-button inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 h-9 w-9 p-0 font-normal text-foreground/80 hover:bg-accent hover:text-accent-foreground aria-selected:opacity-100 day-outside text-muted-foreground/70 opacity-60 aria-selected:bg-accent/30 aria-selected:text-muted-foreground aria-selected:opacity-40"
                 name="day"
                 role="gridcell"
                 tabindex="-1"
@@ -173,7 +173,7 @@ exports[`Calendar > renders a single-mode calendar (snapshot) 1`] = `
               role="presentation"
             >
               <button
-                class="rdp-button_reset rdp-button inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 h-9 w-9 p-0 font-normal text-foreground hover:bg-accent hover:text-accent-foreground aria-selected:opacity-100 day-outside text-muted-foreground/70 opacity-60 aria-selected:bg-accent/30 aria-selected:text-muted-foreground aria-selected:opacity-40"
+                class="rdp-button_reset rdp-button inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 h-9 w-9 p-0 font-normal text-foreground/80 hover:bg-accent hover:text-accent-foreground aria-selected:opacity-100 day-outside text-muted-foreground/70 opacity-60 aria-selected:bg-accent/30 aria-selected:text-muted-foreground aria-selected:opacity-40"
                 name="day"
                 role="gridcell"
                 tabindex="-1"
@@ -187,7 +187,7 @@ exports[`Calendar > renders a single-mode calendar (snapshot) 1`] = `
               role="presentation"
             >
               <button
-                class="rdp-button_reset rdp-button inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 h-9 w-9 p-0 font-normal text-foreground hover:bg-accent hover:text-accent-foreground aria-selected:opacity-100 day-outside text-muted-foreground/70 opacity-60 aria-selected:bg-accent/30 aria-selected:text-muted-foreground aria-selected:opacity-40"
+                class="rdp-button_reset rdp-button inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 h-9 w-9 p-0 font-normal text-foreground/80 hover:bg-accent hover:text-accent-foreground aria-selected:opacity-100 day-outside text-muted-foreground/70 opacity-60 aria-selected:bg-accent/30 aria-selected:text-muted-foreground aria-selected:opacity-40"
                 name="day"
                 role="gridcell"
                 tabindex="-1"
@@ -201,7 +201,7 @@ exports[`Calendar > renders a single-mode calendar (snapshot) 1`] = `
               role="presentation"
             >
               <button
-                class="rdp-button_reset rdp-button inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 h-9 w-9 p-0 font-normal text-foreground hover:bg-accent hover:text-accent-foreground aria-selected:opacity-100 day-outside text-muted-foreground/70 opacity-60 aria-selected:bg-accent/30 aria-selected:text-muted-foreground aria-selected:opacity-40"
+                class="rdp-button_reset rdp-button inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 h-9 w-9 p-0 font-normal text-foreground/80 hover:bg-accent hover:text-accent-foreground aria-selected:opacity-100 day-outside text-muted-foreground/70 opacity-60 aria-selected:bg-accent/30 aria-selected:text-muted-foreground aria-selected:opacity-40"
                 name="day"
                 role="gridcell"
                 tabindex="-1"
@@ -215,7 +215,7 @@ exports[`Calendar > renders a single-mode calendar (snapshot) 1`] = `
               role="presentation"
             >
               <button
-                class="rdp-button_reset rdp-button inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 h-9 w-9 p-0 font-normal text-foreground hover:bg-accent hover:text-accent-foreground aria-selected:opacity-100"
+                class="rdp-button_reset rdp-button inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 h-9 w-9 p-0 font-normal text-foreground/80 hover:bg-accent hover:text-accent-foreground aria-selected:opacity-100"
                 name="day"
                 role="gridcell"
                 tabindex="-1"
@@ -229,7 +229,7 @@ exports[`Calendar > renders a single-mode calendar (snapshot) 1`] = `
               role="presentation"
             >
               <button
-                class="rdp-button_reset rdp-button inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 h-9 w-9 p-0 font-normal text-foreground hover:bg-accent hover:text-accent-foreground aria-selected:opacity-100"
+                class="rdp-button_reset rdp-button inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 h-9 w-9 p-0 font-normal text-foreground/80 hover:bg-accent hover:text-accent-foreground aria-selected:opacity-100"
                 name="day"
                 role="gridcell"
                 tabindex="-1"
@@ -247,7 +247,7 @@ exports[`Calendar > renders a single-mode calendar (snapshot) 1`] = `
               role="presentation"
             >
               <button
-                class="rdp-button_reset rdp-button inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 h-9 w-9 p-0 font-normal text-foreground hover:bg-accent hover:text-accent-foreground aria-selected:opacity-100"
+                class="rdp-button_reset rdp-button inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 h-9 w-9 p-0 font-normal text-foreground/80 hover:bg-accent hover:text-accent-foreground aria-selected:opacity-100"
                 name="day"
                 role="gridcell"
                 tabindex="-1"
@@ -261,7 +261,7 @@ exports[`Calendar > renders a single-mode calendar (snapshot) 1`] = `
               role="presentation"
             >
               <button
-                class="rdp-button_reset rdp-button inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 h-9 w-9 p-0 font-normal text-foreground hover:bg-accent hover:text-accent-foreground aria-selected:opacity-100"
+                class="rdp-button_reset rdp-button inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 h-9 w-9 p-0 font-normal text-foreground/80 hover:bg-accent hover:text-accent-foreground aria-selected:opacity-100"
                 name="day"
                 role="gridcell"
                 tabindex="-1"
@@ -275,7 +275,7 @@ exports[`Calendar > renders a single-mode calendar (snapshot) 1`] = `
               role="presentation"
             >
               <button
-                class="rdp-button_reset rdp-button inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 h-9 w-9 p-0 font-normal text-foreground hover:bg-accent hover:text-accent-foreground aria-selected:opacity-100 bg-accent/30 text-foreground font-bold ring-1 ring-accent/60 rounded-md"
+                class="rdp-button_reset rdp-button inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 h-9 w-9 p-0 font-normal text-foreground/80 hover:bg-accent hover:text-accent-foreground aria-selected:opacity-100 bg-accent/30 text-foreground font-bold ring-1 ring-accent/60 rounded-md"
                 name="day"
                 role="gridcell"
                 tabindex="-1"
@@ -289,7 +289,7 @@ exports[`Calendar > renders a single-mode calendar (snapshot) 1`] = `
               role="presentation"
             >
               <button
-                class="rdp-button_reset rdp-button inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 h-9 w-9 p-0 font-normal text-foreground hover:bg-accent hover:text-accent-foreground aria-selected:opacity-100"
+                class="rdp-button_reset rdp-button inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 h-9 w-9 p-0 font-normal text-foreground/80 hover:bg-accent hover:text-accent-foreground aria-selected:opacity-100"
                 name="day"
                 role="gridcell"
                 tabindex="-1"
@@ -303,7 +303,7 @@ exports[`Calendar > renders a single-mode calendar (snapshot) 1`] = `
               role="presentation"
             >
               <button
-                class="rdp-button_reset rdp-button inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 h-9 w-9 p-0 font-normal text-foreground hover:bg-accent hover:text-accent-foreground aria-selected:opacity-100"
+                class="rdp-button_reset rdp-button inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 h-9 w-9 p-0 font-normal text-foreground/80 hover:bg-accent hover:text-accent-foreground aria-selected:opacity-100"
                 name="day"
                 role="gridcell"
                 tabindex="-1"
@@ -317,7 +317,7 @@ exports[`Calendar > renders a single-mode calendar (snapshot) 1`] = `
               role="presentation"
             >
               <button
-                class="rdp-button_reset rdp-button inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 h-9 w-9 p-0 font-normal text-foreground hover:bg-accent hover:text-accent-foreground aria-selected:opacity-100"
+                class="rdp-button_reset rdp-button inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 h-9 w-9 p-0 font-normal text-foreground/80 hover:bg-accent hover:text-accent-foreground aria-selected:opacity-100"
                 name="day"
                 role="gridcell"
                 tabindex="-1"
@@ -331,7 +331,7 @@ exports[`Calendar > renders a single-mode calendar (snapshot) 1`] = `
               role="presentation"
             >
               <button
-                class="rdp-button_reset rdp-button inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 h-9 w-9 p-0 font-normal text-foreground hover:bg-accent hover:text-accent-foreground aria-selected:opacity-100"
+                class="rdp-button_reset rdp-button inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 h-9 w-9 p-0 font-normal text-foreground/80 hover:bg-accent hover:text-accent-foreground aria-selected:opacity-100"
                 name="day"
                 role="gridcell"
                 tabindex="-1"
@@ -349,7 +349,7 @@ exports[`Calendar > renders a single-mode calendar (snapshot) 1`] = `
               role="presentation"
             >
               <button
-                class="rdp-button_reset rdp-button inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 h-9 w-9 p-0 font-normal text-foreground hover:bg-accent hover:text-accent-foreground aria-selected:opacity-100"
+                class="rdp-button_reset rdp-button inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 h-9 w-9 p-0 font-normal text-foreground/80 hover:bg-accent hover:text-accent-foreground aria-selected:opacity-100"
                 name="day"
                 role="gridcell"
                 tabindex="-1"
@@ -363,7 +363,7 @@ exports[`Calendar > renders a single-mode calendar (snapshot) 1`] = `
               role="presentation"
             >
               <button
-                class="rdp-button_reset rdp-button inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 h-9 w-9 p-0 font-normal text-foreground hover:bg-accent hover:text-accent-foreground aria-selected:opacity-100"
+                class="rdp-button_reset rdp-button inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 h-9 w-9 p-0 font-normal text-foreground/80 hover:bg-accent hover:text-accent-foreground aria-selected:opacity-100"
                 name="day"
                 role="gridcell"
                 tabindex="-1"
@@ -377,7 +377,7 @@ exports[`Calendar > renders a single-mode calendar (snapshot) 1`] = `
               role="presentation"
             >
               <button
-                class="rdp-button_reset rdp-button inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 h-9 w-9 p-0 font-normal text-foreground hover:bg-accent hover:text-accent-foreground aria-selected:opacity-100"
+                class="rdp-button_reset rdp-button inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 h-9 w-9 p-0 font-normal text-foreground/80 hover:bg-accent hover:text-accent-foreground aria-selected:opacity-100"
                 name="day"
                 role="gridcell"
                 tabindex="-1"
@@ -391,7 +391,7 @@ exports[`Calendar > renders a single-mode calendar (snapshot) 1`] = `
               role="presentation"
             >
               <button
-                class="rdp-button_reset rdp-button inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 h-9 w-9 p-0 font-normal text-foreground hover:bg-accent hover:text-accent-foreground aria-selected:opacity-100"
+                class="rdp-button_reset rdp-button inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 h-9 w-9 p-0 font-normal text-foreground/80 hover:bg-accent hover:text-accent-foreground aria-selected:opacity-100"
                 name="day"
                 role="gridcell"
                 tabindex="-1"
@@ -405,7 +405,7 @@ exports[`Calendar > renders a single-mode calendar (snapshot) 1`] = `
               role="presentation"
             >
               <button
-                class="rdp-button_reset rdp-button inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 h-9 w-9 p-0 font-normal text-foreground hover:bg-accent hover:text-accent-foreground aria-selected:opacity-100"
+                class="rdp-button_reset rdp-button inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 h-9 w-9 p-0 font-normal text-foreground/80 hover:bg-accent hover:text-accent-foreground aria-selected:opacity-100"
                 name="day"
                 role="gridcell"
                 tabindex="-1"
@@ -420,7 +420,7 @@ exports[`Calendar > renders a single-mode calendar (snapshot) 1`] = `
             >
               <button
                 aria-selected="true"
-                class="rdp-button_reset rdp-button inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 h-9 w-9 p-0 font-normal text-foreground hover:bg-accent hover:text-accent-foreground aria-selected:opacity-100 bg-primary text-primary-foreground font-semibold hover:bg-primary hover:text-primary-foreground focus:bg-primary focus:text-primary-foreground rounded-md"
+                class="rdp-button_reset rdp-button inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 h-9 w-9 p-0 font-normal text-foreground/80 hover:bg-accent hover:text-accent-foreground aria-selected:opacity-100 bg-primary text-primary-foreground font-semibold hover:bg-primary hover:text-primary-foreground focus:bg-primary focus:text-primary-foreground rounded-md"
                 name="day"
                 role="gridcell"
                 tabindex="0"
@@ -434,7 +434,7 @@ exports[`Calendar > renders a single-mode calendar (snapshot) 1`] = `
               role="presentation"
             >
               <button
-                class="rdp-button_reset rdp-button inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 h-9 w-9 p-0 font-normal text-foreground hover:bg-accent hover:text-accent-foreground aria-selected:opacity-100"
+                class="rdp-button_reset rdp-button inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 h-9 w-9 p-0 font-normal text-foreground/80 hover:bg-accent hover:text-accent-foreground aria-selected:opacity-100"
                 name="day"
                 role="gridcell"
                 tabindex="-1"
@@ -452,7 +452,7 @@ exports[`Calendar > renders a single-mode calendar (snapshot) 1`] = `
               role="presentation"
             >
               <button
-                class="rdp-button_reset rdp-button inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 h-9 w-9 p-0 font-normal text-foreground hover:bg-accent hover:text-accent-foreground aria-selected:opacity-100"
+                class="rdp-button_reset rdp-button inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 h-9 w-9 p-0 font-normal text-foreground/80 hover:bg-accent hover:text-accent-foreground aria-selected:opacity-100"
                 name="day"
                 role="gridcell"
                 tabindex="-1"
@@ -466,7 +466,7 @@ exports[`Calendar > renders a single-mode calendar (snapshot) 1`] = `
               role="presentation"
             >
               <button
-                class="rdp-button_reset rdp-button inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 h-9 w-9 p-0 font-normal text-foreground hover:bg-accent hover:text-accent-foreground aria-selected:opacity-100"
+                class="rdp-button_reset rdp-button inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 h-9 w-9 p-0 font-normal text-foreground/80 hover:bg-accent hover:text-accent-foreground aria-selected:opacity-100"
                 name="day"
                 role="gridcell"
                 tabindex="-1"
@@ -480,7 +480,7 @@ exports[`Calendar > renders a single-mode calendar (snapshot) 1`] = `
               role="presentation"
             >
               <button
-                class="rdp-button_reset rdp-button inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 h-9 w-9 p-0 font-normal text-foreground hover:bg-accent hover:text-accent-foreground aria-selected:opacity-100"
+                class="rdp-button_reset rdp-button inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 h-9 w-9 p-0 font-normal text-foreground/80 hover:bg-accent hover:text-accent-foreground aria-selected:opacity-100"
                 name="day"
                 role="gridcell"
                 tabindex="-1"
@@ -494,7 +494,7 @@ exports[`Calendar > renders a single-mode calendar (snapshot) 1`] = `
               role="presentation"
             >
               <button
-                class="rdp-button_reset rdp-button inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 h-9 w-9 p-0 font-normal text-foreground hover:bg-accent hover:text-accent-foreground aria-selected:opacity-100"
+                class="rdp-button_reset rdp-button inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 h-9 w-9 p-0 font-normal text-foreground/80 hover:bg-accent hover:text-accent-foreground aria-selected:opacity-100"
                 name="day"
                 role="gridcell"
                 tabindex="-1"
@@ -508,7 +508,7 @@ exports[`Calendar > renders a single-mode calendar (snapshot) 1`] = `
               role="presentation"
             >
               <button
-                class="rdp-button_reset rdp-button inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 h-9 w-9 p-0 font-normal text-foreground hover:bg-accent hover:text-accent-foreground aria-selected:opacity-100"
+                class="rdp-button_reset rdp-button inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 h-9 w-9 p-0 font-normal text-foreground/80 hover:bg-accent hover:text-accent-foreground aria-selected:opacity-100"
                 name="day"
                 role="gridcell"
                 tabindex="-1"
@@ -522,7 +522,7 @@ exports[`Calendar > renders a single-mode calendar (snapshot) 1`] = `
               role="presentation"
             >
               <button
-                class="rdp-button_reset rdp-button inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 h-9 w-9 p-0 font-normal text-foreground hover:bg-accent hover:text-accent-foreground aria-selected:opacity-100"
+                class="rdp-button_reset rdp-button inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 h-9 w-9 p-0 font-normal text-foreground/80 hover:bg-accent hover:text-accent-foreground aria-selected:opacity-100"
                 name="day"
                 role="gridcell"
                 tabindex="-1"
@@ -536,7 +536,7 @@ exports[`Calendar > renders a single-mode calendar (snapshot) 1`] = `
               role="presentation"
             >
               <button
-                class="rdp-button_reset rdp-button inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 h-9 w-9 p-0 font-normal text-foreground hover:bg-accent hover:text-accent-foreground aria-selected:opacity-100"
+                class="rdp-button_reset rdp-button inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 h-9 w-9 p-0 font-normal text-foreground/80 hover:bg-accent hover:text-accent-foreground aria-selected:opacity-100"
                 name="day"
                 role="gridcell"
                 tabindex="-1"
@@ -554,7 +554,7 @@ exports[`Calendar > renders a single-mode calendar (snapshot) 1`] = `
               role="presentation"
             >
               <button
-                class="rdp-button_reset rdp-button inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 h-9 w-9 p-0 font-normal text-foreground hover:bg-accent hover:text-accent-foreground aria-selected:opacity-100"
+                class="rdp-button_reset rdp-button inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 h-9 w-9 p-0 font-normal text-foreground/80 hover:bg-accent hover:text-accent-foreground aria-selected:opacity-100"
                 name="day"
                 role="gridcell"
                 tabindex="-1"
@@ -568,7 +568,7 @@ exports[`Calendar > renders a single-mode calendar (snapshot) 1`] = `
               role="presentation"
             >
               <button
-                class="rdp-button_reset rdp-button inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 h-9 w-9 p-0 font-normal text-foreground hover:bg-accent hover:text-accent-foreground aria-selected:opacity-100"
+                class="rdp-button_reset rdp-button inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 h-9 w-9 p-0 font-normal text-foreground/80 hover:bg-accent hover:text-accent-foreground aria-selected:opacity-100"
                 name="day"
                 role="gridcell"
                 tabindex="-1"
@@ -582,7 +582,7 @@ exports[`Calendar > renders a single-mode calendar (snapshot) 1`] = `
               role="presentation"
             >
               <button
-                class="rdp-button_reset rdp-button inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 h-9 w-9 p-0 font-normal text-foreground hover:bg-accent hover:text-accent-foreground aria-selected:opacity-100"
+                class="rdp-button_reset rdp-button inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 h-9 w-9 p-0 font-normal text-foreground/80 hover:bg-accent hover:text-accent-foreground aria-selected:opacity-100"
                 name="day"
                 role="gridcell"
                 tabindex="-1"
@@ -596,7 +596,7 @@ exports[`Calendar > renders a single-mode calendar (snapshot) 1`] = `
               role="presentation"
             >
               <button
-                class="rdp-button_reset rdp-button inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 h-9 w-9 p-0 font-normal text-foreground hover:bg-accent hover:text-accent-foreground aria-selected:opacity-100"
+                class="rdp-button_reset rdp-button inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 h-9 w-9 p-0 font-normal text-foreground/80 hover:bg-accent hover:text-accent-foreground aria-selected:opacity-100"
                 name="day"
                 role="gridcell"
                 tabindex="-1"
@@ -610,7 +610,7 @@ exports[`Calendar > renders a single-mode calendar (snapshot) 1`] = `
               role="presentation"
             >
               <button
-                class="rdp-button_reset rdp-button inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 h-9 w-9 p-0 font-normal text-foreground hover:bg-accent hover:text-accent-foreground aria-selected:opacity-100"
+                class="rdp-button_reset rdp-button inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 h-9 w-9 p-0 font-normal text-foreground/80 hover:bg-accent hover:text-accent-foreground aria-selected:opacity-100"
                 name="day"
                 role="gridcell"
                 tabindex="-1"
@@ -624,7 +624,7 @@ exports[`Calendar > renders a single-mode calendar (snapshot) 1`] = `
               role="presentation"
             >
               <button
-                class="rdp-button_reset rdp-button inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 h-9 w-9 p-0 font-normal text-foreground hover:bg-accent hover:text-accent-foreground aria-selected:opacity-100"
+                class="rdp-button_reset rdp-button inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 h-9 w-9 p-0 font-normal text-foreground/80 hover:bg-accent hover:text-accent-foreground aria-selected:opacity-100"
                 name="day"
                 role="gridcell"
                 tabindex="-1"
@@ -638,7 +638,7 @@ exports[`Calendar > renders a single-mode calendar (snapshot) 1`] = `
               role="presentation"
             >
               <button
-                class="rdp-button_reset rdp-button inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 h-9 w-9 p-0 font-normal text-foreground hover:bg-accent hover:text-accent-foreground aria-selected:opacity-100"
+                class="rdp-button_reset rdp-button inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 h-9 w-9 p-0 font-normal text-foreground/80 hover:bg-accent hover:text-accent-foreground aria-selected:opacity-100"
                 name="day"
                 role="gridcell"
                 tabindex="-1"
@@ -656,7 +656,7 @@ exports[`Calendar > renders a single-mode calendar (snapshot) 1`] = `
               role="presentation"
             >
               <button
-                class="rdp-button_reset rdp-button inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 h-9 w-9 p-0 font-normal text-foreground hover:bg-accent hover:text-accent-foreground aria-selected:opacity-100"
+                class="rdp-button_reset rdp-button inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 h-9 w-9 p-0 font-normal text-foreground/80 hover:bg-accent hover:text-accent-foreground aria-selected:opacity-100"
                 name="day"
                 role="gridcell"
                 tabindex="-1"
@@ -670,7 +670,7 @@ exports[`Calendar > renders a single-mode calendar (snapshot) 1`] = `
               role="presentation"
             >
               <button
-                class="rdp-button_reset rdp-button inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 h-9 w-9 p-0 font-normal text-foreground hover:bg-accent hover:text-accent-foreground aria-selected:opacity-100 day-outside text-muted-foreground/70 opacity-60 aria-selected:bg-accent/30 aria-selected:text-muted-foreground aria-selected:opacity-40"
+                class="rdp-button_reset rdp-button inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 h-9 w-9 p-0 font-normal text-foreground/80 hover:bg-accent hover:text-accent-foreground aria-selected:opacity-100 day-outside text-muted-foreground/70 opacity-60 aria-selected:bg-accent/30 aria-selected:text-muted-foreground aria-selected:opacity-40"
                 name="day"
                 role="gridcell"
                 tabindex="-1"
@@ -684,7 +684,7 @@ exports[`Calendar > renders a single-mode calendar (snapshot) 1`] = `
               role="presentation"
             >
               <button
-                class="rdp-button_reset rdp-button inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 h-9 w-9 p-0 font-normal text-foreground hover:bg-accent hover:text-accent-foreground aria-selected:opacity-100 day-outside text-muted-foreground/70 opacity-60 aria-selected:bg-accent/30 aria-selected:text-muted-foreground aria-selected:opacity-40"
+                class="rdp-button_reset rdp-button inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 h-9 w-9 p-0 font-normal text-foreground/80 hover:bg-accent hover:text-accent-foreground aria-selected:opacity-100 day-outside text-muted-foreground/70 opacity-60 aria-selected:bg-accent/30 aria-selected:text-muted-foreground aria-selected:opacity-40"
                 name="day"
                 role="gridcell"
                 tabindex="-1"
@@ -698,7 +698,7 @@ exports[`Calendar > renders a single-mode calendar (snapshot) 1`] = `
               role="presentation"
             >
               <button
-                class="rdp-button_reset rdp-button inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 h-9 w-9 p-0 font-normal text-foreground hover:bg-accent hover:text-accent-foreground aria-selected:opacity-100 day-outside text-muted-foreground/70 opacity-60 aria-selected:bg-accent/30 aria-selected:text-muted-foreground aria-selected:opacity-40"
+                class="rdp-button_reset rdp-button inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 h-9 w-9 p-0 font-normal text-foreground/80 hover:bg-accent hover:text-accent-foreground aria-selected:opacity-100 day-outside text-muted-foreground/70 opacity-60 aria-selected:bg-accent/30 aria-selected:text-muted-foreground aria-selected:opacity-40"
                 name="day"
                 role="gridcell"
                 tabindex="-1"
@@ -712,7 +712,7 @@ exports[`Calendar > renders a single-mode calendar (snapshot) 1`] = `
               role="presentation"
             >
               <button
-                class="rdp-button_reset rdp-button inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 h-9 w-9 p-0 font-normal text-foreground hover:bg-accent hover:text-accent-foreground aria-selected:opacity-100 day-outside text-muted-foreground/70 opacity-60 aria-selected:bg-accent/30 aria-selected:text-muted-foreground aria-selected:opacity-40"
+                class="rdp-button_reset rdp-button inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 h-9 w-9 p-0 font-normal text-foreground/80 hover:bg-accent hover:text-accent-foreground aria-selected:opacity-100 day-outside text-muted-foreground/70 opacity-60 aria-selected:bg-accent/30 aria-selected:text-muted-foreground aria-selected:opacity-40"
                 name="day"
                 role="gridcell"
                 tabindex="-1"
@@ -726,7 +726,7 @@ exports[`Calendar > renders a single-mode calendar (snapshot) 1`] = `
               role="presentation"
             >
               <button
-                class="rdp-button_reset rdp-button inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 h-9 w-9 p-0 font-normal text-foreground hover:bg-accent hover:text-accent-foreground aria-selected:opacity-100 day-outside text-muted-foreground/70 opacity-60 aria-selected:bg-accent/30 aria-selected:text-muted-foreground aria-selected:opacity-40"
+                class="rdp-button_reset rdp-button inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 h-9 w-9 p-0 font-normal text-foreground/80 hover:bg-accent hover:text-accent-foreground aria-selected:opacity-100 day-outside text-muted-foreground/70 opacity-60 aria-selected:bg-accent/30 aria-selected:text-muted-foreground aria-selected:opacity-40"
                 name="day"
                 role="gridcell"
                 tabindex="-1"
@@ -740,7 +740,7 @@ exports[`Calendar > renders a single-mode calendar (snapshot) 1`] = `
               role="presentation"
             >
               <button
-                class="rdp-button_reset rdp-button inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 h-9 w-9 p-0 font-normal text-foreground hover:bg-accent hover:text-accent-foreground aria-selected:opacity-100 day-outside text-muted-foreground/70 opacity-60 aria-selected:bg-accent/30 aria-selected:text-muted-foreground aria-selected:opacity-40"
+                class="rdp-button_reset rdp-button inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 h-9 w-9 p-0 font-normal text-foreground/80 hover:bg-accent hover:text-accent-foreground aria-selected:opacity-100 day-outside text-muted-foreground/70 opacity-60 aria-selected:bg-accent/30 aria-selected:text-muted-foreground aria-selected:opacity-40"
                 name="day"
                 role="gridcell"
                 tabindex="-1"
@@ -783,7 +783,7 @@ exports[`Calendar > renders range mode with continuous middle styling (snapshot)
         >
           <button
             aria-label="Go to previous month"
-            class="rdp-button_reset rdp-button inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 border border-input hover:bg-accent hover:text-accent-foreground h-7 w-7 bg-transparent p-0 opacity-70 hover:opacity-100 text-foreground absolute left-1"
+            class="rdp-button_reset rdp-button inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 border h-7 w-7 bg-background p-0 opacity-100 text-foreground border-border hover:bg-accent hover:text-accent-foreground absolute left-1"
             name="previous-month"
             type="button"
           >
@@ -806,7 +806,7 @@ exports[`Calendar > renders range mode with continuous middle styling (snapshot)
           </button>
           <button
             aria-label="Go to next month"
-            class="rdp-button_reset rdp-button inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 border border-input hover:bg-accent hover:text-accent-foreground h-7 w-7 bg-transparent p-0 opacity-70 hover:opacity-100 text-foreground absolute right-1"
+            class="rdp-button_reset rdp-button inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 border h-7 w-7 bg-background p-0 opacity-100 text-foreground border-border hover:bg-accent hover:text-accent-foreground absolute right-1"
             name="next-month"
             type="button"
           >
@@ -902,7 +902,7 @@ exports[`Calendar > renders range mode with continuous middle styling (snapshot)
               role="presentation"
             >
               <button
-                class="rdp-button_reset rdp-button inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 h-9 w-9 p-0 font-normal text-foreground hover:bg-accent hover:text-accent-foreground aria-selected:opacity-100 day-outside text-muted-foreground/70 opacity-60 aria-selected:bg-accent/30 aria-selected:text-muted-foreground aria-selected:opacity-40"
+                class="rdp-button_reset rdp-button inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 h-9 w-9 p-0 font-normal text-foreground/80 hover:bg-accent hover:text-accent-foreground aria-selected:opacity-100 day-outside text-muted-foreground/70 opacity-60 aria-selected:bg-accent/30 aria-selected:text-muted-foreground aria-selected:opacity-40"
                 name="day"
                 role="gridcell"
                 tabindex="-1"
@@ -916,7 +916,7 @@ exports[`Calendar > renders range mode with continuous middle styling (snapshot)
               role="presentation"
             >
               <button
-                class="rdp-button_reset rdp-button inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 h-9 w-9 p-0 font-normal text-foreground hover:bg-accent hover:text-accent-foreground aria-selected:opacity-100 day-outside text-muted-foreground/70 opacity-60 aria-selected:bg-accent/30 aria-selected:text-muted-foreground aria-selected:opacity-40"
+                class="rdp-button_reset rdp-button inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 h-9 w-9 p-0 font-normal text-foreground/80 hover:bg-accent hover:text-accent-foreground aria-selected:opacity-100 day-outside text-muted-foreground/70 opacity-60 aria-selected:bg-accent/30 aria-selected:text-muted-foreground aria-selected:opacity-40"
                 name="day"
                 role="gridcell"
                 tabindex="-1"
@@ -930,7 +930,7 @@ exports[`Calendar > renders range mode with continuous middle styling (snapshot)
               role="presentation"
             >
               <button
-                class="rdp-button_reset rdp-button inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 h-9 w-9 p-0 font-normal text-foreground hover:bg-accent hover:text-accent-foreground aria-selected:opacity-100 day-outside text-muted-foreground/70 opacity-60 aria-selected:bg-accent/30 aria-selected:text-muted-foreground aria-selected:opacity-40"
+                class="rdp-button_reset rdp-button inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 h-9 w-9 p-0 font-normal text-foreground/80 hover:bg-accent hover:text-accent-foreground aria-selected:opacity-100 day-outside text-muted-foreground/70 opacity-60 aria-selected:bg-accent/30 aria-selected:text-muted-foreground aria-selected:opacity-40"
                 name="day"
                 role="gridcell"
                 tabindex="-1"
@@ -944,7 +944,7 @@ exports[`Calendar > renders range mode with continuous middle styling (snapshot)
               role="presentation"
             >
               <button
-                class="rdp-button_reset rdp-button inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 h-9 w-9 p-0 font-normal text-foreground hover:bg-accent hover:text-accent-foreground aria-selected:opacity-100 day-outside text-muted-foreground/70 opacity-60 aria-selected:bg-accent/30 aria-selected:text-muted-foreground aria-selected:opacity-40"
+                class="rdp-button_reset rdp-button inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 h-9 w-9 p-0 font-normal text-foreground/80 hover:bg-accent hover:text-accent-foreground aria-selected:opacity-100 day-outside text-muted-foreground/70 opacity-60 aria-selected:bg-accent/30 aria-selected:text-muted-foreground aria-selected:opacity-40"
                 name="day"
                 role="gridcell"
                 tabindex="-1"
@@ -958,7 +958,7 @@ exports[`Calendar > renders range mode with continuous middle styling (snapshot)
               role="presentation"
             >
               <button
-                class="rdp-button_reset rdp-button inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 h-9 w-9 p-0 font-normal text-foreground hover:bg-accent hover:text-accent-foreground aria-selected:opacity-100 day-outside text-muted-foreground/70 opacity-60 aria-selected:bg-accent/30 aria-selected:text-muted-foreground aria-selected:opacity-40"
+                class="rdp-button_reset rdp-button inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 h-9 w-9 p-0 font-normal text-foreground/80 hover:bg-accent hover:text-accent-foreground aria-selected:opacity-100 day-outside text-muted-foreground/70 opacity-60 aria-selected:bg-accent/30 aria-selected:text-muted-foreground aria-selected:opacity-40"
                 name="day"
                 role="gridcell"
                 tabindex="-1"
@@ -972,7 +972,7 @@ exports[`Calendar > renders range mode with continuous middle styling (snapshot)
               role="presentation"
             >
               <button
-                class="rdp-button_reset rdp-button inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 h-9 w-9 p-0 font-normal text-foreground hover:bg-accent hover:text-accent-foreground aria-selected:opacity-100"
+                class="rdp-button_reset rdp-button inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 h-9 w-9 p-0 font-normal text-foreground/80 hover:bg-accent hover:text-accent-foreground aria-selected:opacity-100"
                 name="day"
                 role="gridcell"
                 tabindex="-1"
@@ -986,7 +986,7 @@ exports[`Calendar > renders range mode with continuous middle styling (snapshot)
               role="presentation"
             >
               <button
-                class="rdp-button_reset rdp-button inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 h-9 w-9 p-0 font-normal text-foreground hover:bg-accent hover:text-accent-foreground aria-selected:opacity-100"
+                class="rdp-button_reset rdp-button inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 h-9 w-9 p-0 font-normal text-foreground/80 hover:bg-accent hover:text-accent-foreground aria-selected:opacity-100"
                 name="day"
                 role="gridcell"
                 tabindex="-1"
@@ -1004,7 +1004,7 @@ exports[`Calendar > renders range mode with continuous middle styling (snapshot)
               role="presentation"
             >
               <button
-                class="rdp-button_reset rdp-button inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 h-9 w-9 p-0 font-normal text-foreground hover:bg-accent hover:text-accent-foreground aria-selected:opacity-100"
+                class="rdp-button_reset rdp-button inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 h-9 w-9 p-0 font-normal text-foreground/80 hover:bg-accent hover:text-accent-foreground aria-selected:opacity-100"
                 name="day"
                 role="gridcell"
                 tabindex="-1"
@@ -1018,7 +1018,7 @@ exports[`Calendar > renders range mode with continuous middle styling (snapshot)
               role="presentation"
             >
               <button
-                class="rdp-button_reset rdp-button inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 h-9 w-9 p-0 font-normal text-foreground hover:bg-accent hover:text-accent-foreground aria-selected:opacity-100"
+                class="rdp-button_reset rdp-button inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 h-9 w-9 p-0 font-normal text-foreground/80 hover:bg-accent hover:text-accent-foreground aria-selected:opacity-100"
                 name="day"
                 role="gridcell"
                 tabindex="-1"
@@ -1032,7 +1032,7 @@ exports[`Calendar > renders range mode with continuous middle styling (snapshot)
               role="presentation"
             >
               <button
-                class="rdp-button_reset rdp-button inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 h-9 w-9 p-0 font-normal text-foreground hover:bg-accent hover:text-accent-foreground aria-selected:opacity-100 bg-accent/30 text-foreground font-bold ring-1 ring-accent/60 rounded-md"
+                class="rdp-button_reset rdp-button inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 h-9 w-9 p-0 font-normal text-foreground/80 hover:bg-accent hover:text-accent-foreground aria-selected:opacity-100 bg-accent/30 text-foreground font-bold ring-1 ring-accent/60 rounded-md"
                 name="day"
                 role="gridcell"
                 tabindex="-1"
@@ -1046,7 +1046,7 @@ exports[`Calendar > renders range mode with continuous middle styling (snapshot)
               role="presentation"
             >
               <button
-                class="rdp-button_reset rdp-button inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 h-9 w-9 p-0 font-normal text-foreground hover:bg-accent hover:text-accent-foreground aria-selected:opacity-100"
+                class="rdp-button_reset rdp-button inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 h-9 w-9 p-0 font-normal text-foreground/80 hover:bg-accent hover:text-accent-foreground aria-selected:opacity-100"
                 name="day"
                 role="gridcell"
                 tabindex="-1"
@@ -1060,7 +1060,7 @@ exports[`Calendar > renders range mode with continuous middle styling (snapshot)
               role="presentation"
             >
               <button
-                class="rdp-button_reset rdp-button inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 h-9 w-9 p-0 font-normal text-foreground hover:bg-accent hover:text-accent-foreground aria-selected:opacity-100"
+                class="rdp-button_reset rdp-button inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 h-9 w-9 p-0 font-normal text-foreground/80 hover:bg-accent hover:text-accent-foreground aria-selected:opacity-100"
                 name="day"
                 role="gridcell"
                 tabindex="-1"
@@ -1074,7 +1074,7 @@ exports[`Calendar > renders range mode with continuous middle styling (snapshot)
               role="presentation"
             >
               <button
-                class="rdp-button_reset rdp-button inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 h-9 w-9 p-0 font-normal text-foreground hover:bg-accent hover:text-accent-foreground aria-selected:opacity-100"
+                class="rdp-button_reset rdp-button inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 h-9 w-9 p-0 font-normal text-foreground/80 hover:bg-accent hover:text-accent-foreground aria-selected:opacity-100"
                 name="day"
                 role="gridcell"
                 tabindex="-1"
@@ -1088,7 +1088,7 @@ exports[`Calendar > renders range mode with continuous middle styling (snapshot)
               role="presentation"
             >
               <button
-                class="rdp-button_reset rdp-button inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 h-9 w-9 p-0 font-normal text-foreground hover:bg-accent hover:text-accent-foreground aria-selected:opacity-100"
+                class="rdp-button_reset rdp-button inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 h-9 w-9 p-0 font-normal text-foreground/80 hover:bg-accent hover:text-accent-foreground aria-selected:opacity-100"
                 name="day"
                 role="gridcell"
                 tabindex="-1"
@@ -1107,7 +1107,7 @@ exports[`Calendar > renders range mode with continuous middle styling (snapshot)
             >
               <button
                 aria-selected="true"
-                class="rdp-button_reset rdp-button inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 h-9 w-9 p-0 font-normal text-foreground hover:bg-accent hover:text-accent-foreground aria-selected:opacity-100 bg-primary text-primary-foreground font-semibold hover:bg-primary hover:text-primary-foreground focus:bg-primary focus:text-primary-foreground rounded-md day-range-start"
+                class="rdp-button_reset rdp-button inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 h-9 w-9 p-0 font-normal text-foreground/80 hover:bg-accent hover:text-accent-foreground aria-selected:opacity-100 bg-primary text-primary-foreground font-semibold hover:bg-primary hover:text-primary-foreground focus:bg-primary focus:text-primary-foreground rounded-md day-range-start"
                 name="day"
                 role="gridcell"
                 tabindex="0"
@@ -1122,7 +1122,7 @@ exports[`Calendar > renders range mode with continuous middle styling (snapshot)
             >
               <button
                 aria-selected="true"
-                class="rdp-button_reset rdp-button inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 h-9 w-9 p-0 font-normal text-foreground hover:bg-accent hover:text-accent-foreground aria-selected:opacity-100 bg-primary text-primary-foreground font-semibold hover:bg-primary hover:text-primary-foreground focus:bg-primary focus:text-primary-foreground rounded-md aria-selected:bg-primary/20 aria-selected:text-foreground aria-selected:rounded-none hover:aria-selected:bg-primary/30"
+                class="rdp-button_reset rdp-button inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 h-9 w-9 p-0 font-normal text-foreground/80 hover:bg-accent hover:text-accent-foreground aria-selected:opacity-100 bg-primary text-primary-foreground font-semibold hover:bg-primary hover:text-primary-foreground focus:bg-primary focus:text-primary-foreground rounded-md aria-selected:bg-primary/20 aria-selected:text-foreground aria-selected:rounded-none hover:aria-selected:bg-primary/30"
                 name="day"
                 role="gridcell"
                 tabindex="-1"
@@ -1137,7 +1137,7 @@ exports[`Calendar > renders range mode with continuous middle styling (snapshot)
             >
               <button
                 aria-selected="true"
-                class="rdp-button_reset rdp-button inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 h-9 w-9 p-0 font-normal text-foreground hover:bg-accent hover:text-accent-foreground aria-selected:opacity-100 bg-primary text-primary-foreground font-semibold hover:bg-primary hover:text-primary-foreground focus:bg-primary focus:text-primary-foreground rounded-md aria-selected:bg-primary/20 aria-selected:text-foreground aria-selected:rounded-none hover:aria-selected:bg-primary/30"
+                class="rdp-button_reset rdp-button inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 h-9 w-9 p-0 font-normal text-foreground/80 hover:bg-accent hover:text-accent-foreground aria-selected:opacity-100 bg-primary text-primary-foreground font-semibold hover:bg-primary hover:text-primary-foreground focus:bg-primary focus:text-primary-foreground rounded-md aria-selected:bg-primary/20 aria-selected:text-foreground aria-selected:rounded-none hover:aria-selected:bg-primary/30"
                 name="day"
                 role="gridcell"
                 tabindex="-1"
@@ -1152,7 +1152,7 @@ exports[`Calendar > renders range mode with continuous middle styling (snapshot)
             >
               <button
                 aria-selected="true"
-                class="rdp-button_reset rdp-button inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 h-9 w-9 p-0 font-normal text-foreground hover:bg-accent hover:text-accent-foreground aria-selected:opacity-100 bg-primary text-primary-foreground font-semibold hover:bg-primary hover:text-primary-foreground focus:bg-primary focus:text-primary-foreground rounded-md aria-selected:bg-primary/20 aria-selected:text-foreground aria-selected:rounded-none hover:aria-selected:bg-primary/30"
+                class="rdp-button_reset rdp-button inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 h-9 w-9 p-0 font-normal text-foreground/80 hover:bg-accent hover:text-accent-foreground aria-selected:opacity-100 bg-primary text-primary-foreground font-semibold hover:bg-primary hover:text-primary-foreground focus:bg-primary focus:text-primary-foreground rounded-md aria-selected:bg-primary/20 aria-selected:text-foreground aria-selected:rounded-none hover:aria-selected:bg-primary/30"
                 name="day"
                 role="gridcell"
                 tabindex="-1"
@@ -1167,7 +1167,7 @@ exports[`Calendar > renders range mode with continuous middle styling (snapshot)
             >
               <button
                 aria-selected="true"
-                class="rdp-button_reset rdp-button inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 h-9 w-9 p-0 font-normal text-foreground hover:bg-accent hover:text-accent-foreground aria-selected:opacity-100 bg-primary text-primary-foreground font-semibold hover:bg-primary hover:text-primary-foreground focus:bg-primary focus:text-primary-foreground rounded-md aria-selected:bg-primary/20 aria-selected:text-foreground aria-selected:rounded-none hover:aria-selected:bg-primary/30"
+                class="rdp-button_reset rdp-button inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 h-9 w-9 p-0 font-normal text-foreground/80 hover:bg-accent hover:text-accent-foreground aria-selected:opacity-100 bg-primary text-primary-foreground font-semibold hover:bg-primary hover:text-primary-foreground focus:bg-primary focus:text-primary-foreground rounded-md aria-selected:bg-primary/20 aria-selected:text-foreground aria-selected:rounded-none hover:aria-selected:bg-primary/30"
                 name="day"
                 role="gridcell"
                 tabindex="-1"
@@ -1182,7 +1182,7 @@ exports[`Calendar > renders range mode with continuous middle styling (snapshot)
             >
               <button
                 aria-selected="true"
-                class="rdp-button_reset rdp-button inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 h-9 w-9 p-0 font-normal text-foreground hover:bg-accent hover:text-accent-foreground aria-selected:opacity-100 bg-primary text-primary-foreground font-semibold hover:bg-primary hover:text-primary-foreground focus:bg-primary focus:text-primary-foreground rounded-md aria-selected:bg-primary/20 aria-selected:text-foreground aria-selected:rounded-none hover:aria-selected:bg-primary/30"
+                class="rdp-button_reset rdp-button inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 h-9 w-9 p-0 font-normal text-foreground/80 hover:bg-accent hover:text-accent-foreground aria-selected:opacity-100 bg-primary text-primary-foreground font-semibold hover:bg-primary hover:text-primary-foreground focus:bg-primary focus:text-primary-foreground rounded-md aria-selected:bg-primary/20 aria-selected:text-foreground aria-selected:rounded-none hover:aria-selected:bg-primary/30"
                 name="day"
                 role="gridcell"
                 tabindex="-1"
@@ -1197,7 +1197,7 @@ exports[`Calendar > renders range mode with continuous middle styling (snapshot)
             >
               <button
                 aria-selected="true"
-                class="rdp-button_reset rdp-button inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 h-9 w-9 p-0 font-normal text-foreground hover:bg-accent hover:text-accent-foreground aria-selected:opacity-100 bg-primary text-primary-foreground font-semibold hover:bg-primary hover:text-primary-foreground focus:bg-primary focus:text-primary-foreground rounded-md aria-selected:bg-primary/20 aria-selected:text-foreground aria-selected:rounded-none hover:aria-selected:bg-primary/30"
+                class="rdp-button_reset rdp-button inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 h-9 w-9 p-0 font-normal text-foreground/80 hover:bg-accent hover:text-accent-foreground aria-selected:opacity-100 bg-primary text-primary-foreground font-semibold hover:bg-primary hover:text-primary-foreground focus:bg-primary focus:text-primary-foreground rounded-md aria-selected:bg-primary/20 aria-selected:text-foreground aria-selected:rounded-none hover:aria-selected:bg-primary/30"
                 name="day"
                 role="gridcell"
                 tabindex="-1"
@@ -1216,7 +1216,7 @@ exports[`Calendar > renders range mode with continuous middle styling (snapshot)
             >
               <button
                 aria-selected="true"
-                class="rdp-button_reset rdp-button inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 h-9 w-9 p-0 font-normal text-foreground hover:bg-accent hover:text-accent-foreground aria-selected:opacity-100 bg-primary text-primary-foreground font-semibold hover:bg-primary hover:text-primary-foreground focus:bg-primary focus:text-primary-foreground rounded-md aria-selected:bg-primary/20 aria-selected:text-foreground aria-selected:rounded-none hover:aria-selected:bg-primary/30"
+                class="rdp-button_reset rdp-button inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 h-9 w-9 p-0 font-normal text-foreground/80 hover:bg-accent hover:text-accent-foreground aria-selected:opacity-100 bg-primary text-primary-foreground font-semibold hover:bg-primary hover:text-primary-foreground focus:bg-primary focus:text-primary-foreground rounded-md aria-selected:bg-primary/20 aria-selected:text-foreground aria-selected:rounded-none hover:aria-selected:bg-primary/30"
                 name="day"
                 role="gridcell"
                 tabindex="-1"
@@ -1231,7 +1231,7 @@ exports[`Calendar > renders range mode with continuous middle styling (snapshot)
             >
               <button
                 aria-selected="true"
-                class="rdp-button_reset rdp-button inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 h-9 w-9 p-0 font-normal text-foreground hover:bg-accent hover:text-accent-foreground aria-selected:opacity-100 bg-primary text-primary-foreground font-semibold hover:bg-primary hover:text-primary-foreground focus:bg-primary focus:text-primary-foreground rounded-md aria-selected:bg-primary/20 aria-selected:text-foreground aria-selected:rounded-none hover:aria-selected:bg-primary/30"
+                class="rdp-button_reset rdp-button inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 h-9 w-9 p-0 font-normal text-foreground/80 hover:bg-accent hover:text-accent-foreground aria-selected:opacity-100 bg-primary text-primary-foreground font-semibold hover:bg-primary hover:text-primary-foreground focus:bg-primary focus:text-primary-foreground rounded-md aria-selected:bg-primary/20 aria-selected:text-foreground aria-selected:rounded-none hover:aria-selected:bg-primary/30"
                 name="day"
                 role="gridcell"
                 tabindex="-1"
@@ -1246,7 +1246,7 @@ exports[`Calendar > renders range mode with continuous middle styling (snapshot)
             >
               <button
                 aria-selected="true"
-                class="rdp-button_reset rdp-button inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 h-9 w-9 p-0 font-normal text-foreground hover:bg-accent hover:text-accent-foreground aria-selected:opacity-100 bg-primary text-primary-foreground font-semibold hover:bg-primary hover:text-primary-foreground focus:bg-primary focus:text-primary-foreground rounded-md aria-selected:bg-primary/20 aria-selected:text-foreground aria-selected:rounded-none hover:aria-selected:bg-primary/30"
+                class="rdp-button_reset rdp-button inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 h-9 w-9 p-0 font-normal text-foreground/80 hover:bg-accent hover:text-accent-foreground aria-selected:opacity-100 bg-primary text-primary-foreground font-semibold hover:bg-primary hover:text-primary-foreground focus:bg-primary focus:text-primary-foreground rounded-md aria-selected:bg-primary/20 aria-selected:text-foreground aria-selected:rounded-none hover:aria-selected:bg-primary/30"
                 name="day"
                 role="gridcell"
                 tabindex="-1"
@@ -1261,7 +1261,7 @@ exports[`Calendar > renders range mode with continuous middle styling (snapshot)
             >
               <button
                 aria-selected="true"
-                class="rdp-button_reset rdp-button inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 h-9 w-9 p-0 font-normal text-foreground hover:bg-accent hover:text-accent-foreground aria-selected:opacity-100 bg-primary text-primary-foreground font-semibold hover:bg-primary hover:text-primary-foreground focus:bg-primary focus:text-primary-foreground rounded-md day-range-end"
+                class="rdp-button_reset rdp-button inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 h-9 w-9 p-0 font-normal text-foreground/80 hover:bg-accent hover:text-accent-foreground aria-selected:opacity-100 bg-primary text-primary-foreground font-semibold hover:bg-primary hover:text-primary-foreground focus:bg-primary focus:text-primary-foreground rounded-md day-range-end"
                 name="day"
                 role="gridcell"
                 tabindex="-1"
@@ -1275,7 +1275,7 @@ exports[`Calendar > renders range mode with continuous middle styling (snapshot)
               role="presentation"
             >
               <button
-                class="rdp-button_reset rdp-button inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 h-9 w-9 p-0 font-normal text-foreground hover:bg-accent hover:text-accent-foreground aria-selected:opacity-100"
+                class="rdp-button_reset rdp-button inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 h-9 w-9 p-0 font-normal text-foreground/80 hover:bg-accent hover:text-accent-foreground aria-selected:opacity-100"
                 name="day"
                 role="gridcell"
                 tabindex="-1"
@@ -1289,7 +1289,7 @@ exports[`Calendar > renders range mode with continuous middle styling (snapshot)
               role="presentation"
             >
               <button
-                class="rdp-button_reset rdp-button inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 h-9 w-9 p-0 font-normal text-foreground hover:bg-accent hover:text-accent-foreground aria-selected:opacity-100"
+                class="rdp-button_reset rdp-button inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 h-9 w-9 p-0 font-normal text-foreground/80 hover:bg-accent hover:text-accent-foreground aria-selected:opacity-100"
                 name="day"
                 role="gridcell"
                 tabindex="-1"
@@ -1303,7 +1303,7 @@ exports[`Calendar > renders range mode with continuous middle styling (snapshot)
               role="presentation"
             >
               <button
-                class="rdp-button_reset rdp-button inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 h-9 w-9 p-0 font-normal text-foreground hover:bg-accent hover:text-accent-foreground aria-selected:opacity-100"
+                class="rdp-button_reset rdp-button inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 h-9 w-9 p-0 font-normal text-foreground/80 hover:bg-accent hover:text-accent-foreground aria-selected:opacity-100"
                 name="day"
                 role="gridcell"
                 tabindex="-1"
@@ -1321,7 +1321,7 @@ exports[`Calendar > renders range mode with continuous middle styling (snapshot)
               role="presentation"
             >
               <button
-                class="rdp-button_reset rdp-button inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 h-9 w-9 p-0 font-normal text-foreground hover:bg-accent hover:text-accent-foreground aria-selected:opacity-100"
+                class="rdp-button_reset rdp-button inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 h-9 w-9 p-0 font-normal text-foreground/80 hover:bg-accent hover:text-accent-foreground aria-selected:opacity-100"
                 name="day"
                 role="gridcell"
                 tabindex="-1"
@@ -1335,7 +1335,7 @@ exports[`Calendar > renders range mode with continuous middle styling (snapshot)
               role="presentation"
             >
               <button
-                class="rdp-button_reset rdp-button inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 h-9 w-9 p-0 font-normal text-foreground hover:bg-accent hover:text-accent-foreground aria-selected:opacity-100"
+                class="rdp-button_reset rdp-button inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 h-9 w-9 p-0 font-normal text-foreground/80 hover:bg-accent hover:text-accent-foreground aria-selected:opacity-100"
                 name="day"
                 role="gridcell"
                 tabindex="-1"
@@ -1349,7 +1349,7 @@ exports[`Calendar > renders range mode with continuous middle styling (snapshot)
               role="presentation"
             >
               <button
-                class="rdp-button_reset rdp-button inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 h-9 w-9 p-0 font-normal text-foreground hover:bg-accent hover:text-accent-foreground aria-selected:opacity-100"
+                class="rdp-button_reset rdp-button inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 h-9 w-9 p-0 font-normal text-foreground/80 hover:bg-accent hover:text-accent-foreground aria-selected:opacity-100"
                 name="day"
                 role="gridcell"
                 tabindex="-1"
@@ -1363,7 +1363,7 @@ exports[`Calendar > renders range mode with continuous middle styling (snapshot)
               role="presentation"
             >
               <button
-                class="rdp-button_reset rdp-button inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 h-9 w-9 p-0 font-normal text-foreground hover:bg-accent hover:text-accent-foreground aria-selected:opacity-100"
+                class="rdp-button_reset rdp-button inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 h-9 w-9 p-0 font-normal text-foreground/80 hover:bg-accent hover:text-accent-foreground aria-selected:opacity-100"
                 name="day"
                 role="gridcell"
                 tabindex="-1"
@@ -1377,7 +1377,7 @@ exports[`Calendar > renders range mode with continuous middle styling (snapshot)
               role="presentation"
             >
               <button
-                class="rdp-button_reset rdp-button inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 h-9 w-9 p-0 font-normal text-foreground hover:bg-accent hover:text-accent-foreground aria-selected:opacity-100"
+                class="rdp-button_reset rdp-button inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 h-9 w-9 p-0 font-normal text-foreground/80 hover:bg-accent hover:text-accent-foreground aria-selected:opacity-100"
                 name="day"
                 role="gridcell"
                 tabindex="-1"
@@ -1391,7 +1391,7 @@ exports[`Calendar > renders range mode with continuous middle styling (snapshot)
               role="presentation"
             >
               <button
-                class="rdp-button_reset rdp-button inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 h-9 w-9 p-0 font-normal text-foreground hover:bg-accent hover:text-accent-foreground aria-selected:opacity-100"
+                class="rdp-button_reset rdp-button inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 h-9 w-9 p-0 font-normal text-foreground/80 hover:bg-accent hover:text-accent-foreground aria-selected:opacity-100"
                 name="day"
                 role="gridcell"
                 tabindex="-1"
@@ -1405,7 +1405,7 @@ exports[`Calendar > renders range mode with continuous middle styling (snapshot)
               role="presentation"
             >
               <button
-                class="rdp-button_reset rdp-button inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 h-9 w-9 p-0 font-normal text-foreground hover:bg-accent hover:text-accent-foreground aria-selected:opacity-100"
+                class="rdp-button_reset rdp-button inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 h-9 w-9 p-0 font-normal text-foreground/80 hover:bg-accent hover:text-accent-foreground aria-selected:opacity-100"
                 name="day"
                 role="gridcell"
                 tabindex="-1"
@@ -1423,7 +1423,7 @@ exports[`Calendar > renders range mode with continuous middle styling (snapshot)
               role="presentation"
             >
               <button
-                class="rdp-button_reset rdp-button inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 h-9 w-9 p-0 font-normal text-foreground hover:bg-accent hover:text-accent-foreground aria-selected:opacity-100"
+                class="rdp-button_reset rdp-button inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 h-9 w-9 p-0 font-normal text-foreground/80 hover:bg-accent hover:text-accent-foreground aria-selected:opacity-100"
                 name="day"
                 role="gridcell"
                 tabindex="-1"
@@ -1437,7 +1437,7 @@ exports[`Calendar > renders range mode with continuous middle styling (snapshot)
               role="presentation"
             >
               <button
-                class="rdp-button_reset rdp-button inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 h-9 w-9 p-0 font-normal text-foreground hover:bg-accent hover:text-accent-foreground aria-selected:opacity-100 day-outside text-muted-foreground/70 opacity-60 aria-selected:bg-accent/30 aria-selected:text-muted-foreground aria-selected:opacity-40"
+                class="rdp-button_reset rdp-button inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 h-9 w-9 p-0 font-normal text-foreground/80 hover:bg-accent hover:text-accent-foreground aria-selected:opacity-100 day-outside text-muted-foreground/70 opacity-60 aria-selected:bg-accent/30 aria-selected:text-muted-foreground aria-selected:opacity-40"
                 name="day"
                 role="gridcell"
                 tabindex="-1"
@@ -1451,7 +1451,7 @@ exports[`Calendar > renders range mode with continuous middle styling (snapshot)
               role="presentation"
             >
               <button
-                class="rdp-button_reset rdp-button inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 h-9 w-9 p-0 font-normal text-foreground hover:bg-accent hover:text-accent-foreground aria-selected:opacity-100 day-outside text-muted-foreground/70 opacity-60 aria-selected:bg-accent/30 aria-selected:text-muted-foreground aria-selected:opacity-40"
+                class="rdp-button_reset rdp-button inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 h-9 w-9 p-0 font-normal text-foreground/80 hover:bg-accent hover:text-accent-foreground aria-selected:opacity-100 day-outside text-muted-foreground/70 opacity-60 aria-selected:bg-accent/30 aria-selected:text-muted-foreground aria-selected:opacity-40"
                 name="day"
                 role="gridcell"
                 tabindex="-1"
@@ -1465,7 +1465,7 @@ exports[`Calendar > renders range mode with continuous middle styling (snapshot)
               role="presentation"
             >
               <button
-                class="rdp-button_reset rdp-button inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 h-9 w-9 p-0 font-normal text-foreground hover:bg-accent hover:text-accent-foreground aria-selected:opacity-100 day-outside text-muted-foreground/70 opacity-60 aria-selected:bg-accent/30 aria-selected:text-muted-foreground aria-selected:opacity-40"
+                class="rdp-button_reset rdp-button inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 h-9 w-9 p-0 font-normal text-foreground/80 hover:bg-accent hover:text-accent-foreground aria-selected:opacity-100 day-outside text-muted-foreground/70 opacity-60 aria-selected:bg-accent/30 aria-selected:text-muted-foreground aria-selected:opacity-40"
                 name="day"
                 role="gridcell"
                 tabindex="-1"
@@ -1479,7 +1479,7 @@ exports[`Calendar > renders range mode with continuous middle styling (snapshot)
               role="presentation"
             >
               <button
-                class="rdp-button_reset rdp-button inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 h-9 w-9 p-0 font-normal text-foreground hover:bg-accent hover:text-accent-foreground aria-selected:opacity-100 day-outside text-muted-foreground/70 opacity-60 aria-selected:bg-accent/30 aria-selected:text-muted-foreground aria-selected:opacity-40"
+                class="rdp-button_reset rdp-button inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 h-9 w-9 p-0 font-normal text-foreground/80 hover:bg-accent hover:text-accent-foreground aria-selected:opacity-100 day-outside text-muted-foreground/70 opacity-60 aria-selected:bg-accent/30 aria-selected:text-muted-foreground aria-selected:opacity-40"
                 name="day"
                 role="gridcell"
                 tabindex="-1"
@@ -1493,7 +1493,7 @@ exports[`Calendar > renders range mode with continuous middle styling (snapshot)
               role="presentation"
             >
               <button
-                class="rdp-button_reset rdp-button inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 h-9 w-9 p-0 font-normal text-foreground hover:bg-accent hover:text-accent-foreground aria-selected:opacity-100 day-outside text-muted-foreground/70 opacity-60 aria-selected:bg-accent/30 aria-selected:text-muted-foreground aria-selected:opacity-40"
+                class="rdp-button_reset rdp-button inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 h-9 w-9 p-0 font-normal text-foreground/80 hover:bg-accent hover:text-accent-foreground aria-selected:opacity-100 day-outside text-muted-foreground/70 opacity-60 aria-selected:bg-accent/30 aria-selected:text-muted-foreground aria-selected:opacity-40"
                 name="day"
                 role="gridcell"
                 tabindex="-1"
@@ -1507,7 +1507,7 @@ exports[`Calendar > renders range mode with continuous middle styling (snapshot)
               role="presentation"
             >
               <button
-                class="rdp-button_reset rdp-button inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 h-9 w-9 p-0 font-normal text-foreground hover:bg-accent hover:text-accent-foreground aria-selected:opacity-100 day-outside text-muted-foreground/70 opacity-60 aria-selected:bg-accent/30 aria-selected:text-muted-foreground aria-selected:opacity-40"
+                class="rdp-button_reset rdp-button inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 h-9 w-9 p-0 font-normal text-foreground/80 hover:bg-accent hover:text-accent-foreground aria-selected:opacity-100 day-outside text-muted-foreground/70 opacity-60 aria-selected:bg-accent/30 aria-selected:text-muted-foreground aria-selected:opacity-40"
                 name="day"
                 role="gridcell"
                 tabindex="-1"
