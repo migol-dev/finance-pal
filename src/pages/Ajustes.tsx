@@ -1,5 +1,5 @@
 import { useRef, useState } from "react";
-import { useFinance, Currency } from "@/store/finance-store";
+import { useFinance, Currency, ExportScopes, ALL_SCOPES } from "@/store/finance-store";
 import { fmt, monthlyAmount, TYPE_LABEL, FREQ_LABEL, ItemType, Frequency, Priority, iconFor, IconRef, FixedItem, CATEGORY_EMOJI, PaymentMethod, PAYMENT_METHOD_LABEL, PAYMENT_METHOD_EMOJI } from "@/lib/finance";
 import { Header } from "@/components/app/Header";
 import { Plus, Trash2, Power, Smartphone, Database, RotateCcw, Pencil, Download, Upload, Sun, Moon, Target, History, HandCoins, User } from "lucide-react";
@@ -7,6 +7,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
 import { motion } from "framer-motion";
@@ -21,13 +22,18 @@ export default function Ajustes() {
   const [tab, setTab] = useState<"all" | ItemType>("all");
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [profileOpen, setProfileOpen] = useState(false);
+  const [exportOpen, setExportOpen] = useState(false);
+  const [importOpen, setImportOpen] = useState(false);
+  const [pendingFile, setPendingFile] = useState<File | null>(null);
+  const [pendingPayload, setPendingPayload] = useState<string | null>(null);
+  const [pendingAvailable, setPendingAvailable] = useState<Required<ExportScopes>>(ALL_SCOPES);
 
   const filtered = fixedItems.filter((i) => tab === "all" || i.type === tab);
   const openNew = () => { setEditing(null); setOpen(true); };
   const openEdit = (i: FixedItem) => { setEditing(i); setOpen(true); };
 
-  const handleExport = () => {
-    const json = exportData();
+  const doExport = (scopes: ExportScopes) => {
+    const json = exportData(scopes);
     const filename = `finance-pal-${new Date().toISOString().slice(0, 10)}.json`;
     const blob = new Blob([json], { type: "application/json" });
     // Try modern File System Access API to let the user pick the folder
@@ -59,19 +65,43 @@ export default function Ajustes() {
     toast.success("Datos exportados (revisa Descargas)");
   };
   const handleImportFile = async (file: File) => {
-    if (!confirm("Esto reemplazará todos tus datos actuales. ¿Continuar?")) return;
     try {
       if (file.size > 20 * 1024 * 1024) { toast.error("El archivo es demasiado grande (máx 20 MB)"); return; }
       const text = await file.text();
-      const r = importData(text);
-      if (r.ok) {
-        toast.success("Datos importados");
-        r.warnings?.forEach((w) => toast(w));
-      } else {
-        toast.error(r.error ?? "No se pudo importar");
-      }
+      // Detect which sections the file contains so the user can pick
+      let parsed: any;
+      try { parsed = JSON.parse(text); } catch { toast.error("JSON inválido"); return; }
+      const data = parsed?.data ?? parsed ?? {};
+      const available: Required<ExportScopes> = {
+        fixedItems: Array.isArray(data.fixedItems) && data.fixedItems.length >= 0,
+        transactions: Array.isArray(data.transactions) && data.transactions.length >= 0,
+        goals: Array.isArray(data.goals) && data.goals.length >= 0,
+        debts: Array.isArray(data.debts) && data.debts.length >= 0,
+        changeLog: Array.isArray(data.changeLog),
+        theme: data.theme === "dark" || data.theme === "light",
+        profile: !!data.profile,
+      };
+      setPendingFile(file);
+      setPendingPayload(text);
+      setPendingAvailable(available);
+      setImportOpen(true);
     } catch (e: any) {
       toast.error(e?.message ?? "No se pudo leer el archivo");
+    }
+  };
+
+  const doImport = (scopes: ExportScopes) => {
+    if (!pendingPayload) return;
+    if (!confirm("Esto reemplazará las secciones seleccionadas. ¿Continuar?")) return;
+    const r = importData(pendingPayload, scopes);
+    if (r.ok) {
+      toast.success("Datos importados");
+      r.warnings?.forEach((w) => toast(w));
+      setImportOpen(false);
+      setPendingFile(null);
+      setPendingPayload(null);
+    } else {
+      toast.error(r.error ?? "No se pudo importar");
     }
   };
 
@@ -188,10 +218,36 @@ export default function Ajustes() {
 
         <h2 className="text-xs uppercase tracking-wider font-bold text-muted-foreground pt-2">Datos</h2>
         <div className="grid grid-cols-2 gap-2">
-          <Button onClick={handleExport} variant="secondary" className="rounded-2xl h-12 font-semibold"><Download className="size-4 mr-1" />Exportar</Button>
+          <Button onClick={() => setExportOpen(true)} variant="secondary" className="rounded-2xl h-12 font-semibold"><Download className="size-4 mr-1" />Exportar</Button>
           <Button onClick={() => fileInputRef.current?.click()} variant="secondary" className="rounded-2xl h-12 font-semibold"><Upload className="size-4 mr-1" />Importar</Button>
           <input ref={fileInputRef} type="file" accept="application/json,.json" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; if (f) handleImportFile(f); e.target.value = ""; }} />
         </div>
+
+        <Dialog open={exportOpen} onOpenChange={setExportOpen}>
+          <DialogContent className="rounded-3xl">
+            <DialogHeader><DialogTitle>¿Qué quieres exportar?</DialogTitle></DialogHeader>
+            <ScopePicker
+              available={ALL_SCOPES}
+              onConfirm={(sc) => { doExport(sc); setExportOpen(false); }}
+              confirmLabel="Exportar"
+              confirmIcon={<Download className="size-4 mr-1" />}
+            />
+          </DialogContent>
+        </Dialog>
+
+        <Dialog open={importOpen} onOpenChange={(v) => { setImportOpen(v); if (!v) { setPendingFile(null); setPendingPayload(null); } }}>
+          <DialogContent className="rounded-3xl">
+            <DialogHeader><DialogTitle>¿Qué quieres importar?</DialogTitle></DialogHeader>
+            {pendingFile && <p className="text-xs text-muted-foreground -mt-1">Archivo: <span className="font-semibold text-foreground">{pendingFile.name}</span></p>}
+            <ScopePicker
+              available={pendingAvailable}
+              onConfirm={doImport}
+              confirmLabel="Importar"
+              confirmIcon={<Upload className="size-4 mr-1" />}
+              destructive
+            />
+          </DialogContent>
+        </Dialog>
 
         <h2 className="text-xs uppercase tracking-wider font-bold text-muted-foreground">Aplicación</h2>
         <InfoRow icon={<Smartphone className="size-4" />} title="App nativa Android" desc="Configurada con Capacitor. Sigue las instrucciones para compilar." />
