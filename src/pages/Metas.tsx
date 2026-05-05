@@ -1,6 +1,6 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useFinance } from "@/store/finance-store";
-import { fmt, iconFor, IconRef, Goal } from "@/lib/finance";
+import { fmt, fmt2, iconFor, IconRef, Goal } from "@/lib/finance";
 import { Header } from "@/components/app/Header";
 import { Plus, Trash2, Pencil, Minus } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -11,8 +11,28 @@ import { motion } from "framer-motion";
 import { toast } from "sonner";
 import { IconPicker } from "@/components/app/IconPicker";
 import { IconDisplay } from "@/components/app/IconDisplay";
+import { Area, AreaChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis, ReferenceLine } from "recharts";
 
 const PALETTES = ["gradient-sunset", "gradient-ocean", "gradient-secondary", "gradient-success", "gradient-primary"];
+
+/** Compute how much to set aside per day/week/month to reach the goal on time. */
+function paceFor(goal: Goal) {
+  if (!goal.deadline) return null;
+  const remaining = Math.max(0, goal.target - goal.saved);
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const dl = new Date(`${goal.deadline}T12:00:00`);
+  const days = Math.max(1, Math.ceil((dl.getTime() - today.getTime()) / 86400000));
+  if (remaining <= 0) return { remaining: 0, days, perDay: 0, perWeek: 0, perMonth: 0, overdue: dl < today };
+  return {
+    remaining,
+    days,
+    perDay: remaining / days,
+    perWeek: remaining / (days / 7),
+    perMonth: remaining / (days / 30),
+    overdue: dl < today,
+  };
+}
 
 export default function Metas() {
   const { goals, addGoal, updateGoal, removeGoal, contributeGoal } = useFinance();
@@ -83,11 +103,91 @@ export default function Metas() {
                   <ContribCustom onAdd={(v) => contributeGoal(g.id, v)} />
                   <ContribCustom negative onAdd={(v) => contributeGoal(g.id, -v)} />
                 </div>
+                <GoalInsights goal={g} />
               </div>
             </motion.div>
           );
         })}
       </div>
+    </div>
+  );
+}
+
+function GoalInsights({ goal }: { goal: Goal }) {
+  const pace = paceFor(goal);
+  const data = useMemo(() => {
+    if (!goal.deadline) return [] as { label: string; ideal: number; actual: number }[];
+    const start = new Date();
+    start.setHours(0, 0, 0, 0);
+    const dl = new Date(`${goal.deadline}T12:00:00`);
+    const totalDays = Math.max(1, Math.ceil((dl.getTime() - start.getTime()) / 86400000));
+    const steps = 8;
+    const arr: { label: string; ideal: number; actual: number }[] = [];
+    for (let i = 0; i <= steps; i++) {
+      const t = i / steps;
+      const date = new Date(start.getTime() + totalDays * t * 86400000);
+      const ideal = goal.saved + (goal.target - goal.saved) * t;
+      arr.push({
+        label: date.toLocaleDateString("es-MX", { day: "2-digit", month: "short" }),
+        ideal: Math.round(ideal),
+        actual: i === 0 ? goal.saved : NaN,
+      });
+    }
+    return arr;
+  }, [goal]);
+
+  if (!pace) return null;
+
+  return (
+    <div className="mt-4 rounded-2xl bg-white/15 backdrop-blur-sm p-3 space-y-3">
+      {pace.remaining <= 0 ? (
+        <p className="text-xs font-bold text-center">🎉 ¡Meta cumplida!</p>
+      ) : (
+        <>
+          <div className="grid grid-cols-3 gap-2 text-center">
+            <PaceBox label="Por día" value={fmt2(pace.perDay)} />
+            <PaceBox label="Por semana" value={fmt2(pace.perWeek)} />
+            <PaceBox label="Por mes" value={fmt2(pace.perMonth)} />
+          </div>
+          <p className="text-[10px] text-center opacity-80">
+            {pace.overdue ? "⚠️ Fecha vencida — " : ""}
+            Faltan {fmt(pace.remaining)} en {pace.days} día{pace.days === 1 ? "" : "s"}
+          </p>
+        </>
+      )}
+      {data.length > 0 && (
+        <div className="h-32 -mx-1">
+          <ResponsiveContainer width="100%" height="100%">
+            <AreaChart data={data} margin={{ top: 4, right: 6, left: 0, bottom: 0 }}>
+              <defs>
+                <linearGradient id={`g-${goal.id}`} x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stopColor="#fff" stopOpacity={0.55} />
+                  <stop offset="100%" stopColor="#fff" stopOpacity={0} />
+                </linearGradient>
+              </defs>
+              <CartesianGrid stroke="#ffffff22" vertical={false} />
+              <XAxis dataKey="label" tick={{ fill: "#ffffffcc", fontSize: 9 }} axisLine={false} tickLine={false} />
+              <YAxis hide domain={[0, goal.target]} />
+              <Tooltip
+                contentStyle={{ background: "rgba(0,0,0,0.6)", border: "none", borderRadius: 12, color: "#fff", fontSize: 11 }}
+                formatter={(v: number) => fmt(v)}
+              />
+              <ReferenceLine y={goal.target} stroke="#ffffff88" strokeDasharray="3 3" />
+              <Area type="monotone" dataKey="ideal" name="Plan ideal" stroke="#fff" strokeWidth={2} fill={`url(#g-${goal.id})`} />
+              <Area type="monotone" dataKey="actual" name="Actual" stroke="#fff" strokeDasharray="4 4" fillOpacity={0} />
+            </AreaChart>
+          </ResponsiveContainer>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function PaceBox({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-xl bg-white/20 px-2 py-1.5">
+      <p className="text-[9px] uppercase tracking-wide opacity-80">{label}</p>
+      <p className="text-xs font-extrabold leading-tight">{value}</p>
     </div>
   );
 }
