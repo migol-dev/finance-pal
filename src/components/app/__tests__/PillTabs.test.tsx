@@ -15,8 +15,8 @@ describe("PillTabs", () => {
     render(<PillTabs tabs={tabs} value="calendario" onChange={() => {}} />);
     const active = screen.getByRole("tab", { name: "calendario" });
     expect(active).toHaveAttribute("aria-selected", "true");
-    expect(active.className).toContain("bg-white");
-    expect(active.className).toContain("text-primary-foreground");
+    expect(active.className).toContain("bg-background");
+    expect(active.className).toContain("text-foreground");
   });
 
   it("calls onChange when a tab is clicked", () => {
