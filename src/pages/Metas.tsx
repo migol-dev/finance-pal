@@ -191,7 +191,7 @@ function GoalCard({ goal, index, onEdit, onDelete, onContribute }: {
         <div className="mt-4 flex gap-1 rounded-2xl bg-white/15 p-1 text-[11px] font-bold">
           {(["resumen", "calendario", "simular"] as const).map((t) => (
             <button key={t} onClick={() => setTab(t)}
-              className={cn("flex-1 py-1.5 rounded-xl transition capitalize", tab === t ? "bg-white text-foreground" : "text-primary-foreground/90")}>{t}</button>
+               className={cn("flex-1 py-1.5 rounded-xl transition capitalize", tab === t ? "bg-white text-primary-foreground" : "text-primary-foreground/90")}>{t}</button>
           ))}
         </div>
 
