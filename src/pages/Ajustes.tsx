@@ -270,6 +270,71 @@ function InfoRow({ icon, title, desc }: { icon: React.ReactNode; title: string; 
   );
 }
 
+const SCOPE_LABELS: { key: keyof Required<ExportScopes>; label: string; desc: string }[] = [
+  { key: "fixedItems", label: "Conceptos fijos", desc: "Ingresos, gastos, ahorros recurrentes" },
+  { key: "transactions", label: "Movimientos", desc: "Todos los registros del día a día" },
+  { key: "goals", label: "Metas", desc: "Incluye aportes, link y fecha" },
+  { key: "debts", label: "Deudas", desc: "Personas, montos y abonos" },
+  { key: "changeLog", label: "Historial", desc: "Bitácora de ediciones" },
+  { key: "profile", label: "Perfil", desc: "Nombre, foto, moneda" },
+  { key: "theme", label: "Apariencia", desc: "Tema claro u oscuro" },
+];
+
+function ScopePicker({
+  available, onConfirm, confirmLabel, confirmIcon, destructive,
+}: {
+  available: Required<ExportScopes>;
+  onConfirm: (scopes: ExportScopes) => void;
+  confirmLabel: string;
+  confirmIcon?: React.ReactNode;
+  destructive?: boolean;
+}) {
+  const [scopes, setScopes] = useState<Required<ExportScopes>>(() => ({ ...available }));
+  const allOn = Object.values(scopes).every(Boolean);
+  const toggle = (k: keyof ExportScopes) => setScopes((s) => ({ ...s, [k]: !s[k] }));
+  const setAll = (v: boolean) => setScopes((s) => {
+    const next = { ...s };
+    SCOPE_LABELS.forEach(({ key }) => { if (available[key]) next[key] = v; });
+    return next;
+  });
+  const someSelected = Object.entries(scopes).some(([k, v]) => v && (available as any)[k]);
+
+  return (
+    <div className="space-y-3">
+      <div className="flex justify-end">
+        <button type="button" onClick={() => setAll(!allOn)} className="text-[11px] font-bold text-primary">
+          {allOn ? "Quitar todo" : "Seleccionar todo"}
+        </button>
+      </div>
+      <div className="space-y-1.5 max-h-[50vh] overflow-y-auto pr-1">
+        {SCOPE_LABELS.map(({ key, label, desc }) => {
+          const enabled = available[key];
+          const checked = !!scopes[key] && enabled;
+          return (
+            <label key={key}
+              className={`flex items-start gap-3 rounded-2xl border p-3 transition cursor-pointer ${
+                checked ? "border-primary bg-primary/5" : "border-border bg-card"
+              } ${!enabled ? "opacity-40 cursor-not-allowed" : "hover:bg-muted/40"}`}>
+              <Checkbox checked={checked} disabled={!enabled} onCheckedChange={() => enabled && toggle(key)} className="mt-0.5" />
+              <div className="flex-1 min-w-0">
+                <p className="font-semibold text-sm">{label}</p>
+                <p className="text-[11px] text-muted-foreground">{enabled ? desc : "No disponible en este archivo"}</p>
+              </div>
+            </label>
+          );
+        })}
+      </div>
+      <Button
+        type="button"
+        disabled={!someSelected}
+        onClick={() => onConfirm(scopes)}
+        className={`w-full h-12 rounded-2xl font-bold border-0 shadow-glow ${destructive ? "bg-destructive text-destructive-foreground hover:bg-destructive/90" : "gradient-primary text-primary-foreground"}`}>
+        {confirmIcon}{confirmLabel}
+      </Button>
+    </div>
+  );
+}
+
 function ProfileForm({ onSave }: { onSave: (p: { name: string; email?: string; currency: Currency; avatar?: IconRef }) => void }) {
   const profile = useFinance((s) => s.profile);
   const [name, setName] = useState(profile.name);
