@@ -8,7 +8,7 @@ export const PILL_TABS_CONTAINER =
 export const PILL_TAB_BASE =
   "flex-1 py-1.5 rounded-xl transition capitalize select-none";
 
-export const PILL_TAB_ACTIVE = "bg-white text-primary-foreground shadow-sm";
+export const PILL_TAB_ACTIVE = "bg-background text-foreground shadow-sm";
 export const PILL_TAB_INACTIVE = "text-primary-foreground/90 hover:text-primary-foreground";
 
 export interface PillTabsProps<T extends string> {
