@@ -53,11 +53,27 @@ interface State {
   removeDebtPayment: (debtId: string, paymentId: string) => void;
 
   clearChangeLog: () => void;
-  exportData: () => string;
-  importData: (json: string) => { ok: boolean; error?: string; warnings?: string[] };
+  exportData: (scopes?: ExportScopes) => string;
+  importData: (json: string, scopes?: ExportScopes) => { ok: boolean; error?: string; warnings?: string[] };
 
   resetAll: () => void;
 }
+
+/** Selectable data sections for export/import. */
+export interface ExportScopes {
+  fixedItems?: boolean;
+  transactions?: boolean;
+  goals?: boolean;
+  debts?: boolean;
+  changeLog?: boolean;
+  theme?: boolean;
+  profile?: boolean;
+}
+
+export const ALL_SCOPES: Required<ExportScopes> = {
+  fixedItems: true, transactions: true, goals: true, debts: true,
+  changeLog: true, theme: true, profile: true,
+};
 
 const id = () => Math.random().toString(36).slice(2, 10);
 const now = new Date();
@@ -322,26 +338,28 @@ export const useFinance = create<State>()(
 
       clearChangeLog: () => set({ changeLog: [] }),
 
-      exportData: () => {
+      exportData: (scopes) => {
         const s = get();
+        const sc = { ...ALL_SCOPES, ...(scopes ?? {}) };
+        const data: Record<string, unknown> = {};
+        if (sc.fixedItems) data.fixedItems = s.fixedItems;
+        if (sc.transactions) data.transactions = s.transactions;
+        if (sc.goals) data.goals = s.goals;
+        if (sc.debts) data.debts = s.debts;
+        if (sc.changeLog) data.changeLog = s.changeLog;
+        if (sc.theme) data.theme = s.theme;
+        if (sc.profile) data.profile = s.profile;
         const payload = {
           app: "finance-pal",
           version: SCHEMA_VERSION,
           exportedAt: new Date().toISOString(),
-          data: {
-            fixedItems: s.fixedItems,
-            transactions: s.transactions,
-            goals: s.goals,
-            debts: s.debts,
-            changeLog: s.changeLog,
-            theme: s.theme,
-            profile: s.profile,
-          },
+          scopes: sc,
+          data,
         };
         return JSON.stringify(payload, null, 2);
       },
 
-      importData: (json) => {
+      importData: (json, scopes) => {
         try {
           const parsed = JSON.parse(json);
           if (!isObj(parsed) && !isObj(parsed?.data)) {
@@ -351,20 +369,30 @@ export const useFinance = create<State>()(
             return { ok: false, error: `Este archivo no pertenece a Finance Pal (app="${parsed.app}")` };
           }
           const { data, warnings } = migrateImported(parsed);
+          const sc = { ...ALL_SCOPES, ...(scopes ?? {}) };
+          const cur = get();
 
-          const fixedItems = (Array.isArray(data.fixedItems) ? data.fixedItems : [])
-            .map(sanitizeFixed).filter((x: FixedItem | null): x is FixedItem => !!x);
-          const transactions = (Array.isArray(data.transactions) ? data.transactions : [])
-            .map(sanitizeTx).filter((x: Transaction | null): x is Transaction => !!x);
-          const goals = (Array.isArray(data.goals) ? data.goals : [])
-            .map(sanitizeGoal).filter((x: Goal | null): x is Goal => !!x);
-          const debts = (Array.isArray(data.debts) ? data.debts : [])
-            .map(sanitizeDebt).filter((x: Debt | null): x is Debt => !!x);
-          const changeLog: ChangeLogEntry[] = Array.isArray(data.changeLog)
+          const fixedItems = sc.fixedItems && Array.isArray(data.fixedItems)
+            ? (data.fixedItems as any[]).map(sanitizeFixed).filter((x): x is FixedItem => !!x)
+            : cur.fixedItems;
+          const transactions = sc.transactions && Array.isArray(data.transactions)
+            ? (data.transactions as any[]).map(sanitizeTx).filter((x): x is Transaction => !!x)
+            : cur.transactions;
+          const goals = sc.goals && Array.isArray(data.goals)
+            ? (data.goals as any[]).map(sanitizeGoal).filter((x): x is Goal => !!x)
+            : cur.goals;
+          const debts = sc.debts && Array.isArray(data.debts)
+            ? (data.debts as any[]).map(sanitizeDebt).filter((x): x is Debt => !!x)
+            : cur.debts;
+          const changeLog: ChangeLogEntry[] = sc.changeLog && Array.isArray(data.changeLog)
             ? (data.changeLog as any[]).filter((e) => isObj(e) && isStr(e.id) && isStr(e.label)).slice(0, 500) as ChangeLogEntry[]
-            : [];
-          const theme: ThemeMode = data.theme === "dark" ? "dark" : "light";
-          const profile = sanitizeProfile(data.profile);
+            : cur.changeLog;
+          const theme: ThemeMode = sc.theme && (data.theme === "dark" || data.theme === "light")
+            ? (data.theme as ThemeMode)
+            : cur.theme;
+          const profile = sc.profile && data.profile != null
+            ? sanitizeProfile(data.profile)
+            : cur.profile;
 
           set({ fixedItems, transactions, goals, debts, changeLog, theme, profile });
           return { ok: true, warnings };
