@@ -44,7 +44,7 @@ interface State {
   addGoal: (g: Omit<Goal, "id">) => void;
   updateGoal: (id: string, p: Partial<Goal>) => void;
   removeGoal: (id: string) => void;
-  contributeGoal: (id: string, amount: number) => void;
+  contributeGoal: (id: string, amount: number, date?: string) => void;
 
   addDebt: (d: Omit<Debt, "id" | "payments">) => void;
   updateDebt: (id: string, p: Partial<Debt>) => void;
@@ -137,6 +137,11 @@ function sanitizeTx(raw: any): Transaction | null {
 
 function sanitizeGoal(raw: any): Goal | null {
   if (!isObj(raw) || !isStr(raw.name) || !isNum(raw.target)) return null;
+  const contributions = Array.isArray(raw.contributions)
+    ? (raw.contributions as any[])
+      .filter((c) => isObj(c) && isNum(c.amount) && isStr(c.date))
+      .map((c) => ({ id: isStr(c.id) ? c.id : id(), date: c.date as string, amount: c.amount as number }))
+    : undefined;
   return {
     id: isStr(raw.id) ? raw.id : id(),
     name: raw.name,
@@ -146,6 +151,9 @@ function sanitizeGoal(raw: any): Goal | null {
     color: isStr(raw.color) ? raw.color : "gradient-primary",
     deadline: isStr(raw.deadline) ? raw.deadline : undefined,
     icon: sanitizeIcon(raw.icon),
+    purchaseUrl: isStr(raw.purchaseUrl) ? raw.purchaseUrl : undefined,
+    contributions,
+    createdAt: isStr(raw.createdAt) ? raw.createdAt : undefined,
   } as Goal;
 }
 
@@ -251,7 +259,14 @@ export const useFinance = create<State>()(
       }),
 
       addGoal: (g) => set((s) => {
-        const nv = { ...g, id: id() } as Goal;
+        const nv = {
+          ...g,
+          id: id(),
+          createdAt: g.createdAt ?? new Date().toISOString(),
+          contributions: g.contributions ?? (g.saved > 0
+            ? [{ id: id(), date: new Date().toISOString(), amount: g.saved }]
+            : []),
+        } as Goal;
         return { goals: [nv, ...s.goals], changeLog: [logEntry("goal", nv.id, "create", `Creó meta "${nv.name}"`), ...s.changeLog].slice(0, 500) };
       }),
       updateGoal: (idv, p) => set((s) => {
@@ -263,12 +278,18 @@ export const useFinance = create<State>()(
         const prev = s.goals.find((x) => x.id === idv);
         return { goals: s.goals.filter((x) => x.id !== idv), changeLog: [logEntry("goal", idv, "delete", `Eliminó meta "${prev?.name ?? ""}"`), ...s.changeLog].slice(0, 500) };
       }),
-      contributeGoal: (idv, amount) => set((s) => {
+      contributeGoal: (idv, amount, date) => set((s) => {
         const g = s.goals.find((x) => x.id === idv);
         const txId = id();
+        const when = date ?? new Date().toISOString();
+        const entry = { id: id(), date: when, amount };
         return {
-          goals: s.goals.map((x) => x.id === idv ? { ...x, saved: Math.max(0, x.saved + amount) } : x),
-          transactions: [{ id: txId, type: "saving" as const, category: "Meta", concept: g?.name ?? "Aporte", amount, date: new Date().toISOString() }, ...s.transactions],
+          goals: s.goals.map((x) => x.id === idv ? {
+            ...x,
+            saved: Math.max(0, x.saved + amount),
+            contributions: [...(x.contributions ?? []), entry],
+          } : x),
+          transactions: [{ id: txId, type: "saving" as const, category: "Meta", concept: g?.name ?? "Aporte", amount, date: when }, ...s.transactions],
           changeLog: [logEntry("goal", idv, "update", `${amount >= 0 ? "Aportó" : "Retiró"} ${Math.abs(amount)} a "${g?.name ?? ""}"`, [{ field: "saved", from: g?.saved, to: (g?.saved ?? 0) + amount }]), ...s.changeLog].slice(0, 500),
         };
       }),
