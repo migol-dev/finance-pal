@@ -85,16 +85,20 @@ export default function Deudas() {
               const allSettled = p.settled === p.count;
               return (
                 <button key={key} onClick={() => setPersonFilter(active ? null : key)}
-                  className={`shrink-0 rounded-2xl border p-3 min-w-[150px] text-left transition ${active ? "border-primary bg-primary/5 shadow-glow" : "border-border bg-card"}`}>
+                  className={`shrink-0 rounded-2xl border-2 p-3 min-w-[160px] text-left transition ${
+                    active
+                      ? "border-primary bg-primary text-primary-foreground shadow-glow"
+                      : "border-border bg-card text-foreground hover:border-primary/40"
+                  }`}>
                   <div className="flex items-center gap-1.5">
                     <p className="font-bold text-sm truncate flex-1">{p.person}</p>
-                    {allSettled && <CheckCircle2 className="size-3.5 text-success shrink-0" />}
+                    {allSettled && <CheckCircle2 className={`size-3.5 shrink-0 ${active ? "text-primary-foreground" : "text-success"}`} />}
                   </div>
-                  <p className="text-[10px] text-muted-foreground">{p.count} deuda{p.count !== 1 ? "s" : ""}</p>
+                  <p className={`text-[10px] ${active ? "text-primary-foreground/80" : "text-muted-foreground"}`}>{p.count} deuda{p.count !== 1 ? "s" : ""}</p>
                   <div className="mt-1.5 space-y-0.5">
-                    <div className="flex justify-between text-[11px]"><span className="text-muted-foreground">Pendiente</span><span className="font-bold">{fmt(p.pending)}</span></div>
-                    <div className="flex justify-between text-[10px]"><span className="text-muted-foreground">Prestado</span><span>{fmt(p.total)}</span></div>
-                    <div className="flex justify-between text-[10px]"><span className="text-muted-foreground">Abonos</span><span className="text-success">{fmt(p.paid)}</span></div>
+                    <div className="flex justify-between text-[11px]"><span className={active ? "text-primary-foreground/80" : "text-muted-foreground"}>Pendiente</span><span className="font-extrabold">{fmt(p.pending)}</span></div>
+                    <div className="flex justify-between text-[10px]"><span className={active ? "text-primary-foreground/80" : "text-muted-foreground"}>Prestado</span><span className="font-semibold">{fmt(p.total)}</span></div>
+                    <div className="flex justify-between text-[10px]"><span className={active ? "text-primary-foreground/80" : "text-muted-foreground"}>Abonos</span><span className={`font-semibold ${active ? "text-primary-foreground" : "text-success"}`}>{fmt(p.paid)}</span></div>
                   </div>
                 </button>
               );
@@ -115,7 +119,11 @@ export default function Deudas() {
             { k: "settled", label: "Saldadas" },
           ] as const).map((f) => (
             <button key={f.k} onClick={() => setFilter(f.k)}
-              className={`flex-1 h-9 rounded-full text-xs font-semibold transition ${filter === f.k ? "gradient-primary text-primary-foreground shadow-glow" : "bg-muted text-muted-foreground"}`}>
+              className={`flex-1 h-9 rounded-full text-xs font-bold transition ${
+                filter === f.k
+                  ? "gradient-primary text-primary-foreground shadow-glow"
+                  : "bg-card border border-border text-foreground hover:bg-muted"
+              }`}>
               {f.label}
             </button>
           ))}
@@ -181,13 +189,13 @@ export default function Deudas() {
           const pending = d.amount - paid;
           const settled = pending <= 0.0001;
           return (
-            <motion.div key={d.id} layout className={`rounded-3xl border p-4 shadow-soft transition ${settled ? "bg-success/5 border-success/30 opacity-90" : "bg-card border-border"}`}>
+            <motion.div key={d.id} layout className={`rounded-3xl border p-4 shadow-soft transition ${settled ? "bg-success/10 border-success/50" : "bg-card border-border"}`}>
               <div className="flex items-center gap-3">
                 <IconDisplay icon={iconFor({ icon: d.icon, category: "Otros" })} size="lg" />
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-1.5">
-                    <p className={`font-bold truncate ${settled ? "line-through text-muted-foreground" : ""}`}>{d.person}</p>
-                    {settled && <span className="shrink-0 text-[9px] uppercase font-bold bg-success text-white px-1.5 py-0.5 rounded-full flex items-center gap-0.5"><CheckCircle2 className="size-2.5" />Saldada</span>}
+                    <p className={`font-bold truncate ${settled ? "line-through text-muted-foreground" : "text-foreground"}`}>{d.person}</p>
+                    {settled && <span className="shrink-0 text-[9px] uppercase font-bold bg-success text-success-foreground px-2 py-0.5 rounded-full flex items-center gap-0.5"><CheckCircle2 className="size-2.5" />Saldada</span>}
                   </div>
                   <p className="text-xs text-muted-foreground truncate">{d.concept}</p>
                 </div>
