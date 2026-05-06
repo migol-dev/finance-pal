@@ -4,7 +4,7 @@ import { BottomNav } from "./BottomNav";
 import { useFinance } from "@/store/finance-store";
 import { SplashScreen } from "./SplashScreen";
 
-const SWIPE_ROUTES = ["/", "/movimientos", "/deudas", "/anual", "/ajustes"];
+const SWIPE_ROUTES = ["/", "/movimientos", "/deudas", "/metas", "/ajustes"];
 
 export function AppShell({ children }: { children: ReactNode }) {
   const setActive = useFinance((s) => s.setActive);
