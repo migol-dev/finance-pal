@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import { useFinance } from "@/store/finance-store";
 import { fmt, monthlyAmount, MONTHS, isFixedActiveInMonth, iconFor } from "@/lib/finance";
-import { Eye, EyeOff, TrendingUp, TrendingDown, PiggyBank, Plus, Bell } from "lucide-react";
+import { Eye, EyeOff, TrendingUp, TrendingDown, PiggyBank, Plus, Bell, BarChart3 } from "lucide-react";
 import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
 import appIcon from "@/assets/app-icon.png";
@@ -77,9 +77,14 @@ export default function Dashboard() {
             <p className="text-sm font-semibold">{MONTHS[activeMonth]} {activeYear}</p>
           </div>
         </div>
-        <button onClick={() => setHide((h) => !h)} className="size-10 rounded-2xl bg-muted flex items-center justify-center text-muted-foreground hover:text-foreground transition">
-          {hide ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
-        </button>
+        <div className="flex items-center gap-2">
+          <Link to="/anual" aria-label="Resumen anual" className="size-10 rounded-2xl bg-muted flex items-center justify-center text-muted-foreground hover:text-foreground transition">
+            <BarChart3 className="size-4" />
+          </Link>
+          <button onClick={() => setHide((h) => !h)} className="size-10 rounded-2xl bg-muted flex items-center justify-center text-muted-foreground hover:text-foreground transition">
+            {hide ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
+          </button>
+        </div>
       </header>
 
       <div className="px-5 mt-2 flex justify-center">
