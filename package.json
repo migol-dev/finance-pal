@@ -13,6 +13,9 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "analyze": "cross-env ANALYZE=true vite build --mode production",
+    "android:copy": "npx cap copy android",
+    "android:build:release": "npx cap copy android && cd android && ./gradlew assembleRelease",
+    "android:build:release:win": "npx cap copy android && cd android && gradlew.bat assembleRelease",
     "optimize-images": "node scripts/optimize-images.js",
     "generate-icons": "node scripts/generate-icons.js src/assets/nuevo_logo.png"
   },

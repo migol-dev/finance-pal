@@ -18,8 +18,12 @@ android {
     }
     buildTypes {
         release {
-            minifyEnabled false
-            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+                // Enable code shrinking and resource shrinking for release builds to reduce APK/AAB size.
+                minifyEnabled true
+                shrinkResources true
+                proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+                // Signing config: configure your keystore and signingConfigs if you want Gradle to
+                // automatically sign the release. See README for steps and CI secret instructions.
         }
     }
 }

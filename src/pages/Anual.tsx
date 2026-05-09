@@ -5,7 +5,7 @@ import { fmt, fmt2, monthlyAmount, MONTHS, MONTHS_SHORT, isFixedActiveInMonth, i
 import { Header } from "@/components/app/Header";
 import { PillTabs } from "@/components/app/PillTabs";
 import { IconDisplay } from "@/components/app/IconDisplay";
-import useRecharts from "@/lib/useRecharts";
+import SimpleAreaChart from "@/components/ui/SimpleAreaChart";
 import {
   ChevronLeft, ChevronRight, TrendingUp, TrendingDown, PiggyBank,
   Wallet, Trophy, AlertTriangle, Sparkles, Download, Target, HandCoins,
@@ -204,7 +204,7 @@ export default function Anual() {
     fontSize: 11,
   } as const;
 
-  const R = useRecharts();
+  // lightweight built-in charts (recharts removed for bundle size)
 
   return (
     <div>
@@ -298,32 +298,15 @@ export default function Anual() {
           <section className="px-5 mt-5">
             <SectionTitle>Flujo mensual</SectionTitle>
             <ChartCard>
-                {R ? (
-                  <R.ResponsiveContainer width="100%" height={240}>
-                    <R.AreaChart data={monthly} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
-                      <defs>
-                        <linearGradient id="ig" x1="0" y1="0" x2="0" y2="1">
-                          <stop offset="0%" stopColor="hsl(var(--success))" stopOpacity={0.5} />
-                          <stop offset="100%" stopColor="hsl(var(--success))" stopOpacity={0} />
-                        </linearGradient>
-                        <linearGradient id="eg" x1="0" y1="0" x2="0" y2="1">
-                          <stop offset="0%" stopColor="hsl(var(--destructive))" stopOpacity={0.45} />
-                          <stop offset="100%" stopColor="hsl(var(--destructive))" stopOpacity={0} />
-                        </linearGradient>
-                      </defs>
-                      <R.CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
-                      <R.XAxis dataKey="mes" tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }} axisLine={false} tickLine={false} />
-                      <R.YAxis tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }} axisLine={false} tickLine={false}
-                        tickFormatter={(v: number) => v >= 1000 ? `${(v/1000).toFixed(0)}k` : `${v}`} />
-                      <R.Tooltip contentStyle={tooltipStyle} formatter={(v: number) => fmt(Number(v))} />
-                      <R.Legend wrapperStyle={{ fontSize: 11 }} />
-                      <R.Area type="monotone" dataKey="Ingresos" stroke="hsl(var(--success))" strokeWidth={2} fill="url(#ig)" />
-                      <R.Area type="monotone" dataKey="Gastos" stroke="hsl(var(--destructive))" strokeWidth={2} fill="url(#eg)" />
-                    </R.AreaChart>
-                  </R.ResponsiveContainer>
-                ) : (
-                  <div className="h-[240px] flex items-center justify-center text-xs text-muted-foreground">Cargando gráfico…</div>
-                )}
+              <SimpleAreaChart
+                data={monthly}
+                xKey="mes"
+                height={240}
+                series={[
+                  { key: "Ingresos", label: "Ingresos", color: "hsl(var(--success))", type: "area", formatter: (v) => fmt(Number(v)) },
+                  { key: "Gastos", label: "Gastos", color: "hsl(var(--destructive))", type: "area", formatter: (v) => fmt(Number(v)) },
+                ]}
+              />
             </ChartCard>
           </section>
 
@@ -331,25 +314,15 @@ export default function Anual() {
           <section className="px-5 mt-5">
             <SectionTitle>Neto y tasa de ahorro</SectionTitle>
             <ChartCard>
-                {R ? (
-                  <R.ResponsiveContainer width="100%" height={220}>
-                    <R.LineChart data={monthly} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
-                      <R.CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
-                      <R.XAxis dataKey="mes" tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }} axisLine={false} tickLine={false} />
-                      <R.YAxis yAxisId="l" tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }} axisLine={false} tickLine={false}
-                        tickFormatter={(v: number) => v >= 1000 || v <= -1000 ? `${(v/1000).toFixed(0)}k` : `${v}`} />
-                      <R.YAxis yAxisId="r" orientation="right" tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }} axisLine={false} tickLine={false} tickFormatter={(v) => `${v}%`} />
-                      <R.Tooltip contentStyle={tooltipStyle}
-                        formatter={(v: number, n: string) => n === "Tasa" ? `${v}%` : fmt(Number(v))} />
-                      <R.Legend wrapperStyle={{ fontSize: 11 }} />
-                      <R.ReferenceLine yAxisId="l" y={0} stroke="hsl(var(--border))" />
-                      <R.Line yAxisId="l" type="monotone" dataKey="Neto" stroke="hsl(var(--primary))" strokeWidth={2.5} dot={{ r: 3 }} />
-                      <R.Line yAxisId="r" type="monotone" dataKey="Tasa" stroke="hsl(var(--accent))" strokeWidth={2} dot={false} strokeDasharray="4 3" />
-                    </R.LineChart>
-                  </R.ResponsiveContainer>
-                ) : (
-                  <div className="h-[220px] flex items-center justify-center text-xs text-muted-foreground">Cargando gráfico…</div>
-                )}
+              <SimpleAreaChart
+                data={monthly}
+                xKey="mes"
+                height={220}
+                series={[
+                  { key: "Neto", label: "Neto", color: "hsl(var(--primary))", type: "line", formatter: (v) => fmt(Number(v)) },
+                  { key: "Tasa", label: "Tasa", color: "hsl(var(--accent))", type: "line", formatter: (v) => `${v}%` },
+                ]}
+              />
             </ChartCard>
           </section>
 
@@ -416,19 +389,7 @@ export default function Anual() {
                 <EmptyState text={`Sin gastos registrados en ${activeYear}`} />
               ) : (
                 <>
-                  {R ? (
-                    <R.ResponsiveContainer width="100%" height={220}>
-                      <R.PieChart>
-                        <R.Pie data={byCategory} dataKey="value" nameKey="name" innerRadius={55} outerRadius={90} paddingAngle={2}>
-                          {byCategory.map((_, i) => <R.Cell key={i} fill={COLORS[i % COLORS.length]} />)}
-                        </R.Pie>
-                        <R.Tooltip formatter={(v: number) => fmt(v)} contentStyle={tooltipStyle} />
-                      </R.PieChart>
-                    </R.ResponsiveContainer>
-                  ) : (
-                    <div className="h-[220px] flex items-center justify-center text-xs text-muted-foreground">Cargando gráfico…</div>
-                  )}
-                  <div className="space-y-2 mt-3">
+                  <div className="space-y-2 mt-1">
                     {byCategory.slice(0, 8).map((c, i) => {
                       const pct = (c.value / totals.expense) * 100 || 0;
                       return (
@@ -481,22 +442,7 @@ export default function Anual() {
               <EmptyState text="Sin métodos de pago registrados" />
             ) : (
               <>
-                {R ? (
-                  <R.ResponsiveContainer width="100%" height={200}>
-                    <R.BarChart data={byMethod} layout="vertical" margin={{ top: 4, right: 12, left: 0, bottom: 0 }}>
-                      <R.CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" horizontal={false} />
-                      <R.XAxis type="number" tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }} tickFormatter={(v: number) => v >= 1000 ? `${(v/1000).toFixed(0)}k` : `${v}`} axisLine={false} tickLine={false} />
-                      <R.YAxis type="category" dataKey="name" tick={{ fontSize: 11, fill: "hsl(var(--foreground))" }} axisLine={false} tickLine={false} width={100} />
-                      <R.Tooltip contentStyle={tooltipStyle} formatter={(v: number) => fmt(v)} />
-                      <R.Bar dataKey="value" radius={[0, 8, 8, 0]}>
-                        {byMethod.map((_, i) => <R.Cell key={i} fill={COLORS[i % COLORS.length]} />)}
-                      </R.Bar>
-                    </R.BarChart>
-                  </R.ResponsiveContainer>
-                ) : (
-                  <div className="h-[200px] flex items-center justify-center text-xs text-muted-foreground">Cargando gráfico…</div>
-                )}
-                <div className="grid grid-cols-2 gap-2 mt-3">
+                <div className="grid grid-cols-2 gap-2 mt-1">
                   {byMethod.map((m) => {
                     const total = byMethod.reduce((s, x) => s + x.value, 0);
                     const pct = total > 0 ? (m.value / total) * 100 : 0;

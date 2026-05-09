@@ -13,7 +13,7 @@ import { motion, AnimatePresence } from "@/lib/framer";
 import { toast } from "sonner";
 import { IconPicker } from "@/components/app/IconPicker";
 import { IconDisplay } from "@/components/app/IconDisplay";
-import useRecharts from "@/lib/useRecharts";
+import SimpleAreaChart from "@/components/ui/SimpleAreaChart";
 import { cn } from "@/lib/utils";
 import { PillTabs } from "@/components/app/PillTabs";
 
@@ -374,7 +374,7 @@ function ResumenTab({ goal }: { goal: Goal }) {
     return arr;
   }, [goal]);
 
-  const R = useRecharts();
+  
 
   return (
     <div className="rounded-2xl bg-white/15 backdrop-blur-sm p-3 space-y-3">
@@ -393,30 +393,17 @@ function ResumenTab({ goal }: { goal: Goal }) {
       )}
       {data.length > 0 && (
         <div className="h-40 -mx-1">
-          {R ? (
-            <R.ResponsiveContainer width="100%" height="100%">
-              <R.AreaChart data={data} margin={{ top: 4, right: 6, left: 0, bottom: 0 }}>
-                <defs>
-                  <linearGradient id={`g-${goal.id}`} x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor="#fff" stopOpacity={0.55} />
-                    <stop offset="100%" stopColor="#fff" stopOpacity={0} />
-                  </linearGradient>
-                </defs>
-                <R.CartesianGrid stroke="#ffffff22" vertical={false} />
-                <R.XAxis dataKey="label" tick={{ fill: "#ffffffcc", fontSize: 9 }} axisLine={false} tickLine={false} />
-                <R.YAxis hide domain={[0, goal.target]} />
-                <R.Tooltip
-                  contentStyle={{ background: "rgba(0,0,0,0.6)", border: "none", borderRadius: 12, color: "#fff", fontSize: 11 }}
-                  formatter={(v: any) => v == null ? "—" : fmt(Number(v))}
-                />
-                <R.ReferenceLine y={goal.target} stroke="#ffffff88" strokeDasharray="3 3" />
-                <R.Area type="monotone" dataKey="ideal" name="Plan ideal" stroke="#fff" strokeWidth={2} fill={`url(#g-${goal.id})`} />
-                <R.Line type="monotone" dataKey="actual" name="Actual" stroke="#fff" strokeWidth={2} dot={{ r: 3, fill: "#fff" }} connectNulls={false} />
-              </R.AreaChart>
-            </R.ResponsiveContainer>
-          ) : (
-            <div className="h-full flex items-center justify-center text-xs text-muted-foreground">Cargando gráfico…</div>
-          )}
+          <SimpleAreaChart
+            data={data}
+            xKey="label"
+            height={160}
+            maxY={goal.target}
+            series={[
+              { key: "ideal", label: "Plan ideal", color: "#ffffff88", type: "area", formatter: (v) => (v == null ? "—" : fmt(Number(v))) },
+              { key: "actual", label: "Actual", color: "#ffffff", type: "line", formatter: (v) => fmt(Number(v)) },
+            ]}
+            referenceLines={[{ value: goal.target, label: "Meta" }]}
+          />
         </div>
       )}
       {!goal.deadline && (
@@ -498,7 +485,7 @@ function SimularTab({ goal }: { goal: Goal }) {
   const recommended = pace?.perDay ?? 0;
   const [perDay, setPerDay] = useState<number>(Math.max(1, Math.round(recommended || 50)));
 
-  const R = useRecharts();
+  
 
   const data = useMemo(() => {
     if (!goal.deadline) return [] as any[];
@@ -565,27 +552,17 @@ function SimularTab({ goal }: { goal: Goal }) {
 
       {data.length > 0 && (
         <div className="h-40 -mx-1">
-          {R ? (
-            <R.ResponsiveContainer width="100%" height="100%">
-              <R.AreaChart data={data} margin={{ top: 4, right: 6, left: 0, bottom: 0 }}>
-                <defs>
-                  <linearGradient id={`sim-${goal.id}`} x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor="#fff" stopOpacity={0.55} />
-                    <stop offset="100%" stopColor="#fff" stopOpacity={0} />
-                  </linearGradient>
-                </defs>
-                <R.CartesianGrid stroke="#ffffff22" vertical={false} />
-                <R.XAxis dataKey="label" tick={{ fill: "#ffffffcc", fontSize: 9 }} axisLine={false} tickLine={false} />
-                <R.YAxis hide domain={[0, Math.max(goal.target, ...data.map((d: any) => d.simulado))]} />
-                <R.Tooltip contentStyle={{ background: "rgba(0,0,0,0.6)", border: "none", borderRadius: 12, color: "#fff", fontSize: 11 }} formatter={(v: any) => fmt(Number(v))} />
-                <R.ReferenceLine y={goal.target} stroke="#ffffff88" strokeDasharray="3 3" label={{ value: "Meta", fill: "#fff", fontSize: 9 }} />
-                <R.Area type="monotone" dataKey="ideal" name="Ideal" stroke="#ffffff88" strokeWidth={1.5} strokeDasharray="4 4" fill="none" />
-                <R.Area type="monotone" dataKey="simulado" name="Simulado" stroke="#fff" strokeWidth={2.5} fill={`url(#sim-${goal.id})`} />
-              </R.AreaChart>
-            </R.ResponsiveContainer>
-          ) : (
-            <div className="h-full flex items-center justify-center text-xs text-muted-foreground">Cargando gráfico…</div>
-          )}
+          <SimpleAreaChart
+            data={data}
+            xKey="label"
+            height={160}
+            maxY={Math.max(goal.target, ...data.map((d: any) => d.simulado))}
+            series={[
+              { key: "ideal", label: "Ideal", color: "#ffffff88", type: "line", formatter: (v) => fmt(Number(v)) },
+              { key: "simulado", label: "Simulado", color: "#ffffff", type: "area", formatter: (v) => fmt(Number(v)) },
+            ]}
+            referenceLines={[{ value: goal.target, label: "Meta" }]}
+          />
         </div>
       )}
     </div>
