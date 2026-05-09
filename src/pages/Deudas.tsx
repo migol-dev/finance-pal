@@ -14,6 +14,7 @@ import { motion } from "@/lib/framer";
 import { toast } from "sonner";
 import { IconPicker } from "@/components/app/IconPicker";
 import { IconDisplay } from "@/components/app/IconDisplay";
+import { ElegantConfirm } from "@/components/app/ElegantConfirm";
 
 function totalPaid(d: Debt) { return d.payments.reduce((a, p) => a + p.amount, 0); }
 
@@ -26,6 +27,8 @@ export default function Deudas() {
   const [filter, setFilter] = useState<"all" | "pending" | "settled">("all");
   const [query, setQuery] = useState("");
   const [personFilter, setPersonFilter] = useState<string | null>(null);
+  const [deleteDebt, setDeleteDebt] = useState<Debt | null>(null);
+  const [deletePayment, setDeletePayment] = useState<{ debtId: string; paymentId: string; amount: number } | null>(null);
 
   const totals = useMemo(() => {
     let owed = 0, paid = 0;
@@ -168,7 +171,7 @@ export default function Deudas() {
                     <p className="text-xs text-muted-foreground">{fmtDate(p.date)} • {PAYMENT_METHOD_LABEL[p.paymentMethod ?? "other"]}</p>
                     {p.note && <p className="text-xs text-muted-foreground">{p.note}</p>}
                   </div>
-                  <button onClick={() => { if (confirm("¿Eliminar abono?")) { removeDebtPayment(detail.id, p.id); setDetail({ ...detail, payments: detail.payments.filter((x) => x.id !== p.id) }); } }} className="text-destructive p-1"><Trash2 className="size-4" /></button>
+                  <button onClick={() => setDeletePayment({ debtId: detail.id, paymentId: p.id, amount: p.amount })} className="text-destructive p-1"><Trash2 className="size-4" /></button>
                 </div>
               ))}
             </div>
@@ -206,7 +209,7 @@ export default function Deudas() {
                 </div>
                 <div className="flex flex-col gap-0.5">
                   <button onClick={() => { setEditing(d); setOpen(true); }} className="text-muted-foreground hover:text-primary p-1"><Pencil className="size-4" /></button>
-                  <button onClick={() => { if (confirm(`¿Eliminar deuda de ${d.person}?`)) removeDebt(d.id); }} className="text-muted-foreground hover:text-destructive p-1"><Trash2 className="size-4" /></button>
+                  <button onClick={() => setDeleteDebt(d)} className="text-muted-foreground hover:text-destructive p-1"><Trash2 className="size-4" /></button>
                 </div>
               </div>
               <div className="mt-3">
@@ -230,6 +233,34 @@ export default function Deudas() {
           );
         })}
       </div>
+
+      <ElegantConfirm
+        open={!!deleteDebt}
+        onOpenChange={(v) => !v && setDeleteDebt(null)}
+        title="¿Eliminar deuda?"
+        description={<p className="text-sm text-muted-foreground">¿Estás seguro de que quieres eliminar la deuda de <span className="font-bold text-foreground">"{deleteDebt?.person}"</span>? Esta acción no se puede deshacer.</p>}
+        onConfirm={() => { if (deleteDebt) { removeDebt(deleteDebt.id); setDeleteDebt(null); } }}
+        icon={Trash2}
+        iconColor="bg-destructive"
+      />
+
+      <ElegantConfirm
+        open={!!deletePayment}
+        onOpenChange={(v) => !v && setDeletePayment(null)}
+        title="¿Eliminar abono?"
+        description={<p className="text-sm text-muted-foreground">¿Estás seguro de que quieres eliminar el abono de <span className="font-bold text-foreground">{fmt(deletePayment?.amount ?? 0)}</span>? Esto aumentará el saldo pendiente.</p>}
+        onConfirm={() => {
+          if (deletePayment) {
+            removeDebtPayment(deletePayment.debtId, deletePayment.paymentId);
+            if (detail && detail.id === deletePayment.debtId) {
+              setDetail({ ...detail, payments: detail.payments.filter((x) => x.id !== deletePayment.paymentId) });
+            }
+            setDeletePayment(null);
+          }
+        }}
+        icon={Trash2}
+        iconColor="bg-destructive"
+      />
     </div>
   );
 }

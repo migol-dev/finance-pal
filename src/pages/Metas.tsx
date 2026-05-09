@@ -16,6 +16,7 @@ import { IconDisplay } from "@/components/app/IconDisplay";
 import SimpleAreaChart from "@/components/ui/SimpleAreaChart";
 import { cn } from "@/lib/utils";
 import { PillTabs } from "@/components/app/PillTabs";
+import { ElegantConfirm } from "@/components/app/ElegantConfirm";
 
 const PALETTES = ["gradient-sunset", "gradient-ocean", "gradient-secondary", "gradient-success", "gradient-primary"];
 
@@ -143,7 +144,7 @@ export default function Metas() {
               <GoalDetailContent
                 goal={detailGoal}
                 onEdit={() => { setEditing(detailGoal); setOpen(true); setDetailId(null); }}
-                onDelete={() => { if (confirm(`¿Eliminar "${detailGoal.name}"?`)) { removeGoal(detailGoal.id); setDetailId(null); } }}
+                onDelete={() => { removeGoal(detailGoal.id); setDetailId(null); }}
                 onContribute={(amt, date) => contributeGoal(detailGoal.id, amt, date)}
                 onTogglePin={() => updateGoal(detailGoal.id, { pinned: !detailGoal.pinned })}
               />
@@ -207,30 +208,19 @@ function GoalCompactCard({ goal, index, onViewMore, onContribute }: {
         </div>
       </div>
 
-      <Dialog open={!!confirmOpen} onOpenChange={(v) => !v && setConfirmOpen(null)}>
-        <DialogContent className="rounded-[32px] max-w-[90vw] w-[320px] p-6 border-0 bg-background shadow-2xl overflow-hidden">
-          <div className="text-center space-y-4">
-            <div className={cn("size-20 rounded-full mx-auto flex items-center justify-center shadow-lg", goal.color)}>
-              <Plus className="size-10 text-white" />
-            </div>
-            <div>
-              <h3 className="text-xl font-black">¿Confirmar aporte?</h3>
-              <p className="text-sm text-muted-foreground">Vas a añadir <span className="font-bold text-foreground">{fmt(confirmOpen?.amount ?? 0)}</span> a tu meta <span className="font-bold text-foreground">"{goal.name}"</span>.</p>
-            </div>
-            <div className="flex gap-3 pt-2">
-              <Button variant="ghost" className="flex-1 h-12 rounded-2xl font-bold" onClick={() => setConfirmOpen(null)}>Cancelar</Button>
-              <Button className={cn("flex-1 h-12 rounded-2xl font-black text-white shadow-lg border-0", goal.color)}
-                onClick={() => {
-                  if(confirmOpen) onContribute(confirmOpen.amount);
-                  setConfirmOpen(null);
-                  toast.success("¡Aporte registrado! 🚀");
-                }}>
-                Confirmar
-              </Button>
-            </div>
-          </div>
-        </DialogContent>
-      </Dialog>
+      <ElegantConfirm
+        open={!!confirmOpen}
+        onOpenChange={(v) => !v && setConfirmOpen(null)}
+        title="¿Confirmar aporte?"
+        description={<p className="text-sm text-muted-foreground">Vas a añadir <span className="font-bold text-foreground">{fmt(confirmOpen?.amount ?? 0)}</span> a tu meta <span className="font-bold text-foreground">"{goal.name}"</span>.</p>}
+        onConfirm={() => {
+          if (confirmOpen) onContribute(confirmOpen.amount);
+          setConfirmOpen(null);
+          toast.success("¡Aporte registrado! 🚀");
+        }}
+        icon={Plus}
+        iconColor={goal.color}
+      />
     </motion.div>
   );
 }
@@ -241,9 +231,15 @@ function GoalDetailContent({ goal, onEdit, onDelete, onContribute, onTogglePin }
   onTogglePin: () => void;
 }) {
   const [tab, setTab] = useState<"resumen" | "calendario" | "simular">("resumen");
+  const [confirmOpen, setConfirmOpen] = useState<{ amount: number } | null>(null);
+  const [deleteConfirm, setDeleteConfirm] = useState(false);
   const pct = goal.target > 0 ? Math.min(100, (goal.saved / goal.target) * 100) : 0;
   const status = statusFor(goal);
   const url = normalizeUrl(goal.purchaseUrl);
+
+  const handleQuickAdd = (amount: number) => {
+    setConfirmOpen({ amount });
+  };
 
   return (
     <div className="pb-10">
@@ -287,15 +283,39 @@ function GoalDetailContent({ goal, onEdit, onDelete, onContribute, onTogglePin }
           <Star className={cn("size-6", goal.pinned ? "fill-current" : "")} />
         </button>
         <button onClick={onEdit} className="h-14 rounded-2xl bg-white/10 flex items-center justify-center active:scale-90 transition"><Pencil className="size-6" /></button>
-        <button onClick={onDelete} className="h-14 rounded-2xl bg-white/10 flex items-center justify-center active:scale-90 transition"><Trash2 className="size-6" /></button>
+        <button onClick={() => setDeleteConfirm(true)} className="h-14 rounded-2xl bg-white/10 flex items-center justify-center active:scale-90 transition"><Trash2 className="size-6" /></button>
         <ContribCustom onAdd={(v) => onContribute(v)} />
       </div>
 
       <div className="flex gap-2 mb-6">
-        <ContributeBtn label="+ $100" onClick={() => onContribute(100)} />
-        <ContributeBtn label="+ $500" onClick={() => onContribute(500)} />
+        <ContributeBtn label="+ $100" onClick={() => handleQuickAdd(100)} />
+        <ContributeBtn label="+ $500" onClick={() => handleQuickAdd(500)} />
         <ContribCustom negative onAdd={(v) => onContribute(-v)} />
       </div>
+
+      <ElegantConfirm
+        open={!!confirmOpen}
+        onOpenChange={(v) => !v && setConfirmOpen(null)}
+        title="¿Confirmar aporte?"
+        description={<p className="text-sm text-muted-foreground">Vas a añadir <span className="font-bold text-foreground">{fmt(confirmOpen?.amount ?? 0)}</span> a tu meta <span className="font-bold text-foreground">"{goal.name}"</span>.</p>}
+        onConfirm={() => {
+          if (confirmOpen) onContribute(confirmOpen.amount);
+          setConfirmOpen(null);
+          toast.success("¡Aporte registrado! 🚀");
+        }}
+        icon={Plus}
+        iconColor={goal.color}
+      />
+
+      <ElegantConfirm
+        open={deleteConfirm}
+        onOpenChange={setDeleteConfirm}
+        title="¿Eliminar meta?"
+        description={<p className="text-sm text-muted-foreground">¿Estás seguro de que quieres eliminar <span className="font-bold text-foreground">"{goal.name}"</span>? Esta acción no se puede deshacer.</p>}
+        onConfirm={onDelete}
+        icon={Trash2}
+        iconColor="bg-destructive"
+      />
 
       <PillTabs<"resumen" | "calendario" | "simular">
         className="mb-4 bg-black/10 p-1 rounded-2xl"

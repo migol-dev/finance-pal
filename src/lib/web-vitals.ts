@@ -1,4 +1,4 @@
-import { getCLS, getFID, getLCP, getFCP, getTTFB, Metric } from 'web-vitals';
+import { onCLS, onINP, onLCP, onFCP, onTTFB, Metric } from 'web-vitals';
 
 function send(metric: Metric) {
   try {
@@ -13,11 +13,11 @@ function send(metric: Metric) {
 }
 
 export function initWebVitals() {
-  getCLS(send);
-  getFID(send);
-  getLCP(send);
-  getFCP(send);
-  getTTFB(send);
+  onCLS(send);
+  onINP(send);
+  onLCP(send);
+  onFCP(send);
+  onTTFB(send);
 }
 
 export default initWebVitals;

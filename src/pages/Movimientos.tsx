@@ -14,6 +14,7 @@ import { toast } from "sonner";
 import { MonthSwitcher } from "@/components/app/MonthSwitcher";
 import { IconDisplay } from "@/components/app/IconDisplay";
 import { IconPicker } from "@/components/app/IconPicker";
+import { ElegantConfirm } from "@/components/app/ElegantConfirm";
 
 type TxType = "income" | "expense" | "saving";
 
@@ -26,6 +27,7 @@ export default function Movimientos() {
   const [type, setType] = useState<TxType>("expense");
   const [query, setQuery] = useState("");
   const [filter, setFilter] = useState<"all" | TxType>("all");
+  const [deleteConfirm, setDeleteConfirm] = useState<Transaction | null>(null);
 
   useEffect(() => {
     const n = params.get("new");
@@ -165,7 +167,7 @@ export default function Movimientos() {
                     ) : (
                       <div className="flex flex-col gap-0.5">
                         <button onClick={() => openEdit(t as Transaction)} className="text-muted-foreground hover:text-primary p-1"><Pencil className="size-4" /></button>
-                        <button onClick={() => { if (confirm("¿Eliminar este movimiento?")) { removeTx(t.id); toast("Eliminado"); } }} className="text-muted-foreground hover:text-destructive p-1"><Trash2 className="size-4" /></button>
+                        <button onClick={() => setDeleteConfirm(t as Transaction)} className="text-muted-foreground hover:text-destructive p-1"><Trash2 className="size-4" /></button>
                       </div>
                     )}
                   </motion.div>
@@ -174,6 +176,16 @@ export default function Movimientos() {
             </motion.section>
           ))}
         </AnimatePresence>
+
+        <ElegantConfirm
+          open={!!deleteConfirm}
+          onOpenChange={(v) => !v && setDeleteConfirm(null)}
+          title="¿Eliminar movimiento?"
+          description={<p className="text-sm text-muted-foreground">¿Estás seguro de que quieres eliminar <span className="font-bold text-foreground">"{deleteConfirm?.concept}"</span>? Esta acción no se puede deshacer.</p>}
+          onConfirm={() => { if (deleteConfirm) { removeTx(deleteConfirm.id); toast("Eliminado"); setDeleteConfirm(null); } }}
+          icon={Trash2}
+          iconColor="bg-destructive"
+        />
       </div>
     </div>
   );

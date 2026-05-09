@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { useFinance, Currency, ExportScopes, ALL_SCOPES } from "@/store/finance-store";
 import { fmt, monthlyAmount, TYPE_LABEL, FREQ_LABEL, ItemType, Frequency, Priority, iconFor, IconRef, FixedItem, CATEGORY_EMOJI, PaymentMethod, PAYMENT_METHOD_LABEL, PAYMENT_METHOD_EMOJI } from "@/lib/finance";
 import { Header } from "@/components/app/Header";
-import { Plus, Trash2, Power, Smartphone, Database, RotateCcw, Pencil, Download, Upload, Sun, Moon, Target, History, HandCoins, User } from "lucide-react";
+import { Plus, Trash2, Power, Smartphone, Database, RotateCcw, Pencil, Download, Upload, Sun, Moon, Target, History, HandCoins, User, AlertTriangle } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -18,6 +18,7 @@ import { Capacitor } from "@capacitor/core";
 import { Filesystem, Directory, Encoding } from "@capacitor/filesystem";
 import { Share } from "@capacitor/share";
 import { LocalNotifications } from "@capacitor/local-notifications";
+import { ElegantConfirm } from "@/components/app/ElegantConfirm";
 
 export default function Ajustes() {
   const { fixedItems, addFixed, updateFixed, removeFixed, toggleFixed, resetAll, exportData, importData, theme, toggleTheme, profile, setProfile } = useFinance();
@@ -31,6 +32,9 @@ export default function Ajustes() {
   const [pendingFile, setPendingFile] = useState<File | null>(null);
   const [pendingPayload, setPendingPayload] = useState<string | null>(null);
   const [pendingAvailable, setPendingAvailable] = useState<Required<ExportScopes>>(ALL_SCOPES);
+  const [deleteConfirm, setDeleteConfirm] = useState<FixedItem | null>(null);
+  const [resetConfirm, setResetConfirm] = useState(false);
+  const [importConfirmScopes, setImportConfirmScopes] = useState<ExportScopes | null>(null);
 
   const filtered = fixedItems.filter((i) => tab === "all" || i.type === tab);
   const openNew = () => { setEditing(null); setOpen(true); };
@@ -160,8 +164,12 @@ export default function Ajustes() {
 
   const doImport = (scopes: ExportScopes) => {
     if (!pendingPayload) return;
-    if (!confirm("Esto reemplazará las secciones seleccionadas. ¿Continuar?")) return;
-    const r = importData(pendingPayload, scopes);
+    setImportConfirmScopes(scopes);
+  };
+
+  const handleImportConfirm = () => {
+    if (!pendingPayload || !importConfirmScopes) return;
+    const r = importData(pendingPayload, importConfirmScopes);
     if (r.ok) {
       toast.success("Datos importados");
       r.warnings?.forEach((w) => toast(w));
@@ -171,6 +179,7 @@ export default function Ajustes() {
     } else {
       toast.error(r.error ?? "No se pudo importar");
     }
+    setImportConfirmScopes(null);
   };
 
   return (
@@ -255,7 +264,7 @@ export default function Ajustes() {
             <div className="flex flex-col gap-0.5">
               <button onClick={() => openEdit(i)} className="text-muted-foreground hover:text-primary p-1"><Pencil className="size-4" /></button>
               <button onClick={() => toggleFixed(i.id)} className="text-muted-foreground hover:text-foreground p-1"><Power className="size-4" /></button>
-              <button onClick={() => { if (confirm(`¿Eliminar "${i.concept}"?`)) removeFixed(i.id); }} className="text-muted-foreground hover:text-destructive p-1"><Trash2 className="size-4" /></button>
+              <button onClick={() => setDeleteConfirm(i)} className="text-muted-foreground hover:text-destructive p-1"><Trash2 className="size-4" /></button>
             </div>
           </motion.div>
         ))}
@@ -322,11 +331,42 @@ export default function Ajustes() {
         </Dialog>
 
         <h2 className="text-xs uppercase tracking-wider font-bold text-muted-foreground pt-4">Seguridad</h2>
-        <button onClick={() => { if (confirm("¿Borrar TODOS los datos? No se puede deshacer.")) { resetAll(); toast("Datos borrados"); } }}
+        <button onClick={() => setResetConfirm(true)}
           className="w-full rounded-2xl bg-destructive/10 text-destructive p-4 flex items-center gap-3 font-semibold text-sm hover:bg-destructive/15 transition">
           <RotateCcw className="size-4" /> Restablecer todo
         </button>
-        <p className="text-[10px] text-center text-muted-foreground pt-4">Finance Pal v1.17.6</p>
+        <p className="text-[10px] text-center text-muted-foreground pt-4">Finance Pal v1.17.7</p>
+
+        <ElegantConfirm
+          open={!!deleteConfirm}
+          onOpenChange={(v) => !v && setDeleteConfirm(null)}
+          title="¿Eliminar concepto?"
+          description={<p className="text-sm text-muted-foreground">¿Estás seguro de que quieres eliminar <span className="font-bold text-foreground">"{deleteConfirm?.concept}"</span>? Esto detendrá su seguimiento.</p>}
+          onConfirm={() => { if (deleteConfirm) { removeFixed(deleteConfirm.id); setDeleteConfirm(null); } }}
+          icon={Trash2}
+          iconColor="bg-destructive"
+        />
+
+        <ElegantConfirm
+          open={resetConfirm}
+          onOpenChange={setResetConfirm}
+          title="¿Restablecer datos?"
+          description="Se borrarán TODOS tus datos, movimientos, metas y configuración. Esta acción no se puede deshacer."
+          onConfirm={() => { resetAll(); toast("Datos borrados"); }}
+          icon={RotateCcw}
+          iconColor="bg-destructive"
+          confirmText="Sí, borrar todo"
+        />
+
+        <ElegantConfirm
+          open={!!importConfirmScopes}
+          onOpenChange={(v) => !v && setImportConfirmScopes(null)}
+          title="¿Confirmar importación?"
+          description="Esto reemplazará las secciones seleccionadas con los datos del archivo. ¿Deseas continuar?"
+          onConfirm={handleImportConfirm}
+          icon={Upload}
+          iconColor="gradient-primary"
+        />
       </section>
     </div>
   );
