@@ -1,14 +1,16 @@
 import { useMemo, useState } from "react";
 import { useFinance } from "@/store/finance-store";
-import { fmt, iconFor, IconRef, Debt, PaymentMethod, PAYMENT_METHOD_LABEL, PAYMENT_METHOD_EMOJI } from "@/lib/finance";
+import { fmt, iconFor, IconRef, Debt, PaymentMethod, PAYMENT_METHOD_LABEL, PAYMENT_METHOD_EMOJI, fmtDate } from "@/lib/finance";
+
+const localDateNow = () => { const d = new Date(); const pad = (n: number) => String(n).padStart(2, "0"); return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`; };
 import { Header } from "@/components/app/Header";
 import { Plus, Pencil, Trash2, HandCoins, CheckCircle2, Search } from "lucide-react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { motion } from "framer-motion";
+import { motion } from "@/lib/framer";
 import { toast } from "sonner";
 import { IconPicker } from "@/components/app/IconPicker";
 import { IconDisplay } from "@/components/app/IconDisplay";
@@ -131,8 +133,9 @@ export default function Deudas() {
       </div>
 
       <Dialog open={open} onOpenChange={(v) => { setOpen(v); if (!v) setEditing(null); }}>
-        <DialogContent className="rounded-3xl max-h-[90vh] overflow-y-auto">
-          <DialogHeader><DialogTitle>{editing ? "Editar deuda" : "Nueva deuda"}</DialogTitle></DialogHeader>
+          <DialogContent className="rounded-3xl max-h-[90vh] overflow-y-auto">
+            <DialogHeader><DialogTitle>{editing ? "Editar deuda" : "Nueva deuda"}</DialogTitle></DialogHeader>
+            <DialogDescription className="sr-only">Formulario para registrar o editar una deuda</DialogDescription>
           <DebtForm initial={editing} onSave={(d) => {
             if (editing) { updateDebt(editing.id, d); toast.success("Actualizado"); }
             else { addDebt(d); toast.success("Deuda registrada"); }
@@ -144,6 +147,7 @@ export default function Deudas() {
       <Dialog open={!!payOpen} onOpenChange={(v) => { if (!v) setPayOpen(null); }}>
         <DialogContent className="rounded-3xl">
           <DialogHeader><DialogTitle>Registrar abono</DialogTitle></DialogHeader>
+          <DialogDescription className="sr-only">Formulario para registrar un abono a la deuda</DialogDescription>
           {payOpen && <PaymentForm debt={payOpen} onSave={(p) => { addDebtPayment(payOpen.id, p); toast.success("Abono registrado"); setPayOpen(null); }} />}
         </DialogContent>
       </Dialog>
@@ -151,6 +155,7 @@ export default function Deudas() {
       <Dialog open={!!detail} onOpenChange={(v) => { if (!v) setDetail(null); }}>
         <DialogContent className="rounded-3xl max-h-[85vh] overflow-y-auto">
           <DialogHeader><DialogTitle>Historial de abonos</DialogTitle></DialogHeader>
+          <DialogDescription className="sr-only">Listado de abonos registrados para esta deuda</DialogDescription>
           {detail && (
             <div className="space-y-2">
               <p className="text-sm text-muted-foreground">{detail.person} • {detail.concept}</p>
@@ -160,7 +165,7 @@ export default function Deudas() {
                   <span className="text-2xl">{PAYMENT_METHOD_EMOJI[p.paymentMethod ?? "other"]}</span>
                   <div className="flex-1 min-w-0">
                     <p className="font-bold text-sm">{fmt(p.amount)}</p>
-                    <p className="text-xs text-muted-foreground">{new Date(p.date).toLocaleDateString("es-MX", { day: "numeric", month: "short", year: "numeric" })} • {PAYMENT_METHOD_LABEL[p.paymentMethod ?? "other"]}</p>
+                    <p className="text-xs text-muted-foreground">{fmtDate(p.date)} • {PAYMENT_METHOD_LABEL[p.paymentMethod ?? "other"]}</p>
                     {p.note && <p className="text-xs text-muted-foreground">{p.note}</p>}
                   </div>
                   <button onClick={() => { if (confirm("¿Eliminar abono?")) { removeDebtPayment(detail.id, p.id); setDetail({ ...detail, payments: detail.payments.filter((x) => x.id !== p.id) }); } }} className="text-destructive p-1"><Trash2 className="size-4" /></button>
@@ -243,7 +248,7 @@ function DebtForm({ initial, onSave }: { initial: Debt | null; onSave: (d: Omit<
   const [person, setPerson] = useState(initial?.person ?? "");
   const [concept, setConcept] = useState(initial?.concept ?? "");
   const [amount, setAmount] = useState(initial?.amount ? String(initial.amount) : "");
-  const [date, setDate] = useState((initial?.date ?? new Date().toISOString()).slice(0, 10));
+  const [date, setDate] = useState(initial?.date?.slice(0, 10) ?? localDateNow());
   const [dueDate, setDueDate] = useState(initial?.dueDate?.slice(0, 10) ?? "");
   const [note, setNote] = useState(initial?.note ?? "");
   const [icon, setIcon] = useState<IconRef | undefined>(initial?.icon);
@@ -272,7 +277,7 @@ function DebtForm({ initial, onSave }: { initial: Debt | null; onSave: (d: Omit<
 function PaymentForm({ debt, onSave }: { debt: Debt; onSave: (p: { amount: number; date: string; note?: string; paymentMethod?: PaymentMethod }) => void }) {
   const pending = debt.amount - totalPaid(debt);
   const [amount, setAmount] = useState(String(pending > 0 ? pending : ""));
-  const [date, setDate] = useState(new Date().toISOString().slice(0, 10));
+  const [date, setDate] = useState(localDateNow());
   const [note, setNote] = useState("");
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("transfer");
 

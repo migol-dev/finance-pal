@@ -1,15 +1,15 @@
 import { useEffect, useMemo, useState } from "react";
 import { useFinance } from "@/store/finance-store";
-import { fmt, CATEGORY_EMOJI, MONTHS, iconFor, IconRef, Transaction, PaymentMethod, PAYMENT_METHOD_LABEL, PAYMENT_METHOD_EMOJI } from "@/lib/finance";
+import { fmt, CATEGORY_EMOJI, MONTHS, iconFor, IconRef, Transaction, PaymentMethod, PAYMENT_METHOD_LABEL, PAYMENT_METHOD_EMOJI, fmtDate, parseDateLocal } from "@/lib/finance";
 import { Header } from "@/components/app/Header";
 import { Plus, Trash2, Search, Pencil, HandCoins } from "lucide-react";
 import { useSearchParams, useNavigate } from "react-router-dom";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion, AnimatePresence } from "@/lib/framer";
 import { toast } from "sonner";
 import { MonthSwitcher } from "@/components/app/MonthSwitcher";
 import { IconDisplay } from "@/components/app/IconDisplay";
@@ -36,7 +36,7 @@ export default function Movimientos() {
   }, [params, setParams]);
 
   const inMonth = useMemo(() => transactions.filter((t) => {
-    const d = new Date(t.date);
+    const d = parseDateLocal(t.date);
     return d.getFullYear() === activeYear && d.getMonth() === activeMonth;
   }), [transactions, activeYear, activeMonth]);
 
@@ -49,7 +49,7 @@ export default function Movimientos() {
   const debtRows: Row[] = useMemo(() => {
     const rows: Row[] = [];
     debts.forEach((d) => {
-      const dd = new Date(d.date);
+      const dd = parseDateLocal(d.date);
       if (dd.getFullYear() === activeYear && dd.getMonth() === activeMonth) {
         rows.push({
           id: `debt-${d.id}`, type: "expense", category: "Préstamo",
@@ -58,7 +58,7 @@ export default function Movimientos() {
         });
       }
       d.payments.forEach((p) => {
-        const pd = new Date(p.date);
+        const pd = parseDateLocal(p.date);
         if (pd.getFullYear() === activeYear && pd.getMonth() === activeMonth) {
           rows.push({
             id: `pay-${p.id}`, type: "income", category: "Abono",
@@ -76,13 +76,13 @@ export default function Movimientos() {
   const filtered = useMemo(() => allRows
     .filter((t) => filter === "all" || t.type === filter)
     .filter((t) => !query || t.concept.toLowerCase().includes(query.toLowerCase()) || t.category.toLowerCase().includes(query.toLowerCase()))
-    .sort((a, b) => +new Date(b.date) - +new Date(a.date)),
+    .sort((a, b) => parseDateLocal(b.date).getTime() - parseDateLocal(a.date).getTime()),
     [allRows, filter, query]);
 
   const grouped = useMemo(() => {
     const g: Record<string, typeof filtered> = {};
     filtered.forEach((t) => {
-      const k = new Date(t.date).toLocaleDateString("es-MX", { day: "numeric", month: "long", year: "numeric" });
+      const k = fmtDate(t.date);
       (g[k] ||= []).push(t);
     });
     return g;
@@ -102,6 +102,7 @@ export default function Movimientos() {
       <Dialog open={open} onOpenChange={(v) => { setOpen(v); if (!v) setEditing(null); }}>
         <DialogContent className="rounded-3xl max-h-[90vh] overflow-y-auto">
           <DialogHeader><DialogTitle>{editing ? "Editar movimiento" : "Nuevo movimiento"}</DialogTitle></DialogHeader>
+          <DialogDescription className="sr-only">Formulario para crear o editar un movimiento</DialogDescription>
           <TxForm
             initial={editing ?? { type, date: new Date(activeYear, activeMonth, Math.min(new Date().getDate(), 28)).toISOString() }}
             onSave={(t) => {
@@ -183,7 +184,9 @@ function TxForm({ initial, onSave }: { initial: Partial<Transaction> & { type: T
   const [category, setCategory] = useState(initial.category ?? "Otros");
   const [concept, setConcept] = useState(initial.concept ?? "");
   const [amount, setAmount] = useState(initial.amount ? String(initial.amount) : "");
-  const [date, setDate] = useState((initial.date ?? new Date().toISOString()).slice(0, 10));
+  const pad = (n: number) => String(n).padStart(2, "0");
+  const todayLocal = `${new Date().getFullYear()}-${pad(new Date().getMonth() + 1)}-${pad(new Date().getDate())}`;
+  const [date, setDate] = useState((initial.date ?? todayLocal).slice(0, 10));
   const [note, setNote] = useState(initial.note ?? "");
   const [icon, setIcon] = useState<IconRef | undefined>(initial.icon);
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>(initial.paymentMethod ?? "transfer");

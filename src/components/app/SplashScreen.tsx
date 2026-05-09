@@ -1,5 +1,5 @@
-import { motion } from "framer-motion";
-import appIcon from "@/assets/app-icon.png";
+import { motion } from "@/lib/framer";
+const appIcon = "/icon-512.png";
 
 export function SplashScreen() {
   return (

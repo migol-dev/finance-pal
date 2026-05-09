@@ -1,19 +1,16 @@
 import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useFinance } from "@/store/finance-store";
-import { fmt, fmt2, monthlyAmount, MONTHS, MONTHS_SHORT, isFixedActiveInMonth, iconFor, PAYMENT_METHOD_LABEL, PAYMENT_METHOD_EMOJI, PaymentMethod } from "@/lib/finance";
+import { fmt, fmt2, monthlyAmount, MONTHS, MONTHS_SHORT, isFixedActiveInMonth, iconFor, PAYMENT_METHOD_LABEL, PAYMENT_METHOD_EMOJI, PaymentMethod, parseDateLocal } from "@/lib/finance";
 import { Header } from "@/components/app/Header";
 import { PillTabs } from "@/components/app/PillTabs";
 import { IconDisplay } from "@/components/app/IconDisplay";
-import {
-  Area, AreaChart, Bar, BarChart, CartesianGrid, Cell, Pie, PieChart,
-  ResponsiveContainer, Tooltip, XAxis, YAxis, Legend, Line, LineChart, ReferenceLine,
-} from "recharts";
+import useRecharts from "@/lib/useRecharts";
 import {
   ChevronLeft, ChevronRight, TrendingUp, TrendingDown, PiggyBank,
   Wallet, Trophy, AlertTriangle, Sparkles, Download, Target, HandCoins,
 } from "lucide-react";
-import { motion } from "framer-motion";
+import { motion } from "@/lib/framer";
 import { toast } from "sonner";
 
 type Tab = "general" | "categorias" | "metodos" | "metas";
@@ -40,7 +37,13 @@ const COLORS = [
 ];
 
 export default function Anual() {
-  const { fixedItems, transactions, debts, goals, activeYear, activeMonth, setActive } = useFinance();
+  const fixedItems = useFinance((s) => s.fixedItems);
+  const transactions = useFinance((s) => s.transactions);
+  const debts = useFinance((s) => s.debts);
+  const goals = useFinance((s) => s.goals);
+  const activeYear = useFinance((s) => s.activeYear);
+  const activeMonth = useFinance((s) => s.activeMonth);
+  const setActive = useFinance((s) => s.setActive);
   const navigate = useNavigate();
   const [tab, setTab] = useState<Tab>("general");
 
@@ -59,17 +62,17 @@ export default function Anual() {
         else expense += ma;
       }
       for (const t of transactions) {
-        const d = new Date(t.date);
+        const d = parseDateLocal(t.date);
         if (d.getMonth() !== idx || d.getFullYear() !== year) continue;
         if (t.type === "income") income += t.amount;
         else if (t.type === "saving") saving += t.amount;
         else expense += t.amount;
       }
       for (const dt of debts) {
-        const dd = new Date(dt.date);
+        const dd = parseDateLocal(dt.date);
         if (dd.getFullYear() === year && dd.getMonth() === idx) expense += dt.amount;
         for (const p of dt.payments) {
-          const pd = new Date(p.date);
+          const pd = parseDateLocal(p.date);
           if (pd.getFullYear() === year && pd.getMonth() === idx) income += p.amount;
         }
       }
@@ -122,7 +125,7 @@ export default function Anual() {
       for (let m = 0; m < 12; m++) if (isFixedActiveInMonth(i, activeYear, m)) total += monthlyAmount(i);
       if (total > 0) map[i.category] = (map[i.category] || 0) + total;
     });
-    transactions.filter((t) => t.type === "expense" && new Date(t.date).getFullYear() === activeYear)
+    transactions.filter((t) => t.type === "expense" && parseDateLocal(t.date).getFullYear() === activeYear)
       .forEach((t) => { map[t.category] = (map[t.category] || 0) + t.amount; });
     return Object.entries(map).map(([name, value]) => ({ name, value })).sort((a, b) => b.value - a.value);
   }, [fixedItems, transactions, activeYear]);
@@ -130,7 +133,7 @@ export default function Anual() {
   /* ---------- Top concepts (variable expenses) ---------- */
   const topConcepts = useMemo(() => {
     const map: Record<string, { amount: number; count: number; sample: any }> = {};
-    transactions.filter((t) => t.type === "expense" && new Date(t.date).getFullYear() === activeYear)
+    transactions.filter((t) => t.type === "expense" && parseDateLocal(t.date).getFullYear() === activeYear)
       .forEach((t) => {
         const k = t.concept.trim();
         if (!map[k]) map[k] = { amount: 0, count: 0, sample: t };
@@ -144,7 +147,7 @@ export default function Anual() {
   /* ---------- Payment methods ---------- */
   const byMethod = useMemo(() => {
     const map: Record<PaymentMethod, number> = { cash: 0, transfer: 0, card: 0, other: 0 };
-    transactions.filter((t) => t.type === "expense" && new Date(t.date).getFullYear() === activeYear)
+    transactions.filter((t) => t.type === "expense" && parseDateLocal(t.date).getFullYear() === activeYear)
       .forEach((t) => { if (t.paymentMethod) map[t.paymentMethod] += t.amount; });
     fixedItems.filter((i) => i.type === "expense_fixed" || i.type === "expense_variable").forEach((i) => {
       if (!i.paymentMethod) return;
@@ -160,17 +163,17 @@ export default function Anual() {
 
   /* ---------- Goals progress this year ---------- */
   const goalsThisYear = useMemo(() => goals.map((g) => {
-    const contribsYear = (g.contributions ?? []).filter((c) => new Date(c.date).getFullYear() === activeYear)
+    const contribsYear = (g.contributions ?? []).filter((c) => parseDateLocal(c.date).getFullYear() === activeYear)
       .reduce((s, c) => s + c.amount, 0);
     return { goal: g, contribsYear };
   }), [goals, activeYear]);
 
   /* ---------- Debts overview for the year ---------- */
   const debtsYear = useMemo(() => {
-    const lent = debts.filter((d) => new Date(d.date).getFullYear() === activeYear)
+    const lent = debts.filter((d) => parseDateLocal(d.date).getFullYear() === activeYear)
       .reduce((s, d) => s + d.amount, 0);
     const collected = debts.flatMap((d) => d.payments)
-      .filter((p) => new Date(p.date).getFullYear() === activeYear)
+      .filter((p) => parseDateLocal(p.date).getFullYear() === activeYear)
       .reduce((s, p) => s + p.amount, 0);
     const outstanding = debts.reduce((s, d) => {
       const paid = d.payments.reduce((a, p) => a + p.amount, 0);
@@ -200,6 +203,8 @@ export default function Anual() {
     color: "hsl(var(--card-foreground))",
     fontSize: 11,
   } as const;
+
+  const R = useRecharts();
 
   return (
     <div>
@@ -293,28 +298,32 @@ export default function Anual() {
           <section className="px-5 mt-5">
             <SectionTitle>Flujo mensual</SectionTitle>
             <ChartCard>
-              <ResponsiveContainer width="100%" height={240}>
-                <AreaChart data={monthly} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
-                  <defs>
-                    <linearGradient id="ig" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="0%" stopColor="hsl(var(--success))" stopOpacity={0.5} />
-                      <stop offset="100%" stopColor="hsl(var(--success))" stopOpacity={0} />
-                    </linearGradient>
-                    <linearGradient id="eg" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="0%" stopColor="hsl(var(--destructive))" stopOpacity={0.45} />
-                      <stop offset="100%" stopColor="hsl(var(--destructive))" stopOpacity={0} />
-                    </linearGradient>
-                  </defs>
-                  <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
-                  <XAxis dataKey="mes" tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }} axisLine={false} tickLine={false} />
-                  <YAxis tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }} axisLine={false} tickLine={false}
-                    tickFormatter={(v: number) => v >= 1000 ? `${(v/1000).toFixed(0)}k` : `${v}`} />
-                  <Tooltip contentStyle={tooltipStyle} formatter={(v: number) => fmt(Number(v))} />
-                  <Legend wrapperStyle={{ fontSize: 11 }} />
-                  <Area type="monotone" dataKey="Ingresos" stroke="hsl(var(--success))" strokeWidth={2} fill="url(#ig)" />
-                  <Area type="monotone" dataKey="Gastos" stroke="hsl(var(--destructive))" strokeWidth={2} fill="url(#eg)" />
-                </AreaChart>
-              </ResponsiveContainer>
+                {R ? (
+                  <R.ResponsiveContainer width="100%" height={240}>
+                    <R.AreaChart data={monthly} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
+                      <defs>
+                        <linearGradient id="ig" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="0%" stopColor="hsl(var(--success))" stopOpacity={0.5} />
+                          <stop offset="100%" stopColor="hsl(var(--success))" stopOpacity={0} />
+                        </linearGradient>
+                        <linearGradient id="eg" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="0%" stopColor="hsl(var(--destructive))" stopOpacity={0.45} />
+                          <stop offset="100%" stopColor="hsl(var(--destructive))" stopOpacity={0} />
+                        </linearGradient>
+                      </defs>
+                      <R.CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
+                      <R.XAxis dataKey="mes" tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }} axisLine={false} tickLine={false} />
+                      <R.YAxis tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }} axisLine={false} tickLine={false}
+                        tickFormatter={(v: number) => v >= 1000 ? `${(v/1000).toFixed(0)}k` : `${v}`} />
+                      <R.Tooltip contentStyle={tooltipStyle} formatter={(v: number) => fmt(Number(v))} />
+                      <R.Legend wrapperStyle={{ fontSize: 11 }} />
+                      <R.Area type="monotone" dataKey="Ingresos" stroke="hsl(var(--success))" strokeWidth={2} fill="url(#ig)" />
+                      <R.Area type="monotone" dataKey="Gastos" stroke="hsl(var(--destructive))" strokeWidth={2} fill="url(#eg)" />
+                    </R.AreaChart>
+                  </R.ResponsiveContainer>
+                ) : (
+                  <div className="h-[240px] flex items-center justify-center text-xs text-muted-foreground">Cargando gráfico…</div>
+                )}
             </ChartCard>
           </section>
 
@@ -322,21 +331,25 @@ export default function Anual() {
           <section className="px-5 mt-5">
             <SectionTitle>Neto y tasa de ahorro</SectionTitle>
             <ChartCard>
-              <ResponsiveContainer width="100%" height={220}>
-                <LineChart data={monthly} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
-                  <XAxis dataKey="mes" tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }} axisLine={false} tickLine={false} />
-                  <YAxis yAxisId="l" tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }} axisLine={false} tickLine={false}
-                    tickFormatter={(v: number) => v >= 1000 || v <= -1000 ? `${(v/1000).toFixed(0)}k` : `${v}`} />
-                  <YAxis yAxisId="r" orientation="right" tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }} axisLine={false} tickLine={false} tickFormatter={(v) => `${v}%`} />
-                  <Tooltip contentStyle={tooltipStyle}
-                    formatter={(v: number, n: string) => n === "Tasa" ? `${v}%` : fmt(Number(v))} />
-                  <Legend wrapperStyle={{ fontSize: 11 }} />
-                  <ReferenceLine yAxisId="l" y={0} stroke="hsl(var(--border))" />
-                  <Line yAxisId="l" type="monotone" dataKey="Neto" stroke="hsl(var(--primary))" strokeWidth={2.5} dot={{ r: 3 }} />
-                  <Line yAxisId="r" type="monotone" dataKey="Tasa" stroke="hsl(var(--accent))" strokeWidth={2} dot={false} strokeDasharray="4 3" />
-                </LineChart>
-              </ResponsiveContainer>
+                {R ? (
+                  <R.ResponsiveContainer width="100%" height={220}>
+                    <R.LineChart data={monthly} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
+                      <R.CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
+                      <R.XAxis dataKey="mes" tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }} axisLine={false} tickLine={false} />
+                      <R.YAxis yAxisId="l" tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }} axisLine={false} tickLine={false}
+                        tickFormatter={(v: number) => v >= 1000 || v <= -1000 ? `${(v/1000).toFixed(0)}k` : `${v}`} />
+                      <R.YAxis yAxisId="r" orientation="right" tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }} axisLine={false} tickLine={false} tickFormatter={(v) => `${v}%`} />
+                      <R.Tooltip contentStyle={tooltipStyle}
+                        formatter={(v: number, n: string) => n === "Tasa" ? `${v}%` : fmt(Number(v))} />
+                      <R.Legend wrapperStyle={{ fontSize: 11 }} />
+                      <R.ReferenceLine yAxisId="l" y={0} stroke="hsl(var(--border))" />
+                      <R.Line yAxisId="l" type="monotone" dataKey="Neto" stroke="hsl(var(--primary))" strokeWidth={2.5} dot={{ r: 3 }} />
+                      <R.Line yAxisId="r" type="monotone" dataKey="Tasa" stroke="hsl(var(--accent))" strokeWidth={2} dot={false} strokeDasharray="4 3" />
+                    </R.LineChart>
+                  </R.ResponsiveContainer>
+                ) : (
+                  <div className="h-[220px] flex items-center justify-center text-xs text-muted-foreground">Cargando gráfico…</div>
+                )}
             </ChartCard>
           </section>
 
@@ -403,14 +416,18 @@ export default function Anual() {
                 <EmptyState text={`Sin gastos registrados en ${activeYear}`} />
               ) : (
                 <>
-                  <ResponsiveContainer width="100%" height={220}>
-                    <PieChart>
-                      <Pie data={byCategory} dataKey="value" nameKey="name" innerRadius={55} outerRadius={90} paddingAngle={2}>
-                        {byCategory.map((_, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
-                      </Pie>
-                      <Tooltip formatter={(v: number) => fmt(v)} contentStyle={tooltipStyle} />
-                    </PieChart>
-                  </ResponsiveContainer>
+                  {R ? (
+                    <R.ResponsiveContainer width="100%" height={220}>
+                      <R.PieChart>
+                        <R.Pie data={byCategory} dataKey="value" nameKey="name" innerRadius={55} outerRadius={90} paddingAngle={2}>
+                          {byCategory.map((_, i) => <R.Cell key={i} fill={COLORS[i % COLORS.length]} />)}
+                        </R.Pie>
+                        <R.Tooltip formatter={(v: number) => fmt(v)} contentStyle={tooltipStyle} />
+                      </R.PieChart>
+                    </R.ResponsiveContainer>
+                  ) : (
+                    <div className="h-[220px] flex items-center justify-center text-xs text-muted-foreground">Cargando gráfico…</div>
+                  )}
                   <div className="space-y-2 mt-3">
                     {byCategory.slice(0, 8).map((c, i) => {
                       const pct = (c.value / totals.expense) * 100 || 0;
@@ -464,17 +481,21 @@ export default function Anual() {
               <EmptyState text="Sin métodos de pago registrados" />
             ) : (
               <>
-                <ResponsiveContainer width="100%" height={200}>
-                  <BarChart data={byMethod} layout="vertical" margin={{ top: 4, right: 12, left: 0, bottom: 0 }}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" horizontal={false} />
-                    <XAxis type="number" tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }} tickFormatter={(v: number) => v >= 1000 ? `${(v/1000).toFixed(0)}k` : `${v}`} axisLine={false} tickLine={false} />
-                    <YAxis type="category" dataKey="name" tick={{ fontSize: 11, fill: "hsl(var(--foreground))" }} axisLine={false} tickLine={false} width={100} />
-                    <Tooltip contentStyle={tooltipStyle} formatter={(v: number) => fmt(v)} />
-                    <Bar dataKey="value" radius={[0, 8, 8, 0]}>
-                      {byMethod.map((_, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
-                    </Bar>
-                  </BarChart>
-                </ResponsiveContainer>
+                {R ? (
+                  <R.ResponsiveContainer width="100%" height={200}>
+                    <R.BarChart data={byMethod} layout="vertical" margin={{ top: 4, right: 12, left: 0, bottom: 0 }}>
+                      <R.CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" horizontal={false} />
+                      <R.XAxis type="number" tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }} tickFormatter={(v: number) => v >= 1000 ? `${(v/1000).toFixed(0)}k` : `${v}`} axisLine={false} tickLine={false} />
+                      <R.YAxis type="category" dataKey="name" tick={{ fontSize: 11, fill: "hsl(var(--foreground))" }} axisLine={false} tickLine={false} width={100} />
+                      <R.Tooltip contentStyle={tooltipStyle} formatter={(v: number) => fmt(v)} />
+                      <R.Bar dataKey="value" radius={[0, 8, 8, 0]}>
+                        {byMethod.map((_, i) => <R.Cell key={i} fill={COLORS[i % COLORS.length]} />)}
+                      </R.Bar>
+                    </R.BarChart>
+                  </R.ResponsiveContainer>
+                ) : (
+                  <div className="h-[200px] flex items-center justify-center text-xs text-muted-foreground">Cargando gráfico…</div>
+                )}
                 <div className="grid grid-cols-2 gap-2 mt-3">
                   {byMethod.map((m) => {
                     const total = byMethod.reduce((s, x) => s + x.value, 0);

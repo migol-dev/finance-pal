@@ -1,7 +1,7 @@
 import { cn } from "@/lib/utils";
-import { ReactNode } from "react";
+import { ReactNode, memo } from "react";
 
-export function StatPill({ label, value, icon, tone = "default" }: {
+export const StatPill = memo(function StatPill({ label, value, icon, tone = "default" }: {
   label: string; value: ReactNode; icon?: ReactNode;
   tone?: "default" | "success" | "danger" | "info";
 }) {

@@ -1,4 +1,4 @@
-import { forwardRef } from "react";
+import { forwardRef, memo } from "react";
 import { IconRef } from "@/lib/finance";
 import { cn } from "@/lib/utils";
 
@@ -12,7 +12,7 @@ interface Props {
  * Renders an icon (emoji or cropped image thumbnail) with consistent sizing.
  * forwardRef so it works inside framer-motion <AnimatePresence>.
  */
-export const IconDisplay = forwardRef<HTMLDivElement, Props>(function IconDisplay(
+export const IconDisplay = memo(forwardRef<HTMLDivElement, Props>(function IconDisplay(
   { icon, className, size = "md" },
   ref
 ) {
@@ -39,4 +39,4 @@ export const IconDisplay = forwardRef<HTMLDivElement, Props>(function IconDispla
       <span aria-hidden>{safe.value}</span>
     </div>
   );
-});
+}));

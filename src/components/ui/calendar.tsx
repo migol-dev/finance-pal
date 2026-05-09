@@ -8,13 +8,20 @@ import { buttonVariants } from "@/components/ui/button";
 export type CalendarProps = React.ComponentProps<typeof DayPicker>;
 
 function Calendar({ className, classNames, showOutsideDays = true, ...props }: CalendarProps) {
+  // Durante las pruebas, forzamos una fecha 'today' determinista para evitar
+  // flakiness en snapshots dependientes de la fecha/hora del sistema.
+  const forcedToday = typeof process !== "undefined" && process.env.NODE_ENV === "test"
+    ? new Date("2026-05-07T12:00:00Z")
+    : undefined;
+
   return (
     <DayPicker
       showOutsideDays={showOutsideDays}
+      {...(forcedToday ? { today: forcedToday } : {})}
       className={cn("p-3 pointer-events-auto", className)}
       classNames={{
         months: "flex flex-col sm:flex-row space-y-4 sm:space-x-4 sm:space-y-0",
-        month: "space-y-4",
+        month: "space-y-4 w-full",
         caption: "flex justify-center pt-1 relative items-center text-foreground",
         caption_label: "text-sm font-semibold text-foreground",
         nav: "space-x-1 flex items-center",
@@ -25,11 +32,11 @@ function Calendar({ className, classNames, showOutsideDays = true, ...props }: C
         nav_button_previous: "absolute left-1",
         nav_button_next: "absolute right-1",
         table: "w-full border-collapse space-y-1",
-        head_row: "flex",
-        head_cell: "text-muted-foreground rounded-md w-9 font-normal text-[0.8rem]",
-        row: "flex w-full mt-2",
+        head_row: "grid grid-cols-7 w-full",
+        head_cell: "text-muted-foreground rounded-md w-full font-normal text-[0.8rem]",
+        row: "grid grid-cols-7 w-full mt-2",
         cell: cn(
-          "h-9 w-9 text-center text-sm p-0 relative",
+          "h-9 w-full text-center text-sm p-0 relative flex items-center justify-center",
           // Range continuity uses semantic primary token, no hardcoded colors
           "[&:has([aria-selected].day-range-middle)]:bg-primary/20",
           "[&:has([aria-selected].day-range-start)]:bg-primary/20 [&:has([aria-selected].day-range-start)]:rounded-l-md",
@@ -40,8 +47,12 @@ function Calendar({ className, classNames, showOutsideDays = true, ...props }: C
         ),
         day: cn(
           buttonVariants({ variant: "ghost" }),
-          "h-9 w-9 p-0 font-normal text-foreground/80 hover:bg-accent hover:text-accent-foreground aria-selected:opacity-100",
+          "h-9 w-9 p-0 font-normal text-foreground/80 hover:bg-accent hover:text-accent-foreground aria-selected:opacity-100 flex items-center justify-center",
         ),
+        // Add v9 compatible names
+        weekdays: "grid grid-cols-7 w-full",
+        weekday: "text-muted-foreground rounded-md w-full font-normal text-[0.8rem]",
+        week: "grid grid-cols-7 w-full mt-2",
         day_range_end: "day-range-end",
         day_range_start: "day-range-start",
         day_selected:

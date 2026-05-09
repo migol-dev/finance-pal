@@ -1,12 +1,17 @@
-import { ReactNode } from "react";
+import { ReactNode, memo } from "react";
 import { useFinance } from "@/store/finance-store";
 import { IconDisplay } from "./IconDisplay";
+import { motion } from "@/lib/framer";
 
-export function Header({ title, subtitle, action }: { title: string; subtitle?: string; action?: ReactNode }) {
+export const Header = memo(function Header({ title, subtitle, action }: { title: string; subtitle?: string; action?: ReactNode }) {
   const profile = useFinance((s) => s.profile);
   const greet = profile.name ? `Hola, ${profile.name.split(" ")[0]} 👋` : null;
   return (
-    <header className="px-5 pt-6 pb-4 flex items-end justify-between gap-3">
+    <motion.header
+      initial={{ opacity: 0, y: -10 }}
+      animate={{ opacity: 1, y: 0 }}
+      className="px-5 pt-6 pb-4 flex items-end justify-between gap-3"
+    >
       <div className="flex items-center gap-3 min-w-0">
         {profile.avatar && <IconDisplay icon={profile.avatar} size="md" />}
         <div className="min-w-0">
@@ -16,6 +21,6 @@ export function Header({ title, subtitle, action }: { title: string; subtitle?: 
         </div>
       </div>
       {action}
-    </header>
+    </motion.header>
   );
-}
+});

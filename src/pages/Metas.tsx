@@ -1,19 +1,19 @@
 import { useMemo, useState } from "react";
 import { useFinance } from "@/store/finance-store";
-import { fmt, fmt2, iconFor, IconRef, Goal } from "@/lib/finance";
+import { fmt, fmt2, iconFor, IconRef, Goal, fmtDate, parseDateLocal } from "@/lib/finance";
 import { Header } from "@/components/app/Header";
-import { Plus, Trash2, Pencil, Minus, CalendarDays, ExternalLink, Sparkles, AlertTriangle, CheckCircle2 } from "lucide-react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Plus, Trash2, Pencil, Minus, CalendarDays, ExternalLink, Sparkles, AlertTriangle, CheckCircle2, Star, ChevronRight, X } from "lucide-react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Slider } from "@/components/ui/slider";
 import { Calendar } from "@/components/ui/calendar";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion, AnimatePresence } from "@/lib/framer";
 import { toast } from "sonner";
 import { IconPicker } from "@/components/app/IconPicker";
 import { IconDisplay } from "@/components/app/IconDisplay";
-import { Area, AreaChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis, ReferenceLine, Line } from "recharts";
+import useRecharts from "@/lib/useRecharts";
 import { cn } from "@/lib/utils";
 import { PillTabs } from "@/components/app/PillTabs";
 
@@ -21,7 +21,10 @@ const PALETTES = ["gradient-sunset", "gradient-ocean", "gradient-secondary", "gr
 
 function startOfDay(d: Date) { const x = new Date(d); x.setHours(0, 0, 0, 0); return x; }
 function daysBetween(a: Date, b: Date) { return Math.max(0, Math.round((startOfDay(b).getTime() - startOfDay(a).getTime()) / 86400000)); }
-function ymd(d: Date) { return d.toISOString().slice(0, 10); }
+function ymd(d: Date) {
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+}
 function normalizeUrl(u?: string) {
   if (!u) return undefined;
   const t = u.trim();
@@ -49,7 +52,7 @@ function paceFor(goal: Goal) {
 /** Returns the cumulative ideal vs actual amount at a given date. */
 function expectedAt(goal: Goal, date: Date) {
   if (!goal.deadline) return goal.target;
-  const start = startOfDay(new Date(goal.createdAt ?? new Date().toISOString()));
+  const start = startOfDay(parseDateLocal(goal.createdAt ?? new Date().toISOString()));
   const dl = startOfDay(new Date(`${goal.deadline}T12:00:00`));
   const total = Math.max(1, daysBetween(start, dl));
   const elapsed = Math.min(total, Math.max(0, daysBetween(start, date)));
@@ -62,7 +65,7 @@ function actualAt(goal: Goal, date: Date) {
     ? 0
     : goal.saved; // legacy goal without log → use current saved as baseline
   const sum = (goal.contributions ?? []).reduce((acc, c) => {
-    const t = startOfDay(new Date(c.date)).getTime();
+    const t = startOfDay(parseDateLocal(c.date)).getTime();
     return t <= end ? acc + c.amount : acc;
   }, 0);
   return Math.max(0, initial + sum);
@@ -86,19 +89,23 @@ export default function Metas() {
   const { goals, addGoal, updateGoal, removeGoal, contributeGoal } = useFinance();
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<Goal | null>(null);
+  const [detailId, setDetailId] = useState<string | null>(null);
+
+  const detailGoal = useMemo(() => goals.find(g => g.id === detailId) || null, [goals, detailId]);
 
   const openNew = () => { setEditing(null); setOpen(true); };
   const openEdit = (g: Goal) => { setEditing(g); setOpen(true); };
 
   return (
-    <div>
+    <div className="pb-24">
       <Header title="Metas" subtitle="Sueños con plan" action={
         <Button onClick={openNew} className="rounded-2xl gradient-primary text-primary-foreground border-0 shadow-glow h-11"><Plus className="size-4 mr-1" />Nueva</Button>
       } />
 
       <Dialog open={open} onOpenChange={(v) => { setOpen(v); if (!v) setEditing(null); }}>
-        <DialogContent className="rounded-3xl max-h-[90vh] overflow-y-auto">
-          <DialogHeader><DialogTitle>{editing ? "Editar meta" : "Nueva meta"}</DialogTitle></DialogHeader>
+          <DialogContent className="rounded-3xl max-h-[90vh] overflow-y-auto">
+            <DialogHeader><DialogTitle>{editing ? "Editar meta" : "Nueva meta"}</DialogTitle></DialogHeader>
+            <DialogDescription className="sr-only">Formulario para crear o editar una meta</DialogDescription>
           <GoalForm initial={editing} onSave={(g) => {
             if (editing) { updateGoal(editing.id, g); toast.success("Actualizado"); }
             else { addGoal(g); toast.success("Meta creada ✨"); }
@@ -114,21 +121,124 @@ export default function Metas() {
             <p className="text-sm text-muted-foreground">Crea tu primera meta de ahorro</p>
           </div>
         )}
-        {goals.map((g, i) => (
-          <GoalCard key={g.id} goal={g} index={i}
-            onEdit={() => openEdit(g)}
-            onDelete={() => { if (confirm(`¿Eliminar "${g.name}"?`)) removeGoal(g.id); }}
-            onContribute={(amt, date) => contributeGoal(g.id, amt, date)}
-          />
-        ))}
+        <AnimatePresence>
+          {goals.map((g, i) => (
+            <GoalCompactCard key={g.id} goal={g} index={i}
+              onViewMore={() => setDetailId(g.id)}
+              onContribute={(amt, date) => contributeGoal(g.id, amt, date)}
+            />
+          ))}
+        </AnimatePresence>
       </div>
+
+      <Dialog open={!!detailId} onOpenChange={(v) => { if(!v) setDetailId(null); }}>
+        <DialogContent className="max-w-lg p-0 border-0 bg-transparent shadow-none overflow-hidden h-[95vh]">
+          <DialogDescription className="sr-only">Detalle de la meta {detailGoal?.name}</DialogDescription>
+          {detailGoal && (
+            <div className={cn("h-full w-full overflow-y-auto no-scrollbar rounded-t-[40px] p-6 text-white relative", detailGoal.color)}>
+              <button onClick={() => setDetailId(null)} className="absolute top-6 right-6 size-10 rounded-full bg-white/20 flex items-center justify-center backdrop-blur-md z-10">
+                <X className="size-5" />
+              </button>
+
+              <GoalDetailContent
+                goal={detailGoal}
+                onEdit={() => { setEditing(detailGoal); setOpen(true); setDetailId(null); }}
+                onDelete={() => { if (confirm(`¿Eliminar "${detailGoal.name}"?`)) { removeGoal(detailGoal.id); setDetailId(null); } }}
+                onContribute={(amt, date) => contributeGoal(detailGoal.id, amt, date)}
+                onTogglePin={() => updateGoal(detailGoal.id, { pinned: !detailGoal.pinned })}
+              />
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
 
-function GoalCard({ goal, index, onEdit, onDelete, onContribute }: {
-  goal: Goal; index: number; onEdit: () => void; onDelete: () => void;
+function GoalCompactCard({ goal, index, onViewMore, onContribute }: {
+  goal: Goal; index: number; onViewMore: () => void;
   onContribute: (amount: number, date?: string) => void;
+}) {
+  const pct = goal.target > 0 ? Math.min(100, (goal.saved / goal.target) * 100) : 0;
+  const [confirmOpen, setConfirmOpen] = useState<{ amount: number } | null>(null);
+
+  const handleQuickAdd = (amount: number) => {
+    setConfirmOpen({ amount });
+  };
+
+  return (
+    <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: index * 0.05 }}
+      className={cn("rounded-3xl p-5 text-primary-foreground shadow-pop relative overflow-hidden", goal.color)}>
+      <div className="absolute -top-10 -right-10 size-40 rounded-full bg-white/10 blur-3xl" />
+
+      <div className="relative">
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center gap-3">
+            <IconDisplay icon={iconFor(goal)} size="lg" className="bg-white/20 shadow-inner" />
+            <div>
+              <p className="font-bold text-lg leading-tight">{goal.name}</p>
+              <p className="text-[10px] opacity-80 font-semibold tracking-wider uppercase">{goal.pinned ? "Meta Principal" : "Meta Ahorro"}</p>
+            </div>
+          </div>
+          <button onClick={onViewMore} className="size-10 rounded-2xl bg-white/20 flex items-center justify-center active:scale-90 transition">
+            <ChevronRight className="size-5" />
+          </button>
+        </div>
+
+        <div className="space-y-1">
+          <div className="flex items-end justify-between">
+            <p className="text-2xl font-black">{fmt(goal.saved)}</p>
+            <p className="text-xs font-bold opacity-80 mb-1">Objetivo: {fmt(goal.target)}</p>
+          </div>
+          <div className="h-2.5 rounded-full bg-white/20 overflow-hidden relative">
+            <motion.div initial={{ width: 0 }} animate={{ width: `${pct}%` }} transition={{ duration: 1, ease: "easeOut" }} className="h-full bg-white rounded-full shadow-glow" />
+          </div>
+          <div className="flex justify-between items-center text-[10px] font-bold uppercase tracking-tighter pt-1">
+            <span>{pct.toFixed(1)}%</span>
+            <span className="opacity-70">{fmt(goal.target - goal.saved)} restantes</span>
+          </div>
+        </div>
+
+        <div className="flex gap-2 mt-5">
+          <button onClick={() => handleQuickAdd(100)} className="flex-1 h-10 rounded-2xl bg-white/15 hover:bg-white/25 active:scale-95 transition text-[11px] font-black border border-white/10">+100</button>
+          <button onClick={() => handleQuickAdd(500)} className="flex-1 h-10 rounded-2xl bg-white/15 hover:bg-white/25 active:scale-95 transition text-[11px] font-black border border-white/10">+500</button>
+          <button onClick={() => handleQuickAdd(1000)} className="flex-1 h-10 rounded-2xl bg-white/15 hover:bg-white/25 active:scale-95 transition text-[11px] font-black border border-white/10">+1k</button>
+          <button onClick={onViewMore} className="size-10 rounded-2xl bg-white/25 hover:bg-white/35 active:scale-95 transition flex items-center justify-center border border-white/20"><Plus className="size-4" /></button>
+        </div>
+      </div>
+
+      <Dialog open={!!confirmOpen} onOpenChange={(v) => !v && setConfirmOpen(null)}>
+        <DialogContent className="rounded-[32px] max-w-[90vw] w-[320px] p-6 border-0 bg-background shadow-2xl overflow-hidden">
+          <div className="text-center space-y-4">
+            <div className={cn("size-20 rounded-full mx-auto flex items-center justify-center shadow-lg", goal.color)}>
+              <Plus className="size-10 text-white" />
+            </div>
+            <div>
+              <h3 className="text-xl font-black">¿Confirmar aporte?</h3>
+              <p className="text-sm text-muted-foreground">Vas a añadir <span className="font-bold text-foreground">{fmt(confirmOpen?.amount ?? 0)}</span> a tu meta <span className="font-bold text-foreground">"{goal.name}"</span>.</p>
+            </div>
+            <div className="flex gap-3 pt-2">
+              <Button variant="ghost" className="flex-1 h-12 rounded-2xl font-bold" onClick={() => setConfirmOpen(null)}>Cancelar</Button>
+              <Button className={cn("flex-1 h-12 rounded-2xl font-black text-white shadow-lg border-0", goal.color)}
+                onClick={() => {
+                  if(confirmOpen) onContribute(confirmOpen.amount);
+                  setConfirmOpen(null);
+                  toast.success("¡Aporte registrado! 🚀");
+                }}>
+                Confirmar
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+    </motion.div>
+  );
+}
+
+function GoalDetailContent({ goal, onEdit, onDelete, onContribute, onTogglePin }: {
+  goal: Goal; onEdit: () => void; onDelete: () => void;
+  onContribute: (amount: number, date?: string) => void;
+  onTogglePin: () => void;
 }) {
   const [tab, setTab] = useState<"resumen" | "calendario" | "simular">("resumen");
   const pct = goal.target > 0 ? Math.min(100, (goal.saved / goal.target) * 100) : 0;
@@ -136,78 +246,73 @@ function GoalCard({ goal, index, onEdit, onDelete, onContribute }: {
   const url = normalizeUrl(goal.purchaseUrl);
 
   return (
-    <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: index * 0.05 }}
-      className={`rounded-3xl p-5 text-primary-foreground shadow-pop relative overflow-hidden ${goal.color}`}>
-      <div className="absolute -top-8 -right-8 size-32 rounded-full bg-white/20 blur-2xl" />
-      <div className="relative">
-        <div className="flex items-start justify-between gap-2">
-          <div className="flex items-center gap-3 min-w-0">
-            {url ? (
-              <a href={url} target="_blank" rel="noopener noreferrer"
-                title="Abrir link de compra"
-                className="relative group active:scale-95 transition">
-                <IconDisplay icon={iconFor(goal)} size="lg" className="bg-white/20 ring-2 ring-white/40" />
-                <span className="absolute -bottom-1 -right-1 size-5 rounded-full bg-white text-[10px] flex items-center justify-center shadow">
-                  <ExternalLink className="size-3 text-foreground" />
-                </span>
-              </a>
-            ) : (
-              <IconDisplay icon={iconFor(goal)} size="lg" className="bg-white/20" />
-            )}
-            <div className="min-w-0">
-              <p className="font-bold text-lg truncate">{goal.name}</p>
-              {goal.deadline && (
-                <p className="text-[11px] opacity-80">📅 {new Date(`${goal.deadline}T12:00:00`).toLocaleDateString("es-MX", { day: "2-digit", month: "short", year: "numeric" })}</p>
-              )}
-            </div>
-          </div>
-          <div className="flex gap-1 shrink-0">
-            <button onClick={onEdit} className="size-9 rounded-xl bg-white/20 flex items-center justify-center hover:bg-white/30 transition"><Pencil className="size-4" /></button>
-            <button onClick={onDelete} className="size-9 rounded-xl bg-white/20 flex items-center justify-center hover:bg-white/30 transition"><Trash2 className="size-4" /></button>
-          </div>
+    <div className="pb-10">
+      <div className="flex items-center gap-4 mb-6 pr-12">
+        {url ? (
+          <a href={url} target="_blank" rel="noopener noreferrer" className="relative group active:scale-95 transition">
+            <IconDisplay icon={iconFor(goal)} size="lg" className="bg-white/20 ring-4 ring-white/10" />
+            <span className="absolute -bottom-1 -right-1 size-6 rounded-full bg-white text-foreground flex items-center justify-center shadow-lg">
+              <ExternalLink className="size-3.5" />
+            </span>
+          </a>
+        ) : (
+          <IconDisplay icon={iconFor(goal)} size="lg" className="bg-white/20 shadow-xl" />
+        )}
+        <div className="min-w-0">
+          <h2 className="text-2xl font-black truncate">{goal.name}</h2>
+          {goal.deadline && (
+            <p className="text-xs font-bold opacity-80 flex items-center gap-1.5 mt-0.5">
+              <CalendarDays className="size-3.5" /> {fmtDate(`${goal.deadline}T12:00:00`)}
+            </p>
+          )}
         </div>
-
-        <div className="mt-4">
-          <div className="flex items-baseline justify-between">
-            <p className="text-2xl font-extrabold">{fmt(goal.saved)}</p>
-            <p className="text-xs opacity-80">de {fmt(goal.target)}</p>
-          </div>
-          <div className="h-2.5 rounded-full bg-white/25 overflow-hidden mt-2">
-            <motion.div initial={{ width: 0 }} animate={{ width: `${pct}%` }} transition={{ duration: 1.2 }} className="h-full bg-white rounded-full" />
-          </div>
-          <p className="text-xs font-semibold mt-1 opacity-90">{pct.toFixed(1)}% completado</p>
-        </div>
-
-        <StatusBanner status={status} />
-
-        <div className="flex gap-2 mt-4">
-          <ContributeBtn label="+ $100" onClick={() => onContribute(100)} />
-          <ContributeBtn label="+ $500" onClick={() => onContribute(500)} />
-          <ContributeBtn label="+ $1,000" onClick={() => onContribute(1000)} />
-          <ContribCustom onAdd={(v) => onContribute(v)} />
-          <ContribCustom negative onAdd={(v) => onContribute(-v)} />
-        </div>
-
-        {/* Tabs */}
-        <PillTabs<"resumen" | "calendario" | "simular">
-          className="mt-4"
-          ariaLabel={`Vistas de meta ${goal.name}`}
-          tabs={["resumen", "calendario", "simular"]}
-          value={tab}
-          onChange={setTab}
-        />
-
-        <AnimatePresence mode="wait">
-          <motion.div key={tab}
-            initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -6 }}
-            transition={{ duration: 0.18 }} className="mt-3">
-            {tab === "resumen" && <ResumenTab goal={goal} />}
-            {tab === "calendario" && <CalendarioTab goal={goal} onContribute={onContribute} />}
-            {tab === "simular" && <SimularTab goal={goal} />}
-          </motion.div>
-        </AnimatePresence>
       </div>
-    </motion.div>
+
+      <div className="bg-white/10 backdrop-blur-md rounded-[32px] p-6 mb-4 border border-white/10">
+        <div className="flex items-baseline justify-between mb-2">
+          <p className="text-4xl font-black">{fmt(goal.saved)}</p>
+          <p className="text-sm font-bold opacity-70">de {fmt(goal.target)}</p>
+        </div>
+        <div className="h-3 rounded-full bg-black/20 overflow-hidden mb-2">
+          <motion.div initial={{ width: 0 }} animate={{ width: `${pct}%` }} transition={{ duration: 1.2 }} className="h-full bg-white rounded-full" />
+        </div>
+        <div className="flex justify-between items-center">
+          <p className="text-sm font-black">{pct.toFixed(1)}%</p>
+          <StatusBanner status={status} />
+        </div>
+      </div>
+
+      <div className="grid grid-cols-4 gap-2 mb-6">
+        <button onClick={onTogglePin} className={cn("h-14 rounded-2xl flex items-center justify-center transition active:scale-90", goal.pinned ? "bg-white text-foreground" : "bg-white/10 text-white")}>
+          <Star className={cn("size-6", goal.pinned ? "fill-current" : "")} />
+        </button>
+        <button onClick={onEdit} className="h-14 rounded-2xl bg-white/10 flex items-center justify-center active:scale-90 transition"><Pencil className="size-6" /></button>
+        <button onClick={onDelete} className="h-14 rounded-2xl bg-white/10 flex items-center justify-center active:scale-90 transition"><Trash2 className="size-6" /></button>
+        <ContribCustom onAdd={(v) => onContribute(v)} />
+      </div>
+
+      <div className="flex gap-2 mb-6">
+        <ContributeBtn label="+ $100" onClick={() => onContribute(100)} />
+        <ContributeBtn label="+ $500" onClick={() => onContribute(500)} />
+        <ContribCustom negative onAdd={(v) => onContribute(-v)} />
+      </div>
+
+      <PillTabs<"resumen" | "calendario" | "simular">
+        className="mb-4 bg-black/10 p-1 rounded-2xl"
+        ariaLabel={`Vistas de meta ${goal.name}`}
+        tabs={["resumen", "calendario", "simular"]}
+        value={tab}
+        onChange={setTab}
+      />
+
+      <AnimatePresence mode="wait">
+        <motion.div key={tab} initial={{ opacity: 0, x: 10 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -10 }} transition={{ duration: 0.2 }}>
+          {tab === "resumen" && <ResumenTab goal={goal} />}
+          {tab === "calendario" && <CalendarioTab goal={goal} onContribute={onContribute} />}
+          {tab === "simular" && <SimularTab goal={goal} />}
+        </motion.div>
+      </AnimatePresence>
+    </div>
   );
 }
 
@@ -215,32 +320,32 @@ function StatusBanner({ status }: { status: ReturnType<typeof statusFor> }) {
   if (!status) return null;
   if (status.kind === "done") {
     return (
-      <div className="mt-3 flex items-center gap-2 rounded-2xl bg-white/25 px-3 py-2">
+      <div className="flex items-center gap-2 rounded-2xl bg-white/25 px-3 py-1">
         <CheckCircle2 className="size-4 shrink-0" />
-        <p className="text-xs font-bold">🎉 Meta cumplida</p>
+        <p className="text-[10px] font-bold">🎉 Cumplida</p>
       </div>
     );
   }
   if (status.kind === "behind") {
     return (
-      <div className="mt-3 flex items-center gap-2 rounded-2xl bg-destructive/30 ring-1 ring-white/40 px-3 py-2 animate-pulse">
+      <div className="flex items-center gap-2 rounded-2xl bg-destructive/30 ring-1 ring-white/40 px-3 py-1 animate-pulse">
         <AlertTriangle className="size-4 shrink-0" />
-        <p className="text-xs font-bold">Vas atrasado por {fmt(Math.abs(status.diff))}. Acelera el ritmo.</p>
+        <p className="text-[10px] font-bold">Atrasado</p>
       </div>
     );
   }
   if (status.kind === "ahead") {
     return (
-      <div className="mt-3 flex items-center gap-2 rounded-2xl bg-white/25 px-3 py-2">
+      <div className="flex items-center gap-2 rounded-2xl bg-white/25 px-3 py-1">
         <Sparkles className="size-4 shrink-0" />
-        <p className="text-xs font-bold">¡Vas adelantado por {fmt(status.diff)}!</p>
+        <p className="text-[10px] font-bold">¡Adelantado!</p>
       </div>
     );
   }
   return (
-    <div className="mt-3 flex items-center gap-2 rounded-2xl bg-white/15 px-3 py-2">
+    <div className="flex items-center gap-2 rounded-2xl bg-white/15 px-3 py-1">
       <CheckCircle2 className="size-4 shrink-0" />
-      <p className="text-xs font-bold">Vas al ritmo del plan</p>
+      <p className="text-[10px] font-bold">Al ritmo</p>
     </div>
   );
 }
@@ -249,25 +354,27 @@ function ResumenTab({ goal }: { goal: Goal }) {
   const pace = paceFor(goal);
   const data = useMemo(() => {
     if (!goal.deadline) return [] as { label: string; ideal: number; actual: number | null }[];
-    const start = startOfDay(new Date(goal.createdAt ?? new Date().toISOString()));
+    const start = startOfDay(parseDateLocal(goal.createdAt ?? new Date().toISOString()));
     const dl = startOfDay(new Date(`${goal.deadline}T12:00:00`));
     const total = Math.max(1, daysBetween(start, dl));
     const today = startOfDay(new Date());
     const steps = 10;
     const arr: { label: string; ideal: number; actual: number | null }[] = [];
-    for (let i = 0; i <= steps; i++) {
+      for (let i = 0; i <= steps; i++) {
       const t = i / steps;
       const date = new Date(start.getTime() + total * t * 86400000);
       const ideal = goal.target * t;
       const actual = date <= today ? Math.round(actualAt(goal, date)) : null;
       arr.push({
-        label: date.toLocaleDateString("es-MX", { day: "2-digit", month: "short" }),
+        label: fmtDate(date),
         ideal: Math.round(ideal),
         actual,
       });
     }
     return arr;
   }, [goal]);
+
+  const R = useRecharts();
 
   return (
     <div className="rounded-2xl bg-white/15 backdrop-blur-sm p-3 space-y-3">
@@ -286,26 +393,30 @@ function ResumenTab({ goal }: { goal: Goal }) {
       )}
       {data.length > 0 && (
         <div className="h-40 -mx-1">
-          <ResponsiveContainer width="100%" height="100%">
-            <AreaChart data={data} margin={{ top: 4, right: 6, left: 0, bottom: 0 }}>
-              <defs>
-                <linearGradient id={`g-${goal.id}`} x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stopColor="#fff" stopOpacity={0.55} />
-                  <stop offset="100%" stopColor="#fff" stopOpacity={0} />
-                </linearGradient>
-              </defs>
-              <CartesianGrid stroke="#ffffff22" vertical={false} />
-              <XAxis dataKey="label" tick={{ fill: "#ffffffcc", fontSize: 9 }} axisLine={false} tickLine={false} />
-              <YAxis hide domain={[0, goal.target]} />
-              <Tooltip
-                contentStyle={{ background: "rgba(0,0,0,0.6)", border: "none", borderRadius: 12, color: "#fff", fontSize: 11 }}
-                formatter={(v: any) => v == null ? "—" : fmt(Number(v))}
-              />
-              <ReferenceLine y={goal.target} stroke="#ffffff88" strokeDasharray="3 3" />
-              <Area type="monotone" dataKey="ideal" name="Plan ideal" stroke="#fff" strokeWidth={2} fill={`url(#g-${goal.id})`} />
-              <Line type="monotone" dataKey="actual" name="Actual" stroke="#fff" strokeWidth={2} dot={{ r: 3, fill: "#fff" }} connectNulls={false} />
-            </AreaChart>
-          </ResponsiveContainer>
+          {R ? (
+            <R.ResponsiveContainer width="100%" height="100%">
+              <R.AreaChart data={data} margin={{ top: 4, right: 6, left: 0, bottom: 0 }}>
+                <defs>
+                  <linearGradient id={`g-${goal.id}`} x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor="#fff" stopOpacity={0.55} />
+                    <stop offset="100%" stopColor="#fff" stopOpacity={0} />
+                  </linearGradient>
+                </defs>
+                <R.CartesianGrid stroke="#ffffff22" vertical={false} />
+                <R.XAxis dataKey="label" tick={{ fill: "#ffffffcc", fontSize: 9 }} axisLine={false} tickLine={false} />
+                <R.YAxis hide domain={[0, goal.target]} />
+                <R.Tooltip
+                  contentStyle={{ background: "rgba(0,0,0,0.6)", border: "none", borderRadius: 12, color: "#fff", fontSize: 11 }}
+                  formatter={(v: any) => v == null ? "—" : fmt(Number(v))}
+                />
+                <R.ReferenceLine y={goal.target} stroke="#ffffff88" strokeDasharray="3 3" />
+                <R.Area type="monotone" dataKey="ideal" name="Plan ideal" stroke="#fff" strokeWidth={2} fill={`url(#g-${goal.id})`} />
+                <R.Line type="monotone" dataKey="actual" name="Actual" stroke="#fff" strokeWidth={2} dot={{ r: 3, fill: "#fff" }} connectNulls={false} />
+              </R.AreaChart>
+            </R.ResponsiveContainer>
+          ) : (
+            <div className="h-full flex items-center justify-center text-xs text-muted-foreground">Cargando gráfico…</div>
+          )}
         </div>
       )}
       {!goal.deadline && (
@@ -323,7 +434,7 @@ function CalendarioTab({ goal, onContribute }: { goal: Goal; onContribute: (amou
   const contribsByDay = useMemo(() => {
     const m = new Map<string, number>();
     (goal.contributions ?? []).forEach((c) => {
-      const k = ymd(startOfDay(new Date(c.date)));
+      const k = ymd(startOfDay(parseDateLocal(c.date)));
       m.set(k, (m.get(k) ?? 0) + c.amount);
     });
     return m;
@@ -348,7 +459,7 @@ function CalendarioTab({ goal, onContribute }: { goal: Goal; onContribute: (amou
       {selected && (
         <div className="rounded-xl bg-muted p-3 space-y-2">
           <div className="flex items-center justify-between text-xs">
-            <span className="font-semibold">{selected.toLocaleDateString("es-MX", { weekday: "long", day: "2-digit", month: "long" })}</span>
+            <span className="font-semibold">{fmtDate(selected)}</span>
             {dayContrib > 0 && <span className="text-success font-bold">+{fmt(dayContrib)}</span>}
           </div>
           <div className="flex items-center justify-between text-[11px] text-muted-foreground">
@@ -387,15 +498,17 @@ function SimularTab({ goal }: { goal: Goal }) {
   const recommended = pace?.perDay ?? 0;
   const [perDay, setPerDay] = useState<number>(Math.max(1, Math.round(recommended || 50)));
 
+  const R = useRecharts();
+
   const data = useMemo(() => {
     if (!goal.deadline) return [] as any[];
-    const start = startOfDay(new Date(goal.createdAt ?? new Date().toISOString()));
+    const start = startOfDay(parseDateLocal(goal.createdAt ?? new Date().toISOString()));
     const dl = startOfDay(new Date(`${goal.deadline}T12:00:00`));
     const today = startOfDay(new Date());
     const total = Math.max(1, daysBetween(start, dl));
     const steps = 12;
     const arr: any[] = [];
-    for (let i = 0; i <= steps; i++) {
+      for (let i = 0; i <= steps; i++) {
       const t = i / steps;
       const date = new Date(start.getTime() + total * t * 86400000);
       const ideal = goal.target * t;
@@ -403,7 +516,7 @@ function SimularTab({ goal }: { goal: Goal }) {
       const futureDays = Math.max(0, daysBetween(today, date));
       const sim = actualUpToToday + perDay * futureDays;
       arr.push({
-        label: date.toLocaleDateString("es-MX", { day: "2-digit", month: "short" }),
+        label: fmtDate(date),
         ideal: Math.round(ideal),
         simulado: Math.round(Math.min(sim, goal.target * 1.2)),
       });
@@ -445,30 +558,34 @@ function SimularTab({ goal }: { goal: Goal }) {
         <div className="rounded-xl bg-white/20 p-2 text-[11px] space-y-0.5">
           <div className="flex justify-between"><span>Proyección a la fecha límite:</span><span className="font-bold">{fmt(projection.projected)}</span></div>
           {projection.surplus >= 0
-            ? <p className="font-bold">✅ Llegas {projection.hitDate ? `el ${projection.hitDate.toLocaleDateString("es-MX", { day: "2-digit", month: "short" })}` : "a tiempo"} con {fmt(projection.surplus)} extra</p>
+            ? <p className="font-bold">✅ Llegas {projection.hitDate ? `el ${fmtDate(projection.hitDate)}` : "a tiempo"} con {fmt(projection.surplus)} extra</p>
             : <p className="font-bold">⚠️ Te faltarán {fmt(Math.abs(projection.surplus))}</p>}
         </div>
       )}
 
       {data.length > 0 && (
         <div className="h-40 -mx-1">
-          <ResponsiveContainer width="100%" height="100%">
-            <AreaChart data={data} margin={{ top: 4, right: 6, left: 0, bottom: 0 }}>
-              <defs>
-                <linearGradient id={`sim-${goal.id}`} x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stopColor="#fff" stopOpacity={0.55} />
-                  <stop offset="100%" stopColor="#fff" stopOpacity={0} />
-                </linearGradient>
-              </defs>
-              <CartesianGrid stroke="#ffffff22" vertical={false} />
-              <XAxis dataKey="label" tick={{ fill: "#ffffffcc", fontSize: 9 }} axisLine={false} tickLine={false} />
-              <YAxis hide domain={[0, Math.max(goal.target, ...data.map((d: any) => d.simulado))]} />
-              <Tooltip contentStyle={{ background: "rgba(0,0,0,0.6)", border: "none", borderRadius: 12, color: "#fff", fontSize: 11 }} formatter={(v: any) => fmt(Number(v))} />
-              <ReferenceLine y={goal.target} stroke="#ffffff88" strokeDasharray="3 3" label={{ value: "Meta", fill: "#fff", fontSize: 9 }} />
-              <Area type="monotone" dataKey="ideal" name="Ideal" stroke="#ffffff88" strokeWidth={1.5} strokeDasharray="4 4" fill="none" />
-              <Area type="monotone" dataKey="simulado" name="Simulado" stroke="#fff" strokeWidth={2.5} fill={`url(#sim-${goal.id})`} />
-            </AreaChart>
-          </ResponsiveContainer>
+          {R ? (
+            <R.ResponsiveContainer width="100%" height="100%">
+              <R.AreaChart data={data} margin={{ top: 4, right: 6, left: 0, bottom: 0 }}>
+                <defs>
+                  <linearGradient id={`sim-${goal.id}`} x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor="#fff" stopOpacity={0.55} />
+                    <stop offset="100%" stopColor="#fff" stopOpacity={0} />
+                  </linearGradient>
+                </defs>
+                <R.CartesianGrid stroke="#ffffff22" vertical={false} />
+                <R.XAxis dataKey="label" tick={{ fill: "#ffffffcc", fontSize: 9 }} axisLine={false} tickLine={false} />
+                <R.YAxis hide domain={[0, Math.max(goal.target, ...data.map((d: any) => d.simulado))]} />
+                <R.Tooltip contentStyle={{ background: "rgba(0,0,0,0.6)", border: "none", borderRadius: 12, color: "#fff", fontSize: 11 }} formatter={(v: any) => fmt(Number(v))} />
+                <R.ReferenceLine y={goal.target} stroke="#ffffff88" strokeDasharray="3 3" label={{ value: "Meta", fill: "#fff", fontSize: 9 }} />
+                <R.Area type="monotone" dataKey="ideal" name="Ideal" stroke="#ffffff88" strokeWidth={1.5} strokeDasharray="4 4" fill="none" />
+                <R.Area type="monotone" dataKey="simulado" name="Simulado" stroke="#fff" strokeWidth={2.5} fill={`url(#sim-${goal.id})`} />
+              </R.AreaChart>
+            </R.ResponsiveContainer>
+          ) : (
+            <div className="h-full flex items-center justify-center text-xs text-muted-foreground">Cargando gráfico…</div>
+          )}
         </div>
       )}
     </div>

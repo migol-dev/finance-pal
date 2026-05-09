@@ -3,6 +3,8 @@ import { useLocation, useNavigate } from "react-router-dom";
 import { BottomNav } from "./BottomNav";
 import { useFinance } from "@/store/finance-store";
 import { SplashScreen } from "./SplashScreen";
+import { Capacitor } from "@capacitor/core";
+import { LocalNotifications } from "@capacitor/local-notifications";
 
 const SWIPE_ROUTES = ["/", "/movimientos", "/deudas", "/metas", "/ajustes"];
 
@@ -15,12 +17,17 @@ export function AppShell({ children }: { children: ReactNode }) {
   const navigate = useNavigate();
   const touchRef = useRef<{ x: number; y: number; t: number } | null>(null);
 
-  // On first mount of the session, snap to the device's current month/year.
+  // On first mount of the session, snap to the device's current month/year and request permissions.
   useEffect(() => {
     if (didInit.current) return;
     didInit.current = true;
     const d = new Date();
     setActive(d.getFullYear(), d.getMonth());
+
+    if (Capacitor.isNativePlatform()) {
+      LocalNotifications.requestPermissions().catch(console.warn);
+    }
+
     const t = setTimeout(() => setBooting(false), 900);
     return () => clearTimeout(t);
   }, [setActive]);

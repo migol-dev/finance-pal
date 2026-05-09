@@ -35,7 +35,8 @@ export interface FixedItem {
   startDate: string;
   endDate: string;
   priority: Priority;
-  payDay?: number;
+  payDay?: number;     // day of month (1-28) - optional
+  payWeekDay?: number; // day of week (0=Sunday..6=Saturday) - optional
   icon?: IconRef;
   paymentMethod?: PaymentMethod;
 }
@@ -50,6 +51,7 @@ export interface Transaction {
   note?: string;
   icon?: IconRef;
   paymentMethod?: PaymentMethod;
+  fixedId?: string; // optional reference to originating FixedItem
 }
 
 export interface Goal {
@@ -66,6 +68,7 @@ export interface Goal {
   contributions?: { id: string; date: string; amount: number }[];
   /** When the goal was created — used as the start of the ideal plan. */
   createdAt?: string;
+  pinned?: boolean; // show as main goal on dashboard
 }
 
 /** Records a payment received against a debt */
@@ -145,8 +148,8 @@ export function monthlyAmount(item: FixedItem): number {
 /** Whether a fixed item is "active" in a given (year, month) based on its date range and frequency. */
 export function isFixedActiveInMonth(item: FixedItem, year: number, month: number): boolean {
   if (!item.active) return false;
-  const start = new Date(item.startDate);
-  const end = new Date(item.endDate);
+  const start = parseDateLocal(item.startDate);
+  const end = parseDateLocal(item.endDate);
   const monthStart = new Date(year, month, 1);
   const monthEnd = new Date(year, month + 1, 0, 23, 59, 59);
   if (end < monthStart || start > monthEnd) return false;
@@ -172,6 +175,32 @@ export function fmt(n: number): string {
 
 export function fmt2(n: number): string {
   return n.toLocaleString("es-MX", { style: "currency", currency: "MXN" });
+}
+
+/** Format a date as dd/mm/yy (local) */
+export function fmtDate(d: string | Date): string {
+  const dt = typeof d === "string" ? new Date(d) : d;
+  const dd = String(dt.getDate()).padStart(2, "0");
+  const mm = String(dt.getMonth() + 1).padStart(2, "0");
+  const yyyy = String(dt.getFullYear());
+  return `${dd}/${mm}/${yyyy}`;
+}
+
+/**
+ * Parse a stored date into a local `Date` object in a robust way.
+ * - If the string includes a time component (`T` / `Z`), parse as an instant
+ *   so local fields reflect the actual wall-clock date.
+ * - If it's a date-only `YYYY-MM-DD`, construct with `new Date(year, month-1, day)`
+ *   to avoid the inconsistent UTC parsing of bare date strings.
+ */
+export function parseDateLocal(d: string | Date): Date {
+  if (d instanceof Date) return d;
+  if (typeof d !== "string") return new Date(d);
+  // If there's a time component, let Date parse the instant (so local fields are correct)
+  if (d.includes("T") || d.includes("Z")) return new Date(d);
+  const m = d.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (m) return new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]));
+  return new Date(d);
 }
 
 export const CATEGORY_EMOJI: Record<string, string> = {

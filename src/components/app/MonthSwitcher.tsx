@@ -1,10 +1,10 @@
-import { useState } from "react";
+import { useState, memo } from "react";
 import { useFinance } from "@/store/finance-store";
 import { MONTHS } from "@/lib/finance";
 import { ChevronLeft, ChevronRight, Calendar as CalIcon } from "lucide-react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 
-export function MonthSwitcher({ compact = false }: { compact?: boolean }) {
+export const MonthSwitcher = memo(function MonthSwitcher({ compact = false }: { compact?: boolean }) {
   const { activeYear, activeMonth, setActive, resetToToday } = useFinance();
   const [open, setOpen] = useState(false);
 
@@ -35,6 +35,7 @@ export function MonthSwitcher({ compact = false }: { compact?: boolean }) {
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent className="rounded-3xl max-w-sm">
           <DialogHeader><DialogTitle>Selecciona un periodo</DialogTitle></DialogHeader>
+          <DialogDescription className="sr-only">Selector de mes y año</DialogDescription>
           <div className="flex items-center justify-between mb-2">
             <button onClick={() => setActive(activeYear - 1, activeMonth)} className="size-9 rounded-xl bg-muted hover:bg-primary/10 transition"><ChevronLeft className="size-4 mx-auto" /></button>
             <p className="text-2xl font-extrabold">{activeYear}</p>
@@ -53,4 +54,4 @@ export function MonthSwitcher({ compact = false }: { compact?: boolean }) {
       </Dialog>
     </>
   );
-}
+  });

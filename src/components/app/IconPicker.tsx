@@ -2,7 +2,7 @@ import { useCallback, useMemo, useRef, useState } from "react";
 import Cropper, { Area } from "react-easy-crop";
 import { IconRef, COMMON_EMOJIS } from "@/lib/finance";
 import { Button } from "@/components/ui/button";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { ImagePlus, Smile, Check, X } from "lucide-react";
@@ -111,6 +111,7 @@ export function IconPicker({ value, onChange }: Props) {
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent className="rounded-3xl max-w-md max-h-[90vh] overflow-y-auto">
           <DialogHeader><DialogTitle>Elige un icono</DialogTitle></DialogHeader>
+          <DialogDescription className="sr-only">Selecciona un emoji o sube una imagen como icono</DialogDescription>
 
           <div className="grid grid-cols-2 gap-2">
             <button onClick={() => setTab("emoji")} className={`h-11 rounded-2xl text-sm font-bold flex items-center justify-center gap-2 transition ${tab === "emoji" ? "gradient-primary text-primary-foreground shadow-glow" : "bg-muted text-muted-foreground"}`}>

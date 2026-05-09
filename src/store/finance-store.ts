@@ -1,6 +1,6 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
-import { FixedItem, Transaction, Goal, Debt, DebtPayment, ChangeLogEntry, ChangeAction, ChangeEntity, IconRef } from "@/lib/finance";
+import { FixedItem, Transaction, Goal, Debt, DebtPayment, ChangeLogEntry, ChangeAction, ChangeEntity, IconRef, isFixedActiveInMonth, parseDateLocal } from "@/lib/finance";
 
 export type ThemeMode = "light" | "dark";
 export type Currency = "MXN" | "USD" | "EUR" | "COP" | "ARS" | "CLP" | "PEN" | "BRL";
@@ -31,6 +31,7 @@ interface State {
   activeMonth: number; // 0-11
   setActive: (year: number, month: number) => void;
   resetToToday: () => void;
+  ensureScheduledTransactions: () => void;
 
   addFixed: (i: Omit<FixedItem, "id">) => void;
   updateFixed: (id: string, p: Partial<FixedItem>) => void;
@@ -129,6 +130,7 @@ function sanitizeFixed(raw: any): FixedItem | null {
     endDate: isStr(raw.endDate) ? raw.endDate : `${new Date().getFullYear() + 5}-12-31T00:00:00.000Z`,
     priority: inSet(prios, raw.priority) ? raw.priority : "medium",
     payDay: isNum(raw.payDay) ? raw.payDay : undefined,
+    payWeekDay: isNum(raw.payWeekDay) ? raw.payWeekDay : undefined,
     icon: sanitizeIcon(raw.icon),
     paymentMethod: inSet(pays, raw.paymentMethod) ? raw.paymentMethod : undefined,
   };
@@ -148,6 +150,7 @@ function sanitizeTx(raw: any): Transaction | null {
     note: isStr(raw.note) ? raw.note : undefined,
     icon: sanitizeIcon(raw.icon),
     paymentMethod: inSet(pays, raw.paymentMethod) ? raw.paymentMethod : undefined,
+    fixedId: isStr(raw.fixedId) ? raw.fixedId : undefined,
   };
 }
 
@@ -170,6 +173,7 @@ function sanitizeGoal(raw: any): Goal | null {
     purchaseUrl: isStr(raw.purchaseUrl) ? raw.purchaseUrl : undefined,
     contributions,
     createdAt: isStr(raw.createdAt) ? raw.createdAt : undefined,
+    pinned: isBool(raw.pinned) ? raw.pinned : undefined,
   } as Goal;
 }
 
@@ -242,6 +246,63 @@ export const useFinance = create<State>()(
       setActive: (y, m) => set({ activeYear: y, activeMonth: m }),
       resetToToday: () => { const d = new Date(); set({ activeYear: d.getFullYear(), activeMonth: d.getMonth() }); },
 
+      ensureScheduledTransactions: () => {
+        const s = get();
+        const today = new Date();
+        const pad = (n: number) => String(n).padStart(2, "0");
+        const todayISO = `${today.getFullYear()}-${pad(today.getMonth() + 1)}-${pad(today.getDate())}`;
+        for (const f of s.fixedItems) {
+          if (!f.active) continue;
+          const start = parseDateLocal(f.startDate);
+          const end = parseDateLocal(f.endDate);
+          const startISO = `${start.getFullYear()}-${pad(start.getMonth() + 1)}-${pad(start.getDate())}`;
+          const endISO = `${end.getFullYear()}-${pad(end.getMonth() + 1)}-${pad(end.getDate())}`;
+          // only consider items whose range includes today (compare date-only strings to avoid timezone issues)
+          if (todayISO < startISO || todayISO > endISO) continue;
+
+          let shouldCreate = false;
+          let occDate: Date | null = null;
+
+          if (f.frequency === "weekly" && typeof f.payWeekDay === "number") {
+            if (today.getDay() === f.payWeekDay) { occDate = new Date(today.getFullYear(), today.getMonth(), today.getDate()); shouldCreate = true; }
+          } else if (["monthly","bimonthly","quarterly","fourmonthly","biannual"].includes(f.frequency)) {
+            if (typeof f.payDay === "number") {
+              if (today.getDate() === f.payDay && isFixedActiveInMonth(f, today.getFullYear(), today.getMonth())) {
+                occDate = new Date(today.getFullYear(), today.getMonth(), f.payDay);
+                shouldCreate = true;
+              }
+            }
+          } else if (f.frequency === "one_time") {
+            const sd = parseDateLocal(f.startDate);
+            if (sd.getFullYear() === today.getFullYear() && sd.getMonth() === today.getMonth() && sd.getDate() === today.getDate()) {
+              occDate = sd; shouldCreate = true;
+            }
+          } else if (f.frequency === "yearly") {
+            const sd = parseDateLocal(f.startDate);
+            if (sd.getDate() === today.getDate() && sd.getMonth() === today.getMonth()) { occDate = new Date(today.getFullYear(), today.getMonth(), today.getDate()); shouldCreate = true; }
+          }
+
+          if (!shouldCreate || !occDate) continue;
+          const occISO = `${occDate.getFullYear()}-${pad(occDate.getMonth() + 1)}-${pad(occDate.getDate())}`;
+          if (occISO < startISO || occISO > endISO) continue;
+
+          const already = s.transactions.some((t) => {
+            if (t.fixedId !== f.id) return false;
+            const td = parseDateLocal(t.date ?? "");
+            const tISO = `${td.getFullYear()}-${pad(td.getMonth() + 1)}-${pad(td.getDate())}`;
+            return tISO === occISO;
+          });
+          if (already) continue;
+
+          // Map fixed type to transaction type
+          let txType: Transaction["type"] = "expense";
+          if (f.type === "income_fixed") txType = "income";
+          else if (f.type === "saving_fixed") txType = "saving";
+
+          get().addTx({ type: txType, category: f.category, concept: f.concept, amount: f.amount, date: occDate.toISOString(), note: undefined, icon: f.icon, paymentMethod: f.paymentMethod, fixedId: f.id });
+        }
+      },
+
       addFixed: (i) => set((s) => {
         const nv = { ...i, id: id() } as FixedItem;
         return { fixedItems: [nv, ...s.fixedItems], changeLog: [logEntry("fixed", nv.id, "create", `Creó concepto fijo "${nv.concept}"`), ...s.changeLog].slice(0, 500) };
@@ -253,7 +314,18 @@ export const useFinance = create<State>()(
       }),
       removeFixed: (idv) => set((s) => {
         const prev = s.fixedItems.find((x) => x.id === idv);
-        return { fixedItems: s.fixedItems.filter((x) => x.id !== idv), changeLog: [logEntry("fixed", idv, "delete", `Eliminó "${prev?.concept ?? "concepto"}"`), ...s.changeLog].slice(0, 500) };
+        // Also remove today's automatically created transaction for this fixed item (but keep historical ones)
+        const pad = (n: number) => String(n).padStart(2, "0");
+        const today = new Date();
+        const todayISO = `${today.getFullYear()}-${pad(today.getMonth() + 1)}-${pad(today.getDate())}`;
+        const remainingTx = s.transactions.filter((t) => {
+          if (t.fixedId !== idv) return true;
+          const td = parseDateLocal(t.date ?? "");
+          const tISO = `${td.getFullYear()}-${pad(td.getMonth() + 1)}-${pad(td.getDate())}`;
+          // keep transaction unless it's for today
+          return tISO !== todayISO;
+        });
+        return { fixedItems: s.fixedItems.filter((x) => x.id !== idv), transactions: remainingTx, changeLog: [logEntry("fixed", idv, "delete", `Eliminó "${prev?.concept ?? "concepto"}"`), ...s.changeLog].slice(0, 500) };
       }),
       toggleFixed: (idv) => set((s) => {
         const prev = s.fixedItems.find((x) => x.id === idv); if (!prev) return {} as any;
@@ -261,6 +333,19 @@ export const useFinance = create<State>()(
       }),
 
       addTx: (t) => set((s) => {
+        // Prevent accidental duplicates for transactions created from a fixed item
+        if (t.fixedId) {
+          const pad = (n: number) => String(n).padStart(2, "0");
+          const td = t.date ? parseDateLocal(t.date) : new Date();
+          const tDateISO = `${td.getFullYear()}-${pad(td.getMonth() + 1)}-${pad(td.getDate())}`;
+          const exists = s.transactions.some((x) => {
+            if (x.fixedId !== t.fixedId) return false;
+            const xd = parseDateLocal(x.date ?? "");
+            const xISO = `${xd.getFullYear()}-${pad(xd.getMonth() + 1)}-${pad(xd.getDate())}`;
+            return xISO === tDateISO;
+          });
+          if (exists) return {} as any;
+        }
         const nv = { ...t, id: id() } as Transaction;
         return { transactions: [nv, ...s.transactions], changeLog: [logEntry("transaction", nv.id, "create", `Agregó ${nv.type === "income" ? "ingreso" : nv.type === "saving" ? "ahorro" : "gasto"} "${nv.concept}"`), ...s.changeLog].slice(0, 500) };
       }),
@@ -283,12 +368,18 @@ export const useFinance = create<State>()(
             ? [{ id: id(), date: new Date().toISOString(), amount: g.saved }]
             : []),
         } as Goal;
-        return { goals: [nv, ...s.goals], changeLog: [logEntry("goal", nv.id, "create", `Creó meta "${nv.name}"`), ...s.changeLog].slice(0, 500) };
+        const nextGoals = nv.pinned ? [nv, ...s.goals.map(x => ({ ...x, pinned: false }))] : [nv, ...s.goals];
+        return { goals: nextGoals, changeLog: [logEntry("goal", nv.id, "create", `Creó meta "${nv.name}"`), ...s.changeLog].slice(0, 500) };
       }),
       updateGoal: (idv, p) => set((s) => {
         const prev = s.goals.find((x) => x.id === idv); if (!prev) return {} as any;
         const ch = diffFields(prev, p);
-        return { goals: s.goals.map((x) => x.id === idv ? { ...x, ...p } : x), changeLog: [logEntry("goal", idv, "update", `Editó meta "${prev.name}"`, ch), ...s.changeLog].slice(0, 500) };
+        let nextGoals = s.goals.map((x) => x.id === idv ? { ...x, ...p } : x);
+        // If pinning this goal, unpin others
+        if ((p as any).pinned === true) {
+          nextGoals = nextGoals.map((x) => x.id === idv ? { ...x, pinned: true } : { ...x, pinned: false });
+        }
+        return { goals: nextGoals, changeLog: [logEntry("goal", idv, "update", `Editó meta "${prev.name}"`, ch), ...s.changeLog].slice(0, 500) };
       }),
       removeGoal: (idv) => set((s) => {
         const prev = s.goals.find((x) => x.id === idv);
@@ -305,7 +396,7 @@ export const useFinance = create<State>()(
             saved: Math.max(0, x.saved + amount),
             contributions: [...(x.contributions ?? []), entry],
           } : x),
-          transactions: [{ id: txId, type: "saving" as const, category: "Meta", concept: g?.name ?? "Aporte", amount, date: when }, ...s.transactions],
+          transactions: [{ id: txId, type: amount >= 0 ? "saving" : "income", category: "Meta", concept: `${amount >= 0 ? "Aporte" : "Retiro"} ${g?.name ?? "Meta"}`, amount: Math.abs(amount), date: when }, ...s.transactions],
           changeLog: [logEntry("goal", idv, "update", `${amount >= 0 ? "Aportó" : "Retiró"} ${Math.abs(amount)} a "${g?.name ?? ""}"`, [{ field: "saved", from: g?.saved, to: (g?.saved ?? 0) + amount }]), ...s.changeLog].slice(0, 500),
         };
       }),

@@ -1,19 +1,23 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useFinance, Currency, ExportScopes, ALL_SCOPES } from "@/store/finance-store";
 import { fmt, monthlyAmount, TYPE_LABEL, FREQ_LABEL, ItemType, Frequency, Priority, iconFor, IconRef, FixedItem, CATEGORY_EMOJI, PaymentMethod, PAYMENT_METHOD_LABEL, PAYMENT_METHOD_EMOJI } from "@/lib/finance";
 import { Header } from "@/components/app/Header";
 import { Plus, Trash2, Power, Smartphone, Database, RotateCcw, Pencil, Download, Upload, Sun, Moon, Target, History, HandCoins, User } from "lucide-react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
-import { motion } from "framer-motion";
+import { motion } from "@/lib/framer";
 import { IconPicker } from "@/components/app/IconPicker";
 import { IconDisplay } from "@/components/app/IconDisplay";
 import { Link } from "react-router-dom";
+import { Capacitor } from "@capacitor/core";
+import { Filesystem, Directory, Encoding } from "@capacitor/filesystem";
+import { Share } from "@capacitor/share";
+import { LocalNotifications } from "@capacitor/local-notifications";
 
 export default function Ajustes() {
   const { fixedItems, addFixed, updateFixed, removeFixed, toggleFixed, resetAll, exportData, importData, theme, toggleTheme, profile, setProfile } = useFinance();
@@ -32,37 +36,101 @@ export default function Ajustes() {
   const openNew = () => { setEditing(null); setOpen(true); };
   const openEdit = (i: FixedItem) => { setEditing(i); setOpen(true); };
 
-  const doExport = (scopes: ExportScopes) => {
-    const json = exportData(scopes);
-    const filename = `finance-pal-${new Date().toISOString().slice(0, 10)}.json`;
-    const blob = new Blob([json], { type: "application/json" });
-    // Try modern File System Access API to let the user pick the folder
-    const anyWin = window as any;
-    if (typeof anyWin.showSaveFilePicker === "function") {
+  // Request permissions on mount
+  useEffect(() => {
+    if (Capacitor.isNativePlatform()) {
       (async () => {
         try {
-          const handle = await anyWin.showSaveFilePicker({
-            suggestedName: filename,
-            types: [{ description: "JSON", accept: { "application/json": [".json"] } }],
-          });
-          const writable = await handle.createWritable();
-          await writable.write(blob);
-          await writable.close();
-          toast.success("Datos guardados en la carpeta elegida");
-        } catch (e: any) {
-          if (e?.name === "AbortError") return;
-          toast.error("No se pudo guardar: " + (e?.message ?? "error"));
+          await LocalNotifications.requestPermissions();
+          // Filesystem permissions are usually granted by default for internal storage,
+          // but if we were to use External, we'd need them.
+          // For now, let's at least ensure Notifications are requested.
+        } catch (e) {
+          console.warn("Permission request failed", e);
         }
       })();
+    }
+  }, []);
+
+  const doExport = async (scopes: ExportScopes) => {
+    const json = exportData(scopes);
+    const d = new Date(); const pad = (n: number) => String(n).padStart(2, "0");
+    const filename = `finance-pal-${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}.json`;
+
+    // 1. Native Mobile (Capacitor)
+    if (Capacitor.isNativePlatform()) {
+      try {
+        // Write file to a temporary location first
+        const result = await Filesystem.writeFile({
+          path: filename,
+          data: json,
+          directory: Directory.Cache,
+          encoding: Encoding.UTF8,
+        });
+
+        // Share the file from that URI
+        await Share.share({
+          title: "Exportación de datos - Finance Pal",
+          text: "Copia de seguridad de Finance Pal",
+          url: result.uri,
+          dialogTitle: "Guardar o enviar respaldo",
+        });
+
+        toast.success("Respaldo listo para guardar");
+      } catch (e: any) {
+        toast.error("Error al exportar: " + (e?.message ?? "desconocido"));
+      }
       return;
     }
+
+    // 2. Desktop Browser with File System Access API
+    const anyWin = window as any;
+    if (typeof anyWin.showSaveFilePicker === "function") {
+      const blob = new Blob([json], { type: "application/json" });
+      try {
+        const handle = await anyWin.showSaveFilePicker({
+          suggestedName: filename,
+          types: [{ description: "JSON", accept: { "application/json": [".json"] } }],
+        });
+        const writable = await handle.createWritable();
+        await writable.write(blob);
+        await writable.close();
+        toast.success("Datos guardados en la carpeta elegida");
+      } catch (e: any) {
+        if (e?.name === "AbortError") return;
+        toast.error("No se pudo guardar: " + (e?.message ?? "error"));
+      }
+      return;
+    }
+
+    // 3. Web Share API (Mobile Web Fallback)
+    if (navigator.share) {
+      try {
+        const file = new File([json], filename, { type: "application/json" });
+        await navigator.share({
+          title: "Respaldo Finance Pal",
+          files: [file],
+        });
+        toast.success("Exportación compartida");
+      } catch (e) {
+        downloadFallback(json, filename);
+      }
+      return;
+    }
+
+    // 4. Final Fallback
+    downloadFallback(json, filename);
+  };
+
+  const downloadFallback = (content: string, filename: string) => {
+    const blob = new Blob([content], { type: "application/json" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
     a.download = filename;
     a.click();
     URL.revokeObjectURL(url);
-    toast.success("Datos exportados (revisa Descargas)");
+    toast.success("Exportado a Descargas");
   };
   const handleImportFile = async (file: File) => {
     try {
@@ -113,7 +181,8 @@ export default function Ajustes() {
 
       <Dialog open={profileOpen} onOpenChange={setProfileOpen}>
         <DialogContent className="rounded-3xl max-h-[90vh] overflow-y-auto">
-          <DialogHeader><DialogTitle>Tu perfil</DialogTitle></DialogHeader>
+            <DialogHeader><DialogTitle>Tu perfil</DialogTitle></DialogHeader>
+            <DialogDescription className="sr-only">Formulario para editar tu perfil</DialogDescription>
           <ProfileForm onSave={(p) => { setProfile(p); setProfileOpen(false); toast.success("Perfil actualizado"); }} />
         </DialogContent>
       </Dialog>
@@ -138,6 +207,7 @@ export default function Ajustes() {
       <Dialog open={open} onOpenChange={(v) => { setOpen(v); if (!v) setEditing(null); }}>
         <DialogContent className="rounded-3xl max-h-[90vh] overflow-y-auto">
           <DialogHeader><DialogTitle>{editing ? "Editar concepto fijo" : "Nuevo concepto fijo"}</DialogTitle></DialogHeader>
+          <DialogDescription className="sr-only">Formulario para crear o editar un concepto fijo</DialogDescription>
           <FixedForm initial={editing} onSave={(i) => {
             if (editing) { updateFixed(editing.id, i); toast.success("Actualizado"); }
             else { addFixed(i); toast.success("Agregado"); }
@@ -176,7 +246,7 @@ export default function Ajustes() {
                 <p className="font-semibold text-sm truncate">{i.concept}</p>
                 {!i.active && <span className="text-[9px] uppercase font-bold bg-muted px-1.5 py-0.5 rounded">Pausado</span>}
               </div>
-              <p className="text-[11px] text-muted-foreground">{TYPE_LABEL[i.type]} • {FREQ_LABEL[i.frequency]}{i.payDay ? ` • día ${i.payDay}` : ""}</p>
+              <p className="text-[11px] text-muted-foreground">{TYPE_LABEL[i.type]} • {FREQ_LABEL[i.frequency]}{i.payDay ? ` • día ${i.payDay}` : (typeof i.payWeekDay === "number" ? ` • ${["Dom","Lun","Mar","Mie","Jue","Vie","Sáb"][i.payWeekDay]}` : "")}</p>
             </button>
             <div className="text-right">
               <p className={`font-bold text-sm ${i.type === "income_fixed" ? "text-success" : i.type === "saving_fixed" ? "text-secondary" : "text-destructive"}`}>{fmt(i.amount)}</p>
@@ -225,7 +295,8 @@ export default function Ajustes() {
 
         <Dialog open={exportOpen} onOpenChange={setExportOpen}>
           <DialogContent className="rounded-3xl">
-            <DialogHeader><DialogTitle>¿Qué quieres exportar?</DialogTitle></DialogHeader>
+              <DialogHeader><DialogTitle>¿Qué quieres exportar?</DialogTitle></DialogHeader>
+              <DialogDescription className="sr-only">Selecciona las secciones a exportar</DialogDescription>
             <ScopePicker
               available={ALL_SCOPES}
               onConfirm={(sc) => { doExport(sc); setExportOpen(false); }}
@@ -238,6 +309,7 @@ export default function Ajustes() {
         <Dialog open={importOpen} onOpenChange={(v) => { setImportOpen(v); if (!v) { setPendingFile(null); setPendingPayload(null); } }}>
           <DialogContent className="rounded-3xl">
             <DialogHeader><DialogTitle>¿Qué quieres importar?</DialogTitle></DialogHeader>
+            <DialogDescription className="sr-only">Selecciona las secciones a importar desde el archivo</DialogDescription>
             {pendingFile && <p className="text-xs text-muted-foreground -mt-1">Archivo: <span className="font-semibold text-foreground">{pendingFile.name}</span></p>}
             <ScopePicker
               available={pendingAvailable}
@@ -249,13 +321,12 @@ export default function Ajustes() {
           </DialogContent>
         </Dialog>
 
-        <h2 className="text-xs uppercase tracking-wider font-bold text-muted-foreground">Aplicación</h2>
-        <InfoRow icon={<Smartphone className="size-4" />} title="App nativa Android" desc="Configurada con Capacitor. Sigue las instrucciones para compilar." />
-        <InfoRow icon={<Database className="size-4" />} title="Almacenamiento local" desc="Tus datos se guardan en tu dispositivo. Privado y sin nube." />
+        <h2 className="text-xs uppercase tracking-wider font-bold text-muted-foreground pt-4">Seguridad</h2>
         <button onClick={() => { if (confirm("¿Borrar TODOS los datos? No se puede deshacer.")) { resetAll(); toast("Datos borrados"); } }}
           className="w-full rounded-2xl bg-destructive/10 text-destructive p-4 flex items-center gap-3 font-semibold text-sm hover:bg-destructive/15 transition">
           <RotateCcw className="size-4" /> Restablecer todo
         </button>
+        <p className="text-[10px] text-center text-muted-foreground pt-4">Finance Pal v1.17.6</p>
       </section>
     </div>
   );
@@ -374,9 +445,12 @@ function FixedForm({ initial, onSave }: { initial: FixedItem | null; onSave: (i:
   const [frequency, setFrequency] = useState<Frequency>(initial?.frequency ?? "monthly");
   const [priority, setPriority] = useState<Priority>(initial?.priority ?? "medium");
   const [payDay, setPayDay] = useState(initial?.payDay ? String(initial.payDay) : "");
+  const [payWeekDay, setPayWeekDay] = useState(initial?.payWeekDay !== undefined ? String(initial.payWeekDay) : "none");
   const [note, setNote] = useState(initial?.note ?? "");
   const [icon, setIcon] = useState<IconRef | undefined>(initial?.icon);
-  const [startDate, setStartDate] = useState(initial?.startDate?.slice(0, 10) ?? new Date().toISOString().slice(0, 10));
+  const pad = (n: number) => String(n).padStart(2, "0");
+  const todayLocal = `${new Date().getFullYear()}-${pad(new Date().getMonth() + 1)}-${pad(new Date().getDate())}`;
+  const [startDate, setStartDate] = useState(initial?.startDate?.slice(0, 10) ?? todayLocal);
   const [endDate, setEndDate] = useState(initial?.endDate?.slice(0, 10) ?? `${new Date().getFullYear() + 5}-12-31`);
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>(initial?.paymentMethod ?? "transfer");
 
@@ -385,7 +459,7 @@ function FixedForm({ initial, onSave }: { initial: FixedItem | null; onSave: (i:
       e.preventDefault();
       const a = parseFloat(amount);
       if (!a || !concept) { toast.error("Completa concepto y monto"); return; }
-      onSave({ type, category, concept, amount: a, frequency, active: initial?.active ?? true, startDate: new Date(startDate).toISOString(), endDate: new Date(endDate).toISOString(), priority, payDay: payDay ? parseInt(payDay) : undefined, note: note || undefined, icon, paymentMethod });
+      onSave({ type, category, concept, amount: a, frequency, active: initial?.active ?? true, startDate: new Date(`${startDate}T12:00:00`).toISOString(), endDate: new Date(`${endDate}T12:00:00`).toISOString(), priority, payDay: payDay ? parseInt(payDay) : undefined, payWeekDay: payWeekDay !== "none" ? parseInt(payWeekDay) : undefined, note: note || undefined, icon, paymentMethod });
     }} className="space-y-3">
       <div className="flex justify-center"><IconPicker value={icon} onChange={setIcon} /></div>
       <div>
@@ -407,7 +481,6 @@ function FixedForm({ initial, onSave }: { initial: FixedItem | null; onSave: (i:
           <SelectTrigger className="h-11 rounded-2xl"><SelectValue /></SelectTrigger>
           <SelectContent>
             {cats.map((c) => <SelectItem key={c} value={c}>{CATEGORY_EMOJI[c]} {c}</SelectItem>)}
-            <SelectItem value="Otros">✨ Otros</SelectItem>
           </SelectContent>
         </Select>
       </div>
@@ -456,7 +529,26 @@ function FixedForm({ initial, onSave }: { initial: FixedItem | null; onSave: (i:
         <div><Label className="text-xs">Desde</Label><Input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} className="h-11 rounded-2xl" /></div>
         <div><Label className="text-xs">Hasta</Label><Input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} className="h-11 rounded-2xl" /></div>
       </div>
-      <div><Label className="text-xs">Día de pago (opcional, 1–28)</Label><Input type="number" min="1" max="28" value={payDay} onChange={(e) => setPayDay(e.target.value)} className="h-11 rounded-2xl" /></div>
+      {frequency === "weekly" ? (
+        <div>
+          <Label className="text-xs">Día de la semana (opcional)</Label>
+          <Select value={payWeekDay} onValueChange={(v) => setPayWeekDay(v)}>
+            <SelectTrigger className="h-11 rounded-2xl"><SelectValue /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="none">Sin día</SelectItem>
+              <SelectItem value="0">Domingo</SelectItem>
+              <SelectItem value="1">Lunes</SelectItem>
+              <SelectItem value="2">Martes</SelectItem>
+              <SelectItem value="3">Miércoles</SelectItem>
+              <SelectItem value="4">Jueves</SelectItem>
+              <SelectItem value="5">Viernes</SelectItem>
+              <SelectItem value="6">Sábado</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+      ) : (
+        <div><Label className="text-xs">Día de pago (opcional, 1–28)</Label><Input type="number" min="1" max="28" value={payDay} onChange={(e) => setPayDay(e.target.value)} className="h-11 rounded-2xl" /></div>
+      )}
       <div><Label className="text-xs">Nota (opcional)</Label><Input value={note} onChange={(e) => setNote(e.target.value)} className="h-11 rounded-2xl" /></div>
       <Button type="submit" className="w-full h-12 rounded-2xl gradient-primary text-primary-foreground border-0 shadow-glow font-bold">{initial ? "Guardar cambios" : "Crear"}</Button>
     </form>
