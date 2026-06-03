@@ -48,45 +48,47 @@ export default function Anual() {
   const [tab, setTab] = useState<Tab>("general");
 
   /* ---------- Aggregate per month, current and previous year ---------- */
-  const monthly = useMemo<MonthRow[]>(() => buildMonthly(activeYear), [fixedItems, transactions, debts, activeYear]);
-  const monthlyPrev = useMemo<MonthRow[]>(() => buildMonthly(activeYear - 1), [fixedItems, transactions, debts, activeYear]);
-
-  function buildMonthly(year: number): MonthRow[] {
-    return MONTHS.map((m, idx) => {
-      let income = 0, expense = 0, saving = 0;
-      for (const i of fixedItems) {
-        if (!isFixedActiveInMonth(i, year, idx)) continue;
-        const ma = monthlyAmount(i);
-        if (i.type === "income_fixed") income += ma;
-        else if (i.type === "saving_fixed") saving += ma;
-        else expense += ma;
-      }
-      for (const t of transactions) {
-        const d = parseDateLocal(t.date);
-        if (d.getMonth() !== idx || d.getFullYear() !== year) continue;
-        if (t.type === "income") income += t.amount;
-        else if (t.type === "saving") saving += t.amount;
-        else expense += t.amount;
-      }
-      for (const dt of debts) {
-        const dd = parseDateLocal(dt.date);
-        if (dd.getFullYear() === year && dd.getMonth() === idx) expense += dt.amount;
-        for (const p of dt.payments) {
-          const pd = parseDateLocal(p.date);
-          if (pd.getFullYear() === year && pd.getMonth() === idx) income += p.amount;
+  const buildMonthly = useMemo(() => {
+    return (year: number): MonthRow[] => {
+      return MONTHS.map((m, idx) => {
+        let income = 0, expense = 0, saving = 0;
+        for (const i of fixedItems) {
+          if (!isFixedActiveInMonth(i, year, idx)) continue;
+          const ma = monthlyAmount(i);
+          if (i.type === "income_fixed") income += ma;
+          else if (i.type === "saving_fixed") saving += ma;
+          else expense += ma;
         }
-      }
-      const tasa = income > 0 ? (saving / income) * 100 : 0;
-      return {
-        mes: MONTHS_SHORT[idx], idx,
-        Ingresos: Math.round(income),
-        Gastos: Math.round(expense),
-        Ahorros: Math.round(saving),
-        Neto: Math.round(income - expense - saving),
-        Tasa: Math.round(tasa * 10) / 10,
-      };
-    });
-  }
+        for (const t of transactions) {
+          const d = parseDateLocal(t.date);
+          if (d.getMonth() !== idx || d.getFullYear() !== year) continue;
+          if (t.type === "income") income += t.amount;
+          else if (t.type === "saving") saving += t.amount;
+          else expense += t.amount;
+        }
+        for (const dt of debts) {
+          const dd = parseDateLocal(dt.date);
+          if (dd.getFullYear() === year && dd.getMonth() === idx) expense += dt.amount;
+          for (const p of dt.payments) {
+            const pd = parseDateLocal(p.date);
+            if (pd.getFullYear() === year && pd.getMonth() === idx) income += p.amount;
+          }
+        }
+        const tasa = income > 0 ? (saving / income) * 100 : 0;
+        return {
+          mes: MONTHS_SHORT[idx], idx,
+          Ingresos: Math.round(income),
+          Gastos: Math.round(expense),
+          Ahorros: Math.round(saving),
+          Neto: Math.round(income - expense - saving),
+          Tasa: Math.round(tasa * 10) / 10,
+        };
+      });
+    };
+  }, [fixedItems, transactions, debts]);
+
+  const monthly = useMemo<MonthRow[]>(() => buildMonthly(activeYear), [buildMonthly, activeYear]);
+  const monthlyPrev = useMemo<MonthRow[]>(() => buildMonthly(activeYear - 1), [buildMonthly, activeYear]);
 
   const totals = useMemo(() => monthly.reduce(
     (a, b) => ({

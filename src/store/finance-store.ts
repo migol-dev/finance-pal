@@ -1,6 +1,8 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
-import { FixedItem, Transaction, Goal, Debt, DebtPayment, ChangeLogEntry, ChangeAction, ChangeEntity, IconRef, isFixedActiveInMonth, parseDateLocal } from "@/lib/finance";
+import { FixedItem, Transaction, Goal, Debt, DebtPayment, ChangeLogEntry, ChangeAction, ChangeEntity, IconRef, isFixedActiveInMonth, parseDateLocal, Account, Denomination } from "@/lib/finance";
+import { Filesystem, Directory, Encoding } from "@capacitor/filesystem";
+import { Capacitor } from "@capacitor/core";
 
 export type ThemeMode = "light" | "dark";
 export type Currency = "MXN" | "USD" | "EUR" | "COP" | "ARS" | "CLP" | "PEN" | "BRL";
@@ -23,6 +25,7 @@ interface State {
   changeLog: ChangeLogEntry[];
   theme: ThemeMode;
   profile: UserProfile;
+  accounts: Account[];
   setProfile: (p: Partial<UserProfile>) => void;
   setTheme: (t: ThemeMode) => void;
   toggleTheme: () => void;
@@ -38,9 +41,14 @@ interface State {
   removeFixed: (id: string) => void;
   toggleFixed: (id: string) => void;
 
-  addTx: (t: Omit<Transaction, "id">) => void;
-  updateTx: (id: string, p: Partial<Transaction>) => void;
-  removeTx: (id: string) => void;
+  addTx: (t: Omit<Transaction, "id">) => Promise<void>;
+  updateTx: (id: string, p: Partial<Transaction>) => Promise<void>;
+  removeTx: (id: string) => Promise<void>;
+
+  addAccount: (a: Omit<Account, "id">) => void;
+  updateAccount: (id: string, p: Partial<Account>) => void;
+  removeAccount: (id: string) => void;
+  mergeAccounts: (fromIds: string[], intoId: string) => void;
 
   addGoal: (g: Omit<Goal, "id">) => void;
   updateGoal: (id: string, p: Partial<Goal>) => void;
@@ -56,6 +64,7 @@ interface State {
   clearChangeLog: () => void;
   exportData: (scopes?: ExportScopes) => string;
   importData: (json: string, scopes?: ExportScopes) => { ok: boolean; error?: string; warnings?: string[] };
+  migrateReceiptsInPlace: () => Promise<void>;
 
   resetAll: () => void;
 }
@@ -64,6 +73,7 @@ interface State {
 export interface ExportScopes {
   fixedItems?: boolean;
   transactions?: boolean;
+  accounts?: boolean;
   goals?: boolean;
   debts?: boolean;
   changeLog?: boolean;
@@ -73,7 +83,7 @@ export interface ExportScopes {
 
 export const ALL_SCOPES: Required<ExportScopes> = {
   fixedItems: true, transactions: true, goals: true, debts: true,
-  changeLog: true, theme: true, profile: true,
+  changeLog: true, theme: true, profile: true, accounts: true,
 };
 
 const id = () => Math.random().toString(36).slice(2, 10);
@@ -133,6 +143,7 @@ function sanitizeFixed(raw: any): FixedItem | null {
     payWeekDay: isNum(raw.payWeekDay) ? raw.payWeekDay : undefined,
     icon: sanitizeIcon(raw.icon),
     paymentMethod: inSet(pays, raw.paymentMethod) ? raw.paymentMethod : undefined,
+    accountId: isStr(raw.accountId) ? raw.accountId : undefined,
   };
 }
 
@@ -151,6 +162,10 @@ function sanitizeTx(raw: any): Transaction | null {
     icon: sanitizeIcon(raw.icon),
     paymentMethod: inSet(pays, raw.paymentMethod) ? raw.paymentMethod : undefined,
     fixedId: isStr(raw.fixedId) ? raw.fixedId : undefined,
+    accountId: isStr(raw.accountId) ? raw.accountId : undefined,
+    transferToAccountId: isStr(raw.transferToAccountId) ? raw.transferToAccountId : undefined,
+    externalPayee: isObj(raw.externalPayee) ? { clabe: isStr(raw.externalPayee.clabe) ? raw.externalPayee.clabe : undefined, bank: isStr(raw.externalPayee.bank) ? raw.externalPayee.bank : undefined, name: isStr(raw.externalPayee.name) ? raw.externalPayee.name : undefined } : undefined,
+    receipt: isStr(raw.receipt) ? raw.receipt : undefined,
   };
 }
 
@@ -204,6 +219,27 @@ function sanitizeDebt(raw: any): Debt | null {
   } as Debt;
 }
 
+function sanitizeAccount(raw: any): Account | null {
+  if (!isObj(raw) || !isStr(raw.name)) return null;
+  const types = ["bank","cash","other"] as const;
+  const denoms = Array.isArray(raw.denominations)
+    ? (raw.denominations as any[])
+      .filter((d) => isObj(d) && isNum(d.value) && isNum(d.count))
+      .map((d) => ({ value: d.value as number, count: d.count as number, kind: d.kind === "coin" ? "coin" : "bill" }))
+    : undefined;
+  return {
+    id: isStr(raw.id) ? raw.id : id(),
+    name: raw.name,
+    type: inSet(types, raw.type) ? raw.type : "bank",
+    initialBalance: isNum(raw.initialBalance) ? raw.initialBalance : 0,
+    currency: isStr(raw.currency) ? raw.currency : undefined,
+    denominations: denoms,
+    clabe: isStr(raw.clabe) ? raw.clabe : undefined,
+    bank: isStr(raw.bank) ? raw.bank : undefined,
+    holderName: isStr(raw.holderName) ? raw.holderName : undefined,
+  } as Account;
+}
+
 function sanitizeProfile(raw: any): UserProfile {
   const currencies: Currency[] = ["MXN","USD","EUR","COP","ARS","CLP","PEN","BRL"];
   if (!isObj(raw)) return { name: "", currency: "MXN" };
@@ -230,6 +266,10 @@ export const useFinance = create<State>()(
     (set, get) => ({
       fixedItems: [],
       transactions: [],
+      accounts: [
+        { id: id(), name: "Efectivo", type: "cash", initialBalance: 0, denominations: [] },
+        { id: id(), name: "Cuenta 1", type: "bank", initialBalance: 0 },
+      ],
       goals: [],
       debts: [],
       changeLog: [],
@@ -332,8 +372,36 @@ export const useFinance = create<State>()(
         return { fixedItems: s.fixedItems.map((x) => x.id === idv ? { ...x, active: !x.active } : x), changeLog: [logEntry("fixed", idv, "update", `${prev.active ? "Pausó" : "Activó"} "${prev.concept}"`, [{ field: "active", from: prev.active, to: !prev.active }]), ...s.changeLog].slice(0, 500) };
       }),
 
-      addTx: (t) => set((s) => {
+      // Helper: save a dataURL receipt to filesystem and return stored relative path
+      async saveReceiptFile(receiptId: string, dataUrl: string) {
+        try {
+          const m = dataUrl.match(/^data:(image\/[^;]+);base64,(.*)$/);
+          const base64 = m ? m[2] : dataUrl.split(",")[1];
+          const mime = m ? m[1] : "image/png";
+          const ext = mime.split("/")[1] || "png";
+          const fname = `receipt-${receiptId}-${Date.now()}.${ext}`;
+          const rel = `receipts/${fname}`;
+          await Filesystem.writeFile({ path: rel, data: base64, directory: Directory.Data, encoding: Encoding.UTF8 });
+          return rel;
+        } catch (e) {
+          return undefined;
+        }
+      },
+
+      async deleteReceiptIfExists(receipt?: string) {
+        if (!receipt) return;
+        try {
+          let fname = receipt;
+          if (receipt.includes("/")) fname = receipt.split("/").pop() as string;
+          await Filesystem.deleteFile({ path: `receipts/${fname}`, directory: Directory.Data });
+        } catch (e) {
+          // ignore
+        }
+      },
+
+      addTx: async (t) => {
         // Prevent accidental duplicates for transactions created from a fixed item
+        const s = get();
         if (t.fixedId) {
           const pad = (n: number) => String(n).padStart(2, "0");
           const td = t.date ? parseDateLocal(t.date) : new Date();
@@ -344,20 +412,50 @@ export const useFinance = create<State>()(
             const xISO = `${xd.getFullYear()}-${pad(xd.getMonth() + 1)}-${pad(xd.getDate())}`;
             return xISO === tDateISO;
           });
-          if (exists) return {} as any;
+          if (exists) return;
         }
         const nv = { ...t, id: id() } as Transaction;
-        return { transactions: [nv, ...s.transactions], changeLog: [logEntry("transaction", nv.id, "create", `Agregó ${nv.type === "income" ? "ingreso" : nv.type === "saving" ? "ahorro" : "gasto"} "${nv.concept}"`), ...s.changeLog].slice(0, 500) };
-      }),
-      updateTx: (idv, p) => set((s) => {
-        const prev = s.transactions.find((x) => x.id === idv); if (!prev) return {} as any;
-        const ch = diffFields(prev, p);
-        return { transactions: s.transactions.map((x) => x.id === idv ? { ...x, ...p } : x), changeLog: [logEntry("transaction", idv, "update", `Editó "${prev.concept}"`, ch), ...s.changeLog].slice(0, 500) };
-      }),
-      removeTx: (idv) => set((s) => {
+        // If receipt is a data URL and running on native, persist it and replace with path
+        if (typeof nv.receipt === "string" && nv.receipt.startsWith("data:") && Capacitor.isNativePlatform()) {
+          const saved = await (get() as any).saveReceiptFile(nv.id, nv.receipt);
+          if (saved) nv.receipt = saved;
+        }
+        set((s2) => ({ transactions: [nv, ...s2.transactions], changeLog: [logEntry("transaction", nv.id, "create", `Agregó ${nv.type === "income" ? "ingreso" : nv.type === "saving" ? "ahorro" : "gasto"} "${nv.concept}"`), ...s2.changeLog].slice(0, 500) }));
+      },
+      updateTx: async (idv, p) => {
+        const s = get();
+        const prev = s.transactions.find((x) => x.id === idv); if (!prev) return;
+        const patch = { ...p } as Partial<Transaction>;
+        // If new receipt is a data URL, persist it then delete old
+        if (typeof p.receipt === "string" && p.receipt.startsWith("data:") && Capacitor.isNativePlatform()) {
+          const saved = await (get() as any).saveReceiptFile(idv, p.receipt as string);
+          if (saved) {
+            patch.receipt = saved;
+            await (get() as any).deleteReceiptIfExists(prev.receipt);
+          }
+        }
+        set((s2) => ({ transactions: s2.transactions.map((x) => x.id === idv ? { ...x, ...patch } : x), changeLog: [logEntry("transaction", idv, "update", `Editó "${prev.concept}"`, diffFields(prev, patch)), ...s2.changeLog].slice(0, 500) }));
+      },
+      removeTx: async (idv) => {
+        const s = get();
         const prev = s.transactions.find((x) => x.id === idv);
-        return { transactions: s.transactions.filter((x) => x.id !== idv), changeLog: [logEntry("transaction", idv, "delete", `Eliminó "${prev?.concept ?? "movimiento"}"`), ...s.changeLog].slice(0, 500) };
+        if (prev?.receipt) await (get() as any).deleteReceiptIfExists(prev.receipt);
+        set((s2) => ({ transactions: s2.transactions.filter((x) => x.id !== idv), changeLog: [logEntry("transaction", idv, "delete", `Eliminó "${prev?.concept ?? "movimiento"}"`), ...s2.changeLog].slice(0, 500) }));
+      },
+
+      addAccount: (a) => set((s) => {
+        const nv = { ...a, id: id() } as Account;
+        return { accounts: [nv, ...s.accounts] };
       }),
+      updateAccount: (idv, p) => set((s) => ({ accounts: s.accounts.map((x) => x.id === idv ? { ...x, ...p } : x) })),
+      removeAccount: (idv) => set((s) => ({
+        accounts: s.accounts.filter((x) => x.id !== idv),
+        transactions: s.transactions.map((t) => t.accountId === idv ? { ...t, accountId: undefined } : t),
+      })),
+      mergeAccounts: (fromIds, intoId) => set((s) => ({
+        transactions: s.transactions.map((t) => fromIds.includes(t.accountId ?? "") ? { ...t, accountId: intoId } : t),
+        accounts: s.accounts.filter((a) => !fromIds.includes(a.id) || a.id === intoId),
+      })),
 
       addGoal: (g) => set((s) => {
         const nv = {
@@ -435,6 +533,7 @@ export const useFinance = create<State>()(
         const data: Record<string, unknown> = {};
         if (sc.fixedItems) data.fixedItems = s.fixedItems;
         if (sc.transactions) data.transactions = s.transactions;
+        if (sc.accounts) data.accounts = s.accounts;
         if (sc.goals) data.goals = s.goals;
         if (sc.debts) data.debts = s.debts;
         if (sc.changeLog) data.changeLog = s.changeLog;
@@ -450,7 +549,7 @@ export const useFinance = create<State>()(
         return JSON.stringify(payload, null, 2);
       },
 
-      importData: (json, scopes) => {
+      importData: async (json, scopes) => {
         try {
           const parsed = JSON.parse(json);
           if (!isObj(parsed) && !isObj(parsed?.data)) {
@@ -469,6 +568,19 @@ export const useFinance = create<State>()(
           const transactions = sc.transactions && Array.isArray(data.transactions)
             ? (data.transactions as any[]).map(sanitizeTx).filter((x): x is Transaction => !!x)
             : cur.transactions;
+
+          // If native, persist any embedded dataURL receipts and replace with saved path
+          if (Capacitor.isNativePlatform() && Array.isArray(transactions)) {
+            for (const tx of transactions) {
+              if (typeof tx.receipt === "string" && tx.receipt.startsWith("data:")) {
+                const saved = await (get() as any).saveReceiptFile(tx.id, tx.receipt);
+                if (saved) tx.receipt = saved;
+              }
+            }
+          }
+          const accounts = sc.accounts && Array.isArray(data.accounts)
+            ? (data.accounts as any[]).map(sanitizeAccount).filter((x): x is Account => !!x)
+            : cur.accounts;
           const goals = sc.goals && Array.isArray(data.goals)
             ? (data.goals as any[]).map(sanitizeGoal).filter((x): x is Goal => !!x)
             : cur.goals;
@@ -485,12 +597,72 @@ export const useFinance = create<State>()(
             ? sanitizeProfile(data.profile)
             : cur.profile;
 
-          set({ fixedItems, transactions, goals, debts, changeLog, theme, profile });
+          set({ fixedItems, transactions, accounts, goals, debts, changeLog, theme, profile });
+          // After importing, also migrate any in-place dataURL receipts from existing state
+          try { await (get() as any).migrateReceiptsInPlace(); } catch (e) { /* ignore */ }
           return { ok: true, warnings };
         } catch (e: any) {
           return { ok: false, error: e?.message ?? "JSON inválido" };
         }
       },
+
+      migrateReceiptsInPlace: async () => {
+        if (!Capacitor.isNativePlatform()) return;
+        const s = get();
+        const txs = s.transactions.slice();
+        let changed = false;
+        for (const tx of txs) {
+          if (typeof tx.receipt === "string" && tx.receipt.startsWith("data:")) {
+            const saved = await (get() as any).saveReceiptFile(tx.id, tx.receipt);
+            if (saved) {
+              tx.receipt = saved;
+              changed = true;
+            }
+          }
+        }
+        if (changed) set((s2) => ({ transactions: txs }));
+      },
+
+          cleanupOrphanReceipts: async (deleteFiles = false) => {
+            if (!Capacitor.isNativePlatform()) return { orphans: [], freedBytes: 0 };
+            try {
+              const res = await Filesystem.readdir({ path: 'receipts', directory: Directory.Data });
+              const files: string[] = Array.isArray((res as any).files) ? (res as any).files : (Array.isArray(res) ? res as any : []);
+              const refs = new Set<string>();
+              const s = get();
+              for (const t of s.transactions) {
+                if (typeof t.receipt === 'string') {
+                  const bn = t.receipt.includes('/') ? t.receipt.split('/').pop() as string : t.receipt;
+                  refs.add(bn);
+                }
+              }
+              const orphans = files.filter((f) => !refs.has(f));
+              let freed = 0;
+              // gather sizes
+              const sizes: Record<string, number> = {};
+              for (const o of orphans) {
+                try {
+                  const st = await Filesystem.stat({ path: `receipts/${o}`, directory: Directory.Data });
+                  const sz = typeof (st as any).size === 'number' ? (st as any).size : Number((st as any).size) || 0;
+                  sizes[o] = sz;
+                } catch (_) { sizes[o] = 0; }
+              }
+              const totalBytes = Object.values(sizes).reduce((a, b) => a + b, 0);
+              if (deleteFiles && orphans.length > 0) {
+                for (const o of orphans) {
+                  try {
+                    await Filesystem.deleteFile({ path: `receipts/${o}`, directory: Directory.Data });
+                    freed += sizes[o] || 0;
+                  } catch (e) { /* ignore */ }
+                }
+                // record changeLog entry
+                set((s2) => ({ changeLog: [logEntry("transaction", id(), "update", `Eliminó ${orphans.length} recibos huérfanos, liberó ${(freed / 1024).toFixed(1)} KB`), ...s2.changeLog].slice(0, 500) }));
+              }
+              return { orphans, freedBytes: deleteFiles ? freed : totalBytes };
+            } catch (e) {
+              return { orphans: [], freedBytes: 0 };
+            }
+          },
 
       resetAll: () => {
         const d = new Date();
@@ -516,6 +688,8 @@ export const useFinance = create<State>()(
             .map(sanitizeFixed).filter(Boolean);
           next.transactions = (Array.isArray(next.transactions) ? next.transactions : [])
             .map(sanitizeTx).filter(Boolean);
+          next.accounts = (Array.isArray(next.accounts) ? next.accounts : [])
+            .map(sanitizeAccount).filter(Boolean);
           next.goals = (Array.isArray(next.goals) ? next.goals : [])
             .map(sanitizeGoal).filter(Boolean);
           next.debts = (Array.isArray(next.debts) ? next.debts : [])

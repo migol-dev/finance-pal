@@ -17,6 +17,28 @@ export const PAYMENT_METHOD_EMOJI: Record<PaymentMethod, string> = {
   other: "🔁",
 };
 
+export type AccountType = "bank" | "cash" | "other";
+
+export interface Denomination {
+  value: number;
+  count: number;
+  kind?: "bill" | "coin";
+}
+
+export interface Account {
+  id: string;
+  name: string;
+  type: AccountType;
+  initialBalance?: number;
+  currency?: string;
+  /** For cash accounts: list of denominations (bills/coins) */
+  denominations?: Denomination[];
+  // Optional bank metadata for bank accounts
+  clabe?: string;       // 18-digit CLABE interbancaria
+  bank?: string;        // Bank name / institución
+  holderName?: string;  // Titular de la cuenta
+}
+
 /** Visual identity: either an emoji OR a cropped image (dataURL) */
 export interface IconRef {
   kind: "emoji" | "image";
@@ -39,6 +61,7 @@ export interface FixedItem {
   payWeekDay?: number; // day of week (0=Sunday..6=Saturday) - optional
   icon?: IconRef;
   paymentMethod?: PaymentMethod;
+  accountId?: string;
 }
 
 export interface Transaction {
@@ -52,6 +75,12 @@ export interface Transaction {
   icon?: IconRef;
   paymentMethod?: PaymentMethod;
   fixedId?: string; // optional reference to originating FixedItem
+  accountId?: string; // optional reference to an Account
+  // For transfers: destination account id (internal) or external payee info
+  transferToAccountId?: string;
+  externalPayee?: { clabe?: string; bank?: string; name?: string };
+  // Optional receipt image as data URL or filesystem path
+  receipt?: string;
 }
 
 export interface Goal {
@@ -201,6 +230,45 @@ export function parseDateLocal(d: string | Date): Date {
   const m = d.match(/^(\d{4})-(\d{2})-(\d{2})$/);
   if (m) return new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]));
   return new Date(d);
+}
+
+/** Compute per-account balances by applying transactions to each account's initialBalance. */
+export function computeBalances(accounts: Account[], transactions: Transaction[]) {
+  const map: Record<string, number> = {};
+  for (const a of accounts) map[a.id] = (a.initialBalance ?? 0);
+
+  // helper to resolve cash account if tx has no accountId
+  const cashAccount = accounts.find((x) => x.type === "cash");
+
+  for (const t of transactions) {
+    // Determine origin account: prefer explicit accountId, fall back to cash account for cash payments
+    const originId = t.accountId ?? (t.paymentMethod === "cash" && cashAccount ? cashAccount.id : undefined);
+
+    // Handle internal transfers specially: debit origin and credit destination
+    if (t.transferToAccountId) {
+      if (originId) {
+        map[originId] = (map[originId] ?? 0) - Math.abs(t.amount);
+      }
+      // credit destination only if it exists among known accounts
+      const destExists = accounts.some((a) => a.id === t.transferToAccountId);
+      if (destExists) {
+        map[t.transferToAccountId] = (map[t.transferToAccountId] ?? 0) + Math.abs(t.amount);
+      }
+      continue;
+    }
+
+    if (!originId) continue; // nothing to apply
+
+    // For normal transactions: incomes add, expenses and savings subtract
+    const signed = (t.type === "income") ? Math.abs(t.amount) : -Math.abs(t.amount);
+    map[originId] = (map[originId] ?? 0) + signed;
+  }
+  return map;
+}
+
+export function cashTotalFromDenominations(denoms?: Denomination[]) {
+  if (!Array.isArray(denoms) || denoms.length === 0) return 0;
+  return denoms.reduce((acc, d) => acc + (d.value * (d.count || 0)), 0);
 }
 
 export const CATEGORY_EMOJI: Record<string, string> = {

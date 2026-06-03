@@ -43,47 +43,48 @@ export default function SimpleAreaChart({
   const h = height;
   const chartW = w - margin.left - margin.right;
   const chartH = h - margin.top - margin.bottom;
-
-  const n = data.length || 1;
-
-  // determine value range
-  let min = Infinity, max = -Infinity;
-  for (const d of data) {
-    for (const s of series) {
-      const v = d[s.key];
-      if (v == null) continue;
-      if (v < min) min = v;
-      if (v > max) max = v;
+  const memo = React.useMemo(() => {
+    const n = data.length || 1;
+    // determine value range
+    let min = Infinity, max = -Infinity;
+    for (const d of data) {
+      for (const s of series) {
+        const v = d[s.key];
+        if (v == null) continue;
+        if (v < min) min = v;
+        if (v > max) max = v;
+      }
     }
-  }
-  if (!isFinite(min)) min = 0;
-  if (!isFinite(max)) max = 0;
-  if (maxY != null) max = Math.max(max, maxY);
-  if (min > 0) min = 0; // baseline at 0 for area charts
-  const range = max - min || 1;
+    if (!isFinite(min)) min = 0;
+    if (!isFinite(max)) max = 0;
+    if (maxY != null) max = Math.max(max, maxY);
+    if (min > 0) min = 0; // baseline at 0 for area charts
+    const range = max - min || 1;
+    const x = (i: number) => margin.left + (i / Math.max(1, n - 1)) * chartW;
+    const y = (v: number) => margin.top + (1 - (v - min) / range) * chartH;
 
-  const x = (i: number) => margin.left + (i / Math.max(1, n - 1)) * chartW;
-  const y = (v: number) => margin.top + (1 - (v - min) / range) * chartH;
+    const buildPath = (key: string) => {
+      let d = "";
+      for (let i = 0; i < n; i++) {
+        const v = data[i][key];
+        if (v == null) continue;
+        const px = x(i);
+        const py = y(v);
+        d += i === 0 ? `M ${px} ${py}` : ` L ${px} ${py}`;
+      }
+      return d;
+    };
 
-  const buildPath = (key: string) => {
-    let d = "";
-    for (let i = 0; i < n; i++) {
-      const v = data[i][key];
-      if (v == null) continue;
-      const px = x(i);
-      const py = y(v);
-      d += i === 0 ? `M ${px} ${py}` : ` L ${px} ${py}`;
-    }
-    return d;
-  };
+    const buildAreaPath = (key: string) => {
+      const top = buildPath(key);
+      const lastX = x(n - 1);
+      const firstX = x(0);
+      const baseY = y(min);
+      return `${top} L ${lastX} ${baseY} L ${firstX} ${baseY} Z`;
+    };
 
-  const buildAreaPath = (key: string) => {
-    const top = buildPath(key);
-    const lastX = x(n - 1);
-    const firstX = x(0);
-    const baseY = y(min);
-    return `${top} L ${lastX} ${baseY} L ${firstX} ${baseY} Z`;
-  };
+    return { n, min, max, range, x, y, buildPath, buildAreaPath };
+  }, [data, series, chartW, chartH, maxY, margin.left, margin.top]);
 
   const [hoverIdx, setHoverIdx] = React.useState<number | null>(null);
 
@@ -110,22 +111,36 @@ export default function SimpleAreaChart({
           <line key={i} x1={margin.left} x2={margin.left + chartW} y1={y(rl.value)} y2={y(rl.value)} stroke="#ffffff88" strokeDasharray="3 3" />
         ))}
 
+        {/* area gradients */}
+        <defs>
+          {series.map((s, i) => {
+            const id = `grad-${String(s.key).replace(/[^a-z0-9-_]/gi, "")}-${i}`;
+            const c = s.color ?? "#000";
+            return (
+              <linearGradient id={id} key={id} x1="0" x2="0" y1="0" y2="1">
+                <stop offset="0%" stopColor={c} stopOpacity="0.22" />
+                <stop offset="100%" stopColor={c} stopOpacity="0.02" />
+              </linearGradient>
+            );
+          })}
+        </defs>
+
         {/* areas */}
-        {series.map((s) => s.type === "area" ? (
-          <path key={s.key} d={buildAreaPath(s.key)} fill={s.color ?? "#000"} fillOpacity={0.14} stroke={s.color ?? "#000"} strokeWidth={s.strokeWidth ?? 1.5} />
+        {series.map((s, i) => s.type === "area" ? (
+          <path key={s.key} d={memo.buildAreaPath(s.key)} fill={`url(#grad-${String(s.key).replace(/[^a-z0-9-_]/gi, "")}-${i})`} stroke={s.color ?? "#000"} strokeWidth={s.strokeWidth ?? 1.5} />
         ) : null)}
 
         {/* lines */}
         {series.map((s) => s.type !== "area" ? (
-          <path key={s.key} d={buildPath(s.key)} fill="none" stroke={s.color ?? "#000"} strokeWidth={s.strokeWidth ?? 2} strokeLinejoin="round" strokeLinecap="round" />
+          <path key={s.key} d={memo.buildPath(s.key)} fill="none" stroke={s.color ?? "#000"} strokeWidth={s.strokeWidth ?? 2} strokeLinejoin="round" strokeLinecap="round" />
         ) : null)}
 
         {/* dots for hovered index */}
         {hoverIdx != null && series.map((s) => {
           const v = data[hoverIdx]?.[s.key];
           if (v == null) return null;
-          const px = x(hoverIdx);
-          const py = y(v);
+          const px = memo.x(hoverIdx);
+          const py = memo.y(v);
           return <circle key={s.key} cx={px} cy={py} r={3} fill={s.color ?? "#000"} />;
         })}
 
@@ -134,15 +149,15 @@ export default function SimpleAreaChart({
           onMouseMove={(e) => {
             const rect = (e.target as SVGRectElement).getBoundingClientRect();
             const px = e.clientX - rect.left;
-            const idx = Math.round((px / chartW) * (n - 1));
-            setHoverIdx(Math.max(0, Math.min(n - 1, idx)));
+            const idx = Math.round((px / chartW) * (memo.n - 1));
+            setHoverIdx(Math.max(0, Math.min(memo.n - 1, idx)));
           }}
           onMouseLeave={() => setHoverIdx(null)} />
       </svg>
 
       {/* tooltip */}
       {hoverIdx != null && (
-        <div style={{ position: "absolute", left: 8 + (hoverIdx / Math.max(1, n - 1)) * chartW, top: 8 }} className="pointer-events-none bg-card border border-border rounded-md p-2 text-xs">
+        <div style={{ position: "absolute", left: 8 + (hoverIdx / Math.max(1, memo.n - 1)) * chartW, top: 8 }} className="pointer-events-none bg-card border border-border rounded-md p-2 text-xs">
           <div className="font-semibold">{String(data[hoverIdx]?.[xKey] ?? "")}</div>
           {series.map((s) => {
             const v = data[hoverIdx]?.[s.key];

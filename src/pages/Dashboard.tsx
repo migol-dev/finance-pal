@@ -1,6 +1,6 @@
 import { useMemo, useState, useEffect, type ReactNode } from "react";
 import { useFinance } from "@/store/finance-store";
-import { fmt, monthlyAmount, MONTHS, isFixedActiveInMonth, iconFor, fmtDate, parseDateLocal } from "@/lib/finance";
+import { fmt, monthlyAmount, MONTHS, isFixedActiveInMonth, iconFor, fmtDate, parseDateLocal, computeBalances, cashTotalFromDenominations } from "@/lib/finance";
 import { Eye, EyeOff, TrendingUp, TrendingDown, PiggyBank, Plus, Bell, BarChart3 } from "lucide-react";
 import { Link } from "react-router-dom";
 import { motion } from "@/lib/framer";
@@ -11,6 +11,7 @@ import { IconDisplay } from "@/components/app/IconDisplay";
 export default function Dashboard() {
   const fixedItems = useFinance((s) => s.fixedItems);
   const transactions = useFinance((s) => s.transactions);
+  const accounts = useFinance((s) => s.accounts);
   const goals = useFinance((s) => s.goals);
   const debts = useFinance((s) => s.debts);
   const activeYear = useFinance((s) => s.activeYear);
@@ -130,12 +131,26 @@ export default function Dashboard() {
     return { income, expense, saving, net, savingRate };
   }, [fixedItems, transactions, debts, activeMonth, activeYear]);
 
-  const today = new Date();
-  const todayDate = today.getDate();
-  const todayWeekday = today.getDay();
-  const isCurrentMonth = today.getFullYear() === activeYear && today.getMonth() === activeMonth;
+  const balances = useMemo(() => computeBalances(accounts, transactions), [accounts, transactions]);
+  const cashBankBreakdown = useMemo(() => {
+    let cash = 0, bank = 0;
+    for (const a of accounts) {
+      const bal = balances[a.id] ?? (a.initialBalance ?? 0);
+      if (a.type === "cash") {
+        if (a.denominations && a.denominations.length > 0) cash += cashTotalFromDenominations(a.denominations);
+        else cash += bal;
+      } else {
+        bank += bal;
+      }
+    }
+    return { cash, bank };
+  }, [accounts, balances]);
 
   const upcoming = useMemo(() => {
+    const today = new Date();
+    const todayDate = today.getDate();
+    const todayWeekday = today.getDay();
+    const isCurrentMonth = today.getFullYear() === activeYear && today.getMonth() === activeMonth;
     if (!isCurrentMonth) return [];
     return fixedItems
       .filter((i) => isFixedActiveInMonth(i, activeYear, activeMonth) && (typeof i.payDay === "number" || typeof i.payWeekDay === "number") && i.type !== "income_fixed")
@@ -160,7 +175,7 @@ export default function Dashboard() {
       })
       .sort((a, b) => a.daysLeft - b.daysLeft)
       .slice(0, 3);
-  }, [fixedItems, activeYear, activeMonth, isCurrentMonth, todayDate, todayWeekday]);
+  }, [fixedItems, activeYear, activeMonth]);
 
   const recent = useMemo(() => {
     return transactions
@@ -211,6 +226,16 @@ export default function Dashboard() {
             <MiniStat icon={<TrendingUp className="size-3.5" />} label="Ingresos" value={mask(fmt(monthStats.income))} />
             <MiniStat icon={<TrendingDown className="size-3.5" />} label="Gastos" value={mask(fmt(monthStats.expense))} />
             <MiniStat icon={<PiggyBank className="size-3.5" />} label="Ahorro" value={mask(fmt(monthStats.saving))} />
+          </div>
+          <div className="mt-3 flex items-center gap-3 text-sm">
+            <div className="flex-1 rounded-2xl bg-white/10 p-3 text-center">
+              <div className="text-[11px] uppercase text-muted-foreground">Efectivo</div>
+              <div className="font-bold mt-1">{mask(fmt(cashBankBreakdown.cash))}</div>
+            </div>
+            <div className="flex-1 rounded-2xl bg-white/10 p-3 text-center">
+              <div className="text-[11px] uppercase text-muted-foreground">Cuentas</div>
+              <div className="font-bold mt-1">{mask(fmt(cashBankBreakdown.bank))}</div>
+            </div>
           </div>
         </div>
       </motion.section>

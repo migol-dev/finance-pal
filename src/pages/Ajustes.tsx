@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useFinance, Currency, ExportScopes, ALL_SCOPES } from "@/store/finance-store";
-import { fmt, monthlyAmount, TYPE_LABEL, FREQ_LABEL, ItemType, Frequency, Priority, iconFor, IconRef, FixedItem, CATEGORY_EMOJI, PaymentMethod, PAYMENT_METHOD_LABEL, PAYMENT_METHOD_EMOJI } from "@/lib/finance";
+import { fmt, monthlyAmount, TYPE_LABEL, FREQ_LABEL, ItemType, Frequency, Priority, iconFor, IconRef, FixedItem, CATEGORY_EMOJI, PaymentMethod, PAYMENT_METHOD_LABEL, PAYMENT_METHOD_EMOJI, Account, Denomination, cashTotalFromDenominations } from "@/lib/finance";
+import DenominationsEditor from "@/components/ui/DenominationsEditor";
 import { Header } from "@/components/app/Header";
 import { Plus, Trash2, Power, Smartphone, Database, RotateCcw, Pencil, Download, Upload, Sun, Moon, Target, History, HandCoins, User, AlertTriangle } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
@@ -22,6 +23,10 @@ import { ElegantConfirm } from "@/components/app/ElegantConfirm";
 
 export default function Ajustes() {
   const { fixedItems, addFixed, updateFixed, removeFixed, toggleFixed, resetAll, exportData, importData, theme, toggleTheme, profile, setProfile } = useFinance();
+  const accounts = useFinance((s) => s.accounts);
+  const addAccount = useFinance((s) => s.addAccount);
+  const updateAccount = useFinance((s) => s.updateAccount);
+  const removeAccount = useFinance((s) => s.removeAccount);
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<FixedItem | null>(null);
   const [tab, setTab] = useState<"all" | ItemType>("all");
@@ -35,6 +40,12 @@ export default function Ajustes() {
   const [deleteConfirm, setDeleteConfirm] = useState<FixedItem | null>(null);
   const [resetConfirm, setResetConfirm] = useState(false);
   const [importConfirmScopes, setImportConfirmScopes] = useState<ExportScopes | null>(null);
+  const [accountsOpen, setAccountsOpen] = useState(false);
+  const [editingAccount, setEditingAccount] = useState<any | null>(null);
+  const [cashDenomsState, setCashDenomsState] = useState<Denomination[] | undefined>(undefined);
+  const [receiptsOpen, setReceiptsOpen] = useState(false);
+  const [orphanList, setOrphanList] = useState<string[] | null>(null);
+  const [receiptsLoading, setReceiptsLoading] = useState(false);
 
   const filtered = fixedItems.filter((i) => tab === "all" || i.type === tab);
   const openNew = () => { setEditing(null); setOpen(true); };
@@ -169,24 +180,40 @@ export default function Ajustes() {
 
   const handleImportConfirm = () => {
     if (!pendingPayload || !importConfirmScopes) return;
-    const r = importData(pendingPayload, importConfirmScopes);
-    if (r.ok) {
-      toast.success("Datos importados");
-      r.warnings?.forEach((w) => toast(w));
-      setImportOpen(false);
-      setPendingFile(null);
-      setPendingPayload(null);
-    } else {
-      toast.error(r.error ?? "No se pudo importar");
-    }
-    setImportConfirmScopes(null);
+    (async () => {
+      const r = await importData(pendingPayload, importConfirmScopes);
+      if (r.ok) {
+        toast.success("Datos importados");
+        r.warnings?.forEach((w) => toast(w));
+        setImportOpen(false);
+        setPendingFile(null);
+        setPendingPayload(null);
+      } else {
+        toast.error(r.error ?? "No se pudo importar");
+      }
+      setImportConfirmScopes(null);
+    })();
   };
 
   return (
     <div>
       <Header title="Ajustes" subtitle="Configura tus fijos del mes" action={
-        <Button onClick={openNew} className="rounded-2xl gradient-primary text-primary-foreground border-0 shadow-glow h-11"><Plus className="size-4 mr-1" />Agregar</Button>
-      } />
+            <div className="flex items-center gap-2">
+              <Button onClick={async () => {
+                // quick background cleanup
+                try {
+                  const res = await (useFinance.getState() as any).cleanupOrphanReceipts(true);
+                  const freed = (res?.freedBytes ?? 0) / 1024;
+                  if ((res?.orphans ?? []).length > 0) {
+                    toast.success(`Limpió ${(res.orphans.length)} recibos, liberó ${freed.toFixed(1)} KB`);
+                  } else {
+                    toast('No se encontraron recibos huérfanos');
+                  }
+                } catch (e) { toast.error('Error al limpiar recibos'); }
+              }} variant="ghost" className="h-11"><Trash2 className="size-4 mr-2" />Limpiar</Button>
+              <Button onClick={openNew} className="rounded-2xl gradient-primary text-primary-foreground border-0 shadow-glow h-11"><Plus className="size-4 mr-1" />Agregar</Button>
+            </div>
+          } />
 
       <Dialog open={profileOpen} onOpenChange={setProfileOpen}>
         <DialogContent className="rounded-3xl max-h-[90vh] overflow-y-auto">
@@ -299,8 +326,44 @@ export default function Ajustes() {
         <div className="grid grid-cols-2 gap-2">
           <Button onClick={() => setExportOpen(true)} variant="secondary" className="rounded-2xl h-12 font-semibold"><Download className="size-4 mr-1" />Exportar</Button>
           <Button onClick={() => fileInputRef.current?.click()} variant="secondary" className="rounded-2xl h-12 font-semibold"><Upload className="size-4 mr-1" />Importar</Button>
+          <Button onClick={async () => {
+            setReceiptsOpen(true);
+            setReceiptsLoading(true);
+            try {
+              const r = await (useFinance.getState() as any).cleanupOrphanReceipts(false); // dry-run
+              setOrphanList(r?.orphans ?? []);
+            } catch (e) { setOrphanList([]); }
+            setReceiptsLoading(false);
+          }} variant="ghost" className="rounded-2xl h-12 font-semibold"><Trash2 className="size-4 mr-1" />Limpiar recibos</Button>
           <input ref={fileInputRef} type="file" accept="application/json,.json" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; if (f) handleImportFile(f); e.target.value = ""; }} />
         </div>
+
+        <Dialog open={receiptsOpen} onOpenChange={(v) => { setReceiptsOpen(v); if (!v) { setOrphanList(null); } }}>
+          <DialogContent className="rounded-3xl max-w-xl">
+            <DialogHeader><DialogTitle>Limpiar recibos</DialogTitle></DialogHeader>
+            <DialogDescription className="sr-only">Lista y elimina recibos huérfanos</DialogDescription>
+            <div className="space-y-3">
+              {receiptsLoading && <p className="text-sm">Analizando recibos...</p>}
+              {!receiptsLoading && orphanList && orphanList.length === 0 && <p className="text-sm">No se encontraron recibos huérfanos.</p>}
+              {!receiptsLoading && orphanList && orphanList.length > 0 && (
+                <div>
+                  <p className="text-sm mb-2">Se encontraron {orphanList.length} recibos huérfanos:</p>
+                  <div className="max-h-48 overflow-y-auto rounded border border-border p-2 bg-card">
+                    {orphanList.map((o) => <div key={o} className="text-xs py-1">{o}</div>)}
+                  </div>
+                  <div className="flex gap-2 justify-end mt-3">
+                    <Button variant="secondary" onClick={async () => { setReceiptsLoading(true); await (useFinance.getState() as any).cleanupOrphanReceipts(true); const r = await (useFinance.getState() as any).cleanupOrphanReceipts(false); setOrphanList(r.orphans); setReceiptsLoading(false); toast.success('Recibos eliminados'); }}>Eliminar</Button>
+                    <Button onClick={() => { setReceiptsOpen(false); setOrphanList(null); }}>Cerrar</Button>
+                  </div>
+                </div>
+              )}
+              {!receiptsLoading && orphanList === null && <p className="text-sm">Pulsa Analizar para buscar recibos huérfanos.</p>}
+            </div>
+            <div className="mt-4 flex justify-end">
+              <Button onClick={async () => { setReceiptsLoading(true); const r = await (useFinance.getState() as any).cleanupOrphanReceipts(false); setOrphanList(r.orphans); setReceiptsLoading(false); }} className="rounded-2xl">Analizar</Button>
+            </div>
+          </DialogContent>
+        </Dialog>
 
         <Dialog open={exportOpen} onOpenChange={setExportOpen}>
           <DialogContent className="rounded-3xl">
@@ -337,6 +400,67 @@ export default function Ajustes() {
         </button>
         <p className="text-[10px] text-center text-muted-foreground pt-4">Finance Pal v1.17.7</p>
 
+        <div className="pt-4">
+          <h2 className="text-xs uppercase tracking-wider font-bold text-foreground">Desglose de efectivo</h2>
+          <div className="mt-2">
+            {accounts.find((a) => a.type === "cash") ? (
+              (() => {
+                const cash = accounts.find((a) => a.type === "cash")!;
+                const denomTotal = (cashDenomsState && cashDenomsState.length > 0) ? cashTotalFromDenominations(cashDenomsState) : (cash.denominations ? cashTotalFromDenominations(cash.denominations) : 0);
+                return (
+                  <div className="rounded-2xl bg-card border border-border p-3 shadow-soft">
+                    <p className="text-sm font-semibold">Cuenta: {cash.name} • {cash.currency ?? "MXN"}</p>
+                    <p className="text-xs text-foreground mb-2">Saldo registrado: {fmt(cash.initialBalance ?? 0)} • Total desglose: {fmt(denomTotal)}</p>
+                    <div>
+                      <DenominationsEditor value={cashDenomsState ?? cash.denominations} onChange={(d) => setCashDenomsState(d)} />
+                    </div>
+                    <div className="flex gap-2 justify-end mt-3">
+                      <Button onClick={() => { setEditingAccount(cash); setAccountsOpen(true); }} className="rounded-2xl">Editar cuenta</Button>
+                      <Button onClick={async () => {
+                        const total = cashDenomsState && cashDenomsState.length > 0 ? cashTotalFromDenominations(cashDenomsState) : (cash.denominations ? cashTotalFromDenominations(cash.denominations) : 0);
+                        const bal = Number(cash.initialBalance ?? 0);
+                        if (total !== bal) { toast.error("El total del desglose no coincide con el saldo registrado. No se puede guardar."); return; }
+                        // Save denominations
+                        updateAccount(cash.id, { denominations: cashDenomsState && cashDenomsState.length > 0 ? cashDenomsState : undefined });
+                        toast.success("Desglose guardado");
+                      }} className="rounded-2xl gradient-primary text-primary-foreground border-0 shadow-glow font-bold">Guardar desglose</Button>
+                    </div>
+                  </div>
+                );
+              })()
+            ) : (
+              <div className="rounded-2xl bg-card border border-border p-3 shadow-soft">
+                <p className="text-sm">No hay cuenta de efectivo. Crea una cuenta de tipo <span className="font-bold">Efectivo</span> para usar el desglose.</p>
+                <div className="mt-2"><Button onClick={() => { setEditingAccount(null); setAccountsOpen(true); }} className="rounded-2xl">Crear cuenta de efectivo</Button></div>
+              </div>
+            )}
+          </div>
+
+          <h2 className="text-xs uppercase tracking-wider font-bold text-foreground pt-4">Cuentas</h2>
+          <div className="mt-2 space-y-2">
+            <div className="flex gap-2">
+              <Button onClick={() => { setEditingAccount(null); setAccountsOpen(true); }} className="flex-1 rounded-2xl">Añadir cuenta</Button>
+              <Button variant="secondary" onClick={() => setAccountsOpen(true)} className="rounded-2xl">Gestionar</Button>
+            </div>
+            {accounts.map((a) => {
+              const denomTotal = a.denominations && a.denominations.length > 0 ? cashTotalFromDenominations(a.denominations) : null;
+              return (
+                <div key={a.id} className="rounded-2xl bg-card border border-border p-3 shadow-soft flex items-center gap-3">
+                  <div className="size-9 rounded-xl bg-primary/10 text-primary flex items-center justify-center">{a.type === "cash" ? <HandCoins className="size-5" /> : <Database className="size-5" />}</div>
+                  <div className="flex-1 min-w-0">
+                    <p className="font-semibold text-sm truncate">{a.name}</p>
+                    <p className="text-xs text-foreground">{a.type === "cash" ? "Efectivo" : "Cuenta bancaria"} • {a.currency ?? "MXN"} • {fmt(a.initialBalance ?? 0)} {denomTotal != null && <span className="ml-1">· {fmt(denomTotal)}</span>}</p>
+                  </div>
+                  <div className="flex gap-1">
+                    <Button onClick={() => { setEditingAccount(a); setAccountsOpen(true); }} className="h-9">Editar</Button>
+                    <Button onClick={() => { if (confirm(`Eliminar cuenta "${a.name}"? Se desasignarán sus movimientos.`)) { removeAccount(a.id); } }} className="h-9" variant="ghost">Eliminar</Button>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+
         <ElegantConfirm
           open={!!deleteConfirm}
           onOpenChange={(v) => !v && setDeleteConfirm(null)}
@@ -367,6 +491,17 @@ export default function Ajustes() {
           icon={Upload}
           iconColor="gradient-primary"
         />
+
+        <Dialog open={accountsOpen} onOpenChange={setAccountsOpen}>
+          <DialogContent className="rounded-3xl max-h-[90vh] overflow-y-auto">
+            <DialogHeader><DialogTitle>{editingAccount ? "Editar cuenta" : "Nueva cuenta"}</DialogTitle></DialogHeader>
+            <AccountForm initial={editingAccount} onSave={(a) => {
+              if (editingAccount) { updateAccount(editingAccount.id, a); toast.success("Cuenta actualizada"); }
+              else { addAccount(a); toast.success("Cuenta creada"); }
+              setAccountsOpen(false); setEditingAccount(null);
+            }} />
+          </DialogContent>
+        </Dialog>
       </section>
     </div>
   );
@@ -591,6 +726,70 @@ function FixedForm({ initial, onSave }: { initial: FixedItem | null; onSave: (i:
       )}
       <div><Label className="text-xs">Nota (opcional)</Label><Input value={note} onChange={(e) => setNote(e.target.value)} className="h-11 rounded-2xl" /></div>
       <Button type="submit" className="w-full h-12 rounded-2xl gradient-primary text-primary-foreground border-0 shadow-glow font-bold">{initial ? "Guardar cambios" : "Crear"}</Button>
+    </form>
+  );
+}
+
+function AccountForm({ initial, onSave }: { initial: Account | null; onSave: (a: Omit<Account, "id">) => void }) {
+  const [name, setName] = useState(initial?.name ?? "");
+  const [type, setType] = useState<Account["type"]>(initial?.type ?? "bank");
+  const [initialBalance, setInitialBalance] = useState(initial?.initialBalance ? String(initial?.initialBalance) : "0");
+  const [currency, setCurrency] = useState(initial?.currency ?? "MXN");
+  const [denoms, setDenoms] = useState<Denomination[] | undefined>(initial?.denominations ?? []);
+  const [clabe, setClabe] = useState(initial?.clabe ?? "");
+  const [bankName, setBankName] = useState(initial?.bank ?? "");
+  const [holderName, setHolderName] = useState(initial?.holderName ?? "");
+
+  return (
+    <form onSubmit={(e) => {
+      e.preventDefault();
+      if (!name.trim()) { toast.error("Nombre requerido"); return; }
+      const bal = parseFloat(initialBalance) || 0;
+      if (type === "cash" && denoms && denoms.length > 0) {
+        const denomTotal = cashTotalFromDenominations(denoms);
+        if (denomTotal !== bal) { toast.error("El total del desglose debe coincidir con el saldo inicial para cuentas en efectivo."); return; }
+      }
+      if (type === "bank") {
+        // Validate CLABE (18 numeric digits)
+        const onlyDigits = (clabe || "").replace(/\s+/g, "");
+        if (!/^[0-9]{18}$/.test(onlyDigits)) { toast.error("CLABE inválida. Debe contener 18 dígitos."); return; }
+        if (!bankName.trim()) { toast.error("Nombre del banco requerido"); return; }
+        if (!holderName.trim()) { toast.error("Nombre del titular requerido"); return; }
+      }
+      onSave({ name: name.trim(), type, initialBalance: bal, currency, denominations: denoms && denoms.length > 0 ? denoms : undefined, clabe: clabe.trim() || undefined, bank: bankName.trim() || undefined, holderName: holderName.trim() || undefined });
+    }} className="space-y-3">
+      <div><Label className="text-xs">Nombre</Label><Input autoFocus value={name} onChange={(e) => setName(e.target.value)} className="h-11 rounded-2xl" /></div>
+      <div>
+        <Label className="text-xs">Tipo</Label>
+        <Select value={type} onValueChange={(v) => setType(v as Account["type"])}>
+          <SelectTrigger className="h-11 rounded-2xl"><SelectValue /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="bank">Cuenta bancaria</SelectItem>
+            <SelectItem value="cash">Efectivo</SelectItem>
+            <SelectItem value="other">Otro</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
+      <div className="grid grid-cols-2 gap-2">
+        <div><Label className="text-xs">Saldo inicial</Label><Input type="number" value={initialBalance} onChange={(e) => setInitialBalance(e.target.value)} className="h-11 rounded-2xl" /></div>
+        <div><Label className="text-xs">Moneda</Label><Input value={currency} onChange={(e) => setCurrency(e.target.value)} className="h-11 rounded-2xl" /></div>
+      </div>
+      <div>
+        <Label className="text-xs">Desglose de efectivo (opcional)</Label>
+        {type === "cash" ? (
+          <DenominationsEditor value={denoms} onChange={(d) => setDenoms(d)} />
+        ) : (
+          <p className="text-[10px] text-muted-foreground mt-1">Desglose disponible solo para cuentas en efectivo.</p>
+        )}
+      </div>
+      {type === "bank" && (
+        <div className="space-y-2">
+          <div><Label className="text-xs">CLABE interbancaria</Label><Input value={clabe} onChange={(e) => setClabe(e.target.value)} placeholder="18 dígitos" className="h-11 rounded-2xl" /></div>
+          <div><Label className="text-xs">Banco</Label><Input value={bankName} onChange={(e) => setBankName(e.target.value)} className="h-11 rounded-2xl" /></div>
+          <div><Label className="text-xs">Nombre del titular</Label><Input value={holderName} onChange={(e) => setHolderName(e.target.value)} className="h-11 rounded-2xl" /></div>
+        </div>
+      )}
+      <Button type="submit" className="w-full h-12 rounded-2xl gradient-primary text-primary-foreground border-0 shadow-glow font-bold">Guardar</Button>
     </form>
   );
 }

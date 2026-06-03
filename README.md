@@ -93,3 +93,22 @@ npm run generate-icons
 Este proyecto es propiedad de **migol-dev**. Siéntete libre de explorar el código y realizar aportaciones mediante Pull Requests.
 
 *Desarrollado con ❤️ para transformar tus finanzas personales.*
+
+---
+
+## 🧭 Instrucciones Rápidas (QA y Migración de Recibos)
+
+- Tests y verificación:
+	- `node ./node_modules/typescript/bin/tsc --noEmit` — comprobación de tipos
+	- `npx vitest run` — ejecutar suite de pruebas
+	- `npm run lint` — revisar estilo y errores estáticos
+
+- Migración de recibos (Capacitor):
+	- En plataformas nativas los recibos embebidos (`data:` URLs) se persisten en `Directory.Data/receipts/` y en el store sólo se guarda la ruta relativa.
+	- En web, los recibos se mantienen embebidos como fallback.
+
+- Limpieza de recibos huérfanos:
+	- `npm run cleanup-receipts -- --dry-run` — lista archivos huérfanos
+	- `npm run cleanup-receipts -- --delete` — elimina archivos huérfanos
+
+Si quieres que configure CI para ejecutar `tsc`, `vitest`, `lint` y `build`, puedo generar la configuración (GitHub Actions) ahora.
