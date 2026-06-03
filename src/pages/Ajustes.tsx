@@ -24,6 +24,8 @@ import { ElegantConfirm } from "@/components/app/ElegantConfirm";
 export default function Ajustes() {
   const { fixedItems, addFixed, updateFixed, removeFixed, toggleFixed, resetAll, exportData, importData, theme, toggleTheme, profile, setProfile } = useFinance();
   const accounts = useFinance((s) => s.accounts);
+  const syncFiltersToURL = useFinance((s) => s.syncFiltersToURL);
+  const setSyncFiltersToURL = useFinance((s) => s.setSyncFiltersToURL);
   const addAccount = useFinance((s) => s.addAccount);
   const updateAccount = useFinance((s) => s.updateAccount);
   const removeAccount = useFinance((s) => s.removeAccount);
@@ -320,6 +322,17 @@ export default function Ajustes() {
           <Link to="/historial" className="rounded-2xl bg-card border border-border p-3 shadow-soft flex flex-col items-center gap-1.5 hover:bg-muted/50 transition">
             <History className="size-5 text-primary" /><span className="text-[11px] font-semibold">Historial</span>
           </Link>
+        </div>
+
+        <div className="mt-3">
+          <Label className="text-xs">Sincronización</Label>
+          <div className="flex items-center gap-3 mt-2">
+            <Checkbox checked={syncFiltersToURL} onCheckedChange={(v) => setSyncFiltersToURL(!!v)} />
+            <div>
+              <p className="font-semibold text-sm">Sincronizar filtros con la URL</p>
+              <p className="text-xs text-muted-foreground">Al activar, los filtros de la pantalla de Movimientos se reflejarán en la URL para compartir o restaurar la vista.</p>
+            </div>
+          </div>
         </div>
 
         <h2 className="text-xs uppercase tracking-wider font-bold text-muted-foreground pt-2">Datos</h2>

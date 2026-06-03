@@ -111,4 +111,10 @@ Este proyecto es propiedad de **migol-dev**. Siéntete libre de explorar el cód
 	- `npm run cleanup-receipts -- --dry-run` — lista archivos huérfanos
 	- `npm run cleanup-receipts -- --delete` — elimina archivos huérfanos
 
-Si quieres que configure CI para ejecutar `tsc`, `vitest`, `lint` y `build`, puedo generar la configuración (GitHub Actions) ahora.
+
+## 🔁 Notas de migración y comportamiento móvil
+
+- Back button (Android): en plataforma nativa la app captura el evento de botón "atrás". Si estás en una pantalla secundaria se navega hacia atrás en la pila; si estás en la pantalla raíz la app saldrá (comportamiento nativo). Esto evita que el botón atrás deje la app en un estado inconsistente.
+- Recibos: en Android/iOS los `data:` URLs se migran a archivos dentro de `Directory.Data/receipts/`. El store almacena la ruta relativa; en web se mantiene el `data:` como fallback.
+
+Si quieres que personalice el comportamiento (por ejemplo: minimizar en lugar de salir, o mostrar una confirmación al salir), dímelo y lo ajusto.

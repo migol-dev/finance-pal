@@ -35,6 +35,9 @@ interface State {
   setActive: (year: number, month: number) => void;
   resetToToday: () => void;
   ensureScheduledTransactions: () => void;
+  // UI preferences
+  syncFiltersToURL: boolean;
+  setSyncFiltersToURL: (v: boolean) => void;
 
   addFixed: (i: Omit<FixedItem, "id">) => void;
   updateFixed: (id: string, p: Partial<FixedItem>) => void;
@@ -275,6 +278,9 @@ export const useFinance = create<State>()(
       changeLog: [],
       theme: "light",
       profile: { name: "", currency: "MXN" },
+      // whether to mirror filter state to URL query params
+      syncFiltersToURL: false,
+      setSyncFiltersToURL: (v: boolean) => set({ syncFiltersToURL: v }),
       activeYear: now.getFullYear(),
       activeMonth: now.getMonth(),
 

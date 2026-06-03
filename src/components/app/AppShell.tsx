@@ -5,6 +5,8 @@ import { useFinance } from "@/store/finance-store";
 import { SplashScreen } from "./SplashScreen";
 import { Capacitor } from "@capacitor/core";
 import { LocalNotifications } from "@capacitor/local-notifications";
+import { App as CapacitorApp } from "@capacitor/app";
+import { toast } from "sonner";
 
 const SWIPE_ROUTES = ["/", "/movimientos", "/deudas", "/metas", "/ajustes"];
 
@@ -16,6 +18,7 @@ export function AppShell({ children }: { children: ReactNode }) {
   const location = useLocation();
   const navigate = useNavigate();
   const touchRef = useRef<{ x: number; y: number; t: number } | null>(null);
+  const lastBackPressRef = useRef<number | null>(null);
 
   // On first mount of the session, snap to the device's current month/year and request permissions.
   useEffect(() => {
@@ -39,6 +42,28 @@ export function AppShell({ children }: { children: ReactNode }) {
     const meta = document.querySelector('meta[name="theme-color"]');
     if (meta) meta.setAttribute("content", theme === "dark" ? "#0B1220" : "#F43F5E");
   }, [theme]);
+
+  // Handle native back button for Android: navigate back in-app or exit when at root
+  useEffect(() => {
+    if (!Capacitor.isNativePlatform()) return;
+    const listener = CapacitorApp.addListener('backButton', () => {
+      const topRoutes = SWIPE_ROUTES;
+      if (!topRoutes.includes(location.pathname)) {
+        navigate(-1);
+        return;
+      }
+      // Double-press within 2s to exit
+      const now = Date.now();
+      if (lastBackPressRef.current && now - lastBackPressRef.current < 2000) {
+        try { CapacitorApp.exitApp(); } catch (e) { navigator['app']?.exitApp?.(); }
+        return;
+      }
+      lastBackPressRef.current = now;
+      toast('Pulsa de nuevo para salir');
+      setTimeout(() => { lastBackPressRef.current = null; }, 2000);
+    });
+    return () => { listener.remove(); };
+  }, [location.pathname, navigate]);
 
   const onTouchStart = (e: React.TouchEvent) => {
     const t = e.touches[0];
@@ -69,6 +94,7 @@ export function AppShell({ children }: { children: ReactNode }) {
         {children}
       </div>
       <BottomNav />
+      {/* Double-press to exit handled via Capacitor backButton listener */}
     </div>
   );
 }

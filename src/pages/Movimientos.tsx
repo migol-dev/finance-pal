@@ -23,6 +23,8 @@ type TxType = "income" | "expense" | "saving";
 export default function Movimientos() {
   const { transactions, addTx, updateTx, removeTx, activeYear, activeMonth, debts } = useFinance();
   const accounts = useFinance((s) => s.accounts);
+  const syncFiltersToURL = useFinance((s) => s.syncFiltersToURL);
+  const setSyncFiltersToURL = useFinance((s) => s.setSyncFiltersToURL);
   const navigate = useNavigate();
   const [params, setParams] = useSearchParams();
   const [open, setOpen] = useState(false);
@@ -50,7 +52,57 @@ export default function Movimientos() {
       setType(n as TxType); setEditing(null); setOpen(true);
       params.delete("new"); setParams(params, { replace: true });
     }
-  }, [params, setParams]);
+    // If filter sync is enabled (either by stored pref or by explicit query param), initialize filters from URL
+    const qsync = params.get("sync");
+    if ((syncFiltersToURL || qsync === "1" || qsync === "true")) {
+      const q = params.get("q") ?? "";
+      const f = (params.get("filter") as any) ?? "all";
+      const acc = params.get("account") ?? "all";
+      const cat = params.get("category") ?? "all";
+      const method = (params.get("method") as PaymentMethod) ?? "all";
+      const dp = (params.get("datePreset") as any) ?? "all";
+      const df = params.get("dateFrom") ?? "";
+      const dt = params.get("dateTo") ?? "";
+      setQuery(q);
+      setFilter(f);
+      setAccountFilter(acc as any);
+      setCategoryFilter(cat as any);
+      setPaymentMethodFilter(method as any);
+      setDatePreset(dp);
+      setDateFrom(df);
+      setDateTo(dt);
+      // If query explicitly requested sync enable, persist preference
+      if (qsync === "1" || qsync === "true") setSyncFiltersToURL(true);
+    }
+  }, [params, setParams, syncFiltersToURL, setSyncFiltersToURL]);
+
+  // Keep URL query params in sync when preference enabled
+  useEffect(() => {
+    if (!syncFiltersToURL) return;
+    const np = new URLSearchParams();
+    if (query) np.set("q", query);
+    if (filter && filter !== "all") np.set("filter", filter);
+    if (accountFilter && accountFilter !== "all") np.set("account", accountFilter);
+    if (categoryFilter && categoryFilter !== "all") np.set("category", categoryFilter);
+    if (paymentMethodFilter && paymentMethodFilter !== "all") np.set("method", paymentMethodFilter as string);
+    if (datePreset && datePreset !== "all") np.set("datePreset", datePreset);
+    if (dateFrom) np.set("dateFrom", dateFrom);
+    if (dateTo) np.set("dateTo", dateTo);
+    np.set("sync", "1");
+    setParams(np, { replace: true });
+  }, [filter, accountFilter, categoryFilter, paymentMethodFilter, query, datePreset, dateFrom, dateTo, syncFiltersToURL, setParams]);
+
+  // When user disables sync, remove our filter-related params from URL
+  useEffect(() => {
+    if (syncFiltersToURL) return;
+    const keys = ["q", "filter", "account", "category", "method", "datePreset", "dateFrom", "dateTo", "sync"];
+    const np = new URLSearchParams(params);
+    let changed = false;
+    for (const k of keys) {
+      if (np.has(k)) { np.delete(k); changed = true; }
+    }
+    if (changed) setParams(np, { replace: true });
+  }, [syncFiltersToURL, params, setParams]);
 
   const inMonth = useMemo(() => transactions.filter((t) => {
     const d = parseDateLocal(t.date);
