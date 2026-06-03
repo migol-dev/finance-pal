@@ -411,7 +411,7 @@ export default function Ajustes() {
           className="w-full rounded-2xl bg-destructive/10 text-destructive p-4 flex items-center gap-3 font-semibold text-sm hover:bg-destructive/15 transition">
           <RotateCcw className="size-4" /> Restablecer todo
         </button>
-        <p className="text-[10px] text-center text-muted-foreground pt-4">Finance Pal v1.17.7</p>
+        <p className="text-[10px] text-center text-muted-foreground pt-4">Finance Pal v1.17.8</p>
 
         <div className="pt-4">
           <h2 className="text-xs uppercase tracking-wider font-bold text-foreground">Desglose de efectivo</h2>

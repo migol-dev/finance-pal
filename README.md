@@ -1,6 +1,6 @@
 # 💰 Finance Pal (Anteriormente My Finance Mate)
 
-[![Versión](https://img.shields.io/badge/version-1.17.7-orange.svg)](https://github.com/migol-dev/finance-pal/releases)
+[![Versión](https://img.shields.io/badge/version-1.17.8-orange.svg)](https://github.com/migol-dev/finance-pal/releases)
 [![Plataforma](https://img.shields.io/badge/platform-Android-green.svg)](https://capacitorjs.com/)
 [![Tecnologías](https://img.shields.io/badge/tech-React%20%7C%20Vite%20%7C%20Capacitor-blue.svg)](https://vitejs.dev/)
 
