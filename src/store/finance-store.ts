@@ -1,11 +1,13 @@
 import { create } from "zustand";
-import { persist } from "zustand/middleware";
+import { persist, StateStorage } from "zustand/middleware";
 import { FixedItem, Transaction, Goal, Debt, DebtPayment, ChangeLogEntry, ChangeAction, ChangeEntity, IconRef, isFixedActiveInMonth, parseDateLocal, Account, Denomination } from "@/lib/finance";
 import { Filesystem, Directory, Encoding } from "@capacitor/filesystem";
 import { Capacitor } from "@capacitor/core";
 import { supabase, isSupabaseEnabled } from "@/lib/supabase";
 import { uploadReceipt, deleteReceipt } from "@/lib/supabase-storage";
 import { useAuth } from '@/context/AuthContext';
+import { encryptData, decryptData, saveEncryptedState, loadEncryptedState, isEncryptionAvailable } from '@/lib/encrypted-storage';
+import { validateEntity, accountSchema, transactionSchema, fixedItemSchema, goalSchema, debtSchema, userProfileSchema, sanitizeForLog } from '@/lib/validators';
 
 export type ThemeMode = "light" | "dark";
 export type Currency = "MXN" | "USD" | "EUR" | "COP" | "ARS" | "CLP" | "PEN" | "BRL";
@@ -18,7 +20,7 @@ export interface UserProfile {
 }
 
 /** Current schema version of persisted/exported data. */
-export const SCHEMA_VERSION = 4;
+export const SCHEMA_VERSION = 5;
 
 interface State {
   fixedItems: FixedItem[];
@@ -92,8 +94,19 @@ export const ALL_SCOPES: Required<ExportScopes> = {
   changeLog: true, theme: true, profile: true, accounts: true,
 };
 
-const id = () => Math.random().toString(36).slice(2, 10);
 const now = new Date();
+
+function generateSecureId(): string {
+  if (typeof crypto !== 'undefined' && crypto.randomUUID) {
+    return crypto.randomUUID();
+  }
+  // Fallback for environments without crypto.randomUUID
+  const array = new Uint8Array(16);
+  crypto.getRandomValues(array);
+  array[6] = (array[6] & 0x0f) | 0x40; // version 4
+  array[8] = (array[8] & 0x3f) | 0x80; // variant 10
+  return Array.from(array, b => b.toString(16).padStart(2, '0')).join('');
+}
 
 function diffFields<T extends Record<string, any>>(prev: T, next: Partial<T>) {
   const out: { field: string; from?: unknown; to?: unknown }[] = [];
@@ -106,7 +119,7 @@ function diffFields<T extends Record<string, any>>(prev: T, next: Partial<T>) {
 }
 
 function logEntry(entity: ChangeEntity, entityId: string, action: ChangeAction, label: string, changes?: { field: string; from?: unknown; to?: unknown }[]): ChangeLogEntry {
-  return { id: id(), at: new Date().toISOString(), entity, entityId, action, label, changes };
+  return { id: generateSecureId(), at: new Date().toISOString(), entity, entityId, action, label, changes };
 }
 
 /* ─────────────────────────────  Schema validation  ───────────────────────────── */
@@ -134,7 +147,7 @@ function sanitizeFixed(raw: any): FixedItem | null {
   const prios = ["low","medium","high"] as const;
   const pays = ["cash","transfer","card","other"] as const;
   return {
-    id: isStr(raw.id) ? raw.id : id(),
+    id: isStr(raw.id) ? raw.id : generateSecureId(),
     type: inSet(types, raw.type) ? raw.type : "expense_fixed",
     category: isStr(raw.category) ? raw.category : "Otros",
     concept: raw.concept,
@@ -158,7 +171,7 @@ function sanitizeTx(raw: any): Transaction | null {
   const types = ["income","expense","saving","transfer"] as const;
   const pays = ["cash","transfer","card","other"] as const;
   return {
-    id: isStr(raw.id) ? raw.id : id(),
+    id: isStr(raw.id) ? raw.id : generateSecureId(),
     type: inSet(types, raw.type) ? raw.type : "expense",
     category: isStr(raw.category) ? raw.category : "Otros",
     concept: raw.concept,
@@ -180,10 +193,10 @@ function sanitizeGoal(raw: any): Goal | null {
   const contributions = Array.isArray(raw.contributions)
     ? (raw.contributions as any[])
       .filter((c) => isObj(c) && isNum(c.amount) && isStr(c.date))
-      .map((c) => ({ id: isStr(c.id) ? c.id : id(), date: c.date as string, amount: c.amount as number }))
+      .map((c) => ({ id: isStr(c.id) ? c.id : generateSecureId(), date: c.date as string, amount: c.amount as number }))
     : undefined;
   return {
-    id: isStr(raw.id) ? raw.id : id(),
+    id: isStr(raw.id) ? raw.id : generateSecureId(),
     name: raw.name,
     target: raw.target,
     saved: isNum(raw.saved) ? raw.saved : 0,
@@ -205,7 +218,7 @@ function sanitizeDebt(raw: any): Debt | null {
     ? (raw.payments as any[])
       .filter((p) => isObj(p) && isNum(p.amount))
       .map((p) => ({
-        id: isStr(p.id) ? p.id : id(),
+        id: isStr(p.id) ? p.id : generateSecureId(),
         amount: p.amount as number,
         date: isStr(p.date) ? p.date : new Date().toISOString(),
         note: isStr(p.note) ? p.note : undefined,
@@ -214,7 +227,7 @@ function sanitizeDebt(raw: any): Debt | null {
       }))
     : [];
   return {
-    id: isStr(raw.id) ? raw.id : id(),
+    id: isStr(raw.id) ? raw.id : generateSecureId(),
     person: raw.person,
     concept: isStr(raw.concept) ? raw.concept : "Préstamo",
     amount: raw.amount,
@@ -236,7 +249,7 @@ function sanitizeAccount(raw: any): Account | null {
       .map((d) => ({ value: d.value as number, count: d.count as number, kind: d.kind === "coin" ? "coin" : "bill" }))
     : undefined;
   return {
-    id: isStr(raw.id) ? raw.id : id(),
+    id: isStr(raw.id) ? raw.id : generateSecureId(),
     name: raw.name,
     type: inSet(types, raw.type) ? raw.type : "bank",
     initialBalance: isNum(raw.initialBalance) ? raw.initialBalance : 0,
@@ -279,7 +292,7 @@ async function supabaseInsert<T extends Record<string, any>>(table: string, reco
   if (!isSupabaseEnabled || !isOnline()) return null;
   const { data, error } = await supabase.from(table).insert(record).select().single();
   if (error) {
-    console.error(`Supabase insert error (${table}):`, error);
+    console.error(`Supabase insert error (${table}):`, sanitizeForLog(error));
     return null;
   }
   return data as T;
@@ -289,7 +302,7 @@ async function supabaseUpdate<T extends Record<string, any>>(table: string, id: 
   if (!isSupabaseEnabled || !isOnline()) return null;
   const { data, error } = await supabase.from(table).update(patch).eq('id', id).select().single();
   if (error) {
-    console.error(`Supabase update error (${table}):`, error);
+    console.error(`Supabase update error (${table}):`, sanitizeForLog(error));
     return null;
   }
   return data as T;
@@ -299,7 +312,7 @@ async function supabaseDelete(table: string, id: string): Promise<boolean> {
   if (!isSupabaseEnabled || !isOnline()) return false;
   const { error } = await supabase.from(table).delete().eq('id', id);
   if (error) {
-    console.error(`Supabase delete error (${table}):`, error);
+    console.error(`Supabase delete error (${table}):`, sanitizeForLog(error));
     return false;
   }
   return true;
@@ -418,8 +431,8 @@ export const useFinance = create<State>()(
       fixedItems: [],
       transactions: [],
       accounts: [
-        { id: id(), name: "Efectivo", type: "cash", initialBalance: 0, denominations: [] },
-        { id: id(), name: "Cuenta 1", type: "bank", initialBalance: 0 },
+        { id: generateSecureId(), name: "Efectivo", type: "cash", initialBalance: 0, denominations: [] },
+        { id: generateSecureId(), name: "Cuenta 1", type: "bank", initialBalance: 0 },
       ],
       goals: [],
       debts: [],
@@ -498,7 +511,7 @@ export const useFinance = create<State>()(
       },
 
       addFixed: async (i) => {
-        const nv = { ...i, id: id() } as FixedItem;
+        const nv = { ...i, id: generateSecureId() } as FixedItem;
         set((s) => ({ fixedItems: [nv, ...s.fixedItems], changeLog: [logEntry("fixed", nv.id, "create", `Creó concepto fijo "${nv.concept}"`), ...s.changeLog].slice(0, 500) }));
 
         // Sync to Supabase
@@ -526,7 +539,7 @@ export const useFinance = create<State>()(
             };
             if (isOnline()) {
               const { error } = await supabase.from('fixed_items').insert(payload);
-              if (error) console.error('Supabase insert error (fixed_items):', error);
+              if (error) console.error('Supabase insert error (fixed_items):', sanitizeForLog(error));
             } else {
               queueMutation('fixed_items', 'INSERT', nv.id, payload);
             }
@@ -562,7 +575,7 @@ export const useFinance = create<State>()(
             };
             if (isOnline()) {
               const { error } = await supabase.from('fixed_items').update(payload).eq('id', idv);
-              if (error) console.error('Supabase update error (fixed_items):', error);
+              if (error) console.error('Supabase update error (fixed_items):', sanitizeForLog(error));
             } else {
               queueMutation('fixed_items', 'UPDATE', idv, payload);
             }
@@ -591,7 +604,7 @@ export const useFinance = create<State>()(
           if (user) {
             if (isOnline()) {
               const { error } = await supabase.from('fixed_items').delete().eq('id', idv);
-              if (error) console.error('Supabase delete error (fixed_items):', error);
+              if (error) console.error('Supabase delete error (fixed_items):', sanitizeForLog(error));
             } else {
               queueMutation('fixed_items', 'DELETE', idv);
             }
@@ -610,7 +623,7 @@ export const useFinance = create<State>()(
             const payload = { active: !prev.active };
             if (isOnline()) {
               const { error } = await supabase.from('fixed_items').update(payload).eq('id', idv);
-              if (error) console.error('Supabase update error (fixed_items):', error);
+              if (error) console.error('Supabase update error (fixed_items):', sanitizeForLog(error));
             } else {
               queueMutation('fixed_items', 'UPDATE', idv, payload);
             }
@@ -681,7 +694,7 @@ export const useFinance = create<State>()(
           });
           if (exists) return;
         }
-        const nv = { ...t, id: id() } as Transaction;
+        const nv = { ...t, id: generateSecureId() } as Transaction;
 
         // Enforce cash account if paymentMethod is cash
         if (nv.paymentMethod === "cash") {
@@ -719,7 +732,7 @@ export const useFinance = create<State>()(
             };
             if (isOnline()) {
               const { error } = await supabase.from('transactions').insert(payload);
-              if (error) console.error('Supabase insert error (transactions):', error);
+              if (error) console.error('Supabase insert error (transactions):', sanitizeForLog(error));
             } else {
               queueMutation('transactions', 'INSERT', nv.id, payload);
             }
@@ -768,7 +781,7 @@ export const useFinance = create<State>()(
             };
             if (isOnline()) {
               const { error } = await supabase.from('transactions').update(payload).eq('id', idv);
-              if (error) console.error('Supabase update error (transactions):', error);
+              if (error) console.error('Supabase update error (transactions):', sanitizeForLog(error));
             } else {
               queueMutation('transactions', 'UPDATE', idv, payload);
             }
@@ -787,7 +800,7 @@ export const useFinance = create<State>()(
           if (user) {
             if (isOnline()) {
               const { error } = await supabase.from('transactions').delete().eq('id', idv);
-              if (error) console.error('Supabase delete error (transactions):', error);
+              if (error) console.error('Supabase delete error (transactions):', sanitizeForLog(error));
             } else {
               queueMutation('transactions', 'DELETE', idv);
             }
@@ -800,7 +813,7 @@ export const useFinance = create<State>()(
         if (a.type === "cash" && s.accounts.some(x => x.type === "cash")) {
           return {};
         }
-        const nv = { ...a, id: id() } as Account;
+        const nv = { ...a, id: generateSecureId() } as Account;
         set((s) => ({ accounts: [nv, ...s.accounts] }));
 
         // Sync to Supabase
@@ -821,7 +834,7 @@ export const useFinance = create<State>()(
             };
             if (isOnline()) {
               const { error } = await supabase.from('accounts').insert(payload);
-              if (error) console.error('Supabase insert error (accounts):', error);
+              if (error) console.error('Supabase insert error (accounts):', sanitizeForLog(error));
             } else {
               queueMutation('accounts', 'INSERT', nv.id, payload);
             }
@@ -840,7 +853,7 @@ export const useFinance = create<State>()(
             const payload = { ...prev, ...p };
             if (isOnline()) {
               const { error } = await supabase.from('accounts').update(payload).eq('id', idv);
-              if (error) console.error('Supabase update error (accounts):', error);
+              if (error) console.error('Supabase update error (accounts):', sanitizeForLog(error));
             } else {
               queueMutation('accounts', 'UPDATE', idv, payload);
             }
@@ -860,7 +873,7 @@ export const useFinance = create<State>()(
           if (user) {
             if (isOnline()) {
               const { error } = await supabase.from('accounts').delete().eq('id', idv);
-              if (error) console.error('Supabase delete error (accounts):', error);
+              if (error) console.error('Supabase delete error (accounts):', sanitizeForLog(error));
             } else {
               queueMutation('accounts', 'DELETE', idv);
             }
@@ -875,10 +888,10 @@ export const useFinance = create<State>()(
       addGoal: async (g) => {
         const nv = {
           ...g,
-          id: id(),
+          id: generateSecureId(),
           createdAt: g.createdAt ?? new Date().toISOString(),
           contributions: g.contributions ?? (g.saved > 0
-            ? [{ id: id(), date: new Date().toISOString(), amount: g.saved }]
+            ? [{ id: generateSecureId(), date: new Date().toISOString(), amount: g.saved }]
             : []),
         } as Goal;
         const nextGoals = nv.pinned ? [nv, ...s.goals.map(x => ({ ...x, pinned: false }))] : [nv, ...s.goals];
@@ -905,7 +918,7 @@ export const useFinance = create<State>()(
             };
             if (isOnline()) {
               const { error } = await supabase.from('goals').insert(payload);
-              if (error) console.error('Supabase insert error (goals):', error);
+              if (error) console.error('Supabase insert error (goals):', sanitizeForLog(error));
             } else {
               queueMutation('goals', 'INSERT', nv.id, payload);
             }
@@ -941,7 +954,7 @@ export const useFinance = create<State>()(
             };
             if (isOnline()) {
               const { error } = await supabase.from('goals').update(payload).eq('id', idv);
-              if (error) console.error('Supabase update error (goals):', error);
+              if (error) console.error('Supabase update error (goals):', sanitizeForLog(error));
             } else {
               queueMutation('goals', 'UPDATE', idv, payload);
             }
@@ -959,7 +972,7 @@ export const useFinance = create<State>()(
           if (user) {
             if (isOnline()) {
               const { error } = await supabase.from('goals').delete().eq('id', idv);
-              if (error) console.error('Supabase delete error (goals):', error);
+              if (error) console.error('Supabase delete error (goals):', sanitizeForLog(error));
             } else {
               queueMutation('goals', 'DELETE', idv);
             }
@@ -968,9 +981,9 @@ export const useFinance = create<State>()(
       },
       contributeGoal: (idv, amount, date, accountId) => set((s) => {
         const g = s.goals.find((x) => x.id === idv);
-        const txId = id();
+        const txId = generateSecureId();
         const when = date ?? new Date().toISOString();
-        const entry = { id: id(), date: when, amount };
+        const entry = { id: generateSecureId(), date: when, amount };
         const method = s.accounts.find(a => a.id === accountId)?.type === "bank" ? "transfer" : "cash";
 
         return {
@@ -986,7 +999,7 @@ export const useFinance = create<State>()(
 
       addDebt: async (d) => {
         const s = get();
-        const nv: Debt = { ...d, id: id(), payments: [] };
+        const nv: Debt = { ...d, id: generateSecureId(), payments: [] };
         set((s) => ({ debts: [nv, ...s.debts], changeLog: [logEntry("debt", nv.id, "create", `Registró deuda de ${nv.person} por ${nv.amount}`), ...s.changeLog].slice(0, 500) }));
 
         // Sync to Supabase
@@ -1007,7 +1020,7 @@ export const useFinance = create<State>()(
             };
             if (isOnline()) {
               const { error } = await supabase.from('debts').insert(payload);
-              if (error) console.error('Supabase insert error (debts):', error);
+              if (error) console.error('Supabase insert error (debts):', sanitizeForLog(error));
             } else {
               queueMutation('debts', 'INSERT', nv.id, payload);
             }
@@ -1036,7 +1049,7 @@ export const useFinance = create<State>()(
             };
             if (isOnline()) {
               const { error } = await supabase.from('debts').update(payload).eq('id', idv);
-              if (error) console.error('Supabase update error (debts):', error);
+              if (error) console.error('Supabase update error (debts):', sanitizeForLog(error));
             } else {
               queueMutation('debts', 'UPDATE', idv, payload);
             }
@@ -1054,7 +1067,7 @@ export const useFinance = create<State>()(
           if (user) {
             if (isOnline()) {
               const { error } = await supabase.from('debts').delete().eq('id', idv);
-              if (error) console.error('Supabase delete error (debts):', error);
+              if (error) console.error('Supabase delete error (debts):', sanitizeForLog(error));
             } else {
               queueMutation('debts', 'DELETE', idv);
             }
@@ -1064,7 +1077,7 @@ export const useFinance = create<State>()(
       addDebtPayment: async (debtId, p) => {
         const s = get();
         const debt = s.debts.find((x) => x.id === debtId); if (!debt) return;
-        const payment: DebtPayment = { ...p, id: id() };
+        const payment: DebtPayment = { ...p, id: generateSecureId() };
         set((s) => ({
           debts: s.debts.map((x) => x.id === debtId ? { ...x, payments: [payment, ...x.payments] } : x),
           changeLog: [logEntry("debt", debtId, "update", `Abono de ${payment.amount} a deuda de "${debt.person}"`), ...s.changeLog].slice(0, 500),
@@ -1086,7 +1099,7 @@ export const useFinance = create<State>()(
             };
             if (isOnline()) {
               const { error } = await supabase.from('debt_payments').insert(payload);
-              if (error) console.error('Supabase insert error (debt_payments):', error);
+              if (error) console.error('Supabase insert error (debt_payments):', sanitizeForLog(error));
             } else {
               queueMutation('debt_payments', 'INSERT', payment.id, payload);
             }
@@ -1106,7 +1119,7 @@ export const useFinance = create<State>()(
           if (user) {
             if (isOnline()) {
               const { error } = await supabase.from('debt_payments').delete().eq('id', paymentId);
-              if (error) console.error('Supabase delete error (debt_payments):', error);
+              if (error) console.error('Supabase delete error (debt_payments):', sanitizeForLog(error));
             } else {
               queueMutation('debt_payments', 'DELETE', paymentId);
             }
@@ -1245,7 +1258,7 @@ export const useFinance = create<State>()(
                   } catch (e) { /* ignore */ }
                 }
                 // record changeLog entry
-                set((s2) => ({ changeLog: [logEntry("transaction", id(), "update", `Eliminó ${orphans.length} recibos huérfanos, liberó ${(freed / 1024).toFixed(1)} KB`), ...s2.changeLog].slice(0, 500) }));
+                set((s2) => ({ changeLog: [logEntry("transaction", generateSecureId(), "update", `Eliminó ${orphans.length} recibos huérfanos, liberó ${(freed / 1024).toFixed(1)} KB`), ...s2.changeLog].slice(0, 500) }));
               }
               return { orphans, freedBytes: deleteFiles ? freed : totalBytes };
             } catch (e) {
@@ -1261,6 +1274,32 @@ export const useFinance = create<State>()(
     {
       name: "migol-finanzas-v2",
       version: SCHEMA_VERSION,
+      storage: {
+        getItem: async (name: string) => {
+          if (isEncryptionAvailable()) {
+            const decrypted = await loadEncryptedState();
+            return decrypted ? JSON.parse(decrypted) : null;
+          }
+          // Fallback to localStorage if encryption not available
+          const item = localStorage.getItem(name);
+          return item ? JSON.parse(item) : null;
+        },
+        setItem: async (name: string, value: any) => {
+          const serialized = JSON.stringify(value);
+          if (isEncryptionAvailable()) {
+            await saveEncryptedState(serialized);
+          } else {
+            localStorage.setItem(name, serialized);
+          }
+        },
+        removeItem: async (name: string) => {
+          if (isEncryptionAvailable()) {
+            await clearEncryptedState();
+          } else {
+            localStorage.removeItem(name);
+          }
+        },
+      } as StateStorage,
       migrate: (state: any, fromVersion: number) => {
         if (!state) return state;
         // Add new fields with defaults — never lose existing user data.

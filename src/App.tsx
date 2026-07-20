@@ -8,6 +8,7 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { AppShell } from "@/components/app/AppShell";
+import { ErrorBoundary } from '@/components/ErrorBoundary';
 
 const Dashboard = lazy(() => import("./pages/Dashboard"));
 const Movimientos = lazy(() => import("./pages/Movimientos"));
@@ -29,6 +30,7 @@ const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
       gcTime: 1000 * 60 * 60 * 24, // 24 hours
+      staleTime: 1000 * 60 * 10, // 10 minutes
     },
   },
 });
@@ -137,17 +139,19 @@ const App = () => {
   }, []);
 
   return (
-    <PersistQueryClientProvider client={queryClient} persistOptions={{ persister }}>
-      <TooltipProvider>
-        <AuthProvider>
-          <Toaster />
-          <Sonner />
-          <BrowserRouter>
-            <AuthGuard />
-          </BrowserRouter>
-        </AuthProvider>
-      </TooltipProvider>
-    </PersistQueryClientProvider>
+    <ErrorBoundary>
+      <PersistQueryClientProvider client={queryClient} persistOptions={{ persister }}>
+        <TooltipProvider>
+          <AuthProvider>
+            <Toaster />
+            <Sonner />
+            <BrowserRouter>
+              <AuthGuard />
+            </BrowserRouter>
+          </AuthProvider>
+        </TooltipProvider>
+      </PersistQueryClientProvider>
+    </ErrorBoundary>
   );
 };
 

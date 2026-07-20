@@ -1,6 +1,7 @@
 import { supabase, isSupabaseEnabled } from './supabase';
 import { useSyncStore } from '@/store/sync-store';
 import { useAuth } from '@/context/AuthContext';
+import { rateLimiter, getClientIdentifier } from '@/lib/rate-limiter';
 
 type SyncMutation = {
   id: string;
@@ -43,6 +44,19 @@ export async function processSyncQueue(): Promise<void> {
 
   const { session } = useAuth.getState?.() ?? { session: null };
   if (!session) return;
+
+  // Rate limit sync operations
+  const clientId = getClientIdentifier();
+  const rateLimitResult = await rateLimiter.checkLimit(clientId, 'sync');
+  
+  if (!rateLimitResult.allowed) {
+    console.warn('Sync rate limited, retry after:', rateLimitResult.retryAfter);
+    // Schedule retry after rate limit resets
+    if (rateLimitResult.retryAfter) {
+      setTimeout(() => processSyncQueue(), rateLimitResult.retryAfter * 1000);
+    }
+    return;
+  }
 
   const { syncQueue, removeMutation, setSyncing, addMutation } = useSyncStore.getState();
   if (syncQueue.length === 0) return;

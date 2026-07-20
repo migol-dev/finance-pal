@@ -1,9 +1,56 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { motion } from 'framer-motion';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/context/AuthContext';
 import { toast } from 'sonner';
-import { Mail, Lock, Loader2, LogIn, UserPlus } from 'lucide-react';
+import { Mail, Lock, Loader2, LogIn, UserPlus, AlertCircle, CheckCircle } from 'lucide-react';
+import { Progress } from '@/components/ui/progress';
+
+function calculatePasswordStrength(password: string): { score: number; label: string; color: string; feedback: string[] } {
+  let score = 0;
+  const feedback: string[] = [];
+  
+  if (password.length >= 8) score += 1; else feedback.push('Al menos 8 caracteres');
+  if (password.length >= 12) score += 1;
+  if (/[a-z]/.test(password)) score += 1; else feedback.push('Minúsculas');
+  if (/[A-Z]/.test(password)) score += 1; else feedback.push('Mayúsculas');
+  if (/[0-9]/.test(password)) score += 1; else feedback.push('Números');
+  if (/[^a-zA-Z0-9]/.test(password)) score += 1; else feedback.push('Símbolos');
+  
+  // Penalize common patterns
+  if (/(.)\1{2,}/.test(password)) score = Math.max(0, score - 1); // repeated chars
+  if (/^(?:password|123456|qwerty|admin|finance)/i.test(password)) score = 0; // common passwords
+  
+  const labels = ['Muy débil', 'Débil', 'Media', 'Fuerte', 'Muy fuerte'];
+  const colors = ['text-destructive', 'text-orange-500', 'text-yellow-500', 'text-lime-500', 'text-green-500'];
+  
+  return {
+    score: Math.min(score, 4),
+    label: labels[Math.min(score, 4)],
+    color: colors[Math.min(score, 4)],
+    feedback,
+  };
+}
+
+function PasswordStrengthMeter({ password }: { password: string }) {
+  const strength = useMemo(() => calculatePasswordStrength(password), [password]);
+  
+  if (!password) return null;
+  
+  return (
+    <div className="space-y-2 mt-1">
+      <div className="flex items-center justify-between">
+        <span className={`text-xs font-medium ${strength.color}`}>
+          {strength.label}
+        </span>
+        <span className="text-xs text-muted-foreground">
+          {strength.feedback.length > 0 ? `Falta: ${strength.feedback.join(', ')}` : '✓ Cumple todos los requisitos'}
+        </span>
+      </div>
+      <Progress value={((strength.score + 1) / 5) * 100} className="h-1.5" />
+    </div>
+  );
+}
 
 export default function Login() {
   const { session } = useAuth();
@@ -17,6 +64,14 @@ export default function Login() {
     if (!email || !password) {
       toast.error('Por favor llena todos los campos');
       return;
+    }
+
+    if (!isLogin) {
+      const strength = calculatePasswordStrength(password);
+      if (strength.score < 2) {
+        toast.error('La contraseña es demasiado débil. Usa al menos 8 caracteres con mayúsculas, números y símbolos.');
+        return;
+      }
     }
 
     setLoading(true);
@@ -74,6 +129,8 @@ export default function Login() {
                 className="w-full pl-10 pr-4 py-3 bg-muted/50 border border-border rounded-xl outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
+                autoComplete="email"
+                required
               />
             </div>
           </div>
@@ -87,8 +144,12 @@ export default function Login() {
                 className="w-full pl-10 pr-4 py-3 bg-muted/50 border border-border rounded-xl outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
+                autoComplete={isLogin ? 'current-password' : 'new-password'}
+                required
+                minLength={8}
               />
             </div>
+            {!isLogin && <PasswordStrengthMeter password={password} />}
           </div>
 
           <button 
@@ -113,7 +174,7 @@ export default function Login() {
         <div className="mt-6 text-center">
           <button 
             type="button" 
-            onClick={() => setIsLogin(!isLogin)}
+            onClick={() => { setIsLogin(!isLogin); setPassword(''); }}
             className="text-sm text-primary hover:underline font-medium"
           >
             {isLogin ? '¿No tienes cuenta? Regístrate' : '¿Ya tienes cuenta? Inicia Sesión'}
