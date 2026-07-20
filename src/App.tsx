@@ -15,6 +15,10 @@ const Ajustes = lazy(() => import("./pages/Ajustes"));
 const Deudas = lazy(() => import("./pages/Deudas"));
 const Historial = lazy(() => import("./pages/Historial"));
 const NotFound = lazy(() => import("./pages/NotFound.tsx"));
+const Login = lazy(() => import("./pages/Login"));
+
+import { AuthProvider, useAuth } from '@/context/AuthContext';
+import { isSupabaseEnabled } from '@/lib/supabase';
 
 const queryClient = new QueryClient();
 
@@ -71,14 +75,44 @@ function AnimatedRoutes() {
   );
 }
 
+function AuthGuard() {
+  const { session, loading } = useAuth();
+
+  const suspenseFallback = (
+    <div className="fixed inset-0 flex flex-col items-center justify-center bg-background/50 backdrop-blur-sm z-50">
+      <div className="size-16 rounded-[28px] gradient-primary shadow-glow flex items-center justify-center animate-pulse mb-4">
+        <div className="size-8 rounded-full border-4 border-white/30 border-t-white animate-spin" />
+      </div>
+      <p className="text-xs font-bold uppercase tracking-[0.2em] text-muted-foreground animate-pulse">Finance Pal</p>
+    </div>
+  );
+
+  if (isSupabaseEnabled) {
+    if (loading) {
+      return suspenseFallback;
+    }
+    if (!session) {
+      return (
+        <Suspense fallback={suspenseFallback}>
+          <Login />
+        </Suspense>
+      );
+    }
+  }
+
+  return <AnimatedRoutes />;
+}
+
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <TooltipProvider>
-      <Toaster />
-      <Sonner />
-      <BrowserRouter>
-        <AnimatedRoutes />
-      </BrowserRouter>
+      <AuthProvider>
+        <Toaster />
+        <Sonner />
+        <BrowserRouter>
+          <AuthGuard />
+        </BrowserRouter>
+      </AuthProvider>
     </TooltipProvider>
   </QueryClientProvider>
 );
