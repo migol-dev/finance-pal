@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { useFinance } from "@/store/finance-store";
+import { useHybridData } from "@/hooks/useHybridData";
 import { fmt, fmt2, iconFor, IconRef, Goal, fmtDate, parseDateLocal } from "@/lib/finance";
 import { Header } from "@/components/app/Header";
 import { Plus, Trash2, Pencil, Minus, CalendarDays, ExternalLink, Sparkles, AlertTriangle, CheckCircle2, Star, ChevronRight, X } from "lucide-react";
@@ -88,7 +88,7 @@ function statusFor(goal: Goal) {
 }
 
 export default function Metas() {
-  const { goals, addGoal, updateGoal, removeGoal, contributeGoal } = useFinance();
+  const { goals, addGoal, updateGoal, removeGoal, contributeGoal, accounts } = useHybridData();
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<Goal | null>(null);
   const [detailId, setDetailId] = useState<string | null>(null);
@@ -128,6 +128,7 @@ export default function Metas() {
             <GoalCompactCard key={g.id} goal={g} index={i}
               onViewMore={() => setDetailId(g.id)}
               onContribute={(amt, date, acc) => contributeGoal(g.id, amt, date, acc)}
+              accounts={accounts}
             />
           ))}
         </AnimatePresence>
@@ -142,12 +143,13 @@ export default function Metas() {
                 <X className="size-5" />
               </button>
 
-              <GoalDetailContent
+<GoalDetailContent
                 goal={detailGoal}
                 onEdit={() => { setEditing(detailGoal); setOpen(true); setDetailId(null); }}
                 onDelete={() => { removeGoal(detailGoal.id); setDetailId(null); }}
                 onContribute={(amt, date, acc) => contributeGoal(detailGoal.id, amt, date, acc)}
                 onTogglePin={() => updateGoal(detailGoal.id, { pinned: !detailGoal.pinned })}
+                accounts={accounts}
               />
             </div>
           )}
@@ -157,11 +159,11 @@ export default function Metas() {
   );
 }
 
-function GoalCompactCard({ goal, index, onViewMore, onContribute }: {
+function GoalCompactCard({ goal, index, onViewMore, onContribute, accounts }: {
   goal: Goal; index: number; onViewMore: () => void;
   onContribute: (amount: number, date?: string, accountId?: string) => void;
+  accounts: Account[];
 }) {
-  const accounts = useFinance((s) => s.accounts);
   const pct = goal.target > 0 ? Math.min(100, (goal.saved / goal.target) * 100) : 0;
   const [confirmOpen, setConfirmOpen] = useState<{ amount: number } | null>(null);
 
@@ -231,12 +233,12 @@ function GoalCompactCard({ goal, index, onViewMore, onContribute }: {
   );
 }
 
-function GoalDetailContent({ goal, onEdit, onDelete, onContribute, onTogglePin }: {
+function GoalDetailContent({ goal, onEdit, onDelete, onContribute, onTogglePin, accounts }: {
   goal: Goal; onEdit: () => void; onDelete: () => void;
   onContribute: (amount: number, date?: string, accountId?: string) => void;
   onTogglePin: () => void;
+  accounts: Account[];
 }) {
-  const accounts = useFinance((s) => s.accounts);
   const [tab, setTab] = useState<"resumen" | "calendario" | "simular">("resumen");
   const [confirmOpen, setConfirmOpen] = useState<{ amount: number } | null>(null);
   const [deleteConfirm, setDeleteConfirm] = useState(false);
@@ -291,13 +293,13 @@ function GoalDetailContent({ goal, onEdit, onDelete, onContribute, onTogglePin }
         </button>
         <button onClick={onEdit} className="h-14 rounded-2xl bg-white/10 flex items-center justify-center active:scale-90 transition"><Pencil className="size-6" /></button>
         <button onClick={() => setDeleteConfirm(true)} className="h-14 rounded-2xl bg-white/10 flex items-center justify-center active:scale-90 transition"><Trash2 className="size-6" /></button>
-        <ContribCustom onAdd={(v, acc) => onContribute(v, undefined, acc)} />
+        <ContribCustom onAdd={(v, acc) => onContribute(v, undefined, acc)} accounts={accounts} />
       </div>
 
       <div className="flex gap-2 mb-6">
         <ContributeBtn label="+ $100" onClick={() => handleQuickAdd(100)} />
         <ContributeBtn label="+ $500" onClick={() => handleQuickAdd(500)} />
-        <ContribCustom negative onAdd={(v, acc) => onContribute(-v, undefined, acc)} />
+        <ContribCustom negative onAdd={(v, acc) => onContribute(-v, undefined, acc)} accounts={accounts} />
       </div>
 
       <ElegantConfirm
@@ -338,7 +340,7 @@ function GoalDetailContent({ goal, onEdit, onDelete, onContribute, onTogglePin }
       <AnimatePresence mode="wait">
         <motion.div key={tab} initial={{ opacity: 0, x: 10 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -10 }} transition={{ duration: 0.2 }}>
           {tab === "resumen" && <ResumenTab goal={goal} />}
-          {tab === "calendario" && <CalendarioTab goal={goal} onContribute={onContribute} />}
+          {tab === "calendario" && <CalendarioTab goal={goal} onContribute={onContribute} accounts={accounts} />}
           {tab === "simular" && <SimularTab goal={goal} />}
         </motion.div>
       </AnimatePresence>
@@ -443,8 +445,7 @@ function ResumenTab({ goal }: { goal: Goal }) {
   );
 }
 
-function CalendarioTab({ goal, onContribute }: { goal: Goal; onContribute: (amount: number, date?: string, accountId?: string) => void }) {
-  const accounts = useFinance((s) => s.accounts);
+function CalendarioTab({ goal, onContribute, accounts }: { goal: Goal; onContribute: (amount: number, date?: string, accountId?: string) => void; accounts: Account[] }) {
   const [selected, setSelected] = useState<Date | undefined>(new Date());
   const [amount, setAmount] = useState("");
   const [accountId, setAccountId] = useState<string | undefined>(accounts[0]?.id);
@@ -625,8 +626,7 @@ function ContributeBtn({ label, onClick }: { label: string; onClick: () => void 
   return <button onClick={onClick} className="flex-1 h-9 rounded-xl bg-white/25 hover:bg-white/35 backdrop-blur-sm text-xs font-bold transition active:scale-95">{label}</button>;
 }
 
-function ContribCustom({ onAdd, negative }: { onAdd: (v: number, accountId?: string) => void; negative?: boolean }) {
-  const accounts = useFinance((s) => s.accounts);
+function ContribCustom({ onAdd, negative, accounts }: { onAdd: (v: number, accountId?: string) => void; negative?: boolean; accounts: Account[] }) {
   const [open, setOpen] = useState(false);
   const [v, setV] = useState("");
   const [accountId, setAccountId] = useState<string | undefined>(accounts[0]?.id);
