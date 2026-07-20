@@ -17,6 +17,28 @@ export const PAYMENT_METHOD_EMOJI: Record<PaymentMethod, string> = {
   other: "🔁",
 };
 
+export type AccountType = "bank" | "cash" | "other";
+
+export interface Denomination {
+  value: number;
+  count: number;
+  kind?: "bill" | "coin";
+}
+
+export interface Account {
+  id: string;
+  name: string;
+  type: AccountType;
+  initialBalance?: number;
+  currency?: string;
+  /** For cash accounts: list of denominations (bills/coins) */
+  denominations?: Denomination[];
+  // Optional bank metadata for bank accounts
+  clabe?: string;       // 18-digit CLABE interbancaria
+  bank?: string;        // Bank name / institución
+  holderName?: string;  // Titular de la cuenta
+}
+
 /** Visual identity: either an emoji OR a cropped image (dataURL) */
 export interface IconRef {
   kind: "emoji" | "image";
@@ -39,11 +61,12 @@ export interface FixedItem {
   payWeekDay?: number; // day of week (0=Sunday..6=Saturday) - optional
   icon?: IconRef;
   paymentMethod?: PaymentMethod;
+  accountId?: string;
 }
 
 export interface Transaction {
   id: string;
-  type: "income" | "expense" | "saving";
+  type: "income" | "expense" | "saving" | "transfer";
   category: string;
   concept: string;
   amount: number;
@@ -52,6 +75,12 @@ export interface Transaction {
   icon?: IconRef;
   paymentMethod?: PaymentMethod;
   fixedId?: string; // optional reference to originating FixedItem
+  accountId?: string; // optional reference to an Account
+  // For transfers: destination account id (internal) or external payee info
+  transferToAccountId?: string;
+  externalPayee?: { clabe?: string; bank?: string; name?: string };
+  // Optional receipt image as data URL or filesystem path
+  receipt?: string;
 }
 
 export interface Goal {
@@ -78,6 +107,7 @@ export interface DebtPayment {
   date: string;
   note?: string;
   paymentMethod?: PaymentMethod;
+  accountId?: string;
 }
 
 /** Money someone owes you */
@@ -91,6 +121,7 @@ export interface Debt {
   note?: string;
   icon?: IconRef;
   payments: DebtPayment[];
+  accountId?: string;
 }
 
 export type ChangeAction = "create" | "update" | "delete";
@@ -106,11 +137,12 @@ export interface ChangeLogEntry {
   changes?: { field: string; from?: unknown; to?: unknown }[];
 }
 
-export const TYPE_LABEL: Record<ItemType, string> = {
+export const TYPE_LABEL: Record<ItemType | "transfer", string> = {
   income_fixed: "Ingreso fijo",
   expense_fixed: "Gasto fijo",
   expense_variable: "Gasto variable",
   saving_fixed: "Ahorro fijo",
+  transfer: "Traspaso",
 };
 
 export const FREQ_LABEL: Record<Frequency, string> = {
@@ -201,6 +233,84 @@ export function parseDateLocal(d: string | Date): Date {
   const m = d.match(/^(\d{4})-(\d{2})-(\d{2})$/);
   if (m) return new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]));
   return new Date(d);
+}
+
+/** Compute per-account balances by applying transactions to each account's initialBalance. */
+export function computeBalances(accounts: Account[], transactions: Transaction[], debts: Debt[] = [], endDate?: Date) {
+  const map: Record<string, number> = {};
+  for (const a of accounts) map[a.id] = (a.initialBalance ?? 0);
+
+  // Fallback helpers
+  const cashAccount = accounts.find((x) => x.type === "cash");
+  const bankAccount = accounts.find((x) => x.type === "bank") || cashAccount;
+  const firstAccount = accounts[0];
+
+  const getFallbackId = (method?: PaymentMethod) => {
+    if (method === "cash") return cashAccount?.id;
+    if (method === "transfer" || method === "card") return bankAccount?.id;
+    // For "other" or undefined, default to cash if it exists
+    return cashAccount?.id ?? firstAccount?.id;
+  };
+
+  const endTs = endDate ? endDate.getTime() : Infinity;
+
+  for (const t of transactions) {
+    const d = parseDateLocal(t.date);
+    if (d.getTime() > endTs) continue;
+
+    // Determine origin account: prefer explicit accountId, fall back based on payment method
+    const originId = t.accountId ?? getFallbackId(t.paymentMethod);
+
+    // Handle internal transfers specially: debit origin and credit destination
+    if (t.type === "transfer" || t.transferToAccountId) {
+      if (originId) {
+        map[originId] = (map[originId] ?? 0) - Math.abs(t.amount);
+      }
+      // credit destination only if it exists among known accounts
+      const destId = t.transferToAccountId;
+      const destExists = destId && accounts.some((a) => a.id === destId);
+      if (destExists) {
+        map[destId!] = (map[destId!] ?? 0) + Math.abs(t.amount);
+      }
+      continue;
+    }
+
+    if (!originId || map[originId] === undefined) continue;
+
+    // For normal transactions: incomes add, expenses and savings subtract
+    const signed = (t.type === "income") ? Math.abs(t.amount) : -Math.abs(t.amount);
+    map[originId] = (map[originId] ?? 0) + signed;
+  }
+
+  // Also include debt-related movements
+  for (const d of debts) {
+    const debtDate = parseDateLocal(d.date);
+    if (debtDate.getTime() <= endTs) {
+      // ONLY apply to balance if accountId is explicitly set for the debt creation
+      // This prevents "surprise" negative balances from old debts with no account assigned.
+      if (d.accountId && map[d.accountId] !== undefined) {
+        map[d.accountId] -= d.amount;
+      }
+    }
+
+    for (const p of d.payments) {
+      const payDate = parseDateLocal(p.date);
+      if (payDate.getTime() <= endTs) {
+        // For payments, if no accountId is set, fall back to payment method
+        const payAccountId = p.accountId ?? getFallbackId(p.paymentMethod);
+        if (payAccountId && map[payAccountId] !== undefined) {
+          map[payAccountId] += p.amount;
+        }
+      }
+    }
+  }
+
+  return map;
+}
+
+export function cashTotalFromDenominations(denoms?: Denomination[]) {
+  if (!Array.isArray(denoms) || denoms.length === 0) return 0;
+  return denoms.reduce((acc, d) => acc + (d.value * (d.count || 0)), 0);
 }
 
 export const CATEGORY_EMOJI: Record<string, string> = {

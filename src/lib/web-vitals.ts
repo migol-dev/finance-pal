@@ -5,7 +5,6 @@ function send(metric: Metric) {
     // Default: log to console. Replace with remote endpoint (POST) if desired.
     // Example: navigator.sendBeacon('/analytics/vitals', JSON.stringify(metric));
     // Keep payload small and non-blocking.
-    // eslint-disable-next-line no-console
     console.info('[web-vitals]', metric.name, metric.value, metric.delta, metric.id);
   } catch (e) {
     // ignore

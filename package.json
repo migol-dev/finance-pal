@@ -1,7 +1,7 @@
 {
   "name": "vite_react_shadcn_ts",
   "private": true,
-  "version": "1.17.7",
+  "version": "1.17.8",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -17,9 +17,11 @@
     "android:build:release": "npx cap copy android && cd android && ./gradlew assembleRelease",
     "android:build:release:win": "npx cap copy android && cd android && gradlew.bat assembleRelease",
     "optimize-images": "node scripts/optimize-images.js",
-    "generate-icons": "node scripts/generate-icons.js src/assets/nuevo_logo.png"
+    "generate-icons": "node scripts/generate-icons.js src/assets/nuevo_logo.png",
+    "cleanup-receipts": "node scripts/cleanup-receipts.cjs"
   },
   "dependencies": {
+    "@capacitor/app": "^8.1.0",
     "@capacitor/core": "^8.3.1",
     "@capacitor/filesystem": "^8.1.2",
     "@capacitor/local-notifications": "^8.0.2",

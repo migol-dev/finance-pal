@@ -19,5 +19,5 @@ export const StatPill = memo(function StatPill({ label, value, icon, tone = "def
       </div>
       <div className="text-lg font-bold tracking-tight">{value}</div>
     </div>
-  );
-}
+      );
+    });

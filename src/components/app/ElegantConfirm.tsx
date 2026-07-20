@@ -1,4 +1,4 @@
-import { Dialog, DialogContent } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { LucideIcon } from "lucide-react";
@@ -38,8 +38,8 @@ export function ElegantConfirm({
             </div>
           )}
           <div>
-            <h3 className="text-xl font-black">{title}</h3>
-            <div className="text-sm text-muted-foreground mt-1">{description}</div>
+            <DialogTitle className="text-xl font-black">{title}</DialogTitle>
+            <DialogDescription className="text-sm text-muted-foreground mt-1">{description}</DialogDescription>
           </div>
           <div className="flex gap-3 pt-2">
             <Button variant="ghost" className="flex-1 h-12 rounded-2xl font-bold" onClick={() => {

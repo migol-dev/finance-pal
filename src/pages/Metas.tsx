@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Slider } from "@/components/ui/slider";
 import { Calendar } from "@/components/ui/calendar";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { motion, AnimatePresence } from "@/lib/framer";
 import { toast } from "sonner";
 import { IconPicker } from "@/components/app/IconPicker";
@@ -126,7 +127,7 @@ export default function Metas() {
           {goals.map((g, i) => (
             <GoalCompactCard key={g.id} goal={g} index={i}
               onViewMore={() => setDetailId(g.id)}
-              onContribute={(amt, date) => contributeGoal(g.id, amt, date)}
+              onContribute={(amt, date, acc) => contributeGoal(g.id, amt, date, acc)}
             />
           ))}
         </AnimatePresence>
@@ -145,7 +146,7 @@ export default function Metas() {
                 goal={detailGoal}
                 onEdit={() => { setEditing(detailGoal); setOpen(true); setDetailId(null); }}
                 onDelete={() => { removeGoal(detailGoal.id); setDetailId(null); }}
-                onContribute={(amt, date) => contributeGoal(detailGoal.id, amt, date)}
+                onContribute={(amt, date, acc) => contributeGoal(detailGoal.id, amt, date, acc)}
                 onTogglePin={() => updateGoal(detailGoal.id, { pinned: !detailGoal.pinned })}
               />
             </div>
@@ -158,8 +159,9 @@ export default function Metas() {
 
 function GoalCompactCard({ goal, index, onViewMore, onContribute }: {
   goal: Goal; index: number; onViewMore: () => void;
-  onContribute: (amount: number, date?: string) => void;
+  onContribute: (amount: number, date?: string, accountId?: string) => void;
 }) {
+  const accounts = useFinance((s) => s.accounts);
   const pct = goal.target > 0 ? Math.min(100, (goal.saved / goal.target) * 100) : 0;
   const [confirmOpen, setConfirmOpen] = useState<{ amount: number } | null>(null);
 
@@ -214,7 +216,11 @@ function GoalCompactCard({ goal, index, onViewMore, onContribute }: {
         title="¿Confirmar aporte?"
         description={<p className="text-sm text-muted-foreground">Vas a añadir <span className="font-bold text-foreground">{fmt(confirmOpen?.amount ?? 0)}</span> a tu meta <span className="font-bold text-foreground">"{goal.name}"</span>.</p>}
         onConfirm={() => {
-          if (confirmOpen) onContribute(confirmOpen.amount);
+          if (confirmOpen) {
+            // Use first account as default for quick add
+            const defaultAccountId = accounts[0]?.id;
+            onContribute(confirmOpen.amount, undefined, defaultAccountId);
+          }
           setConfirmOpen(null);
           toast.success("¡Aporte registrado! 🚀");
         }}
@@ -227,9 +233,10 @@ function GoalCompactCard({ goal, index, onViewMore, onContribute }: {
 
 function GoalDetailContent({ goal, onEdit, onDelete, onContribute, onTogglePin }: {
   goal: Goal; onEdit: () => void; onDelete: () => void;
-  onContribute: (amount: number, date?: string) => void;
+  onContribute: (amount: number, date?: string, accountId?: string) => void;
   onTogglePin: () => void;
 }) {
+  const accounts = useFinance((s) => s.accounts);
   const [tab, setTab] = useState<"resumen" | "calendario" | "simular">("resumen");
   const [confirmOpen, setConfirmOpen] = useState<{ amount: number } | null>(null);
   const [deleteConfirm, setDeleteConfirm] = useState(false);
@@ -284,13 +291,13 @@ function GoalDetailContent({ goal, onEdit, onDelete, onContribute, onTogglePin }
         </button>
         <button onClick={onEdit} className="h-14 rounded-2xl bg-white/10 flex items-center justify-center active:scale-90 transition"><Pencil className="size-6" /></button>
         <button onClick={() => setDeleteConfirm(true)} className="h-14 rounded-2xl bg-white/10 flex items-center justify-center active:scale-90 transition"><Trash2 className="size-6" /></button>
-        <ContribCustom onAdd={(v) => onContribute(v)} />
+        <ContribCustom onAdd={(v, acc) => onContribute(v, undefined, acc)} />
       </div>
 
       <div className="flex gap-2 mb-6">
         <ContributeBtn label="+ $100" onClick={() => handleQuickAdd(100)} />
         <ContributeBtn label="+ $500" onClick={() => handleQuickAdd(500)} />
-        <ContribCustom negative onAdd={(v) => onContribute(-v)} />
+        <ContribCustom negative onAdd={(v, acc) => onContribute(-v, undefined, acc)} />
       </div>
 
       <ElegantConfirm
@@ -299,7 +306,10 @@ function GoalDetailContent({ goal, onEdit, onDelete, onContribute, onTogglePin }
         title="¿Confirmar aporte?"
         description={<p className="text-sm text-muted-foreground">Vas a añadir <span className="font-bold text-foreground">{fmt(confirmOpen?.amount ?? 0)}</span> a tu meta <span className="font-bold text-foreground">"{goal.name}"</span>.</p>}
         onConfirm={() => {
-          if (confirmOpen) onContribute(confirmOpen.amount);
+          if (confirmOpen) {
+            const defaultAccountId = accounts[0]?.id;
+            onContribute(confirmOpen.amount, undefined, defaultAccountId);
+          }
           setConfirmOpen(null);
           toast.success("¡Aporte registrado! 🚀");
         }}
@@ -433,9 +443,11 @@ function ResumenTab({ goal }: { goal: Goal }) {
   );
 }
 
-function CalendarioTab({ goal, onContribute }: { goal: Goal; onContribute: (amount: number, date?: string) => void }) {
+function CalendarioTab({ goal, onContribute }: { goal: Goal; onContribute: (amount: number, date?: string, accountId?: string) => void }) {
+  const accounts = useFinance((s) => s.accounts);
   const [selected, setSelected] = useState<Date | undefined>(new Date());
   const [amount, setAmount] = useState("");
+  const [accountId, setAccountId] = useState<string | undefined>(accounts[0]?.id);
   const pace = paceFor(goal);
 
   const contribsByDay = useMemo(() => {
@@ -473,6 +485,19 @@ function CalendarioTab({ goal, onContribute }: { goal: Goal; onContribute: (amou
             <span>Recomendado:</span>
             <span className="font-bold text-foreground">{recommended > 0 ? fmt2(recommended) : "—"}</span>
           </div>
+          <div>
+            <Label className="text-[10px] uppercase font-bold text-muted-foreground">Cuenta origen</Label>
+            <Select value={accountId} onValueChange={setAccountId}>
+              <SelectTrigger className="h-9 rounded-xl mt-1 text-xs">
+                <SelectValue placeholder="Seleccionar cuenta" />
+              </SelectTrigger>
+              <SelectContent>
+                {accounts.map((a) => (
+                  <SelectItem key={a.id} value={a.id}>{a.name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
           <div className="flex gap-2">
             <Input type="number" value={amount} onChange={(e) => setAmount(e.target.value)}
               placeholder={recommended > 0 ? recommended.toFixed(0) : "Monto"} className="h-10 rounded-xl" />
@@ -482,7 +507,7 @@ function CalendarioTab({ goal, onContribute }: { goal: Goal; onContribute: (amou
                 const v = parseFloat(amount) || recommended;
                 if (!v) { toast.error("Ingresa un monto"); return; }
                 const d = new Date(selected); d.setHours(12, 0, 0, 0);
-                onContribute(v, d.toISOString());
+                onContribute(v, d.toISOString(), accountId);
                 setAmount("");
                 toast.success(`Aporte de ${fmt(v)} registrado`);
               }}
@@ -505,8 +530,6 @@ function SimularTab({ goal }: { goal: Goal }) {
   const recommended = pace?.perDay ?? 0;
   const [perDay, setPerDay] = useState<number>(Math.max(1, Math.round(recommended || 50)));
 
-  
-
   const data = useMemo(() => {
     if (!goal.deadline) return [] as any[];
     const start = startOfDay(parseDateLocal(goal.createdAt ?? new Date().toISOString()));
@@ -525,7 +548,7 @@ function SimularTab({ goal }: { goal: Goal }) {
       arr.push({
         label: fmtDate(date),
         ideal: Math.round(ideal),
-        simulado: Math.round(Math.min(sim, goal.target * 1.2)),
+        simulado: Math.round(Math.min(sim, goal.target * 2)), // Increased limit for visualization
       });
     }
     return arr;
@@ -602,9 +625,12 @@ function ContributeBtn({ label, onClick }: { label: string; onClick: () => void 
   return <button onClick={onClick} className="flex-1 h-9 rounded-xl bg-white/25 hover:bg-white/35 backdrop-blur-sm text-xs font-bold transition active:scale-95">{label}</button>;
 }
 
-function ContribCustom({ onAdd, negative }: { onAdd: (v: number) => void; negative?: boolean }) {
+function ContribCustom({ onAdd, negative }: { onAdd: (v: number, accountId?: string) => void; negative?: boolean }) {
+  const accounts = useFinance((s) => s.accounts);
   const [open, setOpen] = useState(false);
   const [v, setV] = useState("");
+  const [accountId, setAccountId] = useState<string | undefined>(accounts[0]?.id);
+
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <button type="button" onClick={() => setOpen(true)} className="size-9 rounded-xl bg-white/25 hover:bg-white/35 text-xs font-bold transition flex items-center justify-center">
@@ -612,9 +638,27 @@ function ContribCustom({ onAdd, negative }: { onAdd: (v: number) => void; negati
       </button>
       <DialogContent className="rounded-3xl">
         <DialogHeader><DialogTitle>{negative ? "Retirar de meta" : "Aportar a meta"}</DialogTitle></DialogHeader>
-        <Input autoFocus type="number" value={v} onChange={(e) => setV(e.target.value)} placeholder="Monto" className="h-14 text-2xl font-bold rounded-2xl" />
-        <Button onClick={() => { const n = parseFloat(v); if (n) { onAdd(n); setOpen(false); setV(""); toast.success(negative ? "Retiro registrado" : "¡Aporte registrado!"); } }}
-          className="h-12 rounded-2xl gradient-primary text-primary-foreground border-0 font-bold">{negative ? "Retirar" : "Aportar"}</Button>
+        <div className="space-y-4 pt-2">
+          <div>
+            <Label className="text-xs">Monto</Label>
+            <Input autoFocus type="number" value={v} onChange={(e) => setV(e.target.value)} placeholder="0.00" className="h-14 text-2xl font-bold rounded-2xl" />
+          </div>
+          <div>
+            <Label className="text-xs">{negative ? "Cuenta destino" : "Cuenta origen"}</Label>
+            <Select value={accountId} onValueChange={setAccountId}>
+              <SelectTrigger className="h-12 rounded-2xl">
+                <SelectValue placeholder="Seleccionar cuenta" />
+              </SelectTrigger>
+              <SelectContent>
+                {accounts.map((a) => (
+                  <SelectItem key={a.id} value={a.id}>{a.name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <Button onClick={() => { const n = parseFloat(v); if (n) { onAdd(n, accountId); setOpen(false); setV(""); toast.success(negative ? "Retiro registrado" : "¡Aporte registrado!"); } }}
+            className="w-full h-12 rounded-2xl gradient-primary text-primary-foreground border-0 font-bold">{negative ? "Retirar" : "Aportar"}</Button>
+        </div>
       </DialogContent>
     </Dialog>
   );
@@ -624,7 +668,7 @@ function GoalForm({ initial, onSave }: { initial: Goal | null; onSave: (g: Omit<
   const [name, setName] = useState(initial?.name ?? "");
   const [target, setTarget] = useState(initial?.target ? String(initial.target) : "");
   const [saved, setSaved] = useState(initial?.saved ? String(initial.saved) : "0");
-  const [icon, setIcon] = useState<IconRef>(initial?.icon ?? { kind: "emoji", value: initial?.emoji ?? "🎯" });
+  const [icon, setIcon] = useState<IconRef>(initial?.icon ?? { kind: "emoji", value: "🎯" });
   const [color, setColor] = useState(initial?.color ?? PALETTES[0]);
   const [deadline, setDeadline] = useState(initial?.deadline ?? "");
   const [purchaseUrl, setPurchaseUrl] = useState(initial?.purchaseUrl ?? "");

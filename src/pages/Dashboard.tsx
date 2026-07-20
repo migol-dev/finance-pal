@@ -1,6 +1,6 @@
 import { useMemo, useState, useEffect, type ReactNode } from "react";
 import { useFinance } from "@/store/finance-store";
-import { fmt, monthlyAmount, MONTHS, isFixedActiveInMonth, iconFor, fmtDate, parseDateLocal } from "@/lib/finance";
+import { fmt, monthlyAmount, MONTHS, isFixedActiveInMonth, iconFor, fmtDate, parseDateLocal, computeBalances, cashTotalFromDenominations } from "@/lib/finance";
 import { Eye, EyeOff, TrendingUp, TrendingDown, PiggyBank, Plus, Bell, BarChart3 } from "lucide-react";
 import { Link } from "react-router-dom";
 import { motion } from "@/lib/framer";
@@ -11,6 +11,7 @@ import { IconDisplay } from "@/components/app/IconDisplay";
 export default function Dashboard() {
   const fixedItems = useFinance((s) => s.fixedItems);
   const transactions = useFinance((s) => s.transactions);
+  const accounts = useFinance((s) => s.accounts);
   const goals = useFinance((s) => s.goals);
   const debts = useFinance((s) => s.debts);
   const activeYear = useFinance((s) => s.activeYear);
@@ -38,6 +39,10 @@ export default function Dashboard() {
     for (const t of transactions) {
       const d = parseDateLocal(t.date);
       if (d.getMonth() !== activeMonth || d.getFullYear() !== activeYear) continue;
+
+      // Internal transfer: ignore for income/expense/saving stats if destination is one of our accounts
+      const isInternalTransfer = t.type === "transfer" || (t.transferToAccountId && accounts.some((a) => a.id === t.transferToAccountId));
+      if (isInternalTransfer) continue;
 
       if (t.type === "income") {
         // Only count as income if it's NOT a goal withdrawal (category "Meta")
@@ -116,26 +121,84 @@ export default function Dashboard() {
     for (const d of debts) {
       const dd = parseDateLocal(d.date);
       if (dd.getFullYear() === activeYear && dd.getMonth() === activeMonth) {
+        // Lending money is an "expense" for the purpose of the monthly summary (money leaving)
         expense += d.amount;
       }
       for (const p of d.payments) {
         const pd = parseDateLocal(p.date);
         if (pd.getFullYear() === activeYear && pd.getMonth() === activeMonth) {
+          // Receiving a payment is an "income" for the monthly summary
           income += p.amount;
         }
       }
     }
     const net = income - expense - saving;
-    const savingRate = income > 0 ? (saving / income) * 100 : 0;
-    return { income, expense, saving, net, savingRate };
+    const savingRate = income > 0 ? Math.max(0, (saving / income) * 100) : 0;
+
+    // 3) Calculate cumulative net from ALL time up to the end of the selected month
+    const endOfMonth = new Date(activeYear, activeMonth + 1, 0, 23, 59, 59);
+    let cumulativeNet = 0;
+
+    // Sum transactions up to end of month
+    for (const t of transactions) {
+      if (parseDateLocal(t.date) <= endOfMonth) {
+        // Internal transfer: ignore for cumulative net if destination is one of our accounts
+        const isInternalTransfer = t.type === "transfer" || (t.transferToAccountId && accounts.some((a) => a.id === t.transferToAccountId));
+        if (isInternalTransfer) continue;
+
+        if (t.type === "income") cumulativeNet += t.amount;
+        else if (t.type === "saving") cumulativeNet -= t.amount;
+        else cumulativeNet -= t.amount;
+      }
+    }
+
+    // Sum debt movements up to end of month
+    for (const d of debts) {
+      if (parseDateLocal(d.date) <= endOfMonth) {
+        // Debt created: money went OUT (lending). Only count if we have some way to track it as a withdrawal.
+        // For cumulative net, we treat lending as a reduction of net worth until repaid.
+        cumulativeNet -= d.amount;
+      }
+      for (const p of d.payments) {
+        if (parseDateLocal(p.date) <= endOfMonth) {
+          cumulativeNet += p.amount; // receiving payment increases net
+        }
+      }
+    }
+
+    return {
+      income: Math.max(0, income),
+      expense: Math.max(0, expense),
+      saving: Math.max(0, saving),
+      net,
+      cumulativeNet,
+      savingRate
+    };
   }, [fixedItems, transactions, debts, activeMonth, activeYear]);
 
-  const today = new Date();
-  const todayDate = today.getDate();
-  const todayWeekday = today.getDay();
-  const isCurrentMonth = today.getFullYear() === activeYear && today.getMonth() === activeMonth;
+  const balances = useMemo(() => {
+    const endOfMonth = new Date(activeYear, activeMonth + 1, 0, 23, 59, 59);
+    return computeBalances(accounts, transactions, debts, endOfMonth);
+  }, [accounts, transactions, debts, activeMonth, activeYear]);
+  const cashBankBreakdown = useMemo(() => {
+    let cash = 0, bank = 0;
+    for (const a of accounts) {
+      const bal = balances[a.id] ?? (a.initialBalance ?? 0);
+      if (a.type === "cash") {
+        if (a.denominations && a.denominations.length > 0) cash += cashTotalFromDenominations(a.denominations);
+        else cash += bal;
+      } else {
+        bank += bal;
+      }
+    }
+    return { cash, bank };
+  }, [accounts, balances]);
 
   const upcoming = useMemo(() => {
+    const today = new Date();
+    const todayDate = today.getDate();
+    const todayWeekday = today.getDay();
+    const isCurrentMonth = today.getFullYear() === activeYear && today.getMonth() === activeMonth;
     if (!isCurrentMonth) return [];
     return fixedItems
       .filter((i) => isFixedActiveInMonth(i, activeYear, activeMonth) && (typeof i.payDay === "number" || typeof i.payWeekDay === "number") && i.type !== "income_fixed")
@@ -160,7 +223,7 @@ export default function Dashboard() {
       })
       .sort((a, b) => a.daysLeft - b.daysLeft)
       .slice(0, 3);
-  }, [fixedItems, activeYear, activeMonth, isCurrentMonth, todayDate, todayWeekday]);
+  }, [fixedItems, activeYear, activeMonth]);
 
   const recent = useMemo(() => {
     return transactions
@@ -206,11 +269,21 @@ export default function Dashboard() {
         <div className="absolute -bottom-12 -left-8 size-32 rounded-full bg-secondary/40 blur-2xl" />
         <div className="relative">
           <p className="text-xs uppercase tracking-widest opacity-80 font-semibold">Neto del mes</p>
-          <p className="text-5xl font-extrabold tracking-tight mt-1">{mask(fmt(monthStats.net))}</p>
+          <p className="text-5xl font-extrabold tracking-tight mt-1">{mask(fmt(monthStats.cumulativeNet))}</p>
           <div className="grid grid-cols-3 gap-3 mt-6">
             <MiniStat icon={<TrendingUp className="size-3.5" />} label="Ingresos" value={mask(fmt(monthStats.income))} />
             <MiniStat icon={<TrendingDown className="size-3.5" />} label="Gastos" value={mask(fmt(monthStats.expense))} />
             <MiniStat icon={<PiggyBank className="size-3.5" />} label="Ahorro" value={mask(fmt(monthStats.saving))} />
+          </div>
+          <div className="mt-3 flex items-center gap-3 text-sm">
+            <div className="flex-1 rounded-2xl bg-white/10 p-3 text-center">
+              <div className="text-[11px] uppercase text-muted-foreground">Efectivo</div>
+              <div className="font-bold mt-1">{mask(fmt(cashBankBreakdown.cash))}</div>
+            </div>
+            <div className="flex-1 rounded-2xl bg-white/10 p-3 text-center">
+              <div className="text-[11px] uppercase text-muted-foreground">Cuentas</div>
+              <div className="font-bold mt-1">{mask(fmt(cashBankBreakdown.bank))}</div>
+            </div>
           </div>
         </div>
       </motion.section>
@@ -350,8 +423,8 @@ export default function Dashboard() {
                   <p className="font-semibold text-sm truncate">{t.concept}</p>
                   <p className="text-xs text-muted-foreground">{fmtDate(t.date)}</p>
                 </div>
-                <p className={`font-bold text-sm ${t.type === "income" ? "text-success" : t.type === "saving" ? "text-secondary" : "text-destructive"}`}>
-                  {t.type === "income" ? "+" : "-"}{mask(fmt(t.amount))}
+                <p className={`font-bold text-sm ${t.type === "income" ? "text-success" : t.type === "saving" ? "text-secondary" : t.type === "transfer" ? "text-blue-500" : "text-destructive"}`}>
+                  {t.type === "income" ? "+" : t.type === "transfer" ? "⇄" : "-"}{mask(fmt(t.amount))}
                 </p>
               </div>
             ))}
