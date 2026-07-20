@@ -1,6 +1,7 @@
 import { useQuery, useQueryClient, UseQueryOptions } from '@tanstack/react-query';
 import { supabase, isSupabaseEnabled } from '@/lib/supabase';
 import { useAuth } from '@/context/AuthContext';
+import { Account, Transaction, FixedItem, Goal, Debt, DebtPayment } from '@/lib/finance';
 
 export function useSupabaseQuery<T>(
   key: string[],
@@ -26,7 +27,7 @@ export async function fetchAccounts(userId: string) {
     .order('created_at', { ascending: true });
   
   if (error) throw error;
-  return data;
+  return (data ?? []).map(mapAccountFromDb);
 }
 
 export async function fetchTransactions(userId: string) {
@@ -37,7 +38,7 @@ export async function fetchTransactions(userId: string) {
     .order('date', { ascending: false });
   
   if (error) throw error;
-  return data;
+  return (data ?? []).map(mapTransactionFromDb);
 }
 
 export async function fetchFixedItems(userId: string) {
@@ -48,7 +49,7 @@ export async function fetchFixedItems(userId: string) {
     .order('created_at', { ascending: false });
   
   if (error) throw error;
-  return data;
+  return (data ?? []).map(mapFixedItemFromDb);
 }
 
 export async function fetchGoals(userId: string) {
@@ -59,7 +60,7 @@ export async function fetchGoals(userId: string) {
     .order('created_at', { ascending: false });
   
   if (error) throw error;
-  return data;
+  return (data ?? []).map(mapGoalFromDb);
 }
 
 export async function fetchDebts(userId: string) {
@@ -73,7 +74,100 @@ export async function fetchDebts(userId: string) {
     .order('created_at', { ascending: false });
   
   if (error) throw error;
-  return data;
+  return (data ?? []).map(mapDebtFromDb);
+}
+
+function mapAccountFromDb(row: any): Account {
+  return {
+    id: row.id,
+    name: row.name,
+    type: row.type,
+    initialBalance: Number(row.initial_balance ?? 0),
+    currency: row.currency,
+    denominations: row.denominations ?? [],
+    clabe: row.clabe,
+    bank: row.bank,
+    holderName: row.holder_name,
+  };
+}
+
+function mapTransactionFromDb(row: any): Transaction {
+  return {
+    id: row.id,
+    type: row.type,
+    category: row.category,
+    concept: row.concept,
+    amount: Number(row.amount),
+    date: row.date,
+    note: row.note,
+    icon: row.icon,
+    paymentMethod: row.payment_method,
+    fixedId: row.fixed_id,
+    accountId: row.account_id,
+    transferToAccountId: row.transfer_to_account_id,
+    externalPayee: row.external_payee,
+    receipt: row.receipt,
+  };
+}
+
+function mapFixedItemFromDb(row: any): FixedItem {
+  return {
+    id: row.id,
+    type: row.type,
+    category: row.category,
+    concept: row.concept,
+    amount: Number(row.amount),
+    frequency: row.frequency,
+    active: row.active,
+    note: row.note,
+    startDate: row.start_date,
+    endDate: row.end_date,
+    priority: row.priority,
+    payDay: row.pay_day,
+    payWeekDay: row.pay_week_day,
+    icon: row.icon,
+    paymentMethod: row.payment_method,
+    accountId: row.account_id,
+  };
+}
+
+function mapGoalFromDb(row: any): Goal {
+  return {
+    id: row.id,
+    name: row.name,
+    target: Number(row.target),
+    saved: Number(row.saved ?? 0),
+    emoji: row.emoji,
+    color: row.color,
+    deadline: row.deadline,
+    icon: row.icon,
+    purchaseUrl: row.purchase_url,
+    contributions: row.contributions ?? [],
+    pinned: row.pinned,
+    createdAt: row.created_at,
+  };
+}
+
+function mapDebtFromDb(row: any): Debt {
+  return {
+    id: row.id,
+    person: row.person,
+    concept: row.concept,
+    amount: Number(row.amount),
+    date: row.date,
+    dueDate: row.due_date,
+    note: row.note,
+    icon: row.icon,
+    payments: (row.payments ?? []).map((p: any) => ({
+      id: p.id,
+      amount: Number(p.amount),
+      date: p.date,
+      note: p.note,
+      paymentMethod: p.payment_method,
+      accountId: p.account_id,
+    })),
+    accountId: row.account_id,
+  };
 }
 
 export function useAccounts() {

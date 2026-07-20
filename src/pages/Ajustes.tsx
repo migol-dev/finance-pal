@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { useHybridData } from "@/hooks/useHybridData";
 import { useFinance, Currency, ExportScopes, ALL_SCOPES } from "@/store/finance-store";
 import { fmt, monthlyAmount, TYPE_LABEL, FREQ_LABEL, ItemType, Frequency, Priority, iconFor, IconRef, FixedItem, CATEGORY_EMOJI, PaymentMethod, PAYMENT_METHOD_LABEL, PAYMENT_METHOD_EMOJI, Account, Denomination, cashTotalFromDenominations } from "@/lib/finance";
 import DenominationsEditor from "@/components/ui/DenominationsEditor";
@@ -22,13 +23,14 @@ import { LocalNotifications } from "@capacitor/local-notifications";
 import { ElegantConfirm } from "@/components/app/ElegantConfirm";
 
 export default function Ajustes() {
-  const { fixedItems, addFixed, updateFixed, removeFixed, toggleFixed, resetAll, exportData, importData, theme, toggleTheme, profile, setProfile } = useFinance();
-  const accounts = useFinance((s) => s.accounts);
+  const { 
+    fixedItems, addFixed, updateFixed, removeFixed, toggleFixed, resetAll, exportData, importData, 
+    theme, toggleTheme, profile, setProfile, 
+    accounts, addAccount, updateAccount, removeAccount,
+    isLoading 
+  } = useHybridData();
   const syncFiltersToURL = useFinance((s) => s.syncFiltersToURL);
   const setSyncFiltersToURL = useFinance((s) => s.setSyncFiltersToURL);
-  const addAccount = useFinance((s) => s.addAccount);
-  const updateAccount = useFinance((s) => s.updateAccount);
-  const removeAccount = useFinance((s) => s.removeAccount);
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<FixedItem | null>(null);
   const [tab, setTab] = useState<"all" | ItemType>("all");
