@@ -18,10 +18,12 @@ const Deudas = lazy(() => import("./pages/Deudas"));
 const Historial = lazy(() => import("./pages/Historial"));
 const NotFound = lazy(() => import("./pages/NotFound.tsx"));
 const Login = lazy(() => import("./pages/Login"));
+const MigracionNube = lazy(() => import("./pages/MigracionNube"));
 
 import { AuthProvider, useAuth } from '@/context/AuthContext';
 import { isSupabaseEnabled } from '@/lib/supabase';
 import { setupSyncListener } from '@/lib/sync-engine';
+import { useFinance } from '@/store/finance-store';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -59,7 +61,7 @@ function AnimatedRoutes() {
     </div>
   );
 
-  if (location.pathname === "/404" || !["/", "/movimientos", "/metas", "/deudas", "/anual", "/historial", "/ajustes"].includes(location.pathname)) {
+  if (location.pathname === "/404" || !["/", "/movimientos", "/metas", "/deudas", "/anual", "/historial", "/ajustes", "/migracion"].includes(location.pathname)) {
     return (
       <Suspense fallback={suspenseFallback}>
         <Routes location={location}>
@@ -81,6 +83,7 @@ function AnimatedRoutes() {
             <Route path="/anual" element={<PageFade><Anual /></PageFade>} />
             <Route path="/historial" element={<PageFade><Historial /></PageFade>} />
             <Route path="/ajustes" element={<PageFade><Ajustes /></PageFade>} />
+            <Route path="/migracion" element={<PageFade><MigracionNube /></PageFade>} />
           </Routes>
         </Suspense>
       </AnimatePresence>
@@ -90,6 +93,8 @@ function AnimatedRoutes() {
 
 function AuthGuard() {
   const { session, loading } = useAuth();
+  const { hasLocalData } = useFinance();
+  const [showMigration, setShowMigration] = React.useState(false);
 
   const suspenseFallback = (
     <div className="fixed inset-0 flex flex-col items-center justify-center bg-background/50 backdrop-blur-sm z-50">
@@ -108,6 +113,14 @@ function AuthGuard() {
       return (
         <Suspense fallback={suspenseFallback}>
           <Login />
+        </Suspense>
+      );
+    }
+    // Check if user has local data and hasn't migrated yet
+    if (hasLocalData && !showMigration) {
+      return (
+        <Suspense fallback={suspenseFallback}>
+          <MigracionNube />
         </Suspense>
       );
     }
