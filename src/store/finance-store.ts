@@ -3,6 +3,9 @@ import { persist } from "zustand/middleware";
 import { FixedItem, Transaction, Goal, Debt, DebtPayment, ChangeLogEntry, ChangeAction, ChangeEntity, IconRef, isFixedActiveInMonth, parseDateLocal, Account, Denomination } from "@/lib/finance";
 import { Filesystem, Directory, Encoding } from "@capacitor/filesystem";
 import { Capacitor } from "@capacitor/core";
+import { supabase, isSupabaseEnabled } from "@/lib/supabase";
+import { useSyncStore } from "./sync-store";
+import { useNetwork } from "@/hooks/useNetwork";
 
 export type ThemeMode = "light" | "dark";
 export type Currency = "MXN" | "USD" | "EUR" | "COP" | "ARS" | "CLP" | "PEN" | "BRL";
@@ -266,6 +269,149 @@ function migrateImported(payload: any): { data: any; warnings: string[] } {
   return { data: d, warnings };
 }
 
+/* ─────────────────────────────  Supabase Sync Helpers  ───────────────────────────── */
+
+function isOnline(): boolean {
+  return navigator.onLine;
+}
+
+async function supabaseInsert<T extends Record<string, any>>(table: string, record: T): Promise<T | null> {
+  if (!isSupabaseEnabled || !isOnline()) return null;
+  const { data, error } = await supabase.from(table).insert(record).select().single();
+  if (error) {
+    console.error(`Supabase insert error (${table}):`, error);
+    return null;
+  }
+  return data as T;
+}
+
+async function supabaseUpdate<T extends Record<string, any>>(table: string, id: string, patch: Partial<T>): Promise<T | null> {
+  if (!isSupabaseEnabled || !isOnline()) return null;
+  const { data, error } = await supabase.from(table).update(patch).eq('id', id).select().single();
+  if (error) {
+    console.error(`Supabase update error (${table}):`, error);
+    return null;
+  }
+  return data as T;
+}
+
+async function supabaseDelete(table: string, id: string): Promise<boolean> {
+  if (!isSupabaseEnabled || !isOnline()) return false;
+  const { error } = await supabase.from(table).delete().eq('id', id);
+  if (error) {
+    console.error(`Supabase delete error (${table}):`, error);
+    return false;
+  }
+  return true;
+}
+
+function queueMutation(table: string, action: 'INSERT' | 'UPDATE' | 'DELETE', recordId: string, payload?: any) {
+  if (!isSupabaseEnabled) return;
+  useSyncStore.getState().addMutation({ table, action, recordId, payload });
+}
+
+function toSupabaseFixed(item: FixedItem, userId: string) {
+  return {
+    id: item.id,
+    user_id: userId,
+    type: item.type,
+    category: item.category,
+    concept: item.concept,
+    amount: item.amount,
+    frequency: item.frequency,
+    active: item.active,
+    note: item.note,
+    start_date: item.startDate,
+    end_date: item.endDate,
+    priority: item.priority,
+    pay_day: item.payDay,
+    pay_week_day: item.payWeekDay,
+    icon: item.icon,
+    payment_method: item.paymentMethod,
+    account_id: item.accountId,
+  };
+}
+
+function toSupabaseTx(tx: Transaction, userId: string) {
+  return {
+    id: tx.id,
+    user_id: userId,
+    type: tx.type,
+    category: tx.category,
+    concept: tx.concept,
+    amount: tx.amount,
+    date: tx.date,
+    note: tx.note,
+    icon: tx.icon,
+    payment_method: tx.paymentMethod,
+    fixed_id: tx.fixedId,
+    account_id: tx.accountId,
+    transfer_to_account_id: tx.transferToAccountId,
+    external_payee: tx.externalPayee,
+    receipt: tx.receipt,
+  };
+}
+
+function toSupabaseAccount(acc: Account, userId: string) {
+  return {
+    id: acc.id,
+    user_id: userId,
+    name: acc.name,
+    type: acc.type,
+    initial_balance: acc.initialBalance,
+    currency: acc.currency,
+    clabe: acc.clabe,
+    bank: acc.bank,
+    holder_name: acc.holderName,
+    denominations: acc.denominations,
+  };
+}
+
+function toSupabaseGoal(goal: Goal, userId: string) {
+  return {
+    id: goal.id,
+    user_id: userId,
+    name: goal.name,
+    target: goal.target,
+    saved: goal.saved,
+    emoji: goal.emoji,
+    color: goal.color,
+    deadline: goal.deadline,
+    icon: goal.icon,
+    purchase_url: goal.purchaseUrl,
+    contributions: goal.contributions,
+    pinned: goal.pinned,
+  };
+}
+
+function toSupabaseDebt(debt: Debt, userId: string) {
+  return {
+    id: debt.id,
+    user_id: userId,
+    person: debt.person,
+    concept: debt.concept,
+    amount: debt.amount,
+    date: debt.date,
+    due_date: debt.dueDate,
+    note: debt.note,
+    icon: debt.icon,
+    account_id: debt.accountId,
+  };
+}
+
+function toSupabaseDebtPayment(debtId: string, payment: DebtPayment, userId: string) {
+  return {
+    id: payment.id,
+    user_id: userId,
+    debt_id: debtId,
+    amount: payment.amount,
+    date: payment.date,
+    note: payment.note,
+    payment_method: payment.paymentMethod,
+    account_id: payment.accountId,
+  };
+}
+
 export const useFinance = create<State>()(
   persist(
     (set, get) => ({
@@ -351,16 +497,80 @@ export const useFinance = create<State>()(
         }
       },
 
-      addFixed: (i) => set((s) => {
+      addFixed: async (i) => {
         const nv = { ...i, id: id() } as FixedItem;
-        return { fixedItems: [nv, ...s.fixedItems], changeLog: [logEntry("fixed", nv.id, "create", `Creó concepto fijo "${nv.concept}"`), ...s.changeLog].slice(0, 500) };
-      }),
-      updateFixed: (idv, p) => set((s) => {
-        const prev = s.fixedItems.find((x) => x.id === idv); if (!prev) return {} as any;
+        set((s) => ({ fixedItems: [nv, ...s.fixedItems], changeLog: [logEntry("fixed", nv.id, "create", `Creó concepto fijo "${nv.concept}"`), ...s.changeLog].slice(0, 500) }));
+
+        // Sync to Supabase
+        if (isSupabaseEnabled) {
+          const user = (await supabase.auth.getUser()).data.user;
+          if (user) {
+            const payload = {
+              id: nv.id,
+              user_id: user.id,
+              type: nv.type,
+              category: nv.category,
+              concept: nv.concept,
+              amount: nv.amount,
+              frequency: nv.frequency,
+              active: nv.active,
+              note: nv.note,
+              start_date: nv.startDate,
+              end_date: nv.endDate,
+              priority: nv.priority,
+              pay_day: nv.payDay,
+              pay_week_day: nv.payWeekDay,
+              icon: nv.icon,
+              payment_method: nv.paymentMethod,
+              account_id: nv.accountId,
+            };
+            if (isOnline()) {
+              const { error } = await supabase.from('fixed_items').insert(payload);
+              if (error) console.error('Supabase insert error (fixed_items):', error);
+            } else {
+              queueMutation('fixed_items', 'INSERT', nv.id, payload);
+            }
+          }
+        }
+      },
+      updateFixed: async (idv, p) => {
+        const s = get();
+        const prev = s.fixedItems.find((x) => x.id === idv); if (!prev) return;
         const ch = diffFields(prev, p);
-        return { fixedItems: s.fixedItems.map((x) => x.id === idv ? { ...x, ...p } : x), changeLog: [logEntry("fixed", idv, "update", `Editó "${prev.concept}"`, ch), ...s.changeLog].slice(0, 500) };
-      }),
-      removeFixed: (idv) => set((s) => {
+        set((s) => ({ fixedItems: s.fixedItems.map((x) => x.id === idv ? { ...x, ...p } : x), changeLog: [logEntry("fixed", idv, "update", `Editó "${prev.concept}"`, ch), ...s.changeLog].slice(0, 500) }));
+
+        // Sync to Supabase
+        if (isSupabaseEnabled) {
+          const user = (await supabase.auth.getUser()).data.user;
+          if (user) {
+            const payload = {
+              type: p.type,
+              category: p.category,
+              concept: p.concept,
+              amount: p.amount,
+              frequency: p.frequency,
+              active: p.active,
+              note: p.note,
+              start_date: p.startDate,
+              end_date: p.endDate,
+              priority: p.priority,
+              pay_day: p.payDay,
+              pay_week_day: p.payWeekDay,
+              icon: p.icon,
+              payment_method: p.paymentMethod,
+              account_id: p.accountId,
+            };
+            if (isOnline()) {
+              const { error } = await supabase.from('fixed_items').update(payload).eq('id', idv);
+              if (error) console.error('Supabase update error (fixed_items):', error);
+            } else {
+              queueMutation('fixed_items', 'UPDATE', idv, payload);
+            }
+          }
+        }
+      },
+      removeFixed: async (idv) => {
+        const s = get();
         const prev = s.fixedItems.find((x) => x.id === idv);
         // Also remove today's automatically created transaction for this fixed item (but keep historical ones)
         const pad = (n: number) => String(n).padStart(2, "0");
@@ -373,12 +583,40 @@ export const useFinance = create<State>()(
           // keep transaction unless it's for today
           return tISO !== todayISO;
         });
-        return { fixedItems: s.fixedItems.filter((x) => x.id !== idv), transactions: remainingTx, changeLog: [logEntry("fixed", idv, "delete", `Eliminó "${prev?.concept ?? "concepto"}"`), ...s.changeLog].slice(0, 500) };
-      }),
-      toggleFixed: (idv) => set((s) => {
-        const prev = s.fixedItems.find((x) => x.id === idv); if (!prev) return {} as any;
-        return { fixedItems: s.fixedItems.map((x) => x.id === idv ? { ...x, active: !x.active } : x), changeLog: [logEntry("fixed", idv, "update", `${prev.active ? "Pausó" : "Activó"} "${prev.concept}"`, [{ field: "active", from: prev.active, to: !prev.active }]), ...s.changeLog].slice(0, 500) };
-      }),
+        set({ fixedItems: s.fixedItems.filter((x) => x.id !== idv), transactions: remainingTx, changeLog: [logEntry("fixed", idv, "delete", `Eliminó "${prev?.concept ?? "concepto"}"`), ...s.changeLog].slice(0, 500) });
+
+        // Sync to Supabase
+        if (isSupabaseEnabled) {
+          const user = (await supabase.auth.getUser()).data.user;
+          if (user) {
+            if (isOnline()) {
+              const { error } = await supabase.from('fixed_items').delete().eq('id', idv);
+              if (error) console.error('Supabase delete error (fixed_items):', error);
+            } else {
+              queueMutation('fixed_items', 'DELETE', idv);
+            }
+          }
+        }
+      },
+      toggleFixed: async (idv) => {
+        const s = get();
+        const prev = s.fixedItems.find((x) => x.id === idv); if (!prev) return;
+        set((s) => ({ fixedItems: s.fixedItems.map((x) => x.id === idv ? { ...x, active: !x.active } : x), changeLog: [logEntry("fixed", idv, "update", `${prev.active ? "Pausó" : "Activó"} "${prev.concept}"`, [{ field: "active", from: prev.active, to: !prev.active }]), ...s.changeLog].slice(0, 500) }));
+
+        // Sync to Supabase
+        if (isSupabaseEnabled) {
+          const user = (await supabase.auth.getUser()).data.user;
+          if (user) {
+            const payload = { active: !prev.active };
+            if (isOnline()) {
+              const { error } = await supabase.from('fixed_items').update(payload).eq('id', idv);
+              if (error) console.error('Supabase update error (fixed_items):', error);
+            } else {
+              queueMutation('fixed_items', 'UPDATE', idv, payload);
+            }
+          }
+        }
+      },
 
       // Helper: save a dataURL receipt to filesystem and return stored relative path
       async saveReceiptFile(receiptId: string, dataUrl: string) {
@@ -436,6 +674,36 @@ export const useFinance = create<State>()(
           if (saved) nv.receipt = saved;
         }
         set((s2) => ({ transactions: [nv, ...s2.transactions], changeLog: [logEntry("transaction", nv.id, "create", `Agregó ${nv.type === "income" ? "ingreso" : nv.type === "saving" ? "ahorro" : "gasto"} "${nv.concept}"`), ...s2.changeLog].slice(0, 500) }));
+
+        // Sync to Supabase
+        if (isSupabaseEnabled) {
+          const user = (await supabase.auth.getUser()).data.user;
+          if (user) {
+            const payload = {
+              id: nv.id,
+              user_id: user.id,
+              type: nv.type,
+              category: nv.category,
+              concept: nv.concept,
+              amount: nv.amount,
+              date: nv.date,
+              note: nv.note,
+              icon: nv.icon,
+              payment_method: nv.paymentMethod,
+              fixed_id: nv.fixedId,
+              account_id: nv.accountId,
+              transfer_to_account_id: nv.transferToAccountId,
+              external_payee: nv.externalPayee,
+              receipt: nv.receipt,
+            };
+            if (isOnline()) {
+              const { error } = await supabase.from('transactions').insert(payload);
+              if (error) console.error('Supabase insert error (transactions):', error);
+            } else {
+              queueMutation('transactions', 'INSERT', nv.id, payload);
+            }
+          }
+        }
       },
       updateTx: async (idv, p) => {
         const s = get();
@@ -457,34 +725,133 @@ export const useFinance = create<State>()(
           }
         }
         set((s2) => ({ transactions: s2.transactions.map((x) => x.id === idv ? { ...x, ...patch } : x), changeLog: [logEntry("transaction", idv, "update", `Editó "${prev.concept}"`, diffFields(prev, patch)), ...s2.changeLog].slice(0, 500) }));
+
+        // Sync to Supabase
+        if (isSupabaseEnabled) {
+          const user = (await supabase.auth.getUser()).data.user;
+          if (user) {
+            const payload = {
+              type: patch.type,
+              category: patch.category,
+              concept: patch.concept,
+              amount: patch.amount,
+              date: patch.date,
+              note: patch.note,
+              icon: patch.icon,
+              payment_method: patch.paymentMethod,
+              fixed_id: patch.fixedId,
+              account_id: patch.accountId,
+              transfer_to_account_id: patch.transferToAccountId,
+              external_payee: patch.externalPayee,
+              receipt: patch.receipt,
+            };
+            if (isOnline()) {
+              const { error } = await supabase.from('transactions').update(payload).eq('id', idv);
+              if (error) console.error('Supabase update error (transactions):', error);
+            } else {
+              queueMutation('transactions', 'UPDATE', idv, payload);
+            }
+          }
+        }
       },
       removeTx: async (idv) => {
         const s = get();
         const prev = s.transactions.find((x) => x.id === idv);
         if (prev?.receipt) await (get() as any).deleteReceiptIfExists(prev.receipt);
         set((s2) => ({ transactions: s2.transactions.filter((x) => x.id !== idv), changeLog: [logEntry("transaction", idv, "delete", `Eliminó "${prev?.concept ?? "movimiento"}"`), ...s2.changeLog].slice(0, 500) }));
+
+        // Sync to Supabase
+        if (isSupabaseEnabled) {
+          const user = (await supabase.auth.getUser()).data.user;
+          if (user) {
+            if (isOnline()) {
+              const { error } = await supabase.from('transactions').delete().eq('id', idv);
+              if (error) console.error('Supabase delete error (transactions):', error);
+            } else {
+              queueMutation('transactions', 'DELETE', idv);
+            }
+          }
+        }
       },
 
-      addAccount: (a) => set((s) => {
+      addAccount: async (a) => {
+        const s = get();
         if (a.type === "cash" && s.accounts.some(x => x.type === "cash")) {
-          // In a real app we might throw or return error, but here we just ignore or replace.
-          // Let's enforce it in the UI, but here we'll prevent it.
           return {};
         }
         const nv = { ...a, id: id() } as Account;
-        return { accounts: [nv, ...s.accounts] };
-      }),
-      updateAccount: (idv, p) => set((s) => ({ accounts: s.accounts.map((x) => x.id === idv ? { ...x, ...p } : x) })),
-      removeAccount: (idv) => set((s) => ({
-        accounts: s.accounts.filter((x) => x.id !== idv),
-        transactions: s.transactions.map((t) => t.accountId === idv ? { ...t, accountId: undefined } : t),
-      })),
+        set((s) => ({ accounts: [nv, ...s.accounts] }));
+
+        // Sync to Supabase
+        if (isSupabaseEnabled) {
+          const user = (await supabase.auth.getUser()).data.user;
+          if (user) {
+            const payload = {
+              id: nv.id,
+              user_id: user.id,
+              name: nv.name,
+              type: nv.type,
+              initial_balance: nv.initialBalance,
+              currency: nv.currency,
+              clabe: nv.clabe,
+              bank: nv.bank,
+              holder_name: nv.holderName,
+              denominations: nv.denominations,
+            };
+            if (isOnline()) {
+              const { error } = await supabase.from('accounts').insert(payload);
+              if (error) console.error('Supabase insert error (accounts):', error);
+            } else {
+              queueMutation('accounts', 'INSERT', nv.id, payload);
+            }
+          }
+        }
+      },
+      updateAccount: async (idv, p) => {
+        const s = get();
+        const prev = s.accounts.find((x) => x.id === idv);
+        set((s) => ({ accounts: s.accounts.map((x) => x.id === idv ? { ...x, ...p } : x) }));
+
+        // Sync to Supabase
+        if (isSupabaseEnabled && prev) {
+          const user = (await supabase.auth.getUser()).data.user;
+          if (user) {
+            const payload = { ...prev, ...p };
+            if (isOnline()) {
+              const { error } = await supabase.from('accounts').update(payload).eq('id', idv);
+              if (error) console.error('Supabase update error (accounts):', error);
+            } else {
+              queueMutation('accounts', 'UPDATE', idv, payload);
+            }
+          }
+        }
+      },
+      removeAccount: async (idv) => {
+        const s = get();
+        set((s) => ({
+          accounts: s.accounts.filter((x) => x.id !== idv),
+          transactions: s.transactions.map((t) => t.accountId === idv ? { ...t, accountId: undefined } : t),
+        }));
+
+        // Sync to Supabase
+        if (isSupabaseEnabled) {
+          const user = (await supabase.auth.getUser()).data.user;
+          if (user) {
+            if (isOnline()) {
+              const { error } = await supabase.from('accounts').delete().eq('id', idv);
+              if (error) console.error('Supabase delete error (accounts):', error);
+            } else {
+              queueMutation('accounts', 'DELETE', idv);
+            }
+          }
+        }
+      },
       mergeAccounts: (fromIds, intoId) => set((s) => ({
         transactions: s.transactions.map((t) => fromIds.includes(t.accountId ?? "") ? { ...t, accountId: intoId } : t),
         accounts: s.accounts.filter((a) => !fromIds.includes(a.id) || a.id === intoId),
       })),
 
-      addGoal: (g) => set((s) => {
+      addGoal: async (g) => {
         const nv = {
           ...g,
           id: id(),
@@ -494,22 +861,90 @@ export const useFinance = create<State>()(
             : []),
         } as Goal;
         const nextGoals = nv.pinned ? [nv, ...s.goals.map(x => ({ ...x, pinned: false }))] : [nv, ...s.goals];
-        return { goals: nextGoals, changeLog: [logEntry("goal", nv.id, "create", `Creó meta "${nv.name}"`), ...s.changeLog].slice(0, 500) };
-      }),
-      updateGoal: (idv, p) => set((s) => {
-        const prev = s.goals.find((x) => x.id === idv); if (!prev) return {} as any;
+        const state = { goals: nextGoals, changeLog: [logEntry("goal", nv.id, "create", `Creó meta "${nv.name}"`), ...s.changeLog].slice(0, 500) };
+        set(state);
+
+        // Sync to Supabase
+        if (isSupabaseEnabled) {
+          const user = (await supabase.auth.getUser()).data.user;
+          if (user) {
+            const payload = {
+              id: nv.id,
+              user_id: user.id,
+              name: nv.name,
+              target: nv.target,
+              saved: nv.saved,
+              emoji: nv.emoji,
+              color: nv.color,
+              deadline: nv.deadline,
+              icon: nv.icon,
+              purchase_url: nv.purchaseUrl,
+              contributions: nv.contributions,
+              pinned: nv.pinned,
+            };
+            if (isOnline()) {
+              const { error } = await supabase.from('goals').insert(payload);
+              if (error) console.error('Supabase insert error (goals):', error);
+            } else {
+              queueMutation('goals', 'INSERT', nv.id, payload);
+            }
+          }
+        }
+      },
+      updateGoal: async (idv, p) => {
+        const s = get();
+        const prev = s.goals.find((x) => x.id === idv); if (!prev) return;
         const ch = diffFields(prev, p);
         let nextGoals = s.goals.map((x) => x.id === idv ? { ...x, ...p } : x);
         // If pinning this goal, unpin others
         if ((p as any).pinned === true) {
           nextGoals = nextGoals.map((x) => x.id === idv ? { ...x, pinned: true } : { ...x, pinned: false });
         }
-        return { goals: nextGoals, changeLog: [logEntry("goal", idv, "update", `Editó meta "${prev.name}"`, ch), ...s.changeLog].slice(0, 500) };
-      }),
-      removeGoal: (idv) => set((s) => {
+        set({ goals: nextGoals, changeLog: [logEntry("goal", idv, "update", `Editó meta "${prev.name}"`, ch), ...s.changeLog].slice(0, 500) });
+
+        // Sync to Supabase
+        if (isSupabaseEnabled) {
+          const user = (await supabase.auth.getUser()).data.user;
+          if (user) {
+            const payload = {
+              name: p.name,
+              target: p.target,
+              saved: p.saved,
+              emoji: p.emoji,
+              color: p.color,
+              deadline: p.deadline,
+              icon: p.icon,
+              purchase_url: p.purchaseUrl,
+              contributions: p.contributions,
+              pinned: p.pinned,
+            };
+            if (isOnline()) {
+              const { error } = await supabase.from('goals').update(payload).eq('id', idv);
+              if (error) console.error('Supabase update error (goals):', error);
+            } else {
+              queueMutation('goals', 'UPDATE', idv, payload);
+            }
+          }
+        }
+      },
+      removeGoal: async (idv) => {
+        const s = get();
         const prev = s.goals.find((x) => x.id === idv);
-        return { goals: s.goals.filter((x) => x.id !== idv), changeLog: [logEntry("goal", idv, "delete", `Eliminó meta "${prev?.name ?? ""}"`), ...s.changeLog].slice(0, 500) };
-      }),
+        set({ goals: s.goals.filter((x) => x.id !== idv), changeLog: [logEntry("goal", idv, "delete", `Eliminó meta "${prev?.name ?? ""}"`), ...s.changeLog].slice(0, 500) });
+
+        // Sync to Supabase
+        if (isSupabaseEnabled) {
+          const user = (await supabase.auth.getUser()).data.user;
+          if (user) {
+            if (isOnline()) {
+              const { error } = await supabase.from('goals').delete().eq('id', idv);
+              if (error) console.error('Supabase delete error (goals):', error);
+            } else {
+              queueMutation('goals', 'DELETE', idv);
+            }
+          }
+        }
+      },
       contributeGoal: (idv, amount, date, accountId) => set((s) => {
         const g = s.goals.find((x) => x.id === idv);
         const txId = id();
@@ -528,31 +963,135 @@ export const useFinance = create<State>()(
         };
       }),
 
-      addDebt: (d) => set((s) => {
+      addDebt: async (d) => {
+        const s = get();
         const nv: Debt = { ...d, id: id(), payments: [] };
-        return { debts: [nv, ...s.debts], changeLog: [logEntry("debt", nv.id, "create", `Registró deuda de ${nv.person} por ${nv.amount}`), ...s.changeLog].slice(0, 500) };
-      }),
-      updateDebt: (idv, p) => set((s) => {
-        const prev = s.debts.find((x) => x.id === idv); if (!prev) return {} as any;
+        set((s) => ({ debts: [nv, ...s.debts], changeLog: [logEntry("debt", nv.id, "create", `Registró deuda de ${nv.person} por ${nv.amount}`), ...s.changeLog].slice(0, 500) }));
+
+        // Sync to Supabase
+        if (isSupabaseEnabled) {
+          const user = (await supabase.auth.getUser()).data.user;
+          if (user) {
+            const payload = {
+              id: nv.id,
+              user_id: user.id,
+              person: nv.person,
+              concept: nv.concept,
+              amount: nv.amount,
+              date: nv.date,
+              due_date: nv.dueDate,
+              note: nv.note,
+              icon: nv.icon,
+              account_id: nv.accountId,
+            };
+            if (isOnline()) {
+              const { error } = await supabase.from('debts').insert(payload);
+              if (error) console.error('Supabase insert error (debts):', error);
+            } else {
+              queueMutation('debts', 'INSERT', nv.id, payload);
+            }
+          }
+        }
+      },
+      updateDebt: async (idv, p) => {
+        const s = get();
+        const prev = s.debts.find((x) => x.id === idv); if (!prev) return;
         const ch = diffFields(prev, p);
-        return { debts: s.debts.map((x) => x.id === idv ? { ...x, ...p } : x), changeLog: [logEntry("debt", idv, "update", `Editó deuda de "${prev.person}"`, ch), ...s.changeLog].slice(0, 500) };
-      }),
-      removeDebt: (idv) => set((s) => {
+        set({ debts: s.debts.map((x) => x.id === idv ? { ...x, ...p } : x), changeLog: [logEntry("debt", idv, "update", `Editó deuda de "${prev.person}"`, ch), ...s.changeLog].slice(0, 500) });
+
+        // Sync to Supabase
+        if (isSupabaseEnabled) {
+          const user = (await supabase.auth.getUser()).data.user;
+          if (user) {
+            const payload = {
+              person: p.person,
+              concept: p.concept,
+              amount: p.amount,
+              date: p.date,
+              due_date: p.dueDate,
+              note: p.note,
+              icon: p.icon,
+              account_id: p.accountId,
+            };
+            if (isOnline()) {
+              const { error } = await supabase.from('debts').update(payload).eq('id', idv);
+              if (error) console.error('Supabase update error (debts):', error);
+            } else {
+              queueMutation('debts', 'UPDATE', idv, payload);
+            }
+          }
+        }
+      },
+      removeDebt: async (idv) => {
+        const s = get();
         const prev = s.debts.find((x) => x.id === idv);
-        return { debts: s.debts.filter((x) => x.id !== idv), changeLog: [logEntry("debt", idv, "delete", `Eliminó deuda de "${prev?.person ?? ""}"`), ...s.changeLog].slice(0, 500) };
-      }),
-      addDebtPayment: (debtId, p) => set((s) => {
-        const debt = s.debts.find((x) => x.id === debtId); if (!debt) return {} as any;
+        set({ debts: s.debts.filter((x) => x.id !== idv), changeLog: [logEntry("debt", idv, "delete", `Eliminó deuda de "${prev?.person ?? ""}"`), ...s.changeLog].slice(0, 500) });
+
+        // Sync to Supabase
+        if (isSupabaseEnabled) {
+          const user = (await supabase.auth.getUser()).data.user;
+          if (user) {
+            if (isOnline()) {
+              const { error } = await supabase.from('debts').delete().eq('id', idv);
+              if (error) console.error('Supabase delete error (debts):', error);
+            } else {
+              queueMutation('debts', 'DELETE', idv);
+            }
+          }
+        }
+      },
+      addDebtPayment: async (debtId, p) => {
+        const s = get();
+        const debt = s.debts.find((x) => x.id === debtId); if (!debt) return;
         const payment: DebtPayment = { ...p, id: id() };
-        return {
+        set((s) => ({
           debts: s.debts.map((x) => x.id === debtId ? { ...x, payments: [payment, ...x.payments] } : x),
           changeLog: [logEntry("debt", debtId, "update", `Abono de ${payment.amount} a deuda de "${debt.person}"`), ...s.changeLog].slice(0, 500),
-        };
-      }),
-      removeDebtPayment: (debtId, paymentId) => set((s) => ({
-        debts: s.debts.map((x) => x.id === debtId ? { ...x, payments: x.payments.filter((p) => p.id !== paymentId) } : x),
-        changeLog: [logEntry("debt", debtId, "update", `Eliminó un abono`), ...s.changeLog].slice(0, 500),
-      })),
+        }));
+
+        // Sync to Supabase
+        if (isSupabaseEnabled) {
+          const user = (await supabase.auth.getUser()).data.user;
+          if (user) {
+            const payload = {
+              id: payment.id,
+              user_id: user.id,
+              debt_id: debtId,
+              amount: payment.amount,
+              date: payment.date,
+              note: payment.note,
+              payment_method: payment.paymentMethod,
+              account_id: payment.accountId,
+            };
+            if (isOnline()) {
+              const { error } = await supabase.from('debt_payments').insert(payload);
+              if (error) console.error('Supabase insert error (debt_payments):', error);
+            } else {
+              queueMutation('debt_payments', 'INSERT', payment.id, payload);
+            }
+          }
+        }
+      },
+      removeDebtPayment: async (debtId, paymentId) => {
+        const s = get();
+        set((s) => ({
+          debts: s.debts.map((x) => x.id === debtId ? { ...x, payments: x.payments.filter((p) => p.id !== paymentId) } : x),
+          changeLog: [logEntry("debt", debtId, "update", `Eliminó un abono`), ...s.changeLog].slice(0, 500),
+        }));
+
+        // Sync to Supabase
+        if (isSupabaseEnabled) {
+          const user = (await supabase.auth.getUser()).data.user;
+          if (user) {
+            if (isOnline()) {
+              const { error } = await supabase.from('debt_payments').delete().eq('id', paymentId);
+              if (error) console.error('Supabase delete error (debt_payments):', error);
+            } else {
+              queueMutation('debt_payments', 'DELETE', paymentId);
+            }
+          }
+        }
+      },
 
       clearChangeLog: () => set({ changeLog: [] }),
 

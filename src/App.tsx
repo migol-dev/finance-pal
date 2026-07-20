@@ -21,6 +21,7 @@ const Login = lazy(() => import("./pages/Login"));
 
 import { AuthProvider, useAuth } from '@/context/AuthContext';
 import { isSupabaseEnabled } from '@/lib/supabase';
+import { setupSyncListener } from '@/lib/sync-engine';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -115,18 +116,26 @@ function AuthGuard() {
   return <AnimatedRoutes />;
 }
 
-const App = () => (
-  <PersistQueryClientProvider client={queryClient} persistOptions={{ persister }}>
-    <TooltipProvider>
-      <AuthProvider>
-        <Toaster />
-        <Sonner />
-        <BrowserRouter>
-          <AuthGuard />
-        </BrowserRouter>
-      </AuthProvider>
-    </TooltipProvider>
-  </PersistQueryClientProvider>
-);
+const App = () => {
+  React.useEffect(() => {
+    if (isSupabaseEnabled) {
+      setupSyncListener();
+    }
+  }, []);
+
+  return (
+    <PersistQueryClientProvider client={queryClient} persistOptions={{ persister }}>
+      <TooltipProvider>
+        <AuthProvider>
+          <Toaster />
+          <Sonner />
+          <BrowserRouter>
+            <AuthGuard />
+          </BrowserRouter>
+        </AuthProvider>
+      </TooltipProvider>
+    </PersistQueryClientProvider>
+  );
+};
 
 export default App;
