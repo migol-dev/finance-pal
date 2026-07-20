@@ -4,8 +4,8 @@ import { FixedItem, Transaction, Goal, Debt, DebtPayment, ChangeLogEntry, Change
 import { Filesystem, Directory, Encoding } from "@capacitor/filesystem";
 import { Capacitor } from "@capacitor/core";
 import { supabase, isSupabaseEnabled } from "@/lib/supabase";
-import { useSyncStore } from "./sync-store";
-import { useNetwork } from "@/hooks/useNetwork";
+import { uploadReceipt, deleteReceipt } from "@/lib/supabase-storage";
+import { useAuth } from '@/context/AuthContext';
 
 export type ThemeMode = "light" | "dark";
 export type Currency = "MXN" | "USD" | "EUR" | "COP" | "ARS" | "CLP" | "PEN" | "BRL";
@@ -618,8 +618,18 @@ export const useFinance = create<State>()(
         }
       },
 
-      // Helper: save a dataURL receipt to filesystem and return stored relative path
+      // Helper: save a dataURL receipt to Supabase Storage or filesystem and return stored path/URL
       async saveReceiptFile(receiptId: string, dataUrl: string) {
+        // Try Supabase Storage first if enabled and user logged in
+        if (isSupabaseEnabled) {
+          const user = (await supabase.auth.getUser()).data.user;
+          if (user) {
+            const url = await uploadReceipt(user.id, receiptId, dataUrl);
+            if (url) return url;
+          }
+        }
+        
+        // Fallback to local filesystem
         try {
           const m = dataUrl.match(/^data:(image\/[^;]+);base64,(.*)$/);
           const base64 = m ? m[2] : dataUrl.split(",")[1];
@@ -636,6 +646,17 @@ export const useFinance = create<State>()(
 
       async deleteReceiptIfExists(receipt?: string) {
         if (!receipt) return;
+        
+        // Try Supabase Storage first if it's a Supabase URL
+        if (isSupabaseEnabled && receipt.startsWith('http')) {
+          const user = (await supabase.auth.getUser()).data.user;
+          if (user) {
+            const deleted = await deleteReceipt(user.id, receipt);
+            if (deleted) return;
+          }
+        }
+        
+        // Fallback to local filesystem
         try {
           let fname = receipt;
           if (receipt.includes("/")) fname = receipt.split("/").pop() as string;
