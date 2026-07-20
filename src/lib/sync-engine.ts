@@ -9,34 +9,76 @@ type SyncMutation = {
   recordId: string;
   payload?: any;
   createdAt: number;
+  retryCount?: number;
 };
 
-let isProcessing = false;
+const MAX_RETRIES = 3;
+const BASE_DELAY_MS = 1000;
+
+let processingLock = false;
+let abortController: AbortController | null = null;
+
+function sleep(ms: number): Promise<void> {
+  return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+async function withRetry<T>(
+  fn: () => Promise<T>,
+  retryCount = 0
+): Promise<T> {
+  try {
+    return await fn();
+  } catch (error) {
+    if (retryCount >= MAX_RETRIES) throw error;
+    
+    const delay = BASE_DELAY_MS * Math.pow(2, retryCount) + Math.random() * 1000;
+    console.warn(`Sync retry ${retryCount + 1}/${MAX_RETRIES} after ${delay}ms:`, error);
+    await sleep(delay);
+    return withRetry(fn, retryCount + 1);
+  }
+}
 
 export async function processSyncQueue(): Promise<void> {
-  if (!isSupabaseEnabled || isProcessing) return;
+  if (!isSupabaseEnabled || processingLock) return;
 
   const { session } = useAuth.getState?.() ?? { session: null };
   if (!session) return;
 
-  const { syncQueue, removeMutation, setSyncing } = useSyncStore.getState();
+  const { syncQueue, removeMutation, setSyncing, addMutation } = useSyncStore.getState();
   if (syncQueue.length === 0) return;
 
-  isProcessing = true;
+  processingLock = true;
+  abortController = new AbortController();
   setSyncing(true);
 
-  for (const mutation of syncQueue) {
-    try {
-      await applyMutation(mutation);
-      removeMutation(mutation.id);
-    } catch (error) {
-      console.error('Sync failed for mutation:', mutation, error);
-      break;
+  try {
+    for (const mutation of syncQueue) {
+      if (abortController?.signal.aborted) break;
+      
+      try {
+        await withRetry(() => applyMutation(mutation));
+        removeMutation(mutation.id);
+      } catch (error) {
+        console.error('Sync failed permanently for mutation:', mutation, error);
+        
+        // Move to dead letter queue (increment retry count, if max reached -> mark failed)
+        const retryCount = (mutation.retryCount ?? 0) + 1;
+        if (retryCount >= MAX_RETRIES) {
+          console.error('Max retries reached, removing from queue:', mutation);
+          removeMutation(mutation.id);
+          // TODO: Notify user via toast about failed sync
+        } else {
+          removeMutation(mutation.id);
+          addMutation({ ...mutation, retryCount });
+        }
+        break; // Stop processing on permanent failure
+      }
     }
+  } finally {
+    setSyncing(false);
+    processingLock = false;
+    abortController = null;
   }
-
-  setSyncing(false);
-  isProcessing = false;
 }
 
 async function applyMutation(mutation: SyncMutation): Promise<void> {
@@ -64,18 +106,28 @@ async function applyMutation(mutation: SyncMutation): Promise<void> {
 export function setupSyncListener(): void {
   if (!isSupabaseEnabled) return;
 
-  const { subscribe } = useAuth.getState?.() ?? { subscribe: () => () => {} };
+  // Debounce rapid queue changes
+  let debounceTimer: ReturnType<typeof setTimeout> | null = null;
   
   useSyncStore.subscribe((state) => {
     if (state.isSyncing) return;
     
     const { session } = useAuth.getState?.() ?? { session: null };
     if (session && state.syncQueue.length > 0) {
-      processSyncQueue();
+      if (debounceTimer) clearTimeout(debounceTimer);
+      debounceTimer = setTimeout(() => {
+        processSyncQueue();
+      }, 500);
     }
   });
 
   window.addEventListener('online', () => {
-    processSyncQueue();
+    // Small delay to let network stabilize
+    setTimeout(() => processSyncQueue(), 1000);
+  });
+
+  // Cleanup on page unload
+  window.addEventListener('beforeunload', () => {
+    if (abortController) abortController.abort();
   });
 }

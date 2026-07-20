@@ -10,6 +10,7 @@ export interface SyncMutation {
   recordId: string;
   payload?: any;
   createdAt: number;
+  retryCount?: number;
 }
 
 interface SyncState {
