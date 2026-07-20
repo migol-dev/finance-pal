@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { useFinance } from "@/store/finance-store";
+import { useHybridData } from "@/hooks/useHybridData";
 import { fmt, iconFor, IconRef, Debt, PaymentMethod, PAYMENT_METHOD_LABEL, PAYMENT_METHOD_EMOJI, fmtDate } from "@/lib/finance";
 
 const localDateNow = () => { const d = new Date(); const pad = (n: number) => String(n).padStart(2, "0"); return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`; };
@@ -19,7 +19,7 @@ import { ElegantConfirm } from "@/components/app/ElegantConfirm";
 function totalPaid(d: Debt) { return d.payments.reduce((a, p) => a + p.amount, 0); }
 
 export default function Deudas() {
-  const { debts, addDebt, updateDebt, removeDebt, addDebtPayment, removeDebtPayment } = useFinance();
+  const { debts, accounts, addDebt, updateDebt, removeDebt, addDebtPayment, removeDebtPayment } = useHybridData();
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<Debt | null>(null);
   const [payOpen, setPayOpen] = useState<Debt | null>(null);
@@ -143,7 +143,7 @@ export default function Deudas() {
             if (editing) { updateDebt(editing.id, d); toast.success("Actualizado"); }
             else { addDebt(d); toast.success("Deuda registrada"); }
             setOpen(false); setEditing(null);
-          }} />
+          }} accounts={accounts} />
         </DialogContent>
       </Dialog>
 
@@ -151,7 +151,7 @@ export default function Deudas() {
         <DialogContent className="rounded-3xl">
           <DialogHeader><DialogTitle>Registrar abono</DialogTitle></DialogHeader>
           <DialogDescription className="sr-only">Formulario para registrar un abono a la deuda</DialogDescription>
-          {payOpen && <PaymentForm debt={payOpen} onSave={(p) => { addDebtPayment(payOpen.id, p); toast.success("Abono registrado"); setPayOpen(null); }} />}
+          {payOpen && <PaymentForm debt={payOpen} onSave={(p) => { addDebtPayment(payOpen.id, p); toast.success("Abono registrado"); setPayOpen(null); }} accounts={accounts} />}
         </DialogContent>
       </Dialog>
 
@@ -275,8 +275,7 @@ function SumCard({ label, value, tone }: { label: string; value: string; tone: "
   );
 }
 
-function DebtForm({ initial, onSave }: { initial: Debt | null; onSave: (d: Omit<Debt, "id" | "payments">) => void }) {
-  const accounts = useFinance((s) => s.accounts);
+function DebtForm({ initial, onSave, accounts }: { initial: Debt | null; onSave: (d: Omit<Debt, "id" | "payments">) => void; accounts: any[] }) {
   const [person, setPerson] = useState(initial?.person ?? "");
   const [concept, setConcept] = useState(initial?.concept ?? "");
   const [amount, setAmount] = useState(initial?.amount ? String(initial.amount) : "");
@@ -320,8 +319,7 @@ function DebtForm({ initial, onSave }: { initial: Debt | null; onSave: (d: Omit<
   );
 }
 
-function PaymentForm({ debt, onSave }: { debt: Debt; onSave: (p: { amount: number; date: string; note?: string; paymentMethod?: PaymentMethod; accountId?: string }) => void }) {
-  const accounts = useFinance((s) => s.accounts);
+function PaymentForm({ debt, onSave, accounts }: { debt: Debt; onSave: (p: { amount: number; date: string; note?: string; paymentMethod?: PaymentMethod; accountId?: string }) => void; accounts: any[] }) {
   const pending = debt.amount - totalPaid(debt);
   const [amount, setAmount] = useState(String(pending > 0 ? pending : ""));
   const [date, setDate] = useState(localDateNow());
