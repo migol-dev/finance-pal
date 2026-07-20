@@ -276,6 +276,7 @@ function SumCard({ label, value, tone }: { label: string; value: string; tone: "
 }
 
 function DebtForm({ initial, onSave }: { initial: Debt | null; onSave: (d: Omit<Debt, "id" | "payments">) => void }) {
+  const accounts = useFinance((s) => s.accounts);
   const [person, setPerson] = useState(initial?.person ?? "");
   const [concept, setConcept] = useState(initial?.concept ?? "");
   const [amount, setAmount] = useState(initial?.amount ? String(initial.amount) : "");
@@ -283,13 +284,14 @@ function DebtForm({ initial, onSave }: { initial: Debt | null; onSave: (d: Omit<
   const [dueDate, setDueDate] = useState(initial?.dueDate?.slice(0, 10) ?? "");
   const [note, setNote] = useState(initial?.note ?? "");
   const [icon, setIcon] = useState<IconRef | undefined>(initial?.icon);
+  const [accountId, setAccountId] = useState<string | undefined>(initial?.accountId);
 
   return (
     <form onSubmit={(e) => {
       e.preventDefault();
       const a = parseFloat(amount);
       if (!a || !person) { toast.error("Completa nombre y monto"); return; }
-      onSave({ person, concept: concept || "Préstamo", amount: a, date: new Date(`${date}T12:00:00`).toISOString(), dueDate: dueDate ? new Date(`${dueDate}T12:00:00`).toISOString() : undefined, note: note || undefined, icon });
+      onSave({ person, concept: concept || "Préstamo", amount: a, date: new Date(`${date}T12:00:00`).toISOString(), dueDate: dueDate ? new Date(`${dueDate}T12:00:00`).toISOString() : undefined, note: note || undefined, icon, accountId });
     }} className="space-y-3">
       <div className="flex justify-center"><IconPicker value={icon} onChange={setIcon} /></div>
       <div><Label className="text-xs">Persona</Label><Input autoFocus value={person} onChange={(e) => setPerson(e.target.value)} placeholder="Ej. Juan" className="h-11 rounded-2xl" /></div>
@@ -299,25 +301,40 @@ function DebtForm({ initial, onSave }: { initial: Debt | null; onSave: (d: Omit<
         <div><Label className="text-xs">Fecha</Label><Input type="date" value={date} onChange={(e) => setDate(e.target.value)} className="h-11 rounded-2xl" /></div>
         <div><Label className="text-xs">Vence (opcional)</Label><Input type="date" value={dueDate} onChange={(e) => setDueDate(e.target.value)} className="h-11 rounded-2xl" /></div>
       </div>
+      <div>
+        <Label className="text-xs">Cuenta que presta</Label>
+        <Select value={accountId} onValueChange={setAccountId}>
+          <SelectTrigger className="h-11 rounded-2xl">
+            <SelectValue placeholder="Seleccionar cuenta" />
+          </SelectTrigger>
+          <SelectContent>
+            {accounts.map((a) => (
+              <SelectItem key={a.id} value={a.id}>{a.name}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
       <div><Label className="text-xs">Nota</Label><Input value={note} onChange={(e) => setNote(e.target.value)} className="h-11 rounded-2xl" /></div>
       <Button type="submit" className="w-full h-12 rounded-2xl gradient-primary text-primary-foreground border-0 shadow-glow font-bold">{initial ? "Guardar cambios" : "Registrar"}</Button>
     </form>
   );
 }
 
-function PaymentForm({ debt, onSave }: { debt: Debt; onSave: (p: { amount: number; date: string; note?: string; paymentMethod?: PaymentMethod }) => void }) {
+function PaymentForm({ debt, onSave }: { debt: Debt; onSave: (p: { amount: number; date: string; note?: string; paymentMethod?: PaymentMethod; accountId?: string }) => void }) {
+  const accounts = useFinance((s) => s.accounts);
   const pending = debt.amount - totalPaid(debt);
   const [amount, setAmount] = useState(String(pending > 0 ? pending : ""));
   const [date, setDate] = useState(localDateNow());
   const [note, setNote] = useState("");
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("transfer");
+  const [accountId, setAccountId] = useState<string | undefined>(debt.accountId);
 
   return (
     <form onSubmit={(e) => {
       e.preventDefault();
       const a = parseFloat(amount);
       if (!a) { toast.error("Ingresa el monto"); return; }
-      onSave({ amount: a, date: new Date(`${date}T12:00:00`).toISOString(), note: note || undefined, paymentMethod });
+      onSave({ amount: a, date: new Date(`${date}T12:00:00`).toISOString(), note: note || undefined, paymentMethod, accountId });
     }} className="space-y-3">
       <p className="text-xs text-muted-foreground">Pendiente: <span className="font-bold text-foreground">{fmt(pending)}</span></p>
       <div><Label className="text-xs">Monto</Label><Input autoFocus type="number" value={amount} onChange={(e) => setAmount(e.target.value)} className="h-12 text-xl font-bold rounded-2xl" /></div>
@@ -334,6 +351,19 @@ function PaymentForm({ debt, onSave }: { debt: Debt; onSave: (p: { amount: numbe
             </SelectContent>
           </Select>
         </div>
+      </div>
+      <div>
+        <Label className="text-xs">Cuenta de destino</Label>
+        <Select value={accountId} onValueChange={setAccountId}>
+          <SelectTrigger className="h-11 rounded-2xl">
+            <SelectValue placeholder="Seleccionar cuenta" />
+          </SelectTrigger>
+          <SelectContent>
+            {accounts.map((a) => (
+              <SelectItem key={a.id} value={a.id}>{a.name}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
       </div>
       <div><Label className="text-xs">Nota</Label><Input value={note} onChange={(e) => setNote(e.target.value)} className="h-11 rounded-2xl" /></div>
       <Button type="submit" className="w-full h-12 rounded-2xl gradient-primary text-primary-foreground border-0 shadow-glow font-bold">Guardar abono</Button>

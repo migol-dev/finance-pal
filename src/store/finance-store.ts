@@ -56,7 +56,7 @@ interface State {
   addGoal: (g: Omit<Goal, "id">) => void;
   updateGoal: (id: string, p: Partial<Goal>) => void;
   removeGoal: (id: string) => void;
-  contributeGoal: (id: string, amount: number, date?: string) => void;
+  contributeGoal: (id: string, amount: number, date?: string, accountId?: string) => void;
 
   addDebt: (d: Omit<Debt, "id" | "payments">) => void;
   updateDebt: (id: string, p: Partial<Debt>) => void;
@@ -152,7 +152,7 @@ function sanitizeFixed(raw: any): FixedItem | null {
 
 function sanitizeTx(raw: any): Transaction | null {
   if (!isObj(raw) || !isStr(raw.concept) || !isNum(raw.amount)) return null;
-  const types = ["income","expense","saving"] as const;
+  const types = ["income","expense","saving","transfer"] as const;
   const pays = ["cash","transfer","card","other"] as const;
   return {
     id: isStr(raw.id) ? raw.id : id(),
@@ -207,6 +207,7 @@ function sanitizeDebt(raw: any): Debt | null {
         date: isStr(p.date) ? p.date : new Date().toISOString(),
         note: isStr(p.note) ? p.note : undefined,
         paymentMethod: inSet(pays, p.paymentMethod) ? p.paymentMethod : undefined,
+        accountId: isStr(p.accountId) ? p.accountId : undefined,
       }))
     : [];
   return {
@@ -219,6 +220,7 @@ function sanitizeDebt(raw: any): Debt | null {
     note: isStr(raw.note) ? raw.note : undefined,
     icon: sanitizeIcon(raw.icon),
     payments,
+    accountId: isStr(raw.accountId) ? raw.accountId : undefined,
   } as Debt;
 }
 
@@ -421,6 +423,13 @@ export const useFinance = create<State>()(
           if (exists) return;
         }
         const nv = { ...t, id: id() } as Transaction;
+
+        // Enforce cash account if paymentMethod is cash
+        if (nv.paymentMethod === "cash") {
+          const cashAcc = s.accounts.find(a => a.type === "cash");
+          if (cashAcc) nv.accountId = cashAcc.id;
+        }
+
         // If receipt is a data URL and running on native, persist it and replace with path
         if (typeof nv.receipt === "string" && nv.receipt.startsWith("data:") && Capacitor.isNativePlatform()) {
           const saved = await (get() as any).saveReceiptFile(nv.id, nv.receipt);
@@ -432,6 +441,13 @@ export const useFinance = create<State>()(
         const s = get();
         const prev = s.transactions.find((x) => x.id === idv); if (!prev) return;
         const patch = { ...p } as Partial<Transaction>;
+
+        // Enforce cash account if paymentMethod is cash
+        if (patch.paymentMethod === "cash") {
+          const cashAcc = s.accounts.find(a => a.type === "cash");
+          if (cashAcc) patch.accountId = cashAcc.id;
+        }
+
         // If new receipt is a data URL, persist it then delete old
         if (typeof p.receipt === "string" && p.receipt.startsWith("data:") && Capacitor.isNativePlatform()) {
           const saved = await (get() as any).saveReceiptFile(idv, p.receipt as string);
@@ -450,6 +466,11 @@ export const useFinance = create<State>()(
       },
 
       addAccount: (a) => set((s) => {
+        if (a.type === "cash" && s.accounts.some(x => x.type === "cash")) {
+          // In a real app we might throw or return error, but here we just ignore or replace.
+          // Let's enforce it in the UI, but here we'll prevent it.
+          return {};
+        }
         const nv = { ...a, id: id() } as Account;
         return { accounts: [nv, ...s.accounts] };
       }),
@@ -489,18 +510,20 @@ export const useFinance = create<State>()(
         const prev = s.goals.find((x) => x.id === idv);
         return { goals: s.goals.filter((x) => x.id !== idv), changeLog: [logEntry("goal", idv, "delete", `Eliminó meta "${prev?.name ?? ""}"`), ...s.changeLog].slice(0, 500) };
       }),
-      contributeGoal: (idv, amount, date) => set((s) => {
+      contributeGoal: (idv, amount, date, accountId) => set((s) => {
         const g = s.goals.find((x) => x.id === idv);
         const txId = id();
         const when = date ?? new Date().toISOString();
         const entry = { id: id(), date: when, amount };
+        const method = s.accounts.find(a => a.id === accountId)?.type === "bank" ? "transfer" : "cash";
+
         return {
           goals: s.goals.map((x) => x.id === idv ? {
             ...x,
             saved: Math.max(0, x.saved + amount),
             contributions: [...(x.contributions ?? []), entry],
           } : x),
-          transactions: [{ id: txId, type: amount >= 0 ? "saving" : "income", category: "Meta", concept: `${amount >= 0 ? "Aporte" : "Retiro"} ${g?.name ?? "Meta"}`, amount: Math.abs(amount), date: when }, ...s.transactions],
+          transactions: [{ id: txId, type: amount >= 0 ? "saving" : "income", category: "Meta", concept: `${amount >= 0 ? "Aporte" : "Retiro"} ${g?.name ?? "Meta"}`, amount: Math.abs(amount), date: when, accountId, paymentMethod: method }, ...s.transactions],
           changeLog: [logEntry("goal", idv, "update", `${amount >= 0 ? "Aportó" : "Retiró"} ${Math.abs(amount)} a "${g?.name ?? ""}"`, [{ field: "saved", from: g?.saved, to: (g?.saved ?? 0) + amount }]), ...s.changeLog].slice(0, 500),
         };
       }),

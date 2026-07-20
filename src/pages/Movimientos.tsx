@@ -18,7 +18,7 @@ import { IconDisplay } from "@/components/app/IconDisplay";
 import { IconPicker } from "@/components/app/IconPicker";
 import { ElegantConfirm } from "@/components/app/ElegantConfirm";
 
-type TxType = "income" | "expense" | "saving";
+type TxType = "income" | "expense" | "saving" | "transfer";
 
 export default function Movimientos() {
   const { transactions, addTx, updateTx, removeTx, activeYear, activeMonth, debts } = useFinance();
@@ -406,8 +406,8 @@ export default function Movimientos() {
                         </p>
                       </button>
                       <div className="text-right">
-                        <p className={`font-bold text-sm ${t.type === "income" ? "text-success" : t.type === "saving" ? "text-secondary" : "text-destructive"}`}>
-                          {t.type === "income" ? "+" : "-"}{fmt(t.amount)}
+                        <p className={`font-bold text-sm ${t.type === "income" ? "text-success" : t.type === "saving" ? "text-secondary" : t.type === "transfer" ? "text-blue-500" : "text-destructive"}`}>
+                          {t.type === "income" ? "+" : t.type === "transfer" ? "⇄" : "-"}{fmt(t.amount)}
                         </p>
                       </div>
                       <div className="flex flex-col gap-0.5">
@@ -454,16 +454,26 @@ function TxForm({ initial, onSave }: { initial: Partial<Transaction> & { type: T
   const [receiptData, setReceiptData] = useState<string | undefined>((initial as any)?.receipt ?? undefined);
   const cats = Object.keys(CATEGORY_EMOJI);
 
+  const cashAccount = accounts.find((a) => a.type === "cash");
+  const bankAccounts = accounts.filter((a) => a.type !== "cash");
+
   useEffect(() => {
     if (accountId) return;
     if (paymentMethod === "cash") {
-      const cash = accounts.find((a) => a.type === "cash");
-      if (cash) setAccountId(cash.id);
+      if (cashAccount) setAccountId(cashAccount.id);
     } else {
-      const bank = accounts.find((a) => a.type === "bank") ?? accounts[0];
+      const bank = bankAccounts[0] ?? accounts[0];
       if (bank) setAccountId(bank.id);
     }
-  }, [accounts, paymentMethod, accountId]);
+  }, [accounts, paymentMethod, accountId, cashAccount, bankAccounts]);
+
+  // Set default category for transfer
+  useEffect(() => {
+    if (type === "transfer" && category === "Otros") {
+      setCategory("Otros"); // Maybe a special category?
+      if (!concept) setConcept("Traspaso entre cuentas");
+    }
+  }, [type]);
 
   return (
     <form onSubmit={async (e) => {
@@ -472,10 +482,17 @@ function TxForm({ initial, onSave }: { initial: Partial<Transaction> & { type: T
       if (!a || !concept) { toast.error("Completa monto y concepto"); return; }
       // Parse as LOCAL date (noon) to avoid timezone shifting the day backwards
       const payload: any = { type, category, concept, amount: a, date: new Date(`${date}T12:00:00`).toISOString(), note: note || undefined, icon, paymentMethod };
-      if (paymentMethod === "transfer") {
-        // require origin and destination
+
+      if (type === "transfer") {
         if (!accountId) { toast.error("Selecciona la cuenta origen"); return; }
         if (!transferToAccountId) { toast.error("Selecciona la cuenta destino"); return; }
+        if (accountId === transferToAccountId) { toast.error("La cuenta origen y destino no pueden ser la misma"); return; }
+        payload.accountId = accountId;
+        payload.transferToAccountId = transferToAccountId;
+      } else if (paymentMethod === "transfer") {
+        // require origin and destination for external transfer or internal
+        if (!accountId) { toast.error(type === "income" ? "Selecciona la cuenta de destino" : "Selecciona la cuenta origen"); return; }
+        if (type !== "income" && !transferToAccountId) { toast.error("Selecciona la cuenta destino"); return; }
         payload.accountId = accountId;
         if (transferToAccountId === "__external") {
           // validate external payee
@@ -483,8 +500,7 @@ function TxForm({ initial, onSave }: { initial: Partial<Transaction> & { type: T
           if (!/^[0-9]{18}$/.test((c || "").replace(/\s+/g, ""))) { toast.error("CLABE inválida (18 dígitos)"); return; }
           if (!externalPayee?.bank || !externalPayee?.name) { toast.error("Completa los datos del beneficiario externo"); return; }
           payload.externalPayee = externalPayee;
-        } else {
-          payload.accountId = accountId;
+        } else if (transferToAccountId) {
           payload.transferToAccountId = transferToAccountId;
         }
         if (receiptData) {
@@ -511,17 +527,21 @@ function TxForm({ initial, onSave }: { initial: Partial<Transaction> & { type: T
         if (!accountId) { toast.error("Selecciona la cuenta asociada a la tarjeta"); return; }
         payload.accountId = accountId;
       } else {
-        // cash or other: assume cash, no account required; if account selected, include it
-        if (accountId) payload.accountId = accountId;
+        // cash or other
+        if (paymentMethod === "cash" && cashAccount) {
+          payload.accountId = cashAccount.id;
+        } else if (accountId) {
+          payload.accountId = accountId;
+        }
       }
 
       onSave(payload as Omit<Transaction, "id">);
     }} className="space-y-3">
-      <div className="grid grid-cols-3 gap-2">
-        {(["expense", "income", "saving"] as const).map((t) => (
+      <div className="grid grid-cols-2 gap-2">
+        {(["expense", "income", "saving", "transfer"] as const).map((t) => (
           <button key={t} type="button" onClick={() => setType(t)}
-            className={`h-12 rounded-2xl text-sm font-semibold capitalize transition ${type === t ? (t === "income" ? "gradient-success text-white" : t === "saving" ? "gradient-ocean text-white" : "gradient-primary text-white") + " shadow-glow" : "bg-muted text-muted-foreground"}`}>
-            {t === "income" ? "Ingreso" : t === "saving" ? "Ahorro" : "Gasto"}
+            className={`h-12 rounded-2xl text-sm font-semibold capitalize transition ${type === t ? (t === "income" ? "gradient-success text-white" : t === "saving" ? "gradient-ocean text-white" : t === "transfer" ? "gradient-secondary text-white" : "gradient-primary text-white") + " shadow-glow" : "bg-muted text-muted-foreground"}`}>
+            {t === "income" ? "Ingreso" : t === "saving" ? "Ahorro" : t === "transfer" ? "Traspaso" : "Gasto"}
           </button>
         ))}
       </div>
@@ -532,7 +552,7 @@ function TxForm({ initial, onSave }: { initial: Partial<Transaction> & { type: T
       </div>
       <div>
         <Label className="text-xs">Concepto</Label>
-        <Input value={concept} onChange={(e) => setConcept(e.target.value)} placeholder="Ej. Café con amigos" className="h-11 rounded-2xl" />
+        <Input value={concept} onChange={(e) => setConcept(e.target.value)} placeholder={type === "transfer" ? "Traspaso entre cuentas" : "Ej. Café con amigos"} className="h-11 rounded-2xl" />
       </div>
       <div className="grid grid-cols-2 gap-2">
         <div>
@@ -549,40 +569,84 @@ function TxForm({ initial, onSave }: { initial: Partial<Transaction> & { type: T
           <Input type="date" value={date} onChange={(e) => setDate(e.target.value)} className="h-11 rounded-2xl" />
         </div>
       </div>
-      <div>
-        <Label className="text-xs">Método de pago</Label>
-        <Select value={paymentMethod} onValueChange={(v) => setPaymentMethod(v as PaymentMethod)}>
-          <SelectTrigger className="h-11 rounded-2xl"><SelectValue /></SelectTrigger>
-          <SelectContent>
-            {(Object.keys(PAYMENT_METHOD_LABEL) as PaymentMethod[]).map((k) => (
-              <SelectItem key={k} value={k}>{PAYMENT_METHOD_EMOJI[k]} {PAYMENT_METHOD_LABEL[k]}</SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      </div>
-      {/* Show account selector only for transfer or card (bank-related) */}
-      {(paymentMethod === "transfer" || paymentMethod === "card") && (
+
+      {type !== "transfer" && (
         <div>
-          <Label className="text-xs">Cuenta origen</Label>
-          <Select value={accountId} onValueChange={(v) => setAccountId(v)}>
+          <Label className="text-xs">Método de pago</Label>
+          <Select value={paymentMethod} onValueChange={(v) => {
+            const m = v as PaymentMethod;
+            setPaymentMethod(m);
+            if (m === "cash" && cashAccount) setAccountId(cashAccount.id);
+            else if ((m === "card" || m === "transfer") && accountId === cashAccount?.id) setAccountId(bankAccounts[0]?.id);
+          }}>
             <SelectTrigger className="h-11 rounded-2xl"><SelectValue /></SelectTrigger>
             <SelectContent>
-              {accounts.map((a: Account) => (
-                <SelectItem key={a.id} value={a.id}>{a.name} {a.type === "cash" ? "· Efectivo" : "· Banco"}</SelectItem>
+              {(Object.keys(PAYMENT_METHOD_LABEL) as PaymentMethod[]).map((k) => (
+                <SelectItem key={k} value={k}>{PAYMENT_METHOD_EMOJI[k]} {PAYMENT_METHOD_LABEL[k]}</SelectItem>
               ))}
             </SelectContent>
           </Select>
         </div>
       )}
-      {/* Transfer destination */}
-      {paymentMethod === "transfer" && (
+
+      {/* Account Selectors */}
+      <div className="space-y-3">
+        {/* Origin/Main Account */}
+        {((type === "transfer") || (type !== "income" && paymentMethod !== "cash")) && (
+          <div>
+            <Label className="text-xs">{type === "transfer" ? "Cuenta origen" : "Cuenta"}</Label>
+            <Select value={accountId} onValueChange={(v) => setAccountId(v)}>
+              <SelectTrigger className="h-11 rounded-2xl"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                {/* Filter accounts based on payment method: cash only for cash, banks for card/transfer */}
+                {paymentMethod === "cash" && cashAccount && (
+                  <SelectItem value={cashAccount.id}>{cashAccount.name} · Efectivo</SelectItem>
+                )}
+                {(paymentMethod === "card" || paymentMethod === "transfer" || type === "transfer") && (
+                  <>
+                    {accounts.map((a: Account) => (
+                      <SelectItem key={a.id} value={a.id}>{a.name} {a.type === "cash" ? "· Efectivo" : "· Banco"}</SelectItem>
+                    ))}
+                  </>
+                )}
+              </SelectContent>
+            </Select>
+          </div>
+        )}
+
+        {/* Destination Account for Income or Transfer */}
+        {(type === "income" || type === "transfer") && (
+          <div>
+            <Label className="text-xs">{type === "transfer" ? "Cuenta destino" : "Cuenta de destino"}</Label>
+            <Select value={type === "transfer" ? transferToAccountId : accountId} onValueChange={(v) => type === "transfer" ? setTransferToAccountId(v) : setAccountId(v)}>
+              <SelectTrigger className="h-11 rounded-2xl"><SelectValue placeholder={type === "transfer" ? "Seleccione destino" : "Seleccione cuenta"} /></SelectTrigger>
+              <SelectContent>
+                {/* For income with cash payment method, strictly show cash account */}
+                {type === "income" && paymentMethod === "cash" && cashAccount && (
+                  <SelectItem value={cashAccount.id}>{cashAccount.name} · Efectivo</SelectItem>
+                )}
+                {/* For transfer or income with other methods, show all or bank accounts */}
+                {(type === "transfer" || (type === "income" && paymentMethod !== "cash")) && (
+                  <>
+                    {accounts.map((a: Account) => (
+                      <SelectItem key={a.id} value={a.id}>{a.name} {a.type === "cash" ? "· Efectivo" : "· Banco"}</SelectItem>
+                    ))}
+                  </>
+                )}
+              </SelectContent>
+            </Select>
+          </div>
+        )}
+      </div>
+
+      {/* External Payee for transfers */}
+      {type !== "transfer" && paymentMethod === "transfer" && type !== "income" && (
         <div>
-          <Label className="text-xs">Cuenta destino</Label>
-          <Select value={transferToAccountId ?? ""} onValueChange={(v) => setTransferToAccountId(v || undefined)}>
-            <SelectTrigger className="h-11 rounded-2xl"><SelectValue /></SelectTrigger>
+          <Label className="text-xs">Destinatario</Label>
+          <Select value={transferToAccountId} onValueChange={(v) => setTransferToAccountId(v || undefined)}>
+            <SelectTrigger className="h-11 rounded-2xl"><SelectValue placeholder="Seleccione destinatario" /></SelectTrigger>
             <SelectContent>
-              <SelectItem value="">Seleccione destino</SelectItem>
-              {accounts.map((a: Account) => (
+              {accounts.filter(a => a.id !== accountId).map((a: Account) => (
                 <SelectItem key={a.id} value={a.id}>Cuenta propia: {a.name}</SelectItem>
               ))}
               <SelectItem value="__external">Cuenta externa (otra persona)</SelectItem>

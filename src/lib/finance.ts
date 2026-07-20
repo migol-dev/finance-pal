@@ -66,7 +66,7 @@ export interface FixedItem {
 
 export interface Transaction {
   id: string;
-  type: "income" | "expense" | "saving";
+  type: "income" | "expense" | "saving" | "transfer";
   category: string;
   concept: string;
   amount: number;
@@ -107,6 +107,7 @@ export interface DebtPayment {
   date: string;
   note?: string;
   paymentMethod?: PaymentMethod;
+  accountId?: string;
 }
 
 /** Money someone owes you */
@@ -120,6 +121,7 @@ export interface Debt {
   note?: string;
   icon?: IconRef;
   payments: DebtPayment[];
+  accountId?: string;
 }
 
 export type ChangeAction = "create" | "update" | "delete";
@@ -135,11 +137,12 @@ export interface ChangeLogEntry {
   changes?: { field: string; from?: unknown; to?: unknown }[];
 }
 
-export const TYPE_LABEL: Record<ItemType, string> = {
+export const TYPE_LABEL: Record<ItemType | "transfer", string> = {
   income_fixed: "Ingreso fijo",
   expense_fixed: "Gasto fijo",
   expense_variable: "Gasto variable",
   saving_fixed: "Ahorro fijo",
+  transfer: "Traspaso",
 };
 
 export const FREQ_LABEL: Record<Frequency, string> = {
@@ -233,36 +236,75 @@ export function parseDateLocal(d: string | Date): Date {
 }
 
 /** Compute per-account balances by applying transactions to each account's initialBalance. */
-export function computeBalances(accounts: Account[], transactions: Transaction[]) {
+export function computeBalances(accounts: Account[], transactions: Transaction[], debts: Debt[] = [], endDate?: Date) {
   const map: Record<string, number> = {};
   for (const a of accounts) map[a.id] = (a.initialBalance ?? 0);
 
-  // helper to resolve cash account if tx has no accountId
+  // Fallback helpers
   const cashAccount = accounts.find((x) => x.type === "cash");
+  const bankAccount = accounts.find((x) => x.type === "bank") || cashAccount;
+  const firstAccount = accounts[0];
+
+  const getFallbackId = (method?: PaymentMethod) => {
+    if (method === "cash") return cashAccount?.id;
+    if (method === "transfer" || method === "card") return bankAccount?.id;
+    // For "other" or undefined, default to cash if it exists
+    return cashAccount?.id ?? firstAccount?.id;
+  };
+
+  const endTs = endDate ? endDate.getTime() : Infinity;
 
   for (const t of transactions) {
-    // Determine origin account: prefer explicit accountId, fall back to cash account for cash payments
-    const originId = t.accountId ?? (t.paymentMethod === "cash" && cashAccount ? cashAccount.id : undefined);
+    const d = parseDateLocal(t.date);
+    if (d.getTime() > endTs) continue;
+
+    // Determine origin account: prefer explicit accountId, fall back based on payment method
+    const originId = t.accountId ?? getFallbackId(t.paymentMethod);
 
     // Handle internal transfers specially: debit origin and credit destination
-    if (t.transferToAccountId) {
+    if (t.type === "transfer" || t.transferToAccountId) {
       if (originId) {
         map[originId] = (map[originId] ?? 0) - Math.abs(t.amount);
       }
       // credit destination only if it exists among known accounts
-      const destExists = accounts.some((a) => a.id === t.transferToAccountId);
+      const destId = t.transferToAccountId;
+      const destExists = destId && accounts.some((a) => a.id === destId);
       if (destExists) {
-        map[t.transferToAccountId] = (map[t.transferToAccountId] ?? 0) + Math.abs(t.amount);
+        map[destId!] = (map[destId!] ?? 0) + Math.abs(t.amount);
       }
       continue;
     }
 
-    if (!originId) continue; // nothing to apply
+    if (!originId || map[originId] === undefined) continue;
 
     // For normal transactions: incomes add, expenses and savings subtract
     const signed = (t.type === "income") ? Math.abs(t.amount) : -Math.abs(t.amount);
     map[originId] = (map[originId] ?? 0) + signed;
   }
+
+  // Also include debt-related movements
+  for (const d of debts) {
+    const debtDate = parseDateLocal(d.date);
+    if (debtDate.getTime() <= endTs) {
+      // ONLY apply to balance if accountId is explicitly set for the debt creation
+      // This prevents "surprise" negative balances from old debts with no account assigned.
+      if (d.accountId && map[d.accountId] !== undefined) {
+        map[d.accountId] -= d.amount;
+      }
+    }
+
+    for (const p of d.payments) {
+      const payDate = parseDateLocal(p.date);
+      if (payDate.getTime() <= endTs) {
+        // For payments, if no accountId is set, fall back to payment method
+        const payAccountId = p.accountId ?? getFallbackId(p.paymentMethod);
+        if (payAccountId && map[payAccountId] !== undefined) {
+          map[payAccountId] += p.amount;
+        }
+      }
+    }
+  }
+
   return map;
 }
 

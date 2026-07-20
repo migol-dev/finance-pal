@@ -744,6 +744,7 @@ function FixedForm({ initial, onSave }: { initial: FixedItem | null; onSave: (i:
 }
 
 function AccountForm({ initial, onSave }: { initial: Account | null; onSave: (a: Omit<Account, "id">) => void }) {
+  const accounts = useFinance((s) => s.accounts);
   const [name, setName] = useState(initial?.name ?? "");
   const [type, setType] = useState<Account["type"]>(initial?.type ?? "bank");
   const [initialBalance, setInitialBalance] = useState(initial?.initialBalance ? String(initial?.initialBalance) : "0");
@@ -752,6 +753,8 @@ function AccountForm({ initial, onSave }: { initial: Account | null; onSave: (a:
   const [clabe, setClabe] = useState(initial?.clabe ?? "");
   const [bankName, setBankName] = useState(initial?.bank ?? "");
   const [holderName, setHolderName] = useState(initial?.holderName ?? "");
+
+  const hasCashAccount = accounts.some(a => a.type === "cash" && a.id !== initial?.id);
 
   return (
     <form onSubmit={(e) => {
@@ -765,9 +768,8 @@ function AccountForm({ initial, onSave }: { initial: Account | null; onSave: (a:
       if (type === "bank") {
         // Validate CLABE (18 numeric digits)
         const onlyDigits = (clabe || "").replace(/\s+/g, "");
-        if (!/^[0-9]{18}$/.test(onlyDigits)) { toast.error("CLABE inválida. Debe contener 18 dígitos."); return; }
-        if (!bankName.trim()) { toast.error("Nombre del banco requerido"); return; }
-        if (!holderName.trim()) { toast.error("Nombre del titular requerido"); return; }
+        if (onlyDigits && !/^[0-9]{18}$/.test(onlyDigits)) { toast.error("CLABE inválida. Debe contener 18 dígitos."); return; }
+        // Bank name and holder optional if not provided
       }
       onSave({ name: name.trim(), type, initialBalance: bal, currency, denominations: denoms && denoms.length > 0 ? denoms : undefined, clabe: clabe.trim() || undefined, bank: bankName.trim() || undefined, holderName: holderName.trim() || undefined });
     }} className="space-y-3">
@@ -778,7 +780,7 @@ function AccountForm({ initial, onSave }: { initial: Account | null; onSave: (a:
           <SelectTrigger className="h-11 rounded-2xl"><SelectValue /></SelectTrigger>
           <SelectContent>
             <SelectItem value="bank">Cuenta bancaria</SelectItem>
-            <SelectItem value="cash">Efectivo</SelectItem>
+            <SelectItem value="cash" disabled={hasCashAccount}>Efectivo {hasCashAccount && "(Ya existe una)"}</SelectItem>
             <SelectItem value="other">Otro</SelectItem>
           </SelectContent>
         </Select>

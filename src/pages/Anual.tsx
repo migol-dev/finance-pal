@@ -48,6 +48,7 @@ export default function Anual() {
   const [tab, setTab] = useState<Tab>("general");
 
   /* ---------- Aggregate per month, current and previous year ---------- */
+  const accounts = useFinance((s) => s.accounts);
   const buildMonthly = useMemo(() => {
     return (year: number): MonthRow[] => {
       return MONTHS.map((m, idx) => {
@@ -62,6 +63,11 @@ export default function Anual() {
         for (const t of transactions) {
           const d = parseDateLocal(t.date);
           if (d.getMonth() !== idx || d.getFullYear() !== year) continue;
+
+          // Internal transfer: ignore for stats
+          const isInternalTransfer = t.type === "transfer" || (t.transferToAccountId && accounts.some((a) => a.id === t.transferToAccountId));
+          if (isInternalTransfer) continue;
+
           if (t.type === "income") income += t.amount;
           else if (t.type === "saving") saving += t.amount;
           else expense += t.amount;
@@ -74,18 +80,18 @@ export default function Anual() {
             if (pd.getFullYear() === year && pd.getMonth() === idx) income += p.amount;
           }
         }
-        const tasa = income > 0 ? (saving / income) * 100 : 0;
+        const tasa = income > 0 ? Math.max(0, (saving / income) * 100) : 0;
         return {
           mes: MONTHS_SHORT[idx], idx,
-          Ingresos: Math.round(income),
-          Gastos: Math.round(expense),
-          Ahorros: Math.round(saving),
+          Ingresos: Math.round(Math.max(0, income)),
+          Gastos: Math.round(Math.max(0, expense)),
+          Ahorros: Math.round(Math.max(0, saving)),
           Neto: Math.round(income - expense - saving),
           Tasa: Math.round(tasa * 10) / 10,
         };
       });
     };
-  }, [fixedItems, transactions, debts]);
+  }, [fixedItems, transactions, debts, accounts]);
 
   const monthly = useMemo<MonthRow[]>(() => buildMonthly(activeYear), [buildMonthly, activeYear]);
   const monthlyPrev = useMemo<MonthRow[]>(() => buildMonthly(activeYear - 1), [buildMonthly, activeYear]);
@@ -128,15 +134,23 @@ export default function Anual() {
       if (total > 0) map[i.category] = (map[i.category] || 0) + total;
     });
     transactions.filter((t) => t.type === "expense" && parseDateLocal(t.date).getFullYear() === activeYear)
-      .forEach((t) => { map[t.category] = (map[t.category] || 0) + t.amount; });
+      .forEach((t) => {
+        // Exclude internal transfers
+        const isInternalTransfer = t.type === "transfer" || (t.transferToAccountId && accounts.some((a) => a.id === t.transferToAccountId));
+        if (isInternalTransfer) return;
+        map[t.category] = (map[t.category] || 0) + t.amount;
+      });
     return Object.entries(map).map(([name, value]) => ({ name, value })).sort((a, b) => b.value - a.value);
-  }, [fixedItems, transactions, activeYear]);
+  }, [fixedItems, transactions, activeYear, accounts]);
 
   /* ---------- Top concepts (variable expenses) ---------- */
   const topConcepts = useMemo(() => {
     const map: Record<string, { amount: number; count: number; sample: any }> = {};
     transactions.filter((t) => t.type === "expense" && parseDateLocal(t.date).getFullYear() === activeYear)
       .forEach((t) => {
+        // Exclude internal transfers
+        const isInternalTransfer = t.type === "transfer" || (t.transferToAccountId && accounts.some((a) => a.id === t.transferToAccountId));
+        if (isInternalTransfer) return;
         const k = t.concept.trim();
         if (!map[k]) map[k] = { amount: 0, count: 0, sample: t };
         map[k].amount += t.amount;
@@ -144,13 +158,20 @@ export default function Anual() {
       });
     return Object.entries(map).map(([name, v]) => ({ name, ...v }))
       .sort((a, b) => b.amount - a.amount).slice(0, 6);
-  }, [transactions, activeYear]);
+  }, [transactions, activeYear, accounts]);
 
   /* ---------- Payment methods ---------- */
   const byMethod = useMemo(() => {
     const map: Record<PaymentMethod, number> = { cash: 0, transfer: 0, card: 0, other: 0 };
     transactions.filter((t) => t.type === "expense" && parseDateLocal(t.date).getFullYear() === activeYear)
-      .forEach((t) => { if (t.paymentMethod) map[t.paymentMethod] += t.amount; });
+      .forEach((t) => {
+        if (t.paymentMethod) {
+          // Exclude internal transfers
+          const isInternalTransfer = t.type === "transfer" || (t.transferToAccountId && accounts.some((a) => a.id === t.transferToAccountId));
+          if (isInternalTransfer) return;
+          map[t.paymentMethod] += t.amount;
+        }
+      });
     fixedItems.filter((i) => i.type === "expense_fixed" || i.type === "expense_variable").forEach((i) => {
       if (!i.paymentMethod) return;
       let total = 0;
@@ -161,7 +182,7 @@ export default function Anual() {
       .map((k) => ({ key: k, name: PAYMENT_METHOD_LABEL[k], emoji: PAYMENT_METHOD_EMOJI[k], value: Math.round(map[k]) }))
       .filter((x) => x.value > 0)
       .sort((a, b) => b.value - a.value);
-  }, [transactions, fixedItems, activeYear]);
+  }, [transactions, fixedItems, activeYear, accounts]);
 
   /* ---------- Goals progress this year ---------- */
   const goalsThisYear = useMemo(() => goals.map((g) => {

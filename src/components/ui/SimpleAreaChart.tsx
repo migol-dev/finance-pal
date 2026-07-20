@@ -108,7 +108,7 @@ export default function SimpleAreaChart({
 
         {/* reference lines */}
         {(referenceLines || []).map((rl, i) => (
-          <line key={i} x1={margin.left} x2={margin.left + chartW} y1={y(rl.value)} y2={y(rl.value)} stroke="#ffffff88" strokeDasharray="3 3" />
+          <line key={i} x1={margin.left} x2={margin.left + chartW} y1={memo.y(rl.value)} y2={memo.y(rl.value)} stroke="#ffffff88" strokeDasharray="3 3" />
         ))}
 
         {/* area gradients */}
