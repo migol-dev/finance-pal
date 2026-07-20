@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { useFinance } from "@/store/finance-store";
+import { useHybridData } from "@/hooks/useHybridData";
 import { fmt, CATEGORY_EMOJI, MONTHS, iconFor, IconRef, Transaction, PaymentMethod, PAYMENT_METHOD_LABEL, PAYMENT_METHOD_EMOJI, fmtDate, parseDateLocal, Account } from "@/lib/finance";
 import { Header } from "@/components/app/Header";
 import { Plus, Trash2, Search, Pencil, HandCoins, Calendar, X, SlidersHorizontal } from "lucide-react";
@@ -21,10 +21,7 @@ import { ElegantConfirm } from "@/components/app/ElegantConfirm";
 type TxType = "income" | "expense" | "saving" | "transfer";
 
 export default function Movimientos() {
-  const { transactions, addTx, updateTx, removeTx, activeYear, activeMonth, debts } = useFinance();
-  const accounts = useFinance((s) => s.accounts);
-  const syncFiltersToURL = useFinance((s) => s.syncFiltersToURL);
-  const setSyncFiltersToURL = useFinance((s) => s.setSyncFiltersToURL);
+  const { transactions, addTx, updateTx, removeTx, activeYear, activeMonth, debts, accounts, syncFiltersToURL, setSyncFiltersToURL } = useHybridData();
   const navigate = useNavigate();
   const [params, setParams] = useSearchParams();
   const [open, setOpen] = useState(false);
