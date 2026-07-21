@@ -99,7 +99,8 @@ function generateSecureId(): string {
   crypto.getRandomValues(array);
   array[6] = (array[6] & 0x0f) | 0x40; // version 4
   array[8] = (array[8] & 0x3f) | 0x80; // variant 10
-  return Array.from(array, b => b.toString(16).padStart(2, '0')).join('');
+  const hex = Array.from(array, b => b.toString(16).padStart(2, '0')).join('');
+  return `${hex.slice(0,8)}-${hex.slice(8,12)}-${hex.slice(12,16)}-${hex.slice(16,20)}-${hex.slice(20)}`;
 }
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -146,7 +147,7 @@ function sanitizeFixed(raw: any): FixedItem | null {
   const prios = ["low","medium","high"] as const;
   const pays = ["cash","transfer","card","other"] as const;
   return {
-    id: isStr(raw.id) ? raw.id : generateSecureId(),
+    id: isStr(raw.id) && isValidUUID(raw.id) ? raw.id : generateSecureId(),
     type: inSet(types, raw.type) ? raw.type : "expense_fixed",
     category: isStr(raw.category) ? raw.category : "Otros",
     concept: raw.concept,
@@ -161,7 +162,7 @@ function sanitizeFixed(raw: any): FixedItem | null {
     payWeekDay: isNum(raw.payWeekDay) ? raw.payWeekDay : undefined,
     icon: sanitizeIcon(raw.icon),
     paymentMethod: inSet(pays, raw.paymentMethod) ? raw.paymentMethod : undefined,
-    accountId: isStr(raw.accountId) ? raw.accountId : undefined,
+    accountId: isStr(raw.accountId) && isValidUUID(raw.accountId) ? raw.accountId : undefined,
   };
 }
 
@@ -170,7 +171,7 @@ function sanitizeTx(raw: any): Transaction | null {
   const types = ["income","expense","saving","transfer"] as const;
   const pays = ["cash","transfer","card","other"] as const;
   return {
-    id: isStr(raw.id) ? raw.id : generateSecureId(),
+    id: isStr(raw.id) && isValidUUID(raw.id) ? raw.id : generateSecureId(),
     type: inSet(types, raw.type) ? raw.type : "expense",
     category: isStr(raw.category) ? raw.category : "Otros",
     concept: raw.concept,
@@ -179,9 +180,9 @@ function sanitizeTx(raw: any): Transaction | null {
     note: isStr(raw.note) ? raw.note : undefined,
     icon: sanitizeIcon(raw.icon),
     paymentMethod: inSet(pays, raw.paymentMethod) ? raw.paymentMethod : undefined,
-    fixedId: isStr(raw.fixedId) ? raw.fixedId : undefined,
-    accountId: isStr(raw.accountId) ? raw.accountId : undefined,
-    transferToAccountId: isStr(raw.transferToAccountId) ? raw.transferToAccountId : undefined,
+    fixedId: isStr(raw.fixedId) && isValidUUID(raw.fixedId) ? raw.fixedId : undefined,
+    accountId: isStr(raw.accountId) && isValidUUID(raw.accountId) ? raw.accountId : undefined,
+    transferToAccountId: isStr(raw.transferToAccountId) && isValidUUID(raw.transferToAccountId) ? raw.transferToAccountId : undefined,
     externalPayee: isObj(raw.externalPayee) ? { clabe: isStr(raw.externalPayee.clabe) ? raw.externalPayee.clabe : undefined, bank: isStr(raw.externalPayee.bank) ? raw.externalPayee.bank : undefined, name: isStr(raw.externalPayee.name) ? raw.externalPayee.name : undefined } : undefined,
     receipt: isStr(raw.receipt) ? raw.receipt : undefined,
   };
@@ -192,10 +193,10 @@ function sanitizeGoal(raw: any): Goal | null {
   const contributions = Array.isArray(raw.contributions)
     ? (raw.contributions as any[])
       .filter((c) => isObj(c) && isNum(c.amount) && isStr(c.date))
-      .map((c) => ({ id: isStr(c.id) ? c.id : generateSecureId(), date: c.date as string, amount: c.amount as number }))
+      .map((c) => ({ id: isStr(c.id) && isValidUUID(c.id) ? c.id : generateSecureId(), date: c.date as string, amount: c.amount as number }))
     : undefined;
   return {
-    id: isStr(raw.id) ? raw.id : generateSecureId(),
+    id: isStr(raw.id) && isValidUUID(raw.id) ? raw.id : generateSecureId(),
     name: raw.name,
     target: raw.target,
     saved: isNum(raw.saved) ? raw.saved : 0,
@@ -217,16 +218,16 @@ function sanitizeDebt(raw: any): Debt | null {
     ? (raw.payments as any[])
       .filter((p) => isObj(p) && isNum(p.amount))
       .map((p) => ({
-        id: isStr(p.id) ? p.id : generateSecureId(),
+        id: isStr(p.id) && isValidUUID(p.id) ? p.id : generateSecureId(),
         amount: p.amount as number,
         date: isStr(p.date) ? p.date : new Date().toISOString(),
         note: isStr(p.note) ? p.note : undefined,
         paymentMethod: inSet(pays, p.paymentMethod) ? p.paymentMethod : undefined,
-        accountId: isStr(p.accountId) ? p.accountId : undefined,
+        accountId: isStr(p.accountId) && isValidUUID(p.accountId) ? p.accountId : undefined,
       }))
     : [];
   return {
-    id: isStr(raw.id) ? raw.id : generateSecureId(),
+    id: isStr(raw.id) && isValidUUID(raw.id) ? raw.id : generateSecureId(),
     person: raw.person,
     concept: isStr(raw.concept) ? raw.concept : "Préstamo",
     amount: raw.amount,
@@ -235,7 +236,7 @@ function sanitizeDebt(raw: any): Debt | null {
     note: isStr(raw.note) ? raw.note : undefined,
     icon: sanitizeIcon(raw.icon),
     payments,
-    accountId: isStr(raw.accountId) ? raw.accountId : undefined,
+    accountId: isStr(raw.accountId) && isValidUUID(raw.accountId) ? raw.accountId : undefined,
   } as Debt;
 }
 
@@ -248,7 +249,7 @@ function sanitizeAccount(raw: any): Account | null {
       .map((d) => ({ value: d.value as number, count: d.count as number, kind: d.kind === "coin" ? "coin" : "bill" }))
     : undefined;
   return {
-    id: isStr(raw.id) ? raw.id : generateSecureId(),
+    id: isStr(raw.id) && isValidUUID(raw.id) ? raw.id : generateSecureId(),
     name: raw.name,
     type: inSet(types, raw.type) ? raw.type : "bank",
     initialBalance: isNum(raw.initialBalance) ? raw.initialBalance : 0,
