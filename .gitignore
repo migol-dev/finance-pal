@@ -12,6 +12,11 @@ dist
 dist-ssr
 *.local
 
+# Environment variables (contain secrets)
+.env
+.env.local
+.env.production
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json
@@ -22,3 +27,27 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Planning / artifact files
+.artifacts/
+implementation_plan*.md
+ICON_GENERATION.md
+
+# Generated reports
+depcheck_report.json
+
+# Duplicate files
+SECURITY_AUDIT.md
+
+# Git mailmap (local config, not for repo)
+mailmap.txt
+
+# Lock files (npm is used, not bun)
+bun.lockb
+bun.lock
+
+# Placeholder / boilerplate Vite files
+src/App.css
+
+# Example / placeholder test files
+src/test/example.test.ts
