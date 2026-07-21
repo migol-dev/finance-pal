@@ -1,10 +1,10 @@
 import { useEffect, useRef, useState } from "react";
 import { useHybridData } from "@/hooks/useHybridData";
-import { useFinance, Currency, ExportScopes, ALL_SCOPES } from "@/store/finance-store";
+import { useFinance, Currency, ExportScopes, ALL_SCOPES, normalizeImportKeys } from "@/store/finance-store";
 import { fmt, monthlyAmount, TYPE_LABEL, FREQ_LABEL, ItemType, Frequency, Priority, iconFor, IconRef, FixedItem, CATEGORY_EMOJI, PaymentMethod, PAYMENT_METHOD_LABEL, PAYMENT_METHOD_EMOJI, Account, Denomination, cashTotalFromDenominations } from "@/lib/finance";
 import DenominationsEditor from "@/components/ui/DenominationsEditor";
 import { Header } from "@/components/app/Header";
-import { Plus, Trash2, Power, Smartphone, Database, RotateCcw, Pencil, Download, Upload, Sun, Moon, Target, History, HandCoins, User, AlertTriangle } from "lucide-react";
+import { Plus, Trash2, Power, Smartphone, Database, RotateCcw, Pencil, Download, Upload, Sun, Moon, Target, History, HandCoins, User, AlertTriangle, LogOut, Cloud, CloudOff } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -21,6 +21,8 @@ import { Filesystem, Directory, Encoding } from "@capacitor/filesystem";
 import { Share } from "@capacitor/share";
 import { LocalNotifications } from "@capacitor/local-notifications";
 import { ElegantConfirm } from "@/components/app/ElegantConfirm";
+import { useAuth } from '@/context/AuthContext';
+import { supabase, isSupabaseEnabled, setSyncEnabled } from '@/lib/supabase';
 
 export default function Ajustes() {
   const { 
@@ -50,6 +52,8 @@ export default function Ajustes() {
   const [receiptsOpen, setReceiptsOpen] = useState(false);
   const [orphanList, setOrphanList] = useState<string[] | null>(null);
   const [receiptsLoading, setReceiptsLoading] = useState(false);
+  const { signOut } = useAuth();
+  const [syncEnabled, setSyncEnabledState] = useState(isSupabaseEnabled);
 
   const filtered = fixedItems.filter((i) => tab === "all" || i.type === tab);
   const openNew = () => { setEditing(null); setOpen(true); };
@@ -151,6 +155,7 @@ export default function Ajustes() {
     URL.revokeObjectURL(url);
     toast.success("Exportado a Descargas");
   };
+
   const handleImportFile = async (file: File) => {
     try {
       if (file.size > 20 * 1024 * 1024) { toast.error("El archivo es demasiado grande (máx 20 MB)"); return; }
@@ -158,10 +163,13 @@ export default function Ajustes() {
       // Detect which sections the file contains so the user can pick
       let parsed: any;
       try { parsed = JSON.parse(text); } catch { toast.error("JSON inválido"); return; }
-      const data = parsed?.data ?? parsed ?? {};
+      const raw = parsed?.data ?? parsed ?? {};
+      // Normalize Spanish key names from old version if present
+      const data = normalizeImportKeys(raw);
       const available: Required<ExportScopes> = {
         fixedItems: Array.isArray(data.fixedItems) && data.fixedItems.length >= 0,
         transactions: Array.isArray(data.transactions) && data.transactions.length >= 0,
+        accounts: Array.isArray(data.accounts) && data.accounts.length >= 0,
         goals: Array.isArray(data.goals) && data.goals.length >= 0,
         debts: Array.isArray(data.debts) && data.debts.length >= 0,
         changeLog: Array.isArray(data.changeLog),
@@ -335,7 +343,51 @@ export default function Ajustes() {
               <p className="text-xs text-muted-foreground">Al activar, los filtros de la pantalla de Movimientos se reflejarán en la URL para compartir o restaurar la vista.</p>
             </div>
           </div>
+          {import.meta.env.VITE_ENABLE_SUPABASE === 'true' && (
+            <div className="flex items-center gap-3 mt-3">
+              <button
+                onClick={() => {
+                  const next = !syncEnabled;
+                  setSyncEnabledState(next);
+                  setSyncEnabled(next);
+                  toast.success(next ? 'Sincronización con la nube activada' : 'Sincronización con la nube desactivada');
+                }}
+                className={`flex items-center gap-2 w-full rounded-2xl border p-3 transition ${
+                  syncEnabled ? 'border-primary/30 bg-primary/5' : 'border-border bg-card'
+                }`}
+              >
+                <div className={`size-9 rounded-xl flex items-center justify-center ${syncEnabled ? 'bg-primary/10 text-primary' : 'bg-muted text-muted-foreground'}`}>
+                  {syncEnabled ? <Cloud className="size-4" /> : <CloudOff className="size-4" />}
+                </div>
+                <div className="flex-1 text-left">
+                  <p className="font-semibold text-sm">{syncEnabled ? 'Nube activada' : 'Nube desactivada'}</p>
+                  <p className="text-xs text-muted-foreground">{syncEnabled ? 'Tus datos se sincronizan con Supabase' : 'Los datos solo se guardan localmente'}</p>
+                </div>
+              </button>
+            </div>
+          )}
         </div>
+
+        {isSupabaseEnabled && (
+          <>
+            <h2 className="text-xs uppercase tracking-wider font-bold text-muted-foreground pt-4">Cuenta</h2>
+            <button
+              onClick={async () => {
+                await signOut();
+                window.location.href = '/';
+              }}
+              className="w-full rounded-2xl bg-card border border-border p-4 flex items-center gap-3 hover:bg-destructive/10 hover:border-destructive/30 transition group"
+            >
+              <div className="size-9 rounded-xl bg-destructive/10 text-destructive flex items-center justify-center group-hover:bg-destructive/20">
+                <LogOut className="size-4" />
+              </div>
+              <div className="flex-1 text-left">
+                <p className="font-semibold text-sm group-hover:text-destructive transition-colors">Cerrar sesión</p>
+                <p className="text-xs text-muted-foreground">Salir de tu cuenta de Supabase</p>
+              </div>
+            </button>
+          </>
+        )}
 
         <h2 className="text-xs uppercase tracking-wider font-bold text-muted-foreground pt-2">Datos</h2>
         <div className="grid grid-cols-2 gap-2">

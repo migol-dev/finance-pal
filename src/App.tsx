@@ -19,6 +19,7 @@ const Deudas = lazy(() => import("./pages/Deudas"));
 const Historial = lazy(() => import("./pages/Historial"));
 const NotFound = lazy(() => import("./pages/NotFound.tsx"));
 const Login = lazy(() => import("./pages/Login"));
+const AuthCallback = lazy(() => import("./pages/AuthCallback"));
 const MigracionNube = lazy(() => import("./pages/MigracionNube"));
 
 import { AuthProvider, useAuth } from '@/context/AuthContext';
@@ -62,6 +63,16 @@ function AnimatedRoutes() {
       <p className="text-xs font-bold uppercase tracking-[0.2em] text-muted-foreground animate-pulse">Finance Pal</p>
     </div>
   );
+
+  if (location.pathname === "/auth/callback") {
+    return (
+      <Suspense fallback={suspenseFallback}>
+        <Routes location={location}>
+          <Route path="/auth/callback" element={<AuthCallback />} />
+        </Routes>
+      </Suspense>
+    );
+  }
 
   if (location.pathname === "/404" || !["/", "/movimientos", "/metas", "/deudas", "/anual", "/historial", "/ajustes", "/migracion"].includes(location.pathname)) {
     return (

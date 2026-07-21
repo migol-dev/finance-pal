@@ -272,13 +272,47 @@ function sanitizeProfile(raw: any): UserProfile {
   };
 }
 
+/** Normalize keys from old app: Spanish → English, snake_case → camelCase, and coerce string numbers */
+export function normalizeImportKeys(obj: any): any {
+  if (!obj || typeof obj !== "object") return obj;
+  if (Array.isArray(obj)) return obj.map(normalizeImportKeys);
+  const keyMap: Record<string, string> = {
+    cuentas: "accounts", movimientos: "transactions", metas: "goals",
+    deudas: "debts", fijos: "fixedItems", conceptos: "fixedItems",
+    historial: "changeLog", perfil: "profile", tema: "theme",
+    initial_balance: "initialBalance", holder_name: "holderName",
+    account_id: "accountId", fixed_id: "fixedId",
+    payment_method: "paymentMethod", transfer_to_account_id: "transferToAccountId",
+    external_payee: "externalPayee", due_date: "dueDate", purchase_url: "purchaseUrl",
+    created_at: "createdAt", start_date: "startDate", end_date: "endDate",
+    pay_day: "payDay", pay_week_day: "payWeekDay", user_id: "userId",
+  };
+  // Fields that should be coerced from string to number
+  const numericFields = new Set(["amount", "target", "saved", "initialBalance", "value", "count"]);
+  const out: any = {};
+  for (const [k, v] of Object.entries(obj)) {
+    const camel = k.replace(/_([a-z])/g, (_, c) => c.toUpperCase());
+    const mapped = keyMap[camel] ?? keyMap[k] ?? camel;
+    let val = normalizeImportKeys(v);
+    // Coerce string numbers to actual numbers for known numeric fields
+    if (numericFields.has(mapped) && typeof val === "string") {
+      const n = Number(val);
+      if (!isNaN(n) && isFinite(n)) val = n;
+    }
+    out[mapped] = val;
+  }
+  return out;
+}
+
 /** Upgrade an older payload to current schema. Pure: returns sanitized data. */
 function migrateImported(payload: any): { data: any; warnings: string[] } {
   const warnings: string[] = [];
   const version: number = isNum(payload?.version) ? payload.version : 1;
-  const d = payload?.data ?? payload ?? {};
+  const raw = payload?.data ?? payload ?? {};
   if (version > SCHEMA_VERSION) warnings.push(`Importando datos de una versión más nueva (${version}). Algunos campos podrían ignorarse.`);
   if (version < SCHEMA_VERSION) warnings.push(`Migrando datos de versión ${version} a ${SCHEMA_VERSION}.`);
+  // Always normalize keys (Spanish → English, snake_case → camelCase)
+  const d = normalizeImportKeys(raw);
   return { data: d, warnings };
 }
 

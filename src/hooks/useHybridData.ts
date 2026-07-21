@@ -35,12 +35,13 @@ export function useHybridData() {
 
   const isLoading = accountsLoading || transactionsLoading || fixedItemsLoading || goalsLoading || debtsLoading;
 
-  // Use remote data when Supabase enabled and data loaded, otherwise local
-  const accounts = (isSupabaseEnabled && !isLoading && remoteAccounts) ? remoteAccounts : localAccounts;
-  const transactions = (isSupabaseEnabled && !isLoading && remoteTransactions) ? remoteTransactions : localTransactions;
-  const fixedItems = (isSupabaseEnabled && !isLoading && remoteFixedItems) ? remoteFixedItems : localFixedItems;
-  const goals = (isSupabaseEnabled && !isLoading && remoteGoals) ? remoteGoals : localGoals;
-  const debts = (isSupabaseEnabled && !isLoading && remoteDebts) ? remoteDebts : localDebts;
+  // Use remote data when Supabase enabled and has actual items, otherwise local
+  const hasItems = (d: unknown): d is any[] => Array.isArray(d) && d.length > 0;
+  const accounts = (isSupabaseEnabled && !isLoading && hasItems(remoteAccounts)) ? remoteAccounts : localAccounts;
+  const transactions = (isSupabaseEnabled && !isLoading && hasItems(remoteTransactions)) ? remoteTransactions : localTransactions;
+  const fixedItems = (isSupabaseEnabled && !isLoading && hasItems(remoteFixedItems)) ? remoteFixedItems : localFixedItems;
+  const goals = (isSupabaseEnabled && !isLoading && hasItems(remoteGoals)) ? remoteGoals : localGoals;
+  const debts = (isSupabaseEnabled && !isLoading && hasItems(remoteDebts)) ? remoteDebts : localDebts;
 
   return {
     // Data
