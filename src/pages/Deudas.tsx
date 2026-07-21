@@ -238,7 +238,7 @@ export default function Deudas() {
         open={!!deleteDebt}
         onOpenChange={(v) => !v && setDeleteDebt(null)}
         title="¿Eliminar deuda?"
-        description={<p className="text-sm text-muted-foreground">¿Estás seguro de que quieres eliminar la deuda de <span className="font-bold text-foreground">"{deleteDebt?.person}"</span>? Esta acción no se puede deshacer.</p>}
+        description={<span className="text-sm text-muted-foreground">¿Estás seguro de que quieres eliminar la deuda de <span className="font-bold text-foreground">"{deleteDebt?.person}"</span>? Esta acción no se puede deshacer.</span>}
         onConfirm={() => { if (deleteDebt) { removeDebt(deleteDebt.id); setDeleteDebt(null); } }}
         icon={Trash2}
         iconColor="bg-destructive"
@@ -248,7 +248,7 @@ export default function Deudas() {
         open={!!deletePayment}
         onOpenChange={(v) => !v && setDeletePayment(null)}
         title="¿Eliminar abono?"
-        description={<p className="text-sm text-muted-foreground">¿Estás seguro de que quieres eliminar el abono de <span className="font-bold text-foreground">{fmt(deletePayment?.amount ?? 0)}</span>? Esto aumentará el saldo pendiente.</p>}
+        description={<span className="text-sm text-muted-foreground">¿Estás seguro de que quieres eliminar el abono de <span className="font-bold text-foreground">{fmt(deletePayment?.amount ?? 0)}</span>? Esto aumentará el saldo pendiente.</span>}
         onConfirm={() => {
           if (deletePayment) {
             removeDebtPayment(deletePayment.debtId, deletePayment.paymentId);

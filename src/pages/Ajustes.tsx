@@ -531,7 +531,7 @@ export default function Ajustes() {
           open={!!deleteConfirm}
           onOpenChange={(v) => !v && setDeleteConfirm(null)}
           title="¿Eliminar concepto?"
-          description={<p className="text-sm text-muted-foreground">¿Estás seguro de que quieres eliminar <span className="font-bold text-foreground">"{deleteConfirm?.concept}"</span>? Esto detendrá su seguimiento.</p>}
+          description={<span className="text-sm text-muted-foreground">¿Estás seguro de que quieres eliminar <span className="font-bold text-foreground">"{deleteConfirm?.concept}"</span>? Esto detendrá su seguimiento.</span>}
           onConfirm={() => { if (deleteConfirm) { removeFixed(deleteConfirm.id); setDeleteConfirm(null); } }}
           icon={Trash2}
           iconColor="bg-destructive"

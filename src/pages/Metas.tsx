@@ -216,7 +216,7 @@ function GoalCompactCard({ goal, index, onViewMore, onContribute, accounts }: {
         open={!!confirmOpen}
         onOpenChange={(v) => !v && setConfirmOpen(null)}
         title="¿Confirmar aporte?"
-        description={<p className="text-sm text-muted-foreground">Vas a añadir <span className="font-bold text-foreground">{fmt(confirmOpen?.amount ?? 0)}</span> a tu meta <span className="font-bold text-foreground">"{goal.name}"</span>.</p>}
+        description={<span className="text-sm text-muted-foreground">Vas a añadir <span className="font-bold text-foreground">{fmt(confirmOpen?.amount ?? 0)}</span> a tu meta <span className="font-bold text-foreground">"{goal.name}"</span>.</span>}
         onConfirm={() => {
           if (confirmOpen) {
             // Use first account as default for quick add
@@ -323,7 +323,7 @@ function GoalDetailContent({ goal, onEdit, onDelete, onContribute, onTogglePin, 
         open={deleteConfirm}
         onOpenChange={setDeleteConfirm}
         title="¿Eliminar meta?"
-        description={<p className="text-sm text-muted-foreground">¿Estás seguro de que quieres eliminar <span className="font-bold text-foreground">"{goal.name}"</span>? Esta acción no se puede deshacer.</p>}
+        description={<span className="text-sm text-muted-foreground">¿Estás seguro de que quieres eliminar <span className="font-bold text-foreground">"{goal.name}"</span>? Esta acción no se puede deshacer.</span>}
         onConfirm={onDelete}
         icon={Trash2}
         iconColor="bg-destructive"

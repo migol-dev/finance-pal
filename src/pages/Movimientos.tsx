@@ -494,7 +494,7 @@ export default function Movimientos() {
           open={!!deleteConfirm}
           onOpenChange={(v) => !v && setDeleteConfirm(null)}
           title="¿Eliminar movimiento?"
-          description={<p className="text-sm text-muted-foreground">¿Estás seguro de que quieres eliminar <span className="font-bold text-foreground">"{deleteConfirm?.concept}"</span>? Esta acción no se puede deshacer.</p>}
+          description={<span className="text-sm text-muted-foreground">¿Estás seguro de que quieres eliminar <span className="font-bold text-foreground">"{deleteConfirm?.concept}"</span>? Esta acción no se puede deshacer.</span>}
           onConfirm={() => { if (deleteConfirm) { removeTx(deleteConfirm.id); toast("Eliminado"); setDeleteConfirm(null); } }}
           icon={Trash2}
           iconColor="bg-destructive"
