@@ -376,7 +376,7 @@ function MigracionNubeContent() {
   };
 
   return (
-    <div className="flex h-screen w-full flex-col">
+    <div className="flex h-screen w-full flex-col bg-background gradient-mesh">
       <Header 
         title="Migrando a la nube" 
         subtitle="Tu historial financiero se respalda en Supabase" 

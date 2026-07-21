@@ -39,14 +39,14 @@ export default function Historial() {
 
       <div className="flex-1 overflow-y-auto no-scrollbar pb-24">
         {changeLog.length === 0 ? (
-          <div className="px-5">
+          <div className="px-5 lg:px-10">
             <div className="rounded-2xl bg-muted/50 border border-dashed border-border p-8 text-center">
               <History className="size-10 mx-auto text-muted-foreground mb-2" />
               <p className="text-sm text-muted-foreground">Aún no hay cambios registrados</p>
             </div>
           </div>
         ) : (
-          <div className="px-5 space-y-2">
+          <div className="px-5 lg:px-10 space-y-2">
             <AnimatePresence initial={false}>
               {changeLog.slice(0, 100).map((e) => (
                 <motion.div

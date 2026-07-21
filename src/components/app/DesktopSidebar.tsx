@@ -7,7 +7,7 @@ import { useFinance } from "@/store/finance-store";
 import { useNetwork } from "@/hooks/useNetwork";
 import { useSyncStore } from "@/store/sync-store";
 import { isSupabaseEnabled } from "@/lib/supabase";
-import { Cloud, CloudOff, RefreshCw, Sun, Moon } from "lucide-react";
+import { Cloud, CloudOff, RefreshCw, Sun, Moon, BarChart3, History } from "lucide-react";
 
 const appIcon = "/icon-512.webp";
 
@@ -62,6 +62,38 @@ export const DesktopSidebar = memo(function DesktopSidebar() {
           );
         })}
       </nav>
+
+      {/* Secondary links */}
+      <div className="mb-4 border-t border-border pt-4 space-y-1">
+        <NavLink
+          to="/anual"
+          className={({ isActive }) =>
+            cn(
+              "flex items-center gap-3 px-4 py-2 rounded-2xl text-sm font-semibold transition-all",
+              isActive
+                ? "text-primary bg-primary/10"
+                : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
+            )
+          }
+        >
+          <BarChart3 className="size-4" />
+          <span>Resumen anual</span>
+        </NavLink>
+        <NavLink
+          to="/historial"
+          className={({ isActive }) =>
+            cn(
+              "flex items-center gap-3 px-4 py-2 rounded-2xl text-sm font-semibold transition-all",
+              isActive
+                ? "text-primary bg-primary/10"
+                : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
+            )
+          }
+        >
+          <History className="size-4" />
+          <span>Historial</span>
+        </NavLink>
+      </div>
 
       {/* Sync indicator */}
       {isSupabaseEnabled && (

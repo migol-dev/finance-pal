@@ -160,7 +160,7 @@ export default function Login() {
 
   if (session) {
     return (
-      <div className="flex h-screen w-full items-center justify-center p-4 bg-background">
+      <div className="flex h-screen w-full items-center justify-center p-4 bg-background gradient-mesh">
         <div className="text-center">
           <h2 className="text-2xl font-bold mb-2">Ya has iniciado sesión</h2>
           <p className="text-muted-foreground">Serás redirigido en breve.</p>
@@ -170,7 +170,7 @@ export default function Login() {
   }
 
   return (
-    <div className="flex min-h-screen w-full items-center justify-center p-4 bg-background">
+    <div className="flex min-h-screen w-full items-center justify-center p-4 bg-background gradient-mesh">
       <motion.div 
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
