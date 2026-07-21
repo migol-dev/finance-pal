@@ -288,7 +288,7 @@ function MigracionNubeContent() {
   }
 
   async function upsertDebt(userId: string, debt: any) {
-    const payload = {
+    const payload: Record<string, unknown> = {
       id: debt.id,
       user_id: userId,
       person: debt.person,
@@ -298,8 +298,10 @@ function MigracionNubeContent() {
       due_date: debt.dueDate,
       note: debt.note,
       icon: debt.icon,
-      account_id: debt.accountId,
     };
+    if (debt.accountId && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(debt.accountId)) {
+      payload.account_id = debt.accountId;
+    }
 
     const { error } = await supabase
       .from('debts')
@@ -309,7 +311,7 @@ function MigracionNubeContent() {
   }
 
   async function upsertDebtPayment(userId: string, debtId: string, payment: any) {
-    const payload = {
+    const payload: Record<string, unknown> = {
       id: payment.id,
       user_id: userId,
       debt_id: debtId,
@@ -317,8 +319,10 @@ function MigracionNubeContent() {
       date: payment.date,
       note: payment.note,
       payment_method: payment.paymentMethod,
-      account_id: payment.accountId,
     };
+    if (payment.accountId && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(payment.accountId)) {
+      payload.account_id = payment.accountId;
+    }
 
     const { error } = await supabase
       .from('debt_payments')

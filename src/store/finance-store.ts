@@ -1045,7 +1045,7 @@ export const useFinance = create<State>()(
         if (isSupabaseEnabled) {
           const user = (await supabase.auth.getUser()).data.user;
           if (user) {
-            const payload = {
+            const payload: Record<string, unknown> = {
               id: nv.id,
               user_id: user.id,
               person: nv.person,
@@ -1055,8 +1055,8 @@ export const useFinance = create<State>()(
               due_date: nv.dueDate,
               note: nv.note,
               icon: nv.icon,
-              account_id: nv.accountId,
             };
+            if (nv.accountId && isValidUUID(nv.accountId)) payload.account_id = nv.accountId;
             if (isOnline()) {
               const { error } = await supabase.from('debts').insert(payload);
               if (error) console.error('Supabase insert error (debts):', sanitizeForLog(error));
@@ -1076,7 +1076,7 @@ export const useFinance = create<State>()(
         if (isSupabaseEnabled) {
           const user = (await supabase.auth.getUser()).data.user;
           if (user) {
-            const payload = {
+            const payload: Record<string, unknown> = {
               person: p.person,
               concept: p.concept,
               amount: p.amount,
@@ -1084,8 +1084,8 @@ export const useFinance = create<State>()(
               due_date: p.dueDate,
               note: p.note,
               icon: p.icon,
-              account_id: p.accountId,
             };
+            if (p.accountId && isValidUUID(p.accountId)) payload.account_id = p.accountId;
             if (isOnline()) {
               const { error } = await supabase.from('debts').update(payload).eq('id', idv);
               if (error) console.error('Supabase update error (debts):', sanitizeForLog(error));
@@ -1124,7 +1124,7 @@ export const useFinance = create<State>()(
           const newId = generateSecureId();
           const user = (await supabase.auth.getUser()).data.user;
           if (user) {
-            const debtPayload = {
+            const debtPayload: Record<string, unknown> = {
               id: newId,
               user_id: user.id,
               person: debt.person,
@@ -1134,8 +1134,11 @@ export const useFinance = create<State>()(
               due_date: debt.dueDate,
               note: debt.note,
               icon: debt.icon,
-              account_id: debt.accountId,
             };
+            // Only include account_id if it's a valid UUID (column is uuid type in Supabase)
+            if (debt.accountId && isValidUUID(debt.accountId)) {
+              debtPayload.account_id = debt.accountId;
+            }
             if (isOnline()) {
               const { error: debtErr } = await supabase.from('debts').upsert(debtPayload, { onConflict: 'id' });
               if (debtErr) {
@@ -1159,7 +1162,7 @@ export const useFinance = create<State>()(
         if (isSupabaseEnabled && isValidUUID(resolvedDebtId)) {
           const user = (await supabase.auth.getUser()).data.user;
           if (user) {
-            const payload = {
+            const payload: Record<string, unknown> = {
               id: payment.id,
               user_id: user.id,
               debt_id: resolvedDebtId,
@@ -1167,8 +1170,10 @@ export const useFinance = create<State>()(
               date: payment.date,
               note: payment.note,
               payment_method: payment.paymentMethod,
-              account_id: payment.accountId,
             };
+            if (payment.accountId && isValidUUID(payment.accountId)) {
+              payload.account_id = payment.accountId;
+            }
             if (isOnline()) {
               const { error } = await supabase.from('debt_payments').insert(payload);
               if (error) console.error('Supabase insert error (debt_payments):', sanitizeForLog(error));
