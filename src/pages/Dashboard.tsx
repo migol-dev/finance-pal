@@ -288,7 +288,7 @@ export default function Dashboard() {
         </div>
       </motion.section>
 
-      <div className="lg:grid lg:grid-cols-2 2xl:grid-cols-3 lg:gap-6 lg:px-5">
+      <div className="lg:grid lg:grid-cols-2 2xl:grid-cols-3 lg:gap-6 lg:px-5 lg:mt-6">
         {/* Main column */}
         <div className="min-w-0">
           <section className="px-5 lg:px-0 mt-5">

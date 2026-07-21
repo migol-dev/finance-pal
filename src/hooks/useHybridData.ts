@@ -1,9 +1,11 @@
 import { useFinance } from '@/store/finance-store';
 import { useAccounts, useTransactions, useFixedItems, useGoals, useDebts } from '@/hooks/useSupabaseQueries';
 import { isSupabaseEnabled } from '@/lib/supabase';
+import { useQueryClient } from '@tanstack/react-query';
 import { Account, Transaction, FixedItem, Goal, Debt } from '@/lib/finance';
 
 export function useHybridData() {
+  const queryClient = useQueryClient();
   const { 
     accounts: localAccounts, 
     transactions: localTransactions,
@@ -43,6 +45,33 @@ export function useHybridData() {
   const goals = (isSupabaseEnabled && !isLoading && hasItems(remoteGoals)) ? remoteGoals : localGoals;
   const debts = (isSupabaseEnabled && !isLoading && hasItems(remoteDebts)) ? remoteDebts : localDebts;
 
+  const invalidateDebts = () => queryClient.invalidateQueries({ queryKey: ['debts'] });
+
+  const wrappedAddDebtPayment = async (debtId: string, p: Omit<import('@/lib/finance').DebtPayment, 'id'>) => {
+    await addDebtPayment(debtId, p);
+    invalidateDebts();
+  };
+
+  const wrappedAddDebt = async (d: Omit<Debt, 'id' | 'payments'>) => {
+    await addDebt(d);
+    invalidateDebts();
+  };
+
+  const wrappedUpdateDebt = async (id: string, p: Partial<Debt>) => {
+    await updateDebt(id, p);
+    invalidateDebts();
+  };
+
+  const wrappedRemoveDebt = async (id: string) => {
+    await removeDebt(id);
+    invalidateDebts();
+  };
+
+  const wrappedRemoveDebtPayment = async (debtId: string, paymentId: string) => {
+    await removeDebtPayment(debtId, paymentId);
+    invalidateDebts();
+  };
+
   return {
     // Data
     accounts,
@@ -63,7 +92,11 @@ export function useHybridData() {
     addTx, updateTx, removeTx,
     addFixed, updateFixed, removeFixed, toggleFixed,
     addGoal, updateGoal, removeGoal, contributeGoal,
-    addDebt, updateDebt, removeDebt, addDebtPayment, removeDebtPayment,
+    addDebt: wrappedAddDebt,
+    updateDebt: wrappedUpdateDebt,
+    removeDebt: wrappedRemoveDebt,
+    addDebtPayment: wrappedAddDebtPayment,
+    removeDebtPayment: wrappedRemoveDebtPayment,
     
     // Other actions
     setProfile, setTheme, toggleTheme,
