@@ -288,149 +288,157 @@ export default function Dashboard() {
         </div>
       </motion.section>
 
-      <section className="px-5 mt-5">
-        <div className="rounded-2xl bg-card border border-border p-4 shadow-soft">
-          <div className="flex items-center justify-between mb-2">
-            <span className="text-xs uppercase tracking-wide font-semibold text-muted-foreground">Tasa de ahorro</span>
-            <span className="text-sm font-bold text-success">{monthStats.savingRate.toFixed(1)}%</span>
-          </div>
-          <div className="h-2 rounded-full bg-muted overflow-hidden">
-            <motion.div
-              initial={{ width: 0 }}
-              animate={{ width: `${Math.min(100, monthStats.savingRate)}%` }}
-              transition={{ duration: 1, ease: "easeOut" }}
-              className="h-full gradient-success rounded-full"
-            />
-          </div>
-        </div>
-      </section>
-
-      <motion.section
-        initial={{ opacity: 0, scale: 0.95 }}
-        animate={{ opacity: 1, scale: 1 }}
-        transition={{ delay: 0.1 }}
-        className="px-5 mt-5 grid grid-cols-2 gap-3"
-      >
-        <Link to="/movimientos?new=expense" className="rounded-2xl bg-card border border-border p-4 shadow-soft active:scale-95 transition flex items-center gap-3">
-          <div className="size-10 rounded-xl bg-destructive/10 text-destructive flex items-center justify-center"><Plus className="size-5" /></div>
-          <div><p className="text-sm font-bold">Gasto</p><p className="text-[11px] text-muted-foreground">Registrar</p></div>
-        </Link>
-        <Link to="/movimientos?new=income" className="rounded-2xl bg-card border border-border p-4 shadow-soft active:scale-95 transition flex items-center gap-3">
-          <div className="size-10 rounded-xl bg-success/10 text-success flex items-center justify-center"><Plus className="size-5" /></div>
-          <div><p className="text-sm font-bold">Ingreso</p><p className="text-[11px] text-muted-foreground">Registrar</p></div>
-        </Link>
-      </motion.section>
-
-      {!hasAnyData && (
-        <motion.section
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.2 }}
-          className="px-5 mt-6"
-        >
-          <div className="rounded-3xl gradient-mesh border border-border p-6 text-center">
-            <p className="text-4xl mb-2">🎉</p>
-            <p className="font-bold text-base">Bienvenido a Finance Pal</p>
-            <p className="text-xs text-muted-foreground mt-1">Empieza creando tus ingresos, gastos fijos y metas en <Link to="/ajustes" className="text-primary font-semibold">Ajustes</Link>, o registra un movimiento ahora.</p>
-          </div>
-        </motion.section>
-      )}
-
-      {mainGoal && (
-        <motion.section
-          initial={{ opacity: 0, y: 15 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.25 }}
-          className="px-5 mt-6"
-        >
-          <div className="flex items-center justify-between mb-2">
-            <h2 className="text-base font-bold">Meta principal</h2>
-            <Link to="/metas" className="text-xs font-semibold text-primary">Ver todas →</Link>
-          </div>
-          <Link to="/metas" className={`block rounded-3xl p-5 text-primary-foreground shadow-pop ${mainGoal.color} relative overflow-hidden`}>
-            <div className="flex items-center justify-between">
-              <div>
-                <div className="mb-1"><IconDisplay icon={iconFor(mainGoal)} size="lg" className="bg-white/20" /></div>
-                <p className="font-bold text-lg mt-1">{mainGoal.name}</p>
-                <p className="text-xs opacity-90">{mask(fmt(mainGoal.saved))} de {mask(fmt(mainGoal.target))}</p>
+      <div className="lg:grid lg:grid-cols-2 lg:gap-6 lg:px-5">
+        {/* Main column */}
+        <div className="min-w-0">
+          <section className="px-5 lg:px-0 mt-5">
+            <div className="rounded-2xl bg-card border border-border p-4 shadow-soft">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-xs uppercase tracking-wide font-semibold text-muted-foreground">Tasa de ahorro</span>
+                <span className="text-sm font-bold text-success">{monthStats.savingRate.toFixed(1)}%</span>
               </div>
-              <div className="text-right">
-                <p className="text-3xl font-extrabold">{progressPercent}%</p>
-                <p className="text-[10px] opacity-80 uppercase tracking-wide">completado</p>
+              <div className="h-2 rounded-full bg-muted overflow-hidden">
+                <motion.div
+                  initial={{ width: 0 }}
+                  animate={{ width: `${Math.min(100, monthStats.savingRate)}%` }}
+                  transition={{ duration: 1, ease: "easeOut" }}
+                  className="h-full gradient-success rounded-full"
+                />
               </div>
             </div>
-            <div className="h-2 rounded-full bg-white/25 overflow-hidden mt-4">
-              <motion.div
-                initial={{ width: 0 }}
-                animate={{ width: `${Math.min(100, progressPercent)}%` }}
-                transition={{ duration: 1.2, ease: "easeOut" }}
-                className="h-full bg-white rounded-full"
-              />
+          </section>
+
+          <motion.section
+            initial={{ opacity: 0, y: 15 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.35 }}
+            className="px-5 lg:px-0 mt-6 mb-24 lg:mb-0"
+          >
+            <div className="flex items-center justify-between mb-2">
+              <h2 className="text-base font-bold">Movimientos recientes</h2>
+              <Link to="/movimientos" className="text-xs font-semibold text-primary">Ver todos →</Link>
             </div>
-          </Link>
-        </motion.section>
-      )}
-
-      {upcoming.length > 0 && (
-        <motion.section
-          initial={{ opacity: 0, y: 15 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.3 }}
-          className="px-5 mt-6"
-        >
-          <div className="flex items-center gap-2 mb-2">
-            <Bell className="size-4 text-warning" />
-            <h2 className="text-base font-bold">Próximos pagos</h2>
-          </div>
-          <div className="space-y-2">
-            {upcoming.map((u) => (
-              <div key={u.id} className="rounded-2xl bg-card border border-border p-3 shadow-soft flex items-center gap-3">
-                <IconDisplay icon={iconFor(u)} />
-                <div className="flex-1 min-w-0">
-                  <p className="font-semibold text-sm truncate">{u.concept}</p>
-                  <p className="text-xs text-muted-foreground">{u.payDay ? `Día ${u.payDay} del mes` : (typeof u.payWeekDay === "number" ? ["Dom","Lun","Mar","Mie","Jue","Vie","Sáb"][u.payWeekDay] : "")}</p>
-                </div>
-                <div className="text-right">
-                  <p className="font-bold text-sm">{mask(fmt(u.amount))}</p>
-                  <p className="text-[10px] text-warning font-semibold">en {u.daysLeft}d</p>
-                </div>
+            {recent.length === 0 ? (
+              <div className="rounded-2xl bg-muted/50 border border-dashed border-border p-6 text-center">
+                <p className="text-sm text-muted-foreground">Sin movimientos en {MONTHS[activeMonth]}. Registra tu primer gasto o ingreso ✨</p>
               </div>
-            ))}
-          </div>
-        </motion.section>
-      )}
-
-      <motion.section
-        initial={{ opacity: 0, y: 15 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.35 }}
-        className="px-5 mt-6 mb-24"
-      >
-        <div className="flex items-center justify-between mb-2">
-          <h2 className="text-base font-bold">Movimientos recientes</h2>
-          <Link to="/movimientos" className="text-xs font-semibold text-primary">Ver todos →</Link>
+            ) : (
+              <div className="space-y-2">
+                {recent.map((t) => (
+                  <div key={t.id} className="rounded-2xl bg-card border border-border p-3 shadow-soft flex items-center gap-3">
+                    <IconDisplay icon={iconFor(t)} />
+                    <div className="flex-1 min-w-0">
+                      <p className="font-semibold text-sm truncate">{t.concept}</p>
+                      <p className="text-xs text-muted-foreground">{fmtDate(t.date)}</p>
+                    </div>
+                    <p className={`font-bold text-sm ${t.type === "income" ? "text-success" : t.type === "saving" ? "text-secondary" : t.type === "transfer" ? "text-blue-500" : "text-destructive"}`}>
+                      {t.type === "income" ? "+" : t.type === "transfer" ? "⇄" : "-"}{mask(fmt(t.amount))}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            )}
+          </motion.section>
         </div>
-        {recent.length === 0 ? (
-          <div className="rounded-2xl bg-muted/50 border border-dashed border-border p-6 text-center">
-            <p className="text-sm text-muted-foreground">Sin movimientos en {MONTHS[activeMonth]}. Registra tu primer gasto o ingreso ✨</p>
-          </div>
-        ) : (
-          <div className="space-y-2">
-            {recent.map((t) => (
-              <div key={t.id} className="rounded-2xl bg-card border border-border p-3 shadow-soft flex items-center gap-3">
-                <IconDisplay icon={iconFor(t)} />
-                <div className="flex-1 min-w-0">
-                  <p className="font-semibold text-sm truncate">{t.concept}</p>
-                  <p className="text-xs text-muted-foreground">{fmtDate(t.date)}</p>
-                </div>
-                <p className={`font-bold text-sm ${t.type === "income" ? "text-success" : t.type === "saving" ? "text-secondary" : t.type === "transfer" ? "text-blue-500" : "text-destructive"}`}>
-                  {t.type === "income" ? "+" : t.type === "transfer" ? "⇄" : "-"}{mask(fmt(t.amount))}
-                </p>
+
+        {/* Side column */}
+        <div className="min-w-0">
+          <motion.section
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ delay: 0.1 }}
+            className="px-5 lg:px-0 mt-5 lg:mt-0 grid grid-cols-2 gap-3"
+          >
+            <Link to="/movimientos?new=expense" className="rounded-2xl bg-card border border-border p-4 shadow-soft active:scale-95 transition flex items-center gap-3">
+              <div className="size-10 rounded-xl bg-destructive/10 text-destructive flex items-center justify-center"><Plus className="size-5" /></div>
+              <div><p className="text-sm font-bold">Gasto</p><p className="text-[11px] text-muted-foreground">Registrar</p></div>
+            </Link>
+            <Link to="/movimientos?new=income" className="rounded-2xl bg-card border border-border p-4 shadow-soft active:scale-95 transition flex items-center gap-3">
+              <div className="size-10 rounded-xl bg-success/10 text-success flex items-center justify-center"><Plus className="size-5" /></div>
+              <div><p className="text-sm font-bold">Ingreso</p><p className="text-[11px] text-muted-foreground">Registrar</p></div>
+            </Link>
+          </motion.section>
+
+          {!hasAnyData && (
+            <motion.section
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.2 }}
+              className="px-5 lg:px-0 mt-6"
+            >
+              <div className="rounded-3xl gradient-mesh border border-border p-6 text-center">
+                <p className="text-4xl mb-2">🎉</p>
+                <p className="font-bold text-base">Bienvenido a Finance Pal</p>
+                <p className="text-xs text-muted-foreground mt-1">Empieza creando tus ingresos, gastos fijos y metas en <Link to="/ajustes" className="text-primary font-semibold">Ajustes</Link>, o registra un movimiento ahora.</p>
               </div>
-            ))}
-          </div>
-        )}
-      </motion.section>
+            </motion.section>
+          )}
+
+          {mainGoal && (
+            <motion.section
+              initial={{ opacity: 0, y: 15 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.25 }}
+              className="px-5 lg:px-0 mt-6"
+            >
+              <div className="flex items-center justify-between mb-2">
+                <h2 className="text-base font-bold">Meta principal</h2>
+                <Link to="/metas" className="text-xs font-semibold text-primary">Ver todas →</Link>
+              </div>
+              <Link to="/metas" className={`block rounded-3xl p-5 text-primary-foreground shadow-pop ${mainGoal.color} relative overflow-hidden`}>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <div className="mb-1"><IconDisplay icon={iconFor(mainGoal)} size="lg" className="bg-white/20" /></div>
+                    <p className="font-bold text-lg mt-1">{mainGoal.name}</p>
+                    <p className="text-xs opacity-90">{mask(fmt(mainGoal.saved))} de {mask(fmt(mainGoal.target))}</p>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-3xl font-extrabold">{progressPercent}%</p>
+                    <p className="text-[10px] opacity-80 uppercase tracking-wide">completado</p>
+                  </div>
+                </div>
+                <div className="h-2 rounded-full bg-white/25 overflow-hidden mt-4">
+                  <motion.div
+                    initial={{ width: 0 }}
+                    animate={{ width: `${Math.min(100, progressPercent)}%` }}
+                    transition={{ duration: 1.2, ease: "easeOut" }}
+                    className="h-full bg-white rounded-full"
+                  />
+                </div>
+              </Link>
+            </motion.section>
+          )}
+
+          {upcoming.length > 0 && (
+            <motion.section
+              initial={{ opacity: 0, y: 15 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.3 }}
+              className="px-5 lg:px-0 mt-6 mb-24 lg:mb-6"
+            >
+              <div className="flex items-center gap-2 mb-2">
+                <Bell className="size-4 text-warning" />
+                <h2 className="text-base font-bold">Próximos pagos</h2>
+              </div>
+              <div className="space-y-2">
+                {upcoming.map((u) => (
+                  <div key={u.id} className="rounded-2xl bg-card border border-border p-3 shadow-soft flex items-center gap-3">
+                    <IconDisplay icon={iconFor(u)} />
+                    <div className="flex-1 min-w-0">
+                      <p className="font-semibold text-sm truncate">{u.concept}</p>
+                      <p className="text-xs text-muted-foreground">{u.payDay ? `Día ${u.payDay} del mes` : (typeof u.payWeekDay === "number" ? ["Dom","Lun","Mar","Mie","Jue","Vie","Sáb"][u.payWeekDay] : "")}</p>
+                    </div>
+                    <div className="text-right">
+                      <p className="font-bold text-sm">{mask(fmt(u.amount))}</p>
+                      <p className="text-[10px] text-warning font-semibold">en {u.daysLeft}d</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </motion.section>
+          )}
+        </div>
+      </div>
     </div>
   );
 }

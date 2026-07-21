@@ -236,17 +236,17 @@ export default function Movimientos() {
             className={`px-3 h-9 rounded-full text-xs font-semibold transition ${datePreset === "custom" ? "gradient-primary text-primary-foreground shadow-glow" : "bg-muted text-muted-foreground"}`}>
             Personalizado
           </button>
-          <button type="button" onClick={() => setFiltersOpen(true)} className="sm:hidden px-3 h-9 rounded-2xl bg-muted text-muted-foreground flex items-center gap-2">
+          <button type="button" onClick={() => setFiltersOpen(true)} className="lg:hidden px-3 h-9 rounded-2xl bg-muted text-muted-foreground flex items-center gap-2">
             <SlidersHorizontal className="size-4" />
             <span className="text-sm font-semibold">Filtros</span>
           </button>
         </div>
 
-        <div className="hidden sm:grid grid-cols-1 sm:grid-cols-2 gap-2">
+        <div className="hidden lg:grid lg:grid-cols-3 xl:grid-cols-4 gap-3 mt-3">
           <div>
             <Label className="text-xs">Cuenta</Label>
             <Select value={accountFilter} onValueChange={(v) => setAccountFilter(v)}>
-              <SelectTrigger className="h-10 sm:h-11 rounded-2xl"><SelectValue /></SelectTrigger>
+              <SelectTrigger className="h-11 rounded-2xl"><SelectValue /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">Todas las cuentas</SelectItem>
                 {accounts.map((a: Account) => <SelectItem key={a.id} value={a.id}>{a.name}</SelectItem>)}
@@ -254,22 +254,9 @@ export default function Movimientos() {
             </Select>
           </div>
           <div>
-            <Label className="text-xs">Fechas</Label>
-            <div className="text-xs text-muted-foreground mt-2">Presets rápidos arriba. Selecciona "Personalizado" para elegir rango de fechas.</div>
-            {datePreset === "custom" && (
-              <div className="grid grid-cols-2 gap-2 mt-2">
-                <Input type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} className="h-10 sm:h-11 rounded-2xl" />
-                <Input type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)} className="h-10 sm:h-11 rounded-2xl" />
-              </div>
-            )}
-          </div>
-        </div>
-
-        <div className="hidden sm:grid grid-cols-1 sm:grid-cols-2 gap-2">
-          <div>
             <Label className="text-xs">Categoría</Label>
             <Select value={categoryFilter} onValueChange={(v) => setCategoryFilter(v)}>
-              <SelectTrigger className="h-10 sm:h-11 rounded-2xl"><SelectValue /></SelectTrigger>
+              <SelectTrigger className="h-11 rounded-2xl"><SelectValue /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">Todas las categorías</SelectItem>
                 {Object.keys(CATEGORY_EMOJI).map((c) => <SelectItem key={c} value={c}>{CATEGORY_EMOJI[c]} {c}</SelectItem>)}
@@ -279,7 +266,7 @@ export default function Movimientos() {
           <div>
             <Label className="text-xs">Método</Label>
             <Select value={paymentMethodFilter} onValueChange={(v) => setPaymentMethodFilter(v as any)}>
-              <SelectTrigger className="h-10 sm:h-11 rounded-2xl"><SelectValue /></SelectTrigger>
+              <SelectTrigger className="h-11 rounded-2xl"><SelectValue /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">Todos los métodos</SelectItem>
                 {(Object.keys(PAYMENT_METHOD_LABEL) as PaymentMethod[]).map((m) => (
@@ -287,6 +274,21 @@ export default function Movimientos() {
                 ))}
               </SelectContent>
             </Select>
+          </div>
+          <div>
+            <Label className="text-xs">Fechas</Label>
+            <div className="relative">
+              {datePreset === "custom" ? (
+                <div className="flex gap-1">
+                  <Input type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} className="h-11 rounded-2xl text-xs" />
+                  <Input type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)} className="h-11 rounded-2xl text-xs" />
+                </div>
+              ) : (
+                <div className="h-11 rounded-2xl bg-card border border-border flex items-center px-3 text-xs text-muted-foreground">
+                  {datePreset === "today" ? "Hoy" : datePreset === "yesterday" ? "Ayer" : datePreset === "last7" ? "Últimos 7 días" : datePreset === "last30" ? "Últimos 30 días" : "Selecciona un preset"}
+                </div>
+              )}
+            </div>
           </div>
         </div>
 
@@ -305,7 +307,7 @@ export default function Movimientos() {
       </div>
 
       <Dialog open={filtersOpen} onOpenChange={setFiltersOpen}>
-        <DialogContent className="rounded-3xl max-w-md mx-auto transform-gpu transition-all duration-200">
+        <DialogContent className="lg:hidden rounded-3xl max-w-md mx-auto transform-gpu transition-all duration-200">
           <DialogHeader><DialogTitle>Filtros</DialogTitle></DialogHeader>
           <DialogDescription className="sr-only">Filtros avanzados</DialogDescription>
           <div className="space-y-3">

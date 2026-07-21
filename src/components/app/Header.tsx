@@ -18,14 +18,14 @@ export const Header = memo(function Header({ title, subtitle, action }: { title:
     <motion.header
       initial={{ opacity: 0, y: -10 }}
       animate={{ opacity: 1, y: 0 }}
-      className="px-5 pt-6 pb-4 flex items-end justify-between gap-3"
+      className="px-5 lg:px-10 pt-6 pb-4 flex items-end justify-between gap-3"
     >
       <div className="flex items-center gap-3 min-w-0">
         {profile.avatar && <IconDisplay icon={profile.avatar} size="md" />}
         <div className="min-w-0">
           {greet && <p className="text-[11px] text-muted-foreground">{greet}</p>}
           <div className="flex items-center gap-2">
-            <h1 className="text-3xl font-extrabold tracking-tight text-balance truncate">{title}</h1>
+            <h1 className="text-3xl lg:text-4xl font-extrabold tracking-tight text-balance truncate">{title}</h1>
             {isSupabaseEnabled && (
               <div title={isOnline ? (syncQueue.length ? "Hay cambios pendientes de sincronizar" : "Sincronizado") : "Sin conexión"}>
                 {!isOnline ? (
