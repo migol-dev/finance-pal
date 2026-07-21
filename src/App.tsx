@@ -9,6 +9,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { AppShell } from "@/components/app/AppShell";
 import { ErrorBoundary } from '@/components/ErrorBoundary';
+import { DataConflictDialog } from '@/components/app/DataConflictDialog';
 
 const Dashboard = lazy(() => import("./pages/Dashboard"));
 const Movimientos = lazy(() => import("./pages/Movimientos"));
@@ -107,7 +108,7 @@ function AnimatedRoutes() {
 function AuthGuard() {
   const { session, loading } = useAuth();
   const { hasLocalData } = useFinance();
-  const [showMigration, setShowMigration] = React.useState(false);
+  const [resolved, setResolved] = React.useState(false);
 
   const suspenseFallback = (
     <div className="fixed inset-0 flex flex-col items-center justify-center bg-background/50 backdrop-blur-sm z-50">
@@ -129,14 +130,16 @@ function AuthGuard() {
         </Suspense>
       );
     }
-    // Check if user has local data and hasn't migrated yet
-    if (hasLocalData && !showMigration) {
+    // Show conflict dialog when local data exists and user hasn't chosen yet
+    if (hasLocalData && !resolved) {
       return (
-        <Suspense fallback={suspenseFallback}>
-          <MigracionNube />
-        </Suspense>
+        <DataConflictDialog
+          onUpload={() => { setResolved(true); }}
+          onDownload={() => { setResolved(true); }}
+        />
       );
     }
+    // If user chose to upload, show MigracionNube page (already navigated to /migracion via the dialog)
   }
 
   return <AnimatedRoutes />;

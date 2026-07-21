@@ -1118,37 +1118,49 @@ export const useFinance = create<State>()(
         const debt = s.debts.find((x) => x.id === debtId); if (!debt) return;
         const payment: DebtPayment = { ...p, id: generateSecureId() };
 
-        // If debt_id is not a valid UUID, generate one and upsert the debt first
+        // Resolve the debt's UUID for Supabase
         let resolvedDebtId = debtId;
         if (isSupabaseEnabled && !isValidUUID(debtId)) {
-          const newId = generateSecureId();
           const user = (await supabase.auth.getUser()).data.user;
           if (user) {
-            const debtPayload: Record<string, unknown> = {
-              id: newId,
-              user_id: user.id,
-              person: debt.person,
-              concept: debt.concept,
-              amount: debt.amount,
-              date: debt.date,
-              due_date: debt.dueDate,
-              note: debt.note,
-              icon: debt.icon,
-            };
-            // Only include account_id if it's a valid UUID (column is uuid type in Supabase)
-            if (debt.accountId && isValidUUID(debt.accountId)) {
-              debtPayload.account_id = debt.accountId;
-            }
-            if (isOnline()) {
-              const { error: debtErr } = await supabase.from('debts').upsert(debtPayload, { onConflict: 'id' });
-              if (debtErr) {
-                console.error('Supabase upsert error (debts):', sanitizeForLog(debtErr));
+            // First try to find existing debt in Supabase by person+amount+concept
+            const { data: existing } = await supabase
+              .from('debts')
+              .select('id')
+              .eq('user_id', user.id)
+              .eq('person', debt.person)
+              .eq('amount', debt.amount)
+              .eq('concept', debt.concept)
+              .maybeSingle();
+            if (existing) {
+              resolvedDebtId = existing.id;
+            } else {
+              const newId = generateSecureId();
+              const debtPayload: Record<string, unknown> = {
+                id: newId,
+                user_id: user.id,
+                person: debt.person,
+                concept: debt.concept,
+                amount: debt.amount,
+                date: debt.date,
+                due_date: debt.dueDate,
+                note: debt.note,
+                icon: debt.icon,
+              };
+              if (debt.accountId && isValidUUID(debt.accountId)) {
+                debtPayload.account_id = debt.accountId;
+              }
+              if (isOnline()) {
+                const { error: debtErr } = await supabase.from('debts').upsert(debtPayload, { onConflict: 'id' });
+                if (debtErr) {
+                  console.error('Supabase upsert error (debts):', sanitizeForLog(debtErr));
+                } else {
+                  resolvedDebtId = newId;
+                }
               } else {
+                queueMutation('debts', 'INSERT', newId, debtPayload);
                 resolvedDebtId = newId;
               }
-            } else {
-              queueMutation('debts', 'INSERT', newId, debtPayload);
-              resolvedDebtId = newId;
             }
           }
         }

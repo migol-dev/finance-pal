@@ -128,10 +128,10 @@ function MigracionNubeContent() {
       
       let totalDebtPayments = 0;
       for (const debt of localData.debts) {
-        await upsertDebt(userId, debt);
+        const resolvedDebtId = await upsertDebt(userId, debt);
         totalDebtPayments += debt.payments.length;
         for (const payment of debt.payments) {
-          await upsertDebtPayment(userId, debt.id, payment);
+          await upsertDebtPayment(userId, resolvedDebtId, payment);
         }
       }
 
@@ -287,9 +287,29 @@ function MigracionNubeContent() {
     if (error) throw error;
   }
 
-  async function upsertDebt(userId: string, debt: any) {
+  async function upsertDebt(userId: string, debt: any): Promise<string> {
+    // If debt has a non-UUID id, generate a proper UUID for Supabase
+    const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    let resolvedId = debt.id;
+    if (!isUuid.test(debt.id)) {
+      // Check if a debt with same person+amount+concept already exists in Supabase
+      const { data: existing } = await supabase
+        .from('debts')
+        .select('id')
+        .eq('user_id', userId)
+        .eq('person', debt.person)
+        .eq('amount', debt.amount)
+        .eq('concept', debt.concept)
+        .maybeSingle();
+      if (existing) {
+        resolvedId = existing.id;
+      } else {
+        resolvedId = crypto.randomUUID?.() ?? debt.id;
+      }
+    }
+
     const payload: Record<string, unknown> = {
-      id: debt.id,
+      id: resolvedId,
       user_id: userId,
       person: debt.person,
       concept: debt.concept,
@@ -299,7 +319,7 @@ function MigracionNubeContent() {
       note: debt.note,
       icon: debt.icon,
     };
-    if (debt.accountId && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(debt.accountId)) {
+    if (debt.accountId && isUuid.test(debt.accountId)) {
       payload.account_id = debt.accountId;
     }
 
@@ -308,6 +328,7 @@ function MigracionNubeContent() {
       .upsert(payload, { onConflict: 'id' });
     
     if (error) throw error;
+    return resolvedId;
   }
 
   async function upsertDebtPayment(userId: string, debtId: string, payment: any) {

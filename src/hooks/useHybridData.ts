@@ -44,9 +44,29 @@ export function useHybridData() {
   const fixedItems = (isSupabaseEnabled && !isLoading && hasItems(remoteFixedItems)) ? remoteFixedItems : localFixedItems;
   const goals = (isSupabaseEnabled && !isLoading && hasItems(remoteGoals)) ? remoteGoals : localGoals;
 
-  // Merge local debts not yet synced to Supabase (e.g. non-UUID IDs) with remote debts
+  // Merge local debts not yet synced to Supabase (e.g. non-UUID IDs) with remote debts.
+  // For debts that exist in both local and remote (matched by person+amount+concept),
+  // merge unsynced local payments into the remote debt so pending payments don't disappear.
   const debts = (isSupabaseEnabled && !isLoading && hasItems(remoteDebts))
-    ? [...remoteDebts, ...localDebts.filter((d) => !remoteDebts.some((r) => r.id === d.id))]
+    ? (() => {
+        const remoteById = new Map(remoteDebts.map((d: Debt) => [d.id, d]));
+        const localByGroupKey = new Map(localDebts.map((d: Debt) => [`${d.person}|${d.amount}|${d.concept}`, d]));
+        const merged = remoteDebts.map((remote: Debt) => {
+          const groupKey = `${remote.person}|${remote.amount}|${remote.concept}`;
+          const local = localByGroupKey.get(groupKey);
+          if (!local) return remote;
+          // Merge payments from local that aren't already in the remote debt
+          const remotePaymentIds = new Set(remote.payments.map(p => p.id));
+          const unsynced = local.payments.filter(p => !remotePaymentIds.has(p.id));
+          if (unsynced.length === 0) return remote;
+          return { ...remote, payments: [...unsynced, ...remote.payments] };
+        });
+        const remoteGroupKeys = new Set(remoteDebts.map((d: Debt) => `${d.person}|${d.amount}|${d.concept}`));
+        const localOnly = localDebts.filter((d: Debt) =>
+          !remoteById.has(d.id) && !remoteGroupKeys.has(`${d.person}|${d.amount}|${d.concept}`)
+        );
+        return [...merged, ...localOnly];
+      })()
     : localDebts;
 
   const invalidateDebts = () => queryClient.invalidateQueries({ queryKey: ['debts'] });
