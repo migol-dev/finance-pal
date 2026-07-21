@@ -108,6 +108,11 @@ function generateSecureId(): string {
   return Array.from(array, b => b.toString(16).padStart(2, '0')).join('');
 }
 
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+function isValidUUID(s: string): boolean {
+  return UUID_RE.test(s);
+}
+
 function diffFields<T extends Record<string, any>>(prev: T, next: Partial<T>) {
   const out: { field: string; from?: unknown; to?: unknown }[] = [];
   for (const k of Object.keys(next)) {
@@ -1117,8 +1122,8 @@ export const useFinance = create<State>()(
           changeLog: [logEntry("debt", debtId, "update", `Abono de ${payment.amount} a deuda de "${debt.person}"`), ...s.changeLog].slice(0, 500),
         }));
 
-        // Sync to Supabase
-        if (isSupabaseEnabled) {
+        // Sync to Supabase (skip if debt_id is not a valid UUID — debt was never synced)
+        if (isSupabaseEnabled && isValidUUID(debtId)) {
           const user = (await supabase.auth.getUser()).data.user;
           if (user) {
             const payload = {

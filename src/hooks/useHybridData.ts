@@ -43,7 +43,11 @@ export function useHybridData() {
   const transactions = (isSupabaseEnabled && !isLoading && hasItems(remoteTransactions)) ? remoteTransactions : localTransactions;
   const fixedItems = (isSupabaseEnabled && !isLoading && hasItems(remoteFixedItems)) ? remoteFixedItems : localFixedItems;
   const goals = (isSupabaseEnabled && !isLoading && hasItems(remoteGoals)) ? remoteGoals : localGoals;
-  const debts = (isSupabaseEnabled && !isLoading && hasItems(remoteDebts)) ? remoteDebts : localDebts;
+
+  // Merge local debts not yet synced to Supabase (e.g. non-UUID IDs) with remote debts
+  const debts = (isSupabaseEnabled && !isLoading && hasItems(remoteDebts))
+    ? [...remoteDebts, ...localDebts.filter((d) => !remoteDebts.some((r) => r.id === d.id))]
+    : localDebts;
 
   const invalidateDebts = () => queryClient.invalidateQueries({ queryKey: ['debts'] });
 
