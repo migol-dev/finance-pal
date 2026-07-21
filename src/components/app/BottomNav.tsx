@@ -1,27 +1,19 @@
 import { memo } from "react";
 import { NavLink } from "react-router-dom";
-import { Home, ListTree, HandCoins, Target, Settings } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { motion } from "@/lib/framer";
-
-const items = [
-  { to: "/", icon: Home, label: "Inicio" },
-  { to: "/movimientos", icon: ListTree, label: "Movimientos" },
-  { to: "/deudas", icon: HandCoins, label: "Deudas" },
-  { to: "/metas", icon: Target, label: "Metas" },
-  { to: "/ajustes", icon: Settings, label: "Ajustes" },
-];
+import { navItems } from "./nav-items";
 
 export const BottomNav = memo(function BottomNav() {
   return (
-    <nav className="fixed bottom-0 inset-x-0 z-50 safe-bottom">
+    <nav className="fixed bottom-0 inset-x-0 z-50 safe-bottom lg:hidden">
       <div className="mx-auto max-w-md px-3 pb-2">
         <motion.div
           initial={{ y: 20, opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
           className="rounded-3xl bg-card/90 backdrop-blur-xl border border-border shadow-card flex items-center justify-around px-2 py-2"
         >
-          {items.map(({ to, icon: Icon, label }) => (
+          {navItems.map(({ to, icon: Icon, label }) => (
             <NavLink
               key={to}
               to={to}

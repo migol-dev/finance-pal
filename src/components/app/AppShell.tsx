@@ -1,6 +1,7 @@
 import { ReactNode, useEffect, useRef, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { BottomNav } from "./BottomNav";
+import { DesktopSidebar } from "./DesktopSidebar";
 import { useFinance } from "@/store/finance-store";
 import { SplashScreen } from "./SplashScreen";
 import { Capacitor } from "@capacitor/core";
@@ -90,8 +91,17 @@ export function AppShell({ children }: { children: ReactNode }) {
   return (
     <div className="min-h-screen bg-background">
       {booting && <SplashScreen />}
-      <div onTouchStart={onTouchStart} onTouchEnd={onTouchEnd} className="mx-auto max-w-md min-h-screen pb-28 safe-top relative">
-        {children}
+      <div className="lg:flex lg:h-screen lg:overflow-hidden">
+        <DesktopSidebar />
+        <main
+          onTouchStart={onTouchStart}
+          onTouchEnd={onTouchEnd}
+          className="flex-1 lg:overflow-y-auto"
+        >
+          <div className="mx-auto max-w-md min-h-screen pb-28 safe-top relative lg:max-w-screen-xl lg:pb-8 lg:px-8 xl:px-12 2xl:max-w-[1600px]">
+            {children}
+          </div>
+        </main>
       </div>
       <BottomNav />
       {/* Double-press to exit handled via Capacitor backButton listener */}
