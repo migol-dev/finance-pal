@@ -441,7 +441,26 @@ export default function Movimientos() {
               <tbody>
                 {Object.entries(grouped).flatMap(([day, items]) =>
                   items.map((t) => {
-                    if ((t as any)._virtual) return null;
+                    if ((t as any)._virtual) {
+                      return (
+                        <tr key={t.id} className="border-b border-border last:border-0 hover:bg-muted/30 transition-colors bg-accent/10">
+                          <td className="p-3 whitespace-nowrap text-muted-foreground text-xs">{day}</td>
+                          <td className="p-3">
+                            <div className="flex items-center gap-2">
+                              <IconDisplay icon={iconFor(t)} />
+                              <span className="font-semibold">{t.concept}</span>
+                            </div>
+                          </td>
+                          <td className="p-3 text-xs text-muted-foreground">{t.category}</td>
+                          <td className="p-3 text-xs">—</td>
+                          <td className="p-3 text-xs text-muted-foreground">—</td>
+                          <td className={`p-3 text-right font-bold text-sm whitespace-nowrap ${t.type === "income" ? "text-success" : "text-destructive"}`}>
+                            {t.type === "income" ? "+" : "-"}{fmt(t.amount)}
+                          </td>
+                          <td className="p-3 text-right text-[10px] text-muted-foreground italic">Deuda</td>
+                        </tr>
+                      );
+                    }
                     const acct = accounts.find((a) => a.id === (t as any).accountId);
                     return (
                       <tr key={t.id} className="border-b border-border last:border-0 hover:bg-muted/30 transition-colors">

@@ -1039,7 +1039,7 @@ export const useFinance = create<State>()(
         }
 
         set((s) => ({
-          debts: s.debts.map((x) => x.id === debtId ? { ...x, id: resolvedDebtId, payments: [payment, ...x.payments] } : x),
+          debts: s.debts.map((x) => x.id === debtId ? { ...x, payments: [payment, ...x.payments] } : x),
           changeLog: [logEntry("debt", debtId, "update", `Abono de ${payment.amount} a deuda de "${debt.person}"`), ...s.changeLog].slice(0, 500),
         }));
 
