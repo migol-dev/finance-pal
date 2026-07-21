@@ -364,62 +364,111 @@ export default function Movimientos() {
             <p className="text-sm text-muted-foreground">Sin movimientos en {MONTHS[activeMonth]} {activeYear}</p>
           </div>
         )}
-        <AnimatePresence>
-          {Object.entries(grouped).map(([day, items]) => (
-            <motion.section key={day} layout initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
-              <p className="text-[11px] uppercase tracking-wider font-bold text-muted-foreground mb-2">{day}</p>
-              <div className="space-y-2">
-                {items.map((t) => {
-                  const acct = accounts.find((a) => a.id === (t as any).accountId);
-                  if ((t as any)._virtual) {
+        <div className="lg:hidden">
+          <AnimatePresence>
+            {Object.entries(grouped).map(([day, items]) => (
+              <motion.section key={day} layout initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
+                <p className="text-[11px] uppercase tracking-wider font-bold text-muted-foreground mb-2">{day}</p>
+                <div className="space-y-2">
+                  {items.map((t) => {
+                    const acct = accounts.find((a) => a.id === (t as any).accountId);
+                    if ((t as any)._virtual) {
+                      return (
+                        <motion.div key={t.id} layout className="rounded-2xl bg-card border border-border p-3 shadow-soft flex items-center gap-3">
+                          <IconDisplay icon={iconFor(t)} />
+                          <button onClick={() => navigate("/deudas")} className="flex-1 min-w-0 text-left">
+                            <p className="font-semibold text-sm truncate">{t.concept}</p>
+                            <p className="text-xs text-muted-foreground truncate">
+                              <HandCoins className="size-3 inline mr-1" />{t.category}
+                              {acct && <span className="ml-1.5">· {acct.name}</span>}
+                              {t.paymentMethod && <span className="ml-1.5">· {PAYMENT_METHOD_EMOJI[t.paymentMethod]} {PAYMENT_METHOD_LABEL[t.paymentMethod]}</span>}
+                            </p>
+                          </button>
+                          <div className="text-right">
+                            <p className={`font-bold text-sm ${t.type === "income" ? "text-success" : t.type === "saving" ? "text-secondary" : "text-destructive"}`}>
+                              {t.type === "income" ? "+" : "-"}{fmt(t.amount)}
+                            </p>
+                          </div>
+                          <button onClick={() => navigate("/deudas")} className="text-[10px] font-bold uppercase text-muted-foreground px-2">Deuda</button>
+                        </motion.div>
+                      );
+                    }
+
                     return (
                       <motion.div key={t.id} layout className="rounded-2xl bg-card border border-border p-3 shadow-soft flex items-center gap-3">
                         <IconDisplay icon={iconFor(t)} />
-                        <button onClick={() => navigate("/deudas")} className="flex-1 min-w-0 text-left">
+                        <button onClick={() => openEdit(t as Transaction)} className="flex-1 min-w-0 text-left">
                           <p className="font-semibold text-sm truncate">{t.concept}</p>
                           <p className="text-xs text-muted-foreground truncate">
-                            <HandCoins className="size-3 inline mr-1" />{t.category}
+                            {t.category}
                             {acct && <span className="ml-1.5">· {acct.name}</span>}
                             {t.paymentMethod && <span className="ml-1.5">· {PAYMENT_METHOD_EMOJI[t.paymentMethod]} {PAYMENT_METHOD_LABEL[t.paymentMethod]}</span>}
                           </p>
                         </button>
                         <div className="text-right">
-                          <p className={`font-bold text-sm ${t.type === "income" ? "text-success" : t.type === "saving" ? "text-secondary" : "text-destructive"}`}>
-                            {t.type === "income" ? "+" : "-"}{fmt(t.amount)}
+                          <p className={`font-bold text-sm ${t.type === "income" ? "text-success" : t.type === "saving" ? "text-secondary" : t.type === "transfer" ? "text-blue-500" : "text-destructive"}`}>
+                            {t.type === "income" ? "+" : t.type === "transfer" ? "⇄" : "-"}{fmt(t.amount)}
                           </p>
                         </div>
-                        <button onClick={() => navigate("/deudas")} className="text-[10px] font-bold uppercase text-muted-foreground px-2">Deuda</button>
+                        <div className="flex flex-col gap-0.5">
+                          <button onClick={() => openEdit(t as Transaction)} className="text-muted-foreground hover:text-primary p-1"><Pencil className="size-4" /></button>
+                          <button onClick={() => setDeleteConfirm(t as Transaction)} className="text-muted-foreground hover:text-destructive p-1"><Trash2 className="size-4" /></button>
+                        </div>
                       </motion.div>
                     );
-                  }
+                  })}
+                </div>
+              </motion.section>
+            ))}
+          </AnimatePresence>
+        </div>
 
-                  return (
-                    <motion.div key={t.id} layout className="rounded-2xl bg-card border border-border p-3 shadow-soft flex items-center gap-3">
-                      <IconDisplay icon={iconFor(t)} />
-                      <button onClick={() => openEdit(t as Transaction)} className="flex-1 min-w-0 text-left">
-                        <p className="font-semibold text-sm truncate">{t.concept}</p>
-                        <p className="text-xs text-muted-foreground truncate">
-                          {t.category}
-                          {acct && <span className="ml-1.5">· {acct.name}</span>}
-                          {t.paymentMethod && <span className="ml-1.5">· {PAYMENT_METHOD_EMOJI[t.paymentMethod]} {PAYMENT_METHOD_LABEL[t.paymentMethod]}</span>}
-                        </p>
-                      </button>
-                      <div className="text-right">
-                        <p className={`font-bold text-sm ${t.type === "income" ? "text-success" : t.type === "saving" ? "text-secondary" : t.type === "transfer" ? "text-blue-500" : "text-destructive"}`}>
+        <div className="hidden lg:block">
+          <div className="rounded-2xl bg-card border border-border shadow-soft overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-border text-[11px] uppercase tracking-wider font-bold text-muted-foreground">
+                  <th className="text-left p-3">Fecha</th>
+                  <th className="text-left p-3">Concepto</th>
+                  <th className="text-left p-3">Categoría</th>
+                  <th className="text-left p-3">Método</th>
+                  <th className="text-left p-3">Cuenta</th>
+                  <th className="text-right p-3">Monto</th>
+                  <th className="text-right p-3"></th>
+                </tr>
+              </thead>
+              <tbody>
+                {Object.entries(grouped).flatMap(([day, items]) =>
+                  items.map((t) => {
+                    if ((t as any)._virtual) return null;
+                    const acct = accounts.find((a) => a.id === (t as any).accountId);
+                    return (
+                      <tr key={t.id} className="border-b border-border last:border-0 hover:bg-muted/30 transition-colors">
+                        <td className="p-3 whitespace-nowrap text-muted-foreground text-xs">{day}</td>
+                        <td className="p-3">
+                          <div className="flex items-center gap-2">
+                            <IconDisplay icon={iconFor(t)} />
+                            <span className="font-semibold">{t.concept}</span>
+                          </div>
+                        </td>
+                        <td className="p-3 text-xs text-muted-foreground">{t.category}</td>
+                        <td className="p-3 text-xs">{t.paymentMethod ? `${PAYMENT_METHOD_EMOJI[t.paymentMethod]} ${PAYMENT_METHOD_LABEL[t.paymentMethod]}` : "-"}</td>
+                        <td className="p-3 text-xs text-muted-foreground">{acct?.name ?? "-"}</td>
+                        <td className={`p-3 text-right font-bold text-sm whitespace-nowrap ${t.type === "income" ? "text-success" : t.type === "saving" ? "text-secondary" : t.type === "transfer" ? "text-blue-500" : "text-destructive"}`}>
                           {t.type === "income" ? "+" : t.type === "transfer" ? "⇄" : "-"}{fmt(t.amount)}
-                        </p>
-                      </div>
-                      <div className="flex flex-col gap-0.5">
-                        <button onClick={() => openEdit(t as Transaction)} className="text-muted-foreground hover:text-primary p-1"><Pencil className="size-4" /></button>
-                        <button onClick={() => setDeleteConfirm(t as Transaction)} className="text-muted-foreground hover:text-destructive p-1"><Trash2 className="size-4" /></button>
-                      </div>
-                    </motion.div>
-                  );
-                })}
-              </div>
-            </motion.section>
-          ))}
-        </AnimatePresence>
+                        </td>
+                        <td className="p-3 text-right whitespace-nowrap">
+                          <button onClick={() => openEdit(t as Transaction)} className="text-muted-foreground hover:text-primary p-1"><Pencil className="size-3.5" /></button>
+                          <button onClick={() => setDeleteConfirm(t as Transaction)} className="text-muted-foreground hover:text-destructive p-1"><Trash2 className="size-3.5" /></button>
+                        </td>
+                      </tr>
+                    );
+                  })
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
 
         <ElegantConfirm
           open={!!deleteConfirm}
@@ -535,8 +584,8 @@ function TxForm({ initial, onSave }: { initial: Partial<Transaction> & { type: T
       }
 
       onSave(payload as Omit<Transaction, "id">);
-    }} className="space-y-3">
-      <div className="grid grid-cols-2 gap-2">
+    }} className="space-y-3 lg:grid lg:grid-cols-2 lg:gap-x-4 lg:gap-y-3 lg:space-y-0">
+      <div className="lg:col-span-2 grid grid-cols-2 gap-2">
         {(["expense", "income", "saving", "transfer"] as const).map((t) => (
           <button key={t} type="button" onClick={() => setType(t)}
             className={`h-12 rounded-2xl text-sm font-semibold capitalize transition ${type === t ? (t === "income" ? "gradient-success text-white" : t === "saving" ? "gradient-ocean text-white" : t === "transfer" ? "gradient-secondary text-white" : "gradient-primary text-white") + " shadow-glow" : "bg-muted text-muted-foreground"}`}>
@@ -544,7 +593,7 @@ function TxForm({ initial, onSave }: { initial: Partial<Transaction> & { type: T
           </button>
         ))}
       </div>
-      <div className="flex justify-center"><IconPicker value={icon} onChange={setIcon} /></div>
+      <div className="lg:col-span-2 flex justify-center"><IconPicker value={icon} onChange={setIcon} /></div>
       <div>
         <Label className="text-xs">Monto</Label>
         <Input autoFocus type="number" inputMode="decimal" step="0.01" value={amount} onChange={(e) => setAmount(e.target.value)} placeholder="0.00" className="h-14 text-2xl font-bold rounded-2xl" />
@@ -553,20 +602,18 @@ function TxForm({ initial, onSave }: { initial: Partial<Transaction> & { type: T
         <Label className="text-xs">Concepto</Label>
         <Input value={concept} onChange={(e) => setConcept(e.target.value)} placeholder={type === "transfer" ? "Traspaso entre cuentas" : "Ej. Café con amigos"} className="h-11 rounded-2xl" />
       </div>
-      <div className="grid grid-cols-2 gap-2">
-        <div>
-          <Label className="text-xs">Categoría</Label>
-          <Select value={category} onValueChange={setCategory}>
-            <SelectTrigger className="h-11 rounded-2xl"><SelectValue /></SelectTrigger>
-            <SelectContent>
-              {cats.map((c) => <SelectItem key={c} value={c}>{CATEGORY_EMOJI[c]} {c}</SelectItem>)}
-            </SelectContent>
-          </Select>
-        </div>
-        <div>
-          <Label className="text-xs">Fecha</Label>
-          <Input type="date" value={date} onChange={(e) => setDate(e.target.value)} className="h-11 rounded-2xl" />
-        </div>
+      <div>
+        <Label className="text-xs">Categoría</Label>
+        <Select value={category} onValueChange={setCategory}>
+          <SelectTrigger className="h-11 rounded-2xl"><SelectValue /></SelectTrigger>
+          <SelectContent>
+            {cats.map((c) => <SelectItem key={c} value={c}>{CATEGORY_EMOJI[c]} {c}</SelectItem>)}
+          </SelectContent>
+        </Select>
+      </div>
+      <div>
+        <Label className="text-xs">Fecha</Label>
+        <Input type="date" value={date} onChange={(e) => setDate(e.target.value)} className="h-11 rounded-2xl" />
       </div>
 
       {type !== "transfer" && (
@@ -589,7 +636,7 @@ function TxForm({ initial, onSave }: { initial: Partial<Transaction> & { type: T
       )}
 
       {/* Account Selectors */}
-      <div className="space-y-3">
+      <div className="space-y-3 lg:col-span-2">
         {/* Origin/Main Account */}
         {((type === "transfer") || (type !== "income" && paymentMethod !== "cash")) && (
           <div>
@@ -640,7 +687,7 @@ function TxForm({ initial, onSave }: { initial: Partial<Transaction> & { type: T
 
       {/* External Payee for transfers */}
       {type !== "transfer" && paymentMethod === "transfer" && type !== "income" && (
-        <div>
+        <div className="lg:col-span-2">
           <Label className="text-xs">Destinatario</Label>
           <Select value={transferToAccountId} onValueChange={(v) => setTransferToAccountId(v || undefined)}>
             <SelectTrigger className="h-11 rounded-2xl"><SelectValue placeholder="Seleccione destinatario" /></SelectTrigger>
@@ -675,7 +722,7 @@ function TxForm({ initial, onSave }: { initial: Partial<Transaction> & { type: T
         <Label className="text-xs">Nota (opcional)</Label>
         <Input value={note} onChange={(e) => setNote(e.target.value)} placeholder="Detalles..." className="h-11 rounded-2xl" />
       </div>
-      <Button type="submit" className="w-full h-12 rounded-2xl gradient-primary text-primary-foreground border-0 shadow-glow font-bold">Guardar</Button>
+      <Button type="submit" className="w-full h-12 rounded-2xl gradient-primary text-primary-foreground border-0 shadow-glow font-bold lg:col-span-2">Guardar</Button>
     </form>
   );
 }

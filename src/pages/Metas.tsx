@@ -689,26 +689,24 @@ function GoalForm({ initial, onSave }: { initial: Goal | null; onSave: (g: Omit<
         createdAt: initial?.createdAt,
         contributions: initial?.contributions,
       });
-    }} className="space-y-3">
-      <div className="flex justify-center"><IconPicker value={icon} onChange={setIcon} /></div>
-      <div><Label className="text-xs">Nombre</Label><Input autoFocus value={name} onChange={(e) => setName(e.target.value)} placeholder="Ej. Vacaciones a Cancún" className="h-11 rounded-2xl" /></div>
-      <div className="grid grid-cols-2 gap-2">
-        <div><Label className="text-xs">Objetivo</Label><Input type="number" value={target} onChange={(e) => setTarget(e.target.value)} placeholder="0.00" className="h-12 text-lg font-bold rounded-2xl" /></div>
-        <div><Label className="text-xs">Ya ahorrado</Label><Input type="number" value={saved} onChange={(e) => setSaved(e.target.value)} placeholder="0" className="h-12 text-lg font-bold rounded-2xl" /></div>
-      </div>
+    }} className="space-y-3 lg:grid lg:grid-cols-2 lg:gap-x-4 lg:gap-y-3 lg:space-y-0">
+      <div className="lg:col-span-2 flex justify-center"><IconPicker value={icon} onChange={setIcon} /></div>
+      <div className="lg:col-span-2"><Label className="text-xs">Nombre</Label><Input autoFocus value={name} onChange={(e) => setName(e.target.value)} placeholder="Ej. Vacaciones a Cancún" className="h-11 rounded-2xl" /></div>
+      <div><Label className="text-xs">Objetivo</Label><Input type="number" value={target} onChange={(e) => setTarget(e.target.value)} placeholder="0.00" className="h-12 text-lg font-bold rounded-2xl" /></div>
+      <div><Label className="text-xs">Ya ahorrado</Label><Input type="number" value={saved} onChange={(e) => setSaved(e.target.value)} placeholder="0" className="h-12 text-lg font-bold rounded-2xl" /></div>
       <div><Label className="text-xs">Fecha límite (opcional)</Label><Input type="date" value={deadline} onChange={(e) => setDeadline(e.target.value)} className="h-11 rounded-2xl" /></div>
       <div>
         <Label className="text-xs flex items-center gap-1"><ExternalLink className="size-3" /> Link de compra (opcional)</Label>
         <Input type="url" value={purchaseUrl} onChange={(e) => setPurchaseUrl(e.target.value)} placeholder="https://..." className="h-11 rounded-2xl" />
         <p className="text-[10px] text-muted-foreground mt-1">Toca el icono de la meta para abrirlo</p>
       </div>
-      <div>
+      <div className="lg:col-span-2">
         <Label className="text-xs">Color</Label>
         <div className="flex gap-2 mt-1">
           {PALETTES.map((p) => <button key={p} type="button" onClick={() => setColor(p)} className={`flex-1 h-10 rounded-xl ${p} transition ${color === p ? "ring-4 ring-offset-2 ring-primary" : ""}`} />)}
         </div>
       </div>
-      <Button type="submit" className="w-full h-12 rounded-2xl gradient-primary text-primary-foreground border-0 shadow-glow font-bold">{initial ? "Guardar cambios" : "Crear meta"}</Button>
+      <Button type="submit" className="w-full h-12 rounded-2xl gradient-primary text-primary-foreground border-0 shadow-glow font-bold lg:col-span-2">{initial ? "Guardar cambios" : "Crear meta"}</Button>
     </form>
   );
 }

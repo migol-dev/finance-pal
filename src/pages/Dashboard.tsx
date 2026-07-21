@@ -229,7 +229,7 @@ export default function Dashboard() {
     return transactions
       .filter((t) => { const d = parseDateLocal(t.date); return d.getMonth() === activeMonth && d.getFullYear() === activeYear; })
       .sort((a, b) => parseDateLocal(b.date).getTime() - parseDateLocal(a.date).getTime())
-      .slice(0, 4);
+      .slice(0, 8);
   }, [transactions, activeMonth, activeYear]);
 
   const mainGoal = goals.find((g) => g.pinned) ?? goals[0];

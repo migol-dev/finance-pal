@@ -291,15 +291,13 @@ function DebtForm({ initial, onSave, accounts }: { initial: Debt | null; onSave:
       const a = parseFloat(amount);
       if (!a || !person) { toast.error("Completa nombre y monto"); return; }
       onSave({ person, concept: concept || "Préstamo", amount: a, date: new Date(`${date}T12:00:00`).toISOString(), dueDate: dueDate ? new Date(`${dueDate}T12:00:00`).toISOString() : undefined, note: note || undefined, icon, accountId });
-    }} className="space-y-3">
-      <div className="flex justify-center"><IconPicker value={icon} onChange={setIcon} /></div>
+    }} className="space-y-3 lg:grid lg:grid-cols-2 lg:gap-x-4 lg:gap-y-3 lg:space-y-0">
+      <div className="lg:col-span-2 flex justify-center"><IconPicker value={icon} onChange={setIcon} /></div>
       <div><Label className="text-xs">Persona</Label><Input autoFocus value={person} onChange={(e) => setPerson(e.target.value)} placeholder="Ej. Juan" className="h-11 rounded-2xl" /></div>
       <div><Label className="text-xs">Concepto</Label><Input value={concept} onChange={(e) => setConcept(e.target.value)} placeholder="Ej. Préstamo viaje" className="h-11 rounded-2xl" /></div>
-      <div><Label className="text-xs">Monto</Label><Input type="number" value={amount} onChange={(e) => setAmount(e.target.value)} placeholder="0.00" className="h-12 text-xl font-bold rounded-2xl" /></div>
-      <div className="grid grid-cols-2 gap-2">
-        <div><Label className="text-xs">Fecha</Label><Input type="date" value={date} onChange={(e) => setDate(e.target.value)} className="h-11 rounded-2xl" /></div>
-        <div><Label className="text-xs">Vence (opcional)</Label><Input type="date" value={dueDate} onChange={(e) => setDueDate(e.target.value)} className="h-11 rounded-2xl" /></div>
-      </div>
+      <div className="lg:col-span-2"><Label className="text-xs">Monto</Label><Input type="number" value={amount} onChange={(e) => setAmount(e.target.value)} placeholder="0.00" className="h-12 text-xl font-bold rounded-2xl" /></div>
+      <div><Label className="text-xs">Fecha</Label><Input type="date" value={date} onChange={(e) => setDate(e.target.value)} className="h-11 rounded-2xl" /></div>
+      <div><Label className="text-xs">Vence (opcional)</Label><Input type="date" value={dueDate} onChange={(e) => setDueDate(e.target.value)} className="h-11 rounded-2xl" /></div>
       <div>
         <Label className="text-xs">Cuenta que presta</Label>
         <Select value={accountId} onValueChange={setAccountId}>
@@ -314,7 +312,7 @@ function DebtForm({ initial, onSave, accounts }: { initial: Debt | null; onSave:
         </Select>
       </div>
       <div><Label className="text-xs">Nota</Label><Input value={note} onChange={(e) => setNote(e.target.value)} className="h-11 rounded-2xl" /></div>
-      <Button type="submit" className="w-full h-12 rounded-2xl gradient-primary text-primary-foreground border-0 shadow-glow font-bold">{initial ? "Guardar cambios" : "Registrar"}</Button>
+      <Button type="submit" className="w-full h-12 rounded-2xl gradient-primary text-primary-foreground border-0 shadow-glow font-bold lg:col-span-2">{initial ? "Guardar cambios" : "Registrar"}</Button>
     </form>
   );
 }
@@ -333,24 +331,22 @@ function PaymentForm({ debt, onSave, accounts }: { debt: Debt; onSave: (p: { amo
       const a = parseFloat(amount);
       if (!a) { toast.error("Ingresa el monto"); return; }
       onSave({ amount: a, date: new Date(`${date}T12:00:00`).toISOString(), note: note || undefined, paymentMethod, accountId });
-    }} className="space-y-3">
-      <p className="text-xs text-muted-foreground">Pendiente: <span className="font-bold text-foreground">{fmt(pending)}</span></p>
+    }} className="space-y-3 lg:grid lg:grid-cols-2 lg:gap-x-4 lg:gap-y-3 lg:space-y-0">
+      <p className="lg:col-span-2 text-xs text-muted-foreground">Pendiente: <span className="font-bold text-foreground">{fmt(pending)}</span></p>
       <div><Label className="text-xs">Monto</Label><Input autoFocus type="number" value={amount} onChange={(e) => setAmount(e.target.value)} className="h-12 text-xl font-bold rounded-2xl" /></div>
-      <div className="grid grid-cols-2 gap-2">
-        <div><Label className="text-xs">Fecha</Label><Input type="date" value={date} onChange={(e) => setDate(e.target.value)} className="h-11 rounded-2xl" /></div>
-        <div>
-          <Label className="text-xs">Método</Label>
-          <Select value={paymentMethod} onValueChange={(v) => setPaymentMethod(v as PaymentMethod)}>
-            <SelectTrigger className="h-11 rounded-2xl"><SelectValue /></SelectTrigger>
-            <SelectContent>
-              {(Object.keys(PAYMENT_METHOD_LABEL) as PaymentMethod[]).map((k) => (
-                <SelectItem key={k} value={k}>{PAYMENT_METHOD_EMOJI[k]} {PAYMENT_METHOD_LABEL[k]}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-      </div>
+      <div><Label className="text-xs">Fecha</Label><Input type="date" value={date} onChange={(e) => setDate(e.target.value)} className="h-11 rounded-2xl" /></div>
       <div>
+        <Label className="text-xs">Método</Label>
+        <Select value={paymentMethod} onValueChange={(v) => setPaymentMethod(v as PaymentMethod)}>
+          <SelectTrigger className="h-11 rounded-2xl"><SelectValue /></SelectTrigger>
+          <SelectContent>
+            {(Object.keys(PAYMENT_METHOD_LABEL) as PaymentMethod[]).map((k) => (
+              <SelectItem key={k} value={k}>{PAYMENT_METHOD_EMOJI[k]} {PAYMENT_METHOD_LABEL[k]}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+      <div className="lg:col-span-2">
         <Label className="text-xs">Cuenta de destino</Label>
         <Select value={accountId} onValueChange={setAccountId}>
           <SelectTrigger className="h-11 rounded-2xl">
@@ -364,7 +360,7 @@ function PaymentForm({ debt, onSave, accounts }: { debt: Debt; onSave: (p: { amo
         </Select>
       </div>
       <div><Label className="text-xs">Nota</Label><Input value={note} onChange={(e) => setNote(e.target.value)} className="h-11 rounded-2xl" /></div>
-      <Button type="submit" className="w-full h-12 rounded-2xl gradient-primary text-primary-foreground border-0 shadow-glow font-bold">Guardar abono</Button>
+      <Button type="submit" className="w-full h-12 rounded-2xl gradient-primary text-primary-foreground border-0 shadow-glow font-bold lg:col-span-2">Guardar abono</Button>
     </form>
   );
 }
