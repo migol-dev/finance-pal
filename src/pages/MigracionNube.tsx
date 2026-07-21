@@ -11,7 +11,7 @@ import { isSupabaseEnabled } from '@/lib/supabase';
 import { supabase } from '@/lib/supabase';
 import { uploadReceipt } from '@/lib/supabase-storage';
 import { toast } from 'sonner';
-import { Account, Transaction, FixedItem, Goal, Debt, DebtPayment, ChangeLogEntry, UserProfile } from '@/lib/finance';
+
 
 function MigracionNubeContent() {
   const { session } = useAuth();
@@ -52,7 +52,7 @@ function MigracionNubeContent() {
   const startMigration = async () => {
     setIsMigrating(true);
     setStep('migrating');
-    
+
     try {
       if (!isSupabaseEnabled) {
         throw new Error('Supabase no está habilitado');
@@ -78,15 +78,12 @@ function MigracionNubeContent() {
         profile: localStore.profile,
       };
 
-      let currentStep = 0;
-
       const totalSteps = 7;
       const updateProgress = (step: string, current: number, total: number, message: string) => {
         setProgress({ step, current, total, message });
       };
 
       // Step 1: Accounts
-      currentStep = 1;
       updateProgress('accounts', 1, totalSteps, `Migrando ${localData.accounts.length} cuentas...`);
 
       for (const account of localData.accounts) {
@@ -94,11 +91,10 @@ function MigracionNubeContent() {
       }
 
       // Step 2: Transactions
-      currentStep = 2;
       updateProgress('transactions', 2, totalSteps, `Migrando ${localData.transactions.length} transacciones...`);
-      
+
       const receiptsToMigrate: Array<{ transactionId: string; dataUrl: string }> = [];
-      
+
       for (const tx of localData.transactions) {
         await upsertTransaction(userId, tx);
         if (tx.receipt && typeof tx.receipt === 'string' && tx.receipt.startsWith('data:')) {
@@ -107,25 +103,22 @@ function MigracionNubeContent() {
       }
 
       // Step 3: Fixed Items
-      currentStep = 3;
       updateProgress('fixedItems', 3, totalSteps, `Migrando ${localData.fixedItems.length} conceptos fijos...`);
-      
+
       for (const item of localData.fixedItems) {
         await upsertFixedItem(userId, item);
       }
 
       // Step 4: Goals
-      currentStep = 4;
       updateProgress('goals', 4, totalSteps, `Migrando ${localData.goals.length} metas...`);
-      
+
       for (const goal of localData.goals) {
         await upsertGoal(userId, goal);
       }
 
       // Step 5: Debts
-      currentStep = 5;
       updateProgress('debts', 5, totalSteps, `Migrando ${localData.debts.length} deudas...`);
-      
+
       let totalDebtPayments = 0;
       for (const debt of localData.debts) {
         const resolvedDebtId = await upsertDebt(userId, debt);
@@ -136,9 +129,8 @@ function MigracionNubeContent() {
       }
 
       // Step 6: Receipts to Supabase Storage
-      currentStep = 6;
       updateProgress('receipts', 6, totalSteps, `Subiendo ${receiptsToMigrate.length} recibos a la nube...`);
-      
+
       let receiptsUploaded = 0;
       for (const { transactionId, dataUrl } of receiptsToMigrate) {
         const url = await uploadReceipt(userId, transactionId, dataUrl);
@@ -154,9 +146,8 @@ function MigracionNubeContent() {
       }
 
       // Step 7: Verify
-      currentStep = 7;
       updateProgress('verify', 7, totalSteps, 'Verificando migración...');
-      
+
       await verifyMigration(userId);
 
       const result: MigrationResult = {
@@ -179,7 +170,8 @@ function MigracionNubeContent() {
       }
     } catch (error: any) {
       console.error('Migration error:', error);
-      setResult({ success: false, error: error?.message || 'Error desconocido durante la migración' });
+      const errMsg = error?.message || 'Error desconocido durante la migración';
+      setResult({ success: false, message: errMsg, error: errMsg });
       setStep('error');
       toast.error(error?.message || 'Error en la migración');
     } finally {
@@ -204,7 +196,7 @@ function MigracionNubeContent() {
     const { error } = await supabase
       .from('accounts')
       .upsert(payload, { onConflict: 'id' });
-    
+
     if (error) throw error;
   }
 
@@ -231,7 +223,7 @@ function MigracionNubeContent() {
     const { error } = await supabase
       .from('transactions')
       .upsert(payload, { onConflict: 'id' });
-    
+
     if (error) throw error;
   }
 
@@ -259,7 +251,7 @@ function MigracionNubeContent() {
     const { error } = await supabase
       .from('fixed_items')
       .upsert(payload, { onConflict: 'id' });
-    
+
     if (error) throw error;
   }
 
@@ -283,7 +275,7 @@ function MigracionNubeContent() {
     const { error } = await supabase
       .from('goals')
       .upsert(payload, { onConflict: 'id' });
-    
+
     if (error) throw error;
   }
 
@@ -326,7 +318,7 @@ function MigracionNubeContent() {
     const { error } = await supabase
       .from('debts')
       .upsert(payload, { onConflict: 'id' });
-    
+
     if (error) throw error;
     return resolvedId;
   }
@@ -348,7 +340,7 @@ function MigracionNubeContent() {
     const { error } = await supabase
       .from('debt_payments')
       .upsert(payload, { onConflict: 'id' });
-    
+
     if (error) throw error;
   }
 
@@ -358,7 +350,7 @@ function MigracionNubeContent() {
       .from('accounts')
       .select('*', { count: 'exact', head: true })
       .eq('user_id', userId);
-    
+
     if (!accountsCount || accountsCount === 0) {
       throw new Error('Verificación fallida: no se migraron cuentas');
     }
@@ -402,9 +394,9 @@ function MigracionNubeContent() {
 
   return (
     <div className="flex h-screen w-full flex-col bg-background gradient-mesh">
-      <Header 
-        title="Migrando a la nube" 
-        subtitle="Tu historial financiero se respalda en Supabase" 
+      <Header
+        title="Migrando a la nube"
+        subtitle="Tu historial financiero se respalda en Supabase"
       />
 
       <div className="flex-1 overflow-y-auto px-5 py-6 space-y-4">
@@ -446,18 +438,18 @@ function MigracionNubeContent() {
             </Card>
 
             <div className="space-y-3">
-              <Button 
-                onClick={startMigration} 
+              <Button
+                onClick={startMigration}
                 className="w-full h-12 rounded-2xl gradient-primary text-primary-foreground border-0 shadow-glow font-bold text-lg"
                 disabled={isMigrating}
               >
                 <Loader2 className="size-5 mr-2 animate-spin" />
                 Iniciar migración
               </Button>
-              
-              <Button 
+
+              <Button
                 onClick={handleSkip}
-                variant="ghost" 
+                variant="ghost"
                 className="w-full h-11 rounded-2xl text-muted-foreground hover:text-foreground"
               >
                 Omitir por ahora
@@ -498,7 +490,7 @@ function MigracionNubeContent() {
                       </div>
                       <Progress value={(progress.current / progress.total) * 100} className="h-3" />
                     </div>
-                    
+
                     <div className="grid grid-cols-3 gap-4 text-center">
                       <div className="rounded-xl bg-muted/50 p-3">
                         <p className="text-2xl font-bold text-primary">{progress.current}</p>
@@ -520,7 +512,7 @@ function MigracionNubeContent() {
 
             <div className="rounded-xl bg-muted/50 border border-border p-4 space-y-2">
               <p className="text-xs text-muted-foreground text-center">
-                <span className="font-medium">NOTA:</span> La migración puede tardar unos minutos según la cantidad de datos. 
+                <span className="font-medium">NOTA:</span> La migración puede tardar unos minutos según la cantidad de datos.
                 Mantén la app abierta y no la cierres hasta que termine.
               </p>
             </div>
@@ -571,7 +563,7 @@ function MigracionNubeContent() {
             </Card>
 
             <div className="space-y-3">
-              <Button 
+              <Button
                 onClick={handleContinue}
                 className="w-full h-12 rounded-2xl gradient-primary text-primary-foreground border-0 shadow-glow font-bold text-lg"
               >
@@ -613,16 +605,16 @@ function MigracionNubeContent() {
             </Card>
 
             <div className="space-y-3">
-              <Button 
+              <Button
                 onClick={handleRetry}
                 className="w-full h-12 rounded-2xl gradient-primary text-primary-foreground border-0 shadow-glow font-bold"
               >
                 Reintentar migración
               </Button>
-              
-              <Button 
+
+              <Button
                 onClick={handleSkip}
-                variant="ghost" 
+                variant="ghost"
                 className="w-full h-11 rounded-2xl text-muted-foreground hover:text-foreground"
               >
                 Omitir por ahora
@@ -646,3 +638,5 @@ function StatItem({ icon, label, value }: { icon: React.ReactNode; label: string
     </div>
   );
 }
+
+export default MigracionNubeContent;

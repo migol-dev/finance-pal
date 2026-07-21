@@ -51,7 +51,7 @@ export default function Anual() {
   const accounts = useFinance((s) => s.accounts);
   const buildMonthly = useMemo(() => {
     return (year: number): MonthRow[] => {
-      return MONTHS.map((m, idx) => {
+      return MONTHS.map((_, idx) => {
         let income = 0, expense = 0, saving = 0;
         for (const i of fixedItems) {
           if (!isFixedActiveInMonth(i, year, idx)) continue;
@@ -218,16 +218,6 @@ export default function Anual() {
     URL.revokeObjectURL(url);
     toast.success(`Exportado resumen-${activeYear}.csv`);
   };
-
-  const tooltipStyle = {
-    borderRadius: 12,
-    border: "1px solid hsl(var(--border))",
-    background: "hsl(var(--card))",
-    color: "hsl(var(--card-foreground))",
-    fontSize: 11,
-  } as const;
-
-  // lightweight built-in charts (recharts removed for bundle size)
 
   return (
     <div>

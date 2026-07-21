@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { useHybridData } from "@/hooks/useHybridData";
-import { fmt, fmt2, iconFor, IconRef, Goal, fmtDate, parseDateLocal } from "@/lib/finance";
+import { fmt, fmt2, iconFor, IconRef, Goal, fmtDate, parseDateLocal, Account } from "@/lib/finance";
 import { Header } from "@/components/app/Header";
 import { Plus, Trash2, Pencil, Minus, CalendarDays, ExternalLink, Sparkles, AlertTriangle, CheckCircle2, Star, ChevronRight, X } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
@@ -96,7 +96,7 @@ export default function Metas() {
   const detailGoal = useMemo(() => goals.find(g => g.id === detailId) || null, [goals, detailId]);
 
   const openNew = () => { setEditing(null); setOpen(true); };
-  const openEdit = (g: Goal) => { setEditing(g); setOpen(true); };
+  
 
   return (
     <div className="pb-24">

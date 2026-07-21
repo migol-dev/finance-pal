@@ -1,9 +1,9 @@
 import React, { useState, useMemo } from 'react';
-import { motion } from 'framer-motion';
+import { motion } from '@/lib/framer';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/context/AuthContext';
 import { toast } from 'sonner';
-import { Mail, Lock, Loader2, LogIn, UserPlus, AlertCircle, CheckCircle } from 'lucide-react';
+import { Mail, Lock, Loader2, LogIn, UserPlus } from 'lucide-react';
 import { Progress } from '@/components/ui/progress';
 
 const GoogleIcon = () => (
@@ -114,7 +114,7 @@ export default function Login() {
         provider: 'github',
         options: {
           redirectTo: `${window.location.origin}/auth/callback`,
-          scope: 'read:user user:email',
+          scopes: 'read:user user:email',
         },
       });
       if (error) throw error;

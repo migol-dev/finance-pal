@@ -3,7 +3,7 @@ import { Header } from "@/components/app/Header";
 import { Button } from "@/components/ui/button";
 import { Trash2, History } from "lucide-react";
 import { toast } from "sonner";
-import React from "react";
+
 import { motion, AnimatePresence } from "@/lib/framer";
 
 const ENTITY_LABEL: Record<string, string> = {

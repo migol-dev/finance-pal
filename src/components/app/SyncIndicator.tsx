@@ -2,7 +2,6 @@ import { motion, AnimatePresence } from "@/lib/framer";
 import { Cloud, CloudOff, RefreshCw } from "lucide-react";
 import { useNetwork } from "@/hooks/useNetwork";
 import { useSyncStore } from "@/store/sync-store";
-import { isSupabaseEnabled } from "@/lib/supabase";
 
 type SyncState = "synced" | "syncing" | "pending" | "offline";
 

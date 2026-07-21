@@ -1,10 +1,11 @@
 import { useEffect, useMemo, useState } from "react";
 import { useHybridData } from "@/hooks/useHybridData";
+import { useFinance } from "@/store/finance-store";
 import { fmt, CATEGORY_EMOJI, MONTHS, iconFor, IconRef, Transaction, PaymentMethod, PAYMENT_METHOD_LABEL, PAYMENT_METHOD_EMOJI, fmtDate, parseDateLocal, Account } from "@/lib/finance";
 import { Header } from "@/components/app/Header";
-import { Plus, Trash2, Search, Pencil, HandCoins, Calendar, X, SlidersHorizontal } from "lucide-react";
+import { Plus, Trash2, Search, Pencil, HandCoins, Calendar, SlidersHorizontal } from "lucide-react";
 import { useSearchParams, useNavigate } from "react-router-dom";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -124,7 +125,7 @@ export default function Movimientos() {
           note: d.concept, icon: d.icon, _virtual: true, _debtId: d.id,
         });
       }
-      d.payments.forEach((p) => {
+      d.payments.forEach((p: any) => {
         const pd = parseDateLocal(p.date);
         if (pd.getFullYear() === activeYear && pd.getMonth() === activeMonth) {
           rows.push({
@@ -161,7 +162,7 @@ export default function Movimientos() {
       .filter((t) => paymentMethodFilter === "all" || ((t as any).paymentMethod === paymentMethodFilter))
       .filter((t) => {
         if (!q) return true;
-        const pmLabel = (t as any).paymentMethod ? PAYMENT_METHOD_LABEL[(t as any).paymentMethod] : "";
+        const pmLabel = (t as any).paymentMethod ? (PAYMENT_METHOD_LABEL as Record<string, string>)[(t as any).paymentMethod] ?? "" : "";
         return (t.concept || "").toLowerCase().includes(q) || (t.category || "").toLowerCase().includes(q) || pmLabel.toLowerCase().includes(q);
       })
       .filter((t) => {
@@ -495,15 +496,15 @@ function TxForm({ initial, onSave }: { initial: Partial<Transaction> & { type: T
   const [note, setNote] = useState(initial.note ?? "");
   const [icon, setIcon] = useState<IconRef | undefined>(initial.icon);
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>(initial.paymentMethod ?? "transfer");
-  const accounts = useFinance((s) => s.accounts);
+  const accounts = useFinance((s: any) => s.accounts);
   const [accountId, setAccountId] = useState<string | undefined>(initial.accountId ?? undefined);
   const [transferToAccountId, setTransferToAccountId] = useState<string | undefined>((initial as any)?.transferToAccountId ?? undefined);
   const [externalPayee, setExternalPayee] = useState<{ clabe?: string; bank?: string; name?: string } | null>((initial as any)?.externalPayee ?? null);
   const [receiptData, setReceiptData] = useState<string | undefined>((initial as any)?.receipt ?? undefined);
   const cats = Object.keys(CATEGORY_EMOJI);
 
-  const cashAccount = accounts.find((a) => a.type === "cash");
-  const bankAccounts = accounts.filter((a) => a.type !== "cash");
+  const cashAccount = accounts.find((a: Account) => a.type === "cash");
+  const bankAccounts = accounts.filter((a: Account) => a.type !== "cash");
 
   useEffect(() => {
     if (accountId) return;
@@ -515,13 +516,12 @@ function TxForm({ initial, onSave }: { initial: Partial<Transaction> & { type: T
     }
   }, [accounts, paymentMethod, accountId, cashAccount, bankAccounts]);
 
-  // Set default category for transfer
+  // Set default concept for transfer
   useEffect(() => {
-    if (type === "transfer" && category === "Otros") {
-      setCategory("Otros"); // Maybe a special category?
-      if (!concept) setConcept("Traspaso entre cuentas");
+    if (type === "transfer" && !concept) {
+      setConcept("Traspaso entre cuentas");
     }
-  }, [type]);
+  }, [type, concept]);
 
   return (
     <form onSubmit={async (e) => {
@@ -692,7 +692,7 @@ function TxForm({ initial, onSave }: { initial: Partial<Transaction> & { type: T
           <Select value={transferToAccountId} onValueChange={(v) => setTransferToAccountId(v || undefined)}>
             <SelectTrigger className="h-11 rounded-2xl"><SelectValue placeholder="Seleccione destinatario" /></SelectTrigger>
             <SelectContent>
-              {accounts.filter(a => a.id !== accountId).map((a: Account) => (
+              {accounts.filter((a: Account) => a.id !== accountId).map((a: Account) => (
                 <SelectItem key={a.id} value={a.id}>Cuenta propia: {a.name}</SelectItem>
               ))}
               <SelectItem value="__external">Cuenta externa (otra persona)</SelectItem>

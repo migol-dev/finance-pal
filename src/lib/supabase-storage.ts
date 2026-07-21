@@ -66,7 +66,7 @@ async function validateAndCompressImage(dataUrl: string): Promise<{ blob: Blob; 
   }
 }
 
-async function compressImage(dataUrl: string, mime: string): Promise<{ blob: Blob; mime: string } | null> {
+async function compressImage(dataUrl: string, _mime: string): Promise<{ blob: Blob; mime: string } | null> {
   return new Promise((resolve) => {
     const img = new Image();
     img.onload = () => {

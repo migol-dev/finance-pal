@@ -1,9 +1,8 @@
 import { z } from 'zod';
 import { 
   ItemType, Frequency, Priority, PaymentMethod, AccountType, 
-  Account, Transaction, FixedItem, Goal, Debt, DebtPayment, 
-  ChangeLogEntry, ChangeAction, ChangeEntity, IconRef, Denomination,
-  UserProfile, Currency, ThemeMode
+  ChangeAction, ChangeEntity, IconRef, Denomination,
+  Currency, ThemeMode
 } from '@/lib/finance';
 
 const iconRefSchema: z.ZodType<IconRef> = z.object({
@@ -31,7 +30,7 @@ const changeEntitySchema = z.enum(['transaction', 'fixed', 'goal', 'debt']) sati
 const currencySchema = z.enum(['MXN', 'USD', 'EUR', 'COP', 'ARS', 'CLP', 'PEN', 'BRL']) satisfies z.ZodEnum<[Currency, ...Currency[]]>;
 const themeModeSchema = z.enum(['light', 'dark']) satisfies z.ZodEnum<[ThemeMode, ...ThemeMode[]]>;
 
-export const accountSchema: z.ZodType<Account> = z.object({
+export const accountSchema = z.object({
   id: z.string().uuid({ message: 'Invalid account ID format' }),
   name: z.string().min(1, 'Name required').max(100, 'Name too long'),
   type: accountTypeSchema,
@@ -43,7 +42,7 @@ export const accountSchema: z.ZodType<Account> = z.object({
   holderName: z.string().max(100).optional(),
 }).strict();
 
-export const transactionSchema: z.ZodType<Transaction> = z.object({
+export const transactionSchema = z.object({
   id: z.string().uuid({ message: 'Invalid transaction ID format' }),
   type: transactionTypeSchema,
   category: z.string().min(1).max(50),
@@ -64,7 +63,7 @@ export const transactionSchema: z.ZodType<Transaction> = z.object({
   receipt: z.string().max(10000000).optional(),
 }).strict();
 
-export const fixedItemSchema: z.ZodType<FixedItem> = z.object({
+export const fixedItemSchema = z.object({
   id: z.string().uuid({ message: 'Invalid fixed item ID format' }),
   type: itemTypeSchema,
   category: z.string().min(1).max(50),
@@ -96,12 +95,12 @@ export const fixedItemSchema: z.ZodType<FixedItem> = z.object({
   { message: 'payDay required for monthly frequencies (1-28), payWeekDay for weekly (0-6)', path: ['payDay'] }
 );
 
-export const goalSchema: z.ZodType<Goal> = z.object({
+export const goalSchema = z.object({
   id: z.string().uuid({ message: 'Invalid goal ID format' }),
   name: z.string().min(1, 'Name required').max(100, 'Name too long'),
   target: z.number().positive().finite().max(1e12),
   saved: z.number().nonnegative().finite().max(1e12),
-  emoji: z.string().max(8).optional(),
+  emoji: z.string().max(8).default('🎯'),
   color: z.string().max(50).default('gradient-primary'),
   deadline: z.string().date().optional(),
   icon: iconRefSchema.optional(),
@@ -115,7 +114,7 @@ export const goalSchema: z.ZodType<Goal> = z.object({
   pinned: z.boolean().optional(),
 }).strict();
 
-export const debtPaymentSchema: z.ZodType<DebtPayment> = z.object({
+export const debtPaymentSchema = z.object({
   id: z.string().uuid(),
   amount: z.number().positive().finite().max(1e12),
   date: z.string().datetime({ offset: true, local: true }).or(z.string().date()),
@@ -124,10 +123,10 @@ export const debtPaymentSchema: z.ZodType<DebtPayment> = z.object({
   accountId: z.string().uuid().optional(),
 }).strict();
 
-export const debtSchema: z.ZodType<Debt> = z.object({
+export const debtSchema = z.object({
   id: z.string().uuid({ message: 'Invalid debt ID format' }),
   person: z.string().min(1, 'Person required').max(100, 'Name too long'),
-  concept: z.string().max(200).default('Préstamo'),
+  concept: z.string().min(1).max(200),
   amount: z.number().positive().finite().max(1e12),
   date: z.string().datetime({ offset: true, local: true }).or(z.string().date()),
   dueDate: z.string().date().optional(),
@@ -137,7 +136,7 @@ export const debtSchema: z.ZodType<Debt> = z.object({
   accountId: z.string().uuid().optional(),
 }).strict();
 
-export const changeLogEntrySchema: z.ZodType<ChangeLogEntry> = z.object({
+export const changeLogEntrySchema = z.object({
   id: z.string().uuid(),
   at: z.string().datetime({ offset: true }),
   entity: changeEntitySchema,
@@ -151,10 +150,10 @@ export const changeLogEntrySchema: z.ZodType<ChangeLogEntry> = z.object({
   })).max(50).optional(),
 }).strict();
 
-export const userProfileSchema: z.ZodType<UserProfile> = z.object({
+export const userProfileSchema = z.object({
   name: z.string().min(1, 'Name required').max(50, 'Name too long'),
   email: z.string().email('Invalid email').max(254).optional(),
-  currency: currencySchema.default('MXN'),
+  currency: currencySchema,
   avatar: iconRefSchema.optional(),
 }).strict();
 

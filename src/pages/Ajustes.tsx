@@ -1,10 +1,10 @@
 import { useEffect, useRef, useState } from "react";
 import { useHybridData } from "@/hooks/useHybridData";
-import { useFinance, Currency, ExportScopes, ALL_SCOPES, normalizeImportKeys } from "@/store/finance-store";
-import { fmt, monthlyAmount, TYPE_LABEL, FREQ_LABEL, ItemType, Frequency, Priority, iconFor, IconRef, FixedItem, CATEGORY_EMOJI, PaymentMethod, PAYMENT_METHOD_LABEL, PAYMENT_METHOD_EMOJI, Account, Denomination, cashTotalFromDenominations } from "@/lib/finance";
+import { useFinance, ExportScopes, ALL_SCOPES, normalizeImportKeys } from "@/store/finance-store";
+import { fmt, monthlyAmount, TYPE_LABEL, FREQ_LABEL, ItemType, Frequency, Priority, iconFor, IconRef, FixedItem, CATEGORY_EMOJI, PaymentMethod, PAYMENT_METHOD_LABEL, PAYMENT_METHOD_EMOJI, Account, Denomination, cashTotalFromDenominations, Currency } from "@/lib/finance";
 import DenominationsEditor from "@/components/ui/DenominationsEditor";
 import { Header } from "@/components/app/Header";
-import { Plus, Trash2, Power, Smartphone, Database, RotateCcw, Pencil, Download, Upload, Sun, Moon, Target, History, HandCoins, User, AlertTriangle, LogOut, Cloud, CloudOff } from "lucide-react";
+import { Plus, Trash2, Power, Database, RotateCcw, Pencil, Download, Upload, Sun, Moon, Target, History, HandCoins, User, LogOut, Cloud, CloudOff } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -22,14 +22,13 @@ import { Share } from "@capacitor/share";
 import { LocalNotifications } from "@capacitor/local-notifications";
 import { ElegantConfirm } from "@/components/app/ElegantConfirm";
 import { useAuth } from '@/context/AuthContext';
-import { supabase, isSupabaseEnabled, setSyncEnabled } from '@/lib/supabase';
+import { isSupabaseEnabled, setSyncEnabled } from '@/lib/supabase';
 
 export default function Ajustes() {
   const { 
     fixedItems, addFixed, updateFixed, removeFixed, toggleFixed, resetAll, exportData, importData, 
     theme, toggleTheme, profile, setProfile, 
-    accounts, addAccount, updateAccount, removeAccount,
-    isLoading 
+    accounts, addAccount, updateAccount, removeAccount 
   } = useHybridData();
   const syncFiltersToURL = useFinance((s) => s.syncFiltersToURL);
   const setSyncFiltersToURL = useFinance((s) => s.setSyncFiltersToURL);
@@ -47,7 +46,7 @@ export default function Ajustes() {
   const [resetConfirm, setResetConfirm] = useState(false);
   const [importConfirmScopes, setImportConfirmScopes] = useState<ExportScopes | null>(null);
   const [accountsOpen, setAccountsOpen] = useState(false);
-  const [editingAccount, setEditingAccount] = useState<any | null>(null);
+  const [editingAccount, setEditingAccount] = useState<Account | null>(null);
   const [cashDenomsState, setCashDenomsState] = useState<Denomination[] | undefined>(undefined);
   const [receiptsOpen, setReceiptsOpen] = useState(false);
   const [orphanList, setOrphanList] = useState<string[] | null>(null);
@@ -214,7 +213,7 @@ export default function Ajustes() {
               <Button onClick={async () => {
                 // quick background cleanup
                 try {
-                  const res = await (useFinance.getState() as any).cleanupOrphanReceipts(true);
+                  const res = await useFinance.getState().cleanupOrphanReceipts(true);
                   const freed = (res?.freedBytes ?? 0) / 1024;
                   if ((res?.orphans ?? []).length > 0) {
                     toast.success(`Limpió ${(res.orphans.length)} recibos, liberó ${freed.toFixed(1)} KB`);
@@ -397,7 +396,7 @@ export default function Ajustes() {
             setReceiptsOpen(true);
             setReceiptsLoading(true);
             try {
-              const r = await (useFinance.getState() as any).cleanupOrphanReceipts(false); // dry-run
+              const r = await useFinance.getState().cleanupOrphanReceipts(false); // dry-run
               setOrphanList(r?.orphans ?? []);
             } catch (e) { setOrphanList([]); }
             setReceiptsLoading(false);
@@ -419,7 +418,7 @@ export default function Ajustes() {
                     {orphanList.map((o) => <div key={o} className="text-xs py-1">{o}</div>)}
                   </div>
                   <div className="flex gap-2 justify-end mt-3">
-                    <Button variant="secondary" onClick={async () => { setReceiptsLoading(true); await (useFinance.getState() as any).cleanupOrphanReceipts(true); const r = await (useFinance.getState() as any).cleanupOrphanReceipts(false); setOrphanList(r.orphans); setReceiptsLoading(false); toast.success('Recibos eliminados'); }}>Eliminar</Button>
+                    <Button variant="secondary" onClick={async () => { setReceiptsLoading(true); await useFinance.getState().cleanupOrphanReceipts(true); const r = await useFinance.getState().cleanupOrphanReceipts(false); setOrphanList(r.orphans); setReceiptsLoading(false); toast.success('Recibos eliminados'); }}>Eliminar</Button>
                     <Button onClick={() => { setReceiptsOpen(false); setOrphanList(null); }}>Cerrar</Button>
                   </div>
                 </div>
@@ -427,7 +426,7 @@ export default function Ajustes() {
               {!receiptsLoading && orphanList === null && <p className="text-sm">Pulsa Analizar para buscar recibos huérfanos.</p>}
             </div>
             <div className="mt-4 flex justify-end">
-              <Button onClick={async () => { setReceiptsLoading(true); const r = await (useFinance.getState() as any).cleanupOrphanReceipts(false); setOrphanList(r.orphans); setReceiptsLoading(false); }} className="rounded-2xl">Analizar</Button>
+              <Button onClick={async () => { setReceiptsLoading(true); const r = await useFinance.getState().cleanupOrphanReceipts(false); setOrphanList(r.orphans); setReceiptsLoading(false); }} className="rounded-2xl">Analizar</Button>
             </div>
           </DialogContent>
         </Dialog>
@@ -574,14 +573,7 @@ export default function Ajustes() {
   );
 }
 
-function InfoRow({ icon, title, desc }: { icon: React.ReactNode; title: string; desc: string }) {
-  return (
-    <div className="rounded-2xl bg-card border border-border p-4 shadow-soft flex items-start gap-3">
-      <div className="size-9 rounded-xl bg-primary/10 text-primary flex items-center justify-center">{icon}</div>
-      <div><p className="font-semibold text-sm">{title}</p><p className="text-xs text-muted-foreground mt-0.5">{desc}</p></div>
-    </div>
-  );
-}
+
 
 const SCOPE_LABELS: { key: keyof Required<ExportScopes>; label: string; desc: string }[] = [
   { key: "fixedItems", label: "Conceptos fijos", desc: "Ingresos, gastos, ahorros recurrentes" },

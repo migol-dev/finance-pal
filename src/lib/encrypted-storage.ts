@@ -49,7 +49,7 @@ async function getMasterKey(): Promise<CryptoKey> {
     cryptoKey = await crypto.subtle.deriveKey(
       {
         name: 'PBKDF2',
-        salt,
+        salt: salt as BufferSource,
         iterations: KEY_DERIVATION_ITERATIONS,
         hash: 'SHA-256',
       },
@@ -120,14 +120,14 @@ export async function decryptData(encryptedB64: string): Promise<string | null> 
 
 function isNativePlatform(): boolean {
   try {
-    return Capacitor.isNativePlatform();
+    return Capacitor.isNativePlatform() && typeof Filesystem?.readFile === 'function';
   } catch {
     return false;
   }
 }
 
 async function writeFileNative(path: string, data: string): Promise<void> {
-  if (!Filesystem) throw new Error('Filesystem not available');
+  if (!Filesystem || typeof Filesystem.writeFile !== 'function') throw new Error('Filesystem not available');
   await Filesystem.writeFile({
     path,
     data,
@@ -137,7 +137,7 @@ async function writeFileNative(path: string, data: string): Promise<void> {
 }
 
 async function readFileNative(path: string): Promise<string> {
-  if (!Filesystem) throw new Error('Filesystem not available');
+  if (!Filesystem || typeof Filesystem.readFile !== 'function') throw new Error('Filesystem not available');
   const result = await Filesystem.readFile({
     path,
     directory: Directory.Data,
@@ -147,7 +147,7 @@ async function readFileNative(path: string): Promise<string> {
 }
 
 async function deleteFileNative(path: string): Promise<void> {
-  if (!Filesystem) throw new Error('Filesystem not available');
+  if (!Filesystem || typeof Filesystem.deleteFile !== 'function') throw new Error('Filesystem not available');
   await Filesystem.deleteFile({ path, directory: Directory.Data });
 }
 

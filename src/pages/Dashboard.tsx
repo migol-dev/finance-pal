@@ -1,4 +1,4 @@
-import { useMemo, useState, useEffect, type ReactNode } from "react";
+import { useMemo, useState, useEffect, memo, type ReactNode } from "react";
 import { useFinance } from "@/store/finance-store";
 import { fmt, monthlyAmount, MONTHS, isFixedActiveInMonth, iconFor, fmtDate, parseDateLocal, computeBalances, cashTotalFromDenominations } from "@/lib/finance";
 import { Eye, EyeOff, TrendingUp, TrendingDown, PiggyBank, Plus, Bell, BarChart3 } from "lucide-react";
@@ -174,7 +174,7 @@ export default function Dashboard() {
       cumulativeNet,
       savingRate
     };
-  }, [fixedItems, transactions, debts, activeMonth, activeYear]);
+  }, [fixedItems, transactions, debts, accounts, activeMonth, activeYear]);
 
   const balances = useMemo(() => {
     const endOfMonth = new Date(activeYear, activeMonth + 1, 0, 23, 59, 59);
@@ -196,7 +196,6 @@ export default function Dashboard() {
 
   const upcoming = useMemo(() => {
     const today = new Date();
-    const todayDate = today.getDate();
     const todayWeekday = today.getDay();
     const isCurrentMonth = today.getFullYear() === activeYear && today.getMonth() === activeMonth;
     if (!isCurrentMonth) return [];
@@ -492,8 +491,6 @@ export default function Dashboard() {
     </div>
   );
 }
-
-import { memo } from "react";
 
 const MiniStat = memo(function MiniStat({ icon, label, value }: { icon: ReactNode; label: string; value: string }) {
   return (

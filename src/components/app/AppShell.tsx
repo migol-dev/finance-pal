@@ -56,14 +56,14 @@ export function AppShell({ children }: { children: ReactNode }) {
       // Double-press within 2s to exit
       const now = Date.now();
       if (lastBackPressRef.current && now - lastBackPressRef.current < 2000) {
-        try { CapacitorApp.exitApp(); } catch (e) { navigator['app']?.exitApp?.(); }
+        try { CapacitorApp.exitApp(); } catch (_e) { (navigator as any)['app']?.exitApp?.(); }
         return;
       }
       lastBackPressRef.current = now;
       toast('Pulsa de nuevo para salir');
       setTimeout(() => { lastBackPressRef.current = null; }, 2000);
     });
-    return () => { listener.remove(); };
+    return () => { listener.then(h => h.remove()); };
   }, [location.pathname, navigate]);
 
   const onTouchStart = (e: React.TouchEvent) => {

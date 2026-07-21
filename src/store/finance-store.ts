@@ -1,23 +1,13 @@
 import { create } from "zustand";
-import { persist, StateStorage } from "zustand/middleware";
-import { FixedItem, Transaction, Goal, Debt, DebtPayment, ChangeLogEntry, ChangeAction, ChangeEntity, IconRef, isFixedActiveInMonth, parseDateLocal, Account, Denomination } from "@/lib/finance";
+import { persist } from "zustand/middleware";
+import { FixedItem, Transaction, Goal, Debt, DebtPayment, ChangeLogEntry, ChangeAction, ChangeEntity, IconRef, isFixedActiveInMonth, parseDateLocal, Account, ThemeMode, Currency, UserProfile } from "@/lib/finance";
 import { Filesystem, Directory, Encoding } from "@capacitor/filesystem";
 import { Capacitor } from "@capacitor/core";
 import { supabase, isSupabaseEnabled } from "@/lib/supabase";
 import { uploadReceipt, deleteReceipt } from "@/lib/supabase-storage";
-import { useAuth } from '@/context/AuthContext';
-import { encryptData, decryptData, saveEncryptedState, loadEncryptedState, isEncryptionAvailable } from '@/lib/encrypted-storage';
-import { validateEntity, accountSchema, transactionSchema, fixedItemSchema, goalSchema, debtSchema, userProfileSchema, sanitizeForLog } from '@/lib/validators';
-
-export type ThemeMode = "light" | "dark";
-export type Currency = "MXN" | "USD" | "EUR" | "COP" | "ARS" | "CLP" | "PEN" | "BRL";
-
-export interface UserProfile {
-  name: string;
-  email?: string;
-  currency: Currency;
-  avatar?: IconRef;
-}
+import { saveEncryptedState, loadEncryptedState, clearEncryptedState, isEncryptionAvailable } from '@/lib/encrypted-storage';
+import { sanitizeForLog } from '@/lib/validators';
+import { useSyncStore } from '@/store/sync-store';
 
 /** Current schema version of persisted/exported data. */
 export const SCHEMA_VERSION = 5;
@@ -69,10 +59,14 @@ interface State {
   addDebtPayment: (debtId: string, p: Omit<DebtPayment, "id">) => void;
   removeDebtPayment: (debtId: string, paymentId: string) => void;
 
+  hasLocalData: boolean;
   clearChangeLog: () => void;
   exportData: (scopes?: ExportScopes) => string;
-  importData: (json: string, scopes?: ExportScopes) => { ok: boolean; error?: string; warnings?: string[] };
+  importData: (json: string, scopes?: ExportScopes) => Promise<{ ok: boolean; error?: string; warnings?: string[] }>;
   migrateReceiptsInPlace: () => Promise<void>;
+  saveReceiptFile: (receiptId: string, dataUrl: string) => Promise<string | undefined>;
+  deleteReceiptIfExists: (receipt?: string) => Promise<void>;
+  cleanupOrphanReceipts: (deleteFiles?: boolean) => Promise<{ orphans: string[]; freedBytes: number }>;
 
   resetAll: () => void;
 }
@@ -327,141 +321,9 @@ function isOnline(): boolean {
   return navigator.onLine;
 }
 
-async function supabaseInsert<T extends Record<string, any>>(table: string, record: T): Promise<T | null> {
-  if (!isSupabaseEnabled || !isOnline()) return null;
-  const { data, error } = await supabase.from(table).insert(record).select().single();
-  if (error) {
-    console.error(`Supabase insert error (${table}):`, sanitizeForLog(error));
-    return null;
-  }
-  return data as T;
-}
-
-async function supabaseUpdate<T extends Record<string, any>>(table: string, id: string, patch: Partial<T>): Promise<T | null> {
-  if (!isSupabaseEnabled || !isOnline()) return null;
-  const { data, error } = await supabase.from(table).update(patch).eq('id', id).select().single();
-  if (error) {
-    console.error(`Supabase update error (${table}):`, sanitizeForLog(error));
-    return null;
-  }
-  return data as T;
-}
-
-async function supabaseDelete(table: string, id: string): Promise<boolean> {
-  if (!isSupabaseEnabled || !isOnline()) return false;
-  const { error } = await supabase.from(table).delete().eq('id', id);
-  if (error) {
-    console.error(`Supabase delete error (${table}):`, sanitizeForLog(error));
-    return false;
-  }
-  return true;
-}
-
 function queueMutation(table: string, action: 'INSERT' | 'UPDATE' | 'DELETE', recordId: string, payload?: any) {
   if (!isSupabaseEnabled) return;
   useSyncStore.getState().addMutation({ table, action, recordId, payload });
-}
-
-function toSupabaseFixed(item: FixedItem, userId: string) {
-  return {
-    id: item.id,
-    user_id: userId,
-    type: item.type,
-    category: item.category,
-    concept: item.concept,
-    amount: item.amount,
-    frequency: item.frequency,
-    active: item.active,
-    note: item.note,
-    start_date: item.startDate,
-    end_date: item.endDate,
-    priority: item.priority,
-    pay_day: item.payDay,
-    pay_week_day: item.payWeekDay,
-    icon: item.icon,
-    payment_method: item.paymentMethod,
-    account_id: item.accountId,
-  };
-}
-
-function toSupabaseTx(tx: Transaction, userId: string) {
-  return {
-    id: tx.id,
-    user_id: userId,
-    type: tx.type,
-    category: tx.category,
-    concept: tx.concept,
-    amount: tx.amount,
-    date: tx.date,
-    note: tx.note,
-    icon: tx.icon,
-    payment_method: tx.paymentMethod,
-    fixed_id: tx.fixedId,
-    account_id: tx.accountId,
-    transfer_to_account_id: tx.transferToAccountId,
-    external_payee: tx.externalPayee,
-    receipt: tx.receipt,
-  };
-}
-
-function toSupabaseAccount(acc: Account, userId: string) {
-  return {
-    id: acc.id,
-    user_id: userId,
-    name: acc.name,
-    type: acc.type,
-    initial_balance: acc.initialBalance,
-    currency: acc.currency,
-    clabe: acc.clabe,
-    bank: acc.bank,
-    holder_name: acc.holderName,
-    denominations: acc.denominations,
-  };
-}
-
-function toSupabaseGoal(goal: Goal, userId: string) {
-  return {
-    id: goal.id,
-    user_id: userId,
-    name: goal.name,
-    target: goal.target,
-    saved: goal.saved,
-    emoji: goal.emoji,
-    color: goal.color,
-    deadline: goal.deadline,
-    icon: goal.icon,
-    purchase_url: goal.purchaseUrl,
-    contributions: goal.contributions,
-    pinned: goal.pinned,
-  };
-}
-
-function toSupabaseDebt(debt: Debt, userId: string) {
-  return {
-    id: debt.id,
-    user_id: userId,
-    person: debt.person,
-    concept: debt.concept,
-    amount: debt.amount,
-    date: debt.date,
-    due_date: debt.dueDate,
-    note: debt.note,
-    icon: debt.icon,
-    account_id: debt.accountId,
-  };
-}
-
-function toSupabaseDebtPayment(debtId: string, payment: DebtPayment, userId: string) {
-  return {
-    id: payment.id,
-    user_id: userId,
-    debt_id: debtId,
-    amount: payment.amount,
-    date: payment.date,
-    note: payment.note,
-    payment_method: payment.paymentMethod,
-    account_id: payment.accountId,
-  };
 }
 
 export const useFinance = create<State>()(
@@ -483,6 +345,12 @@ export const useFinance = create<State>()(
       setSyncFiltersToURL: (v: boolean) => set({ syncFiltersToURL: v }),
       activeYear: now.getFullYear(),
       activeMonth: now.getMonth(),
+
+      get hasLocalData() {
+        const s = get();
+        if (!s) return false;
+        return ((s.transactions?.length ?? 0) + (s.fixedItems?.length ?? 0) + (s.goals?.length ?? 0) + (s.debts?.length ?? 0)) > 0;
+      },
 
       setProfile: (p) => set((s) => ({ profile: { ...s.profile, ...p } })),
 
@@ -683,14 +551,17 @@ export const useFinance = create<State>()(
         
         // Fallback to local filesystem
         try {
-          const m = dataUrl.match(/^data:(image\/[^;]+);base64,(.*)$/);
-          const base64 = m ? m[2] : dataUrl.split(",")[1];
-          const mime = m ? m[1] : "image/png";
-          const ext = mime.split("/")[1] || "png";
-          const fname = `receipt-${receiptId}-${Date.now()}.${ext}`;
-          const rel = `receipts/${fname}`;
-          await Filesystem.writeFile({ path: rel, data: base64, directory: Directory.Data, encoding: Encoding.UTF8 });
-          return rel;
+          if (typeof Filesystem?.writeFile === 'function') {
+            const m = dataUrl.match(/^data:(image\/[^;]+);base64,(.*)$/);
+            const base64 = m ? m[2] : dataUrl.split(",")[1];
+            const mime = m ? m[1] : "image/png";
+            const ext = mime.split("/")[1] || "png";
+            const fname = `receipt-${receiptId}-${Date.now()}.${ext}`;
+            const rel = `receipts/${fname}`;
+            await Filesystem.writeFile({ path: rel, data: base64, directory: Directory.Data, encoding: Encoding.UTF8 });
+            return rel;
+          }
+          return undefined;
         } catch (e) {
           return undefined;
         }
@@ -710,9 +581,11 @@ export const useFinance = create<State>()(
         
         // Fallback to local filesystem
         try {
-          let fname = receipt;
-          if (receipt.includes("/")) fname = receipt.split("/").pop() as string;
-          await Filesystem.deleteFile({ path: `receipts/${fname}`, directory: Directory.Data });
+          if (typeof Filesystem?.deleteFile === 'function') {
+            let fname = receipt;
+            if (receipt.includes("/")) fname = receipt.split("/").pop() as string;
+            await Filesystem.deleteFile({ path: `receipts/${fname}`, directory: Directory.Data });
+          }
         } catch (e) {
           // ignore
         }
@@ -743,7 +616,7 @@ export const useFinance = create<State>()(
 
         // If receipt is a data URL and running on native, persist it and replace with path
         if (typeof nv.receipt === "string" && nv.receipt.startsWith("data:") && Capacitor.isNativePlatform()) {
-          const saved = await (get() as any).saveReceiptFile(nv.id, nv.receipt);
+          const saved = await get().saveReceiptFile(nv.id, nv.receipt);
           if (saved) nv.receipt = saved;
         }
         set((s2) => ({ transactions: [nv, ...s2.transactions], changeLog: [logEntry("transaction", nv.id, "create", `Agregó ${nv.type === "income" ? "ingreso" : nv.type === "saving" ? "ahorro" : "gasto"} "${nv.concept}"`), ...s2.changeLog].slice(0, 500) }));
@@ -791,10 +664,10 @@ export const useFinance = create<State>()(
 
         // If new receipt is a data URL, persist it then delete old
         if (typeof p.receipt === "string" && p.receipt.startsWith("data:") && Capacitor.isNativePlatform()) {
-          const saved = await (get() as any).saveReceiptFile(idv, p.receipt as string);
+          const saved = await get().saveReceiptFile(idv, p.receipt as string);
           if (saved) {
             patch.receipt = saved;
-            await (get() as any).deleteReceiptIfExists(prev.receipt);
+            await get().deleteReceiptIfExists(prev.receipt);
           }
         }
         set((s2) => ({ transactions: s2.transactions.map((x) => x.id === idv ? { ...x, ...patch } : x), changeLog: [logEntry("transaction", idv, "update", `Editó "${prev.concept}"`, diffFields(prev, patch)), ...s2.changeLog].slice(0, 500) }));
@@ -830,7 +703,7 @@ export const useFinance = create<State>()(
       removeTx: async (idv) => {
         const s = get();
         const prev = s.transactions.find((x) => x.id === idv);
-        if (prev?.receipt) await (get() as any).deleteReceiptIfExists(prev.receipt);
+        if (prev?.receipt) await get().deleteReceiptIfExists(prev.receipt);
         set((s2) => ({ transactions: s2.transactions.filter((x) => x.id !== idv), changeLog: [logEntry("transaction", idv, "delete", `Eliminó "${prev?.concept ?? "movimiento"}"`), ...s2.changeLog].slice(0, 500) }));
 
         // Sync to Supabase
@@ -900,7 +773,6 @@ export const useFinance = create<State>()(
         }
       },
       removeAccount: async (idv) => {
-        const s = get();
         set((s) => ({
           accounts: s.accounts.filter((x) => x.id !== idv),
           transactions: s.transactions.map((t) => t.accountId === idv ? { ...t, accountId: undefined } : t),
@@ -925,6 +797,7 @@ export const useFinance = create<State>()(
       })),
 
       addGoal: async (g) => {
+        const s = get();
         const nv = {
           ...g,
           id: generateSecureId(),
@@ -933,7 +806,7 @@ export const useFinance = create<State>()(
             ? [{ id: generateSecureId(), date: new Date().toISOString(), amount: g.saved }]
             : []),
         } as Goal;
-        const nextGoals = nv.pinned ? [nv, ...s.goals.map(x => ({ ...x, pinned: false }))] : [nv, ...s.goals];
+        const nextGoals = nv.pinned ? [nv, ...s.goals.map((x: Goal) => ({ ...x, pinned: false }))] : [nv, ...s.goals];
         const state = { goals: nextGoals, changeLog: [logEntry("goal", nv.id, "create", `Creó meta "${nv.name}"`), ...s.changeLog].slice(0, 500) };
         set(state);
 
@@ -1037,7 +910,6 @@ export const useFinance = create<State>()(
       }),
 
       addDebt: async (d) => {
-        const s = get();
         const nv: Debt = { ...d, id: generateSecureId(), payments: [] };
         set((s) => ({ debts: [nv, ...s.debts], changeLog: [logEntry("debt", nv.id, "create", `Registró deuda de ${nv.person} por ${nv.amount}`), ...s.changeLog].slice(0, 500) }));
 
@@ -1196,7 +1068,6 @@ export const useFinance = create<State>()(
         }
       },
       removeDebtPayment: async (debtId, paymentId) => {
-        const s = get();
         set((s) => ({
           debts: s.debts.map((x) => x.id === debtId ? { ...x, payments: x.payments.filter((p) => p.id !== paymentId) } : x),
           changeLog: [logEntry("debt", debtId, "update", `Eliminó un abono`), ...s.changeLog].slice(0, 500),
@@ -1264,7 +1135,7 @@ export const useFinance = create<State>()(
           if (Capacitor.isNativePlatform() && Array.isArray(transactions)) {
             for (const tx of transactions) {
               if (typeof tx.receipt === "string" && tx.receipt.startsWith("data:")) {
-                const saved = await (get() as any).saveReceiptFile(tx.id, tx.receipt);
+                const saved = await get().saveReceiptFile(tx.id, tx.receipt);
                 if (saved) tx.receipt = saved;
               }
             }
@@ -1290,7 +1161,7 @@ export const useFinance = create<State>()(
 
           set({ fixedItems, transactions, accounts, goals, debts, changeLog, theme, profile });
           // After importing, also migrate any in-place dataURL receipts from existing state
-          try { await (get() as any).migrateReceiptsInPlace(); } catch (e) { /* ignore */ }
+          try { await get().migrateReceiptsInPlace(); } catch (e) { /* ignore */ }
           return { ok: true, warnings };
         } catch (e: any) {
           return { ok: false, error: e?.message ?? "JSON inválido" };
@@ -1304,18 +1175,18 @@ export const useFinance = create<State>()(
         let changed = false;
         for (const tx of txs) {
           if (typeof tx.receipt === "string" && tx.receipt.startsWith("data:")) {
-            const saved = await (get() as any).saveReceiptFile(tx.id, tx.receipt);
+            const saved = await get().saveReceiptFile(tx.id, tx.receipt);
             if (saved) {
               tx.receipt = saved;
               changed = true;
             }
           }
         }
-        if (changed) set((s2) => ({ transactions: txs }));
+        if (changed) set(() => ({ transactions: txs }));
       },
 
           cleanupOrphanReceipts: async (deleteFiles = false) => {
-            if (!Capacitor.isNativePlatform()) return { orphans: [], freedBytes: 0 };
+            if (!Capacitor.isNativePlatform() || typeof Filesystem?.readdir !== 'function') return { orphans: [], freedBytes: 0 };
             try {
               const res = await Filesystem.readdir({ path: 'receipts', directory: Directory.Data });
               const files: string[] = Array.isArray((res as any).files) ? (res as any).files : (Array.isArray(res) ? res as any : []);
@@ -1388,7 +1259,7 @@ export const useFinance = create<State>()(
             localStorage.removeItem(name);
           }
         },
-      } as StateStorage,
+      } as any,
       migrate: (state: any, fromVersion: number) => {
         if (!state) return state;
         // Add new fields with defaults — never lose existing user data.

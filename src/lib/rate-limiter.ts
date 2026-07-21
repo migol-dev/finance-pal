@@ -31,8 +31,6 @@ class RateLimiter {
     const config = this.configs.get(configName) ?? { maxRequests: 100, windowMs: 60000, keyPrefix: 'rl' };
     const key = `${config.keyPrefix}:${identifier}`;
     const now = Date.now();
-    const windowStart = now - config.windowMs;
-
     let info = this.store.get(key);
 
     if (!info || info.resetTime <= now) {
@@ -69,7 +67,7 @@ class RateLimiter {
     };
   }
 
-  async consume(identifier: string, configName: string = 'default', cost: number = 1): Promise<boolean> {
+  async consume(identifier: string, configName: string = 'default', _cost: number = 1): Promise<boolean> {
     const result = await this.checkLimit(identifier, configName);
     return result.allowed;
   }

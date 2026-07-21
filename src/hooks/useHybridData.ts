@@ -2,7 +2,8 @@ import { useFinance } from '@/store/finance-store';
 import { useAccounts, useTransactions, useFixedItems, useGoals, useDebts } from '@/hooks/useSupabaseQueries';
 import { isSupabaseEnabled } from '@/lib/supabase';
 import { useQueryClient } from '@tanstack/react-query';
-import { Account, Transaction, FixedItem, Goal, Debt } from '@/lib/finance';
+import { Debt } from '@/lib/finance';
+
 
 export function useHybridData() {
   const queryClient = useQueryClient();
@@ -56,8 +57,8 @@ export function useHybridData() {
           const local = localByGroupKey.get(groupKey);
           if (!local) return remote;
           // Merge payments from local that aren't already in the remote debt
-          const remotePaymentIds = new Set(remote.payments.map(p => p.id));
-          const unsynced = local.payments.filter(p => !remotePaymentIds.has(p.id));
+          const remotePaymentIds = new Set(remote.payments.map((p: any) => p.id));
+          const unsynced = local.payments.filter((p: any) => !remotePaymentIds.has(p.id));
           if (unsynced.length === 0) return remote;
           return { ...remote, payments: [...unsynced, ...remote.payments] };
         });

@@ -1,7 +1,7 @@
 import { supabase, isSupabaseEnabled } from '@/lib/supabase';
 import { useFinance } from '@/store/finance-store';
 import { uploadReceipt } from '@/lib/supabase-storage';
-import { Account, Transaction, FixedItem, Goal, Debt, DebtPayment, ChangeLogEntry, UserProfile } from '@/lib/finance';
+import { Account, Transaction, FixedItem, Goal, Debt, DebtPayment } from '@/lib/finance';
 
 export interface MigrationProgress {
   step: string;
@@ -33,12 +33,12 @@ export async function migrateLocalDataToSupabase(
   onProgress?: (progress: MigrationProgress) => void
 ): Promise<MigrationResult> {
   if (!isSupabaseEnabled) {
-    return { success: false, error: 'Supabase no está habilitado' };
+    return { success: false, message: 'Supabase no está habilitado', error: 'Supabase no está habilitado' };
   }
 
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) {
-    return { success: false, error: 'Usuario no autenticado' };
+    return { success: false, message: 'Usuario no autenticado', error: 'Usuario no autenticado' };
   }
 
   const localStore = useFinance.getState();
@@ -57,16 +57,13 @@ export async function migrateLocalDataToSupabase(
       profile: localStore.profile,
     };
 
-    let totalSteps = 0;
-    let currentStep = 0;
+    const totalSteps = 7;
 
     const updateProgress = (step: string, current: number, total: number, message: string) => {
       onProgress?.({ step, current, total, message });
     };
 
     // Step 1: Accounts
-    totalSteps = 7; // accounts, transactions, fixedItems, goals, debts, debtPayments, receipts
-    currentStep = 1;
     updateProgress('accounts', 1, totalSteps, `Migrando ${localData.accounts.length} cuentas...`);
 
     for (const account of localData.accounts) {
@@ -74,7 +71,6 @@ export async function migrateLocalDataToSupabase(
     }
 
     // Step 2: Transactions
-    currentStep = 2;
     updateProgress('transactions', 2, totalSteps, `Migrando ${localData.transactions.length} transacciones...`);
     
     const receiptsToMigrate: Array<{ transactionId: string; dataUrl: string }> = [];
@@ -88,7 +84,6 @@ export async function migrateLocalDataToSupabase(
     }
 
     // Step 3: Fixed Items
-    currentStep = 3;
     updateProgress('fixedItems', 3, totalSteps, `Migrando ${localData.fixedItems.length} conceptos fijos...`);
     
     for (const item of localData.fixedItems) {
@@ -96,7 +91,6 @@ export async function migrateLocalDataToSupabase(
     }
 
     // Step 4: Goals
-    currentStep = 4;
     updateProgress('goals', 4, totalSteps, `Migrando ${localData.goals.length} metas...`);
     
     for (const goal of localData.goals) {
@@ -104,7 +98,6 @@ export async function migrateLocalDataToSupabase(
     }
 
     // Step 5: Debts
-    currentStep = 5;
     updateProgress('debts', 5, totalSteps, `Migrando ${localData.debts.length} deudas...`);
     
     let totalDebtPayments = 0;
@@ -117,7 +110,6 @@ export async function migrateLocalDataToSupabase(
     }
 
     // Step 6: Receipts to Supabase Storage
-    currentStep = 6;
     updateProgress('receipts', 6, totalSteps, `Subiendo ${receiptsToMigrate.length} recibos a la nube...`);
     
     let receiptsUploaded = 0;
@@ -137,11 +129,7 @@ export async function migrateLocalDataToSupabase(
     }
 
     // Step 7: Verify and finalize
-    currentStep = 7;
     updateProgress('verify', 7, totalSteps, 'Verificando migración...');
-    
-    // Verify counts
-    const verification = await verifyMigration(userId);
 
     return {
       success: true,
@@ -157,10 +145,12 @@ export async function migrateLocalDataToSupabase(
       },
     };
   } catch (error: any) {
+    const errMsg = error?.message || 'Error desconocido durante la migración';
     console.error('Migration error:', error);
     return {
       success: false,
-      error: error?.message || 'Error desconocido durante la migración',
+      message: errMsg,
+      error: errMsg,
     };
   }
 }
@@ -304,20 +294,3 @@ async function upsertDebtPayment(userId: string, debtId: string, payment: DebtPa
   if (error) throw error;
 }
 
-async function verifyMigration(userId: string) {
-  const [accounts, transactions, fixedItems, goals, debts] = await Promise.all([
-    supabase.from('accounts').select('id', { count: 'exact' }).eq('user_id', userId),
-    supabase.from('transactions').select('id', { count: 'exact' }).eq('user_id', userId),
-    supabase.from('fixed_items').select('id', { count: 'exact' }).eq('user_id', userId),
-    supabase.from('goals').select('id', { count: 'exact' }).eq('user_id', userId),
-    supabase.from('debts').select('id', { count: 'exact' }).eq('user_id', userId),
-  ]);
-
-  return {
-    accounts: accounts.count ?? 0,
-    transactions: transactions.count ?? 0,
-    fixedItems: fixedItems.count ?? 0,
-    goals: goals.count ?? 0,
-    debts: debts.count ?? 0,
-  };
-}

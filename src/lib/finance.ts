@@ -332,6 +332,16 @@ export const COMMON_EMOJIS = [
   "🐾","🐶","🐱","🌱","🌳","🌸","🛟","🧳","🏖️","⛰️",
 ];
 
+export type ThemeMode = "light" | "dark";
+export type Currency = "MXN" | "USD" | "EUR" | "COP" | "ARS" | "CLP" | "PEN" | "BRL";
+
+export interface UserProfile {
+  name: string;
+  email?: string;
+  currency: Currency;
+  avatar?: IconRef;
+}
+
 export const emojiFor = (cat: string) => CATEGORY_EMOJI[cat] ?? "💸";
 
 /** Resolve display info for any record that might carry an icon. */

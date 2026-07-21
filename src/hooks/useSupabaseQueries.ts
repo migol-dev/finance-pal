@@ -1,21 +1,20 @@
-import { useQuery, useQueryClient, UseQueryOptions } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase, isSupabaseEnabled } from '@/lib/supabase';
 import { useAuth } from '@/context/AuthContext';
-import { Account, Transaction, FixedItem, Goal, Debt, DebtPayment } from '@/lib/finance';
+import { Account, Transaction, FixedItem, Goal, Debt } from '@/lib/finance';
 
 export function useSupabaseQuery<T>(
   key: string[],
   queryFn: () => Promise<T>,
-  options?: Partial<UseQueryOptions<T, Error, T, string[]>>
+  options?: { enabled?: boolean; staleTime?: number }
 ) {
   const { session, loading } = useAuth();
   
   return useQuery({
     queryKey: [...key, session?.user?.id],
     queryFn,
-    enabled: isSupabaseEnabled && !loading && !!session,
-    staleTime: 1000 * 60 * 5, // 5 minutes
-    ...options,
+    enabled: isSupabaseEnabled && !loading && !!session && (options?.enabled ?? true),
+    staleTime: options?.staleTime ?? 1000 * 60 * 5,
   });
 }
 

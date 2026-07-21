@@ -1,6 +1,5 @@
 import { supabase, isSupabaseEnabled } from './supabase';
 import { useSyncStore } from '@/store/sync-store';
-import { useAuth } from '@/context/AuthContext';
 import { rateLimiter, getClientIdentifier } from '@/lib/rate-limiter';
 
 type SyncMutation = {
@@ -42,7 +41,7 @@ async function withRetry<T>(
 export async function processSyncQueue(): Promise<void> {
   if (!isSupabaseEnabled || processingLock) return;
 
-  const { session } = useAuth.getState?.() ?? { session: null };
+  const { data: { session } } = await supabase.auth.getSession();
   if (!session) return;
 
   // Rate limit sync operations
@@ -80,7 +79,6 @@ export async function processSyncQueue(): Promise<void> {
         if (retryCount >= MAX_RETRIES) {
           console.error('Max retries reached, removing from queue:', mutation);
           removeMutation(mutation.id);
-          // TODO: Notify user via toast about failed sync
         } else {
           removeMutation(mutation.id);
           addMutation({ ...mutation, retryCount });
@@ -123,15 +121,17 @@ export function setupSyncListener(): void {
   // Debounce rapid queue changes
   let debounceTimer: ReturnType<typeof setTimeout> | null = null;
   
-  useSyncStore.subscribe((state) => {
+  useSyncStore.subscribe(async (state) => {
     if (state.isSyncing) return;
     
-    const { session } = useAuth.getState?.() ?? { session: null };
-    if (session && state.syncQueue.length > 0) {
-      if (debounceTimer) clearTimeout(debounceTimer);
-      debounceTimer = setTimeout(() => {
-        processSyncQueue();
-      }, 500);
+    if (state.syncQueue.length > 0) {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session) {
+        if (debounceTimer) clearTimeout(debounceTimer);
+        debounceTimer = setTimeout(() => {
+          processSyncQueue();
+        }, 500);
+      }
     }
   });
 

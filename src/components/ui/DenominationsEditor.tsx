@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -23,7 +23,7 @@ export default function DenominationsEditor({
     setDenoms(cleaned); onChange(cleaned);
   };
 
-  const addRow = () => { const next = [...denoms, { value: 0, count: 0, kind: "bill" }]; setDenoms(next); onChange(next); };
+  const addRow = () => { const next = [...denoms, { value: 0, count: 0, kind: "bill" as const }]; setDenoms(next); onChange(next); };
   const removeRow = (i: number) => { const next = denoms.filter((_, idx) => idx !== i); setDenoms(next); onChange(next); };
 
   const total = denoms.reduce((s, d) => s + (Number(d.value || 0) * Number(d.count || 0)), 0);
