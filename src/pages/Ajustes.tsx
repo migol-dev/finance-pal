@@ -264,7 +264,7 @@ export default function Ajustes() {
         </DialogContent>
       </Dialog>
 
-      <div className="px-5 flex gap-2 overflow-x-auto no-scrollbar">
+      <div className="px-5 flex gap-2 overflow-x-auto no-scrollbar lg:flex-wrap">
         {([
           { k: "all", label: "Todos" },
           { k: "income_fixed", label: "Ingresos" },
@@ -309,7 +309,7 @@ export default function Ajustes() {
         ))}
       </div>
 
-      <section className="px-5 mt-8 space-y-3">
+      <section className="px-5 lg:px-10 mt-8 space-y-3">
         <h2 className="text-xs uppercase tracking-wider font-bold text-muted-foreground">Apariencia</h2>
         <button onClick={toggleTheme} className="w-full rounded-2xl bg-card border border-border p-4 shadow-soft flex items-center gap-3 hover:bg-muted/50 transition">
           <div className="size-9 rounded-xl bg-primary/10 text-primary flex items-center justify-center">
@@ -322,7 +322,7 @@ export default function Ajustes() {
         </button>
 
         <h2 className="text-xs uppercase tracking-wider font-bold text-muted-foreground pt-2">Más</h2>
-        <div className="grid grid-cols-3 gap-2">
+        <div className="grid grid-cols-3 lg:flex lg:gap-3 gap-2">
           <Link to="/metas" className="rounded-2xl bg-card border border-border p-3 shadow-soft flex flex-col items-center gap-1.5 hover:bg-muted/50 transition">
             <Target className="size-5 text-primary" /><span className="text-[11px] font-semibold">Metas</span>
           </Link>
@@ -390,7 +390,7 @@ export default function Ajustes() {
         )}
 
         <h2 className="text-xs uppercase tracking-wider font-bold text-muted-foreground pt-2">Datos</h2>
-        <div className="grid grid-cols-2 gap-2">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-2">
           <Button onClick={() => setExportOpen(true)} variant="secondary" className="rounded-2xl h-12 font-semibold"><Download className="size-4 mr-1" />Exportar</Button>
           <Button onClick={() => fileInputRef.current?.click()} variant="secondary" className="rounded-2xl h-12 font-semibold"><Upload className="size-4 mr-1" />Importar</Button>
           <Button onClick={async () => {
