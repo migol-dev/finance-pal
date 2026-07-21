@@ -288,7 +288,7 @@ export default function Dashboard() {
         </div>
       </motion.section>
 
-      <div className="lg:grid lg:grid-cols-2 lg:gap-6 lg:px-5">
+      <div className="lg:grid lg:grid-cols-2 2xl:grid-cols-3 lg:gap-6 lg:px-5">
         {/* Main column */}
         <div className="min-w-0">
           <section className="px-5 lg:px-0 mt-5">
@@ -437,6 +437,56 @@ export default function Dashboard() {
               </div>
             </motion.section>
           )}
+        </div>
+
+        {/* 2xl+ extra column: summary widgets */}
+        <div className="hidden 2xl:block min-w-0 mt-5 lg:mt-0">
+          <div className="space-y-5">
+            <Link to="/anual" className="block rounded-2xl bg-card border border-border p-4 shadow-soft hover:bg-muted/40 transition">
+              <div className="size-9 rounded-xl bg-primary/10 text-primary flex items-center justify-center mb-2">
+                <BarChart3 className="size-4" />
+              </div>
+              <p className="font-bold text-sm">Resumen anual</p>
+              <p className="text-xs text-muted-foreground mt-1">Ingresos, gastos y más</p>
+            </Link>
+
+            <div className="rounded-2xl bg-card border border-border p-4 shadow-soft">
+              <p className="text-xs uppercase tracking-wide font-semibold text-muted-foreground mb-3">Distribución</p>
+              <div className="space-y-3">
+                <div>
+                  <div className="flex items-center justify-between text-xs mb-1">
+                    <span className="font-semibold">Efectivo</span>
+                    <span className="font-bold">{mask(fmt(cashBankBreakdown.cash))}</span>
+                  </div>
+                  <div className="h-1.5 rounded-full bg-muted overflow-hidden">
+                    <div className="h-full rounded-full bg-secondary" style={{ width: `${
+                      cashBankBreakdown.cash + cashBankBreakdown.bank > 0
+                        ? (cashBankBreakdown.cash / (cashBankBreakdown.cash + cashBankBreakdown.bank)) * 100
+                        : 0
+                    }%` }} />
+                  </div>
+                </div>
+                <div>
+                  <div className="flex items-center justify-between text-xs mb-1">
+                    <span className="font-semibold">Cuentas</span>
+                    <span className="font-bold">{mask(fmt(cashBankBreakdown.bank))}</span>
+                  </div>
+                  <div className="h-1.5 rounded-full bg-muted overflow-hidden">
+                    <div className="h-full rounded-full gradient-primary" style={{ width: `${
+                      cashBankBreakdown.cash + cashBankBreakdown.bank > 0
+                        ? (cashBankBreakdown.bank / (cashBankBreakdown.cash + cashBankBreakdown.bank)) * 100
+                        : 0
+                    }%` }} />
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="rounded-2xl gradient-mesh border border-border p-4 text-center">
+              <p className="text-xs font-bold text-muted-foreground">Neto acumulado</p>
+              <p className="text-2xl font-extrabold mt-1">{mask(fmt(monthStats.cumulativeNet))}</p>
+            </div>
+          </div>
         </div>
       </div>
     </div>
