@@ -317,37 +317,38 @@ export default function Anual() {
             </section>
           )}
 
-          {/* Trend chart */}
-          <section className="px-5 mt-5">
-            <SectionTitle>Flujo mensual</SectionTitle>
-            <ChartCard>
-              <SimpleAreaChart
-                data={monthly}
-                xKey="mes"
-                height={240}
-                series={[
-                  { key: "Ingresos", label: "Ingresos", color: "hsl(var(--success))", type: "area", formatter: (v) => fmt(Number(v)) },
-                  { key: "Gastos", label: "Gastos", color: "hsl(var(--destructive))", type: "area", formatter: (v) => fmt(Number(v)) },
-                ]}
-              />
-            </ChartCard>
-          </section>
+          {/* Charts side by side on desktop */}
+          <div className="lg:grid lg:grid-cols-2 lg:gap-5 lg:px-5">
+            <section className="px-5 lg:px-0 mt-5">
+              <SectionTitle>Flujo mensual</SectionTitle>
+              <ChartCard>
+                <SimpleAreaChart
+                  data={monthly}
+                  xKey="mes"
+                  height={240}
+                  series={[
+                    { key: "Ingresos", label: "Ingresos", color: "hsl(var(--success))", type: "area", formatter: (v) => fmt(Number(v)) },
+                    { key: "Gastos", label: "Gastos", color: "hsl(var(--destructive))", type: "area", formatter: (v) => fmt(Number(v)) },
+                  ]}
+                />
+              </ChartCard>
+            </section>
 
-          {/* Net + savings rate trend */}
-          <section className="px-5 mt-5">
-            <SectionTitle>Neto y tasa de ahorro</SectionTitle>
-            <ChartCard>
-              <SimpleAreaChart
-                data={monthly}
-                xKey="mes"
-                height={220}
-                series={[
-                  { key: "Neto", label: "Neto", color: "hsl(var(--primary))", type: "line", formatter: (v) => fmt(Number(v)) },
-                  { key: "Tasa", label: "Tasa", color: "hsl(var(--accent))", type: "line", formatter: (v) => `${v}%` },
-                ]}
-              />
-            </ChartCard>
-          </section>
+            <section className="px-5 lg:px-0 mt-5">
+              <SectionTitle>Neto y tasa de ahorro</SectionTitle>
+              <ChartCard>
+                <SimpleAreaChart
+                  data={monthly}
+                  xKey="mes"
+                  height={220}
+                  series={[
+                    { key: "Neto", label: "Neto", color: "hsl(var(--primary))", type: "line", formatter: (v) => fmt(Number(v)) },
+                    { key: "Tasa", label: "Tasa", color: "hsl(var(--accent))", type: "line", formatter: (v) => `${v}%` },
+                  ]}
+                />
+              </ChartCard>
+            </section>
+          </div>
 
           {/* YoY comparison */}
           <section className="px-5 mt-5">
@@ -404,8 +405,8 @@ export default function Anual() {
       )}
 
       {tab === "categorias" && (
-        <>
-          <section className="px-5 mt-5">
+        <div className="lg:grid lg:grid-cols-2 lg:gap-5 lg:px-5">
+          <section className="px-5 lg:px-0 mt-5">
             <SectionTitle>Gasto por categoría</SectionTitle>
             <ChartCard>
               {byCategory.length === 0 ? (
@@ -435,7 +436,7 @@ export default function Anual() {
             </ChartCard>
           </section>
 
-          <section className="px-5 mt-5">
+          <section className="px-5 lg:px-0 mt-5">
             <SectionTitle>Top conceptos del año</SectionTitle>
             {topConcepts.length === 0 ? (
               <ChartCard><EmptyState text="Aún no hay movimientos variables" /></ChartCard>
@@ -454,7 +455,7 @@ export default function Anual() {
               </div>
             )}
           </section>
-        </>
+        </div>
       )}
 
       {tab === "metodos" && (
@@ -498,7 +499,7 @@ export default function Anual() {
               </div>
             </ChartCard>
           ) : (
-            <div className="space-y-3">
+            <div className="space-y-3 lg:grid lg:grid-cols-2 lg:gap-3 lg:space-y-0">
               {goalsThisYear.map(({ goal, contribsYear }) => {
                 const pct = goal.target > 0 ? Math.min(100, (goal.saved / goal.target) * 100) : 0;
                 return (
