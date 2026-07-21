@@ -1117,19 +1117,52 @@ export const useFinance = create<State>()(
         const s = get();
         const debt = s.debts.find((x) => x.id === debtId); if (!debt) return;
         const payment: DebtPayment = { ...p, id: generateSecureId() };
+
+        // If debt_id is not a valid UUID, generate one and upsert the debt first
+        let resolvedDebtId = debtId;
+        if (isSupabaseEnabled && !isValidUUID(debtId)) {
+          const newId = generateSecureId();
+          const user = (await supabase.auth.getUser()).data.user;
+          if (user) {
+            const debtPayload = {
+              id: newId,
+              user_id: user.id,
+              person: debt.person,
+              concept: debt.concept,
+              amount: debt.amount,
+              date: debt.date,
+              due_date: debt.dueDate,
+              note: debt.note,
+              icon: debt.icon,
+              account_id: debt.accountId,
+            };
+            if (isOnline()) {
+              const { error: debtErr } = await supabase.from('debts').upsert(debtPayload, { onConflict: 'id' });
+              if (debtErr) {
+                console.error('Supabase upsert error (debts):', sanitizeForLog(debtErr));
+              } else {
+                resolvedDebtId = newId;
+              }
+            } else {
+              queueMutation('debts', 'INSERT', newId, debtPayload);
+              resolvedDebtId = newId;
+            }
+          }
+        }
+
         set((s) => ({
-          debts: s.debts.map((x) => x.id === debtId ? { ...x, payments: [payment, ...x.payments] } : x),
+          debts: s.debts.map((x) => x.id === debtId ? { ...x, id: resolvedDebtId, payments: [payment, ...x.payments] } : x),
           changeLog: [logEntry("debt", debtId, "update", `Abono de ${payment.amount} a deuda de "${debt.person}"`), ...s.changeLog].slice(0, 500),
         }));
 
-        // Sync to Supabase (skip if debt_id is not a valid UUID — debt was never synced)
-        if (isSupabaseEnabled && isValidUUID(debtId)) {
+        // Sync payment to Supabase
+        if (isSupabaseEnabled && isValidUUID(resolvedDebtId)) {
           const user = (await supabase.auth.getUser()).data.user;
           if (user) {
             const payload = {
               id: payment.id,
               user_id: user.id,
-              debt_id: debtId,
+              debt_id: resolvedDebtId,
               amount: payment.amount,
               date: payment.date,
               note: payment.note,

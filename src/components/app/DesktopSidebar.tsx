@@ -4,10 +4,9 @@ import { cn } from "@/lib/utils";
 import { motion } from "@/lib/framer";
 import { navItems } from "./nav-items";
 import { useFinance } from "@/store/finance-store";
-import { useNetwork } from "@/hooks/useNetwork";
-import { useSyncStore } from "@/store/sync-store";
 import { isSupabaseEnabled } from "@/lib/supabase";
-import { Cloud, CloudOff, RefreshCw, Sun, Moon, BarChart3, History } from "lucide-react";
+import { SyncIndicator } from "./SyncIndicator";
+import { Sun, Moon, BarChart3, History } from "lucide-react";
 
 const appIcon = "/icon-512.webp";
 
@@ -15,9 +14,6 @@ export const DesktopSidebar = memo(function DesktopSidebar() {
   const theme = useFinance((s) => s.theme);
   const toggleTheme = useFinance((s) => s.toggleTheme);
   const profile = useFinance((s) => s.profile);
-  const { isOnline } = useNetwork();
-  const syncQueue = useSyncStore((s) => s.syncQueue);
-  const isSyncing = useSyncStore((s) => s.isSyncing);
   const location = useLocation();
 
   return (
@@ -96,31 +92,7 @@ export const DesktopSidebar = memo(function DesktopSidebar() {
       </div>
 
       {/* Sync indicator */}
-      {isSupabaseEnabled && (
-        <div className="mb-3 px-4 py-2 rounded-2xl bg-muted/50 text-xs flex items-center gap-2 text-muted-foreground">
-          {!isOnline ? (
-            <>
-              <CloudOff className="size-3.5 text-yellow-500" />
-              <span>Sin conexión</span>
-            </>
-          ) : isSyncing ? (
-            <>
-              <RefreshCw className="size-3.5 text-blue-500 animate-spin" />
-              <span>Sincronizando...</span>
-            </>
-          ) : syncQueue.length > 0 ? (
-            <>
-              <Cloud className="size-3.5 text-yellow-500" />
-              <span>{syncQueue.length} cambio{syncQueue.length !== 1 ? "s" : ""} pendiente{syncQueue.length !== 1 ? "s" : ""}</span>
-            </>
-          ) : (
-            <>
-              <Cloud className="size-3.5 text-green-500" />
-              <span>Sincronizado</span>
-            </>
-          )}
-        </div>
-      )}
+      {isSupabaseEnabled && <SyncIndicator showLabel className="mb-3" />}
 
       {/* Theme toggle */}
       <button
