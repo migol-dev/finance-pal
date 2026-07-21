@@ -116,7 +116,7 @@ export default function Metas() {
         </DialogContent>
       </Dialog>
 
-      <div className="px-5 space-y-4">
+      <div className="px-5 lg:grid lg:grid-cols-2 xl:grid-cols-3 lg:gap-4 lg:space-y-0 space-y-4">
         {goals.length === 0 && (
           <div className="rounded-2xl bg-muted/50 border border-dashed border-border p-8 text-center">
             <p className="text-4xl mb-2">🎯</p>

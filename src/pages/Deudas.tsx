@@ -83,7 +83,7 @@ export default function Deudas() {
               <button onClick={() => setPersonFilter(null)} className="text-[11px] text-primary font-semibold">Limpiar filtro</button>
             )}
           </div>
-          <div className="flex gap-2 overflow-x-auto no-scrollbar pb-1">
+          <div className="flex gap-2 overflow-x-auto no-scrollbar pb-1 lg:flex-wrap">
             {perPerson.map((p) => {
               const key = p.person.trim().toLowerCase();
               const active = personFilter === key;
@@ -179,7 +179,7 @@ export default function Deudas() {
         </DialogContent>
       </Dialog>
 
-      <div className="px-5 mt-4 space-y-3">
+      <div className="px-5 mt-4 space-y-3 lg:grid lg:grid-cols-2 lg:gap-3 lg:space-y-0">
         {debts.length === 0 && (
           <div className="rounded-2xl bg-muted/50 border border-dashed border-border p-8 text-center">
             <p className="text-4xl mb-2">🤝</p>
