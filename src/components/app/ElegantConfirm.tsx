@@ -26,33 +26,35 @@ export function ElegantConfirm({
   confirmText = "Confirmar",
   cancelText = "Cancelar",
   icon: Icon,
-  iconColor = "gradient-primary"
+  iconColor = "bg-primary"
 }: ElegantConfirmProps) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="rounded-[32px] max-w-[90vw] w-[320px] p-6 border-0 bg-background shadow-2xl overflow-hidden">
+      <DialogContent className="rounded-2xl max-w-[90vw] w-[320px] p-6 border border-border bg-card shadow-2xl overflow-hidden">
         <div className="text-center space-y-4">
           {Icon && (
-            <div className={cn("size-20 rounded-full mx-auto flex items-center justify-center shadow-lg", iconColor)}>
-              <Icon className="size-10 text-white" />
+            <div className={cn("size-16 rounded-2xl mx-auto flex items-center justify-center shadow-lg", iconColor)}>
+              <Icon className="size-8 text-white" />
             </div>
           )}
           <div>
-            <DialogTitle className="text-xl font-black">{title}</DialogTitle>
+            <DialogTitle className="text-lg font-extrabold tracking-tight">{title}</DialogTitle>
             <DialogDescription className="text-sm text-muted-foreground mt-1">{description}</DialogDescription>
           </div>
           <div className="flex gap-3 pt-2">
-            <Button variant="ghost" className="flex-1 h-12 rounded-2xl font-bold" onClick={() => {
+            <Button variant="outline" className="flex-1 h-11 rounded-xl font-semibold" onClick={() => {
               onOpenChange(false);
               onCancel?.();
             }}>
               {cancelText}
             </Button>
-            <Button className={cn("flex-1 h-12 rounded-2xl font-black text-white shadow-lg border-0", iconColor)}
+            <Button
+              className={cn("flex-1 h-11 rounded-xl font-bold text-white shadow-md border-0", iconColor === "gradient-primary" ? "gradient-primary" : iconColor)}
               onClick={() => {
                 onConfirm();
                 onOpenChange(false);
-              }}>
+              }}
+            >
               {confirmText}
             </Button>
           </div>

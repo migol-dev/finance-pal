@@ -338,6 +338,7 @@ export const COMMON_EMOJIS = [
 ];
 
 export type ThemeMode = "light" | "dark";
+export type AccentColor = "blue" | "violet" | "emerald" | "rose" | "amber";
 export type Currency = "MXN" | "USD" | "EUR" | "COP" | "ARS" | "CLP" | "PEN" | "BRL";
 
 export interface UserProfile {
@@ -345,6 +346,12 @@ export interface UserProfile {
   email?: string;
   currency: Currency;
   avatar?: IconRef;
+}
+
+export interface AppSettings {
+  accentColor: AccentColor;
+  compactMode: boolean;
+  glassEffect: boolean;
 }
 
 export const emojiFor = (cat: string) => CATEGORY_EMOJI[cat] ?? "💸";

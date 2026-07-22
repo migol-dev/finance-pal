@@ -1,6 +1,6 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
-import { FixedItem, Transaction, Goal, Debt, DebtPayment, ChangeLogEntry, ChangeAction, ChangeEntity, IconRef, isFixedActiveInMonth, parseDateLocal, Account, ThemeMode, Currency, UserProfile } from "@/lib/finance";
+import { FixedItem, Transaction, Goal, Debt, DebtPayment, ChangeLogEntry, ChangeAction, ChangeEntity, IconRef, isFixedActiveInMonth, parseDateLocal, Account, ThemeMode, Currency, UserProfile, AccentColor, AppSettings } from "@/lib/finance";
 import { Filesystem, Directory, Encoding } from "@capacitor/filesystem";
 import { Capacitor } from "@capacitor/core";
 import { supabase, isSupabaseEnabled } from "@/lib/supabase";
@@ -34,6 +34,11 @@ interface State {
   // UI preferences
   syncFiltersToURL: boolean;
   setSyncFiltersToURL: (v: boolean) => void;
+  // Customization settings
+  appSettings: AppSettings;
+  setAccentColor: (color: AccentColor) => void;
+  setCompactMode: (compact: boolean) => void;
+  setGlassEffect: (glass: boolean) => void;
 
   addFixed: (i: Omit<FixedItem, "id">) => void;
   updateFixed: (id: string, p: Partial<FixedItem>) => void;
@@ -350,6 +355,16 @@ export const useFinance = create<State>()(
       // whether to mirror filter state to URL query params
       syncFiltersToURL: false,
       setSyncFiltersToURL: (v: boolean) => set({ syncFiltersToURL: v }),
+      appSettings: { accentColor: "blue", compactMode: false, glassEffect: true },
+      setAccentColor: (color: AccentColor) => {
+        set((s) => ({ appSettings: { ...s.appSettings, accentColor: color } }));
+      },
+      setCompactMode: (compact: boolean) => {
+        set((s) => ({ appSettings: { ...s.appSettings, compactMode: compact } }));
+      },
+      setGlassEffect: (glass: boolean) => {
+        set((s) => ({ appSettings: { ...s.appSettings, glassEffect: glass } }));
+      },
       activeYear: now.getFullYear(),
       activeMonth: now.getMonth(),
 

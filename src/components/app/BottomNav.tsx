@@ -7,11 +7,11 @@ import { navItems } from "./nav-items";
 export const BottomNav = memo(function BottomNav() {
   return (
     <nav className="fixed bottom-0 inset-x-0 z-50 safe-bottom lg:hidden">
-      <div className="mx-auto max-w-md px-3 pb-2">
+      <div className="mx-auto max-w-lg px-3 pb-3">
         <motion.div
-          initial={{ y: 20, opacity: 0 }}
+          initial={{ y: 24, opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
-          className="rounded-3xl bg-card/90 backdrop-blur-xl border border-border shadow-card flex items-center justify-around px-2 py-2"
+          className="glass-strong rounded-2xl border border-border/80 shadow-card flex items-center justify-around px-1.5 py-1.5"
         >
           {navItems.map(({ to, icon: Icon, label }) => (
             <NavLink
@@ -20,10 +20,10 @@ export const BottomNav = memo(function BottomNav() {
               end={to === "/"}
               className={({ isActive }) =>
                 cn(
-                  "flex flex-col items-center justify-center gap-0.5 px-3 py-1.5 rounded-2xl text-[10px] font-medium transition-all min-w-[56px] relative",
+                  "flex flex-col items-center justify-center gap-0.5 px-3 py-1.5 rounded-xl text-[10px] font-semibold transition-all min-w-[56px] relative",
                   isActive
-                    ? "text-primary-foreground"
-                    : "text-muted-foreground hover:text-foreground"
+                    ? "text-primary"
+                    : "text-muted-foreground/70 hover:text-foreground"
                 )
               }
             >
@@ -32,12 +32,12 @@ export const BottomNav = memo(function BottomNav() {
                   {isActive && (
                     <motion.div
                       layoutId="activeNav"
-                      className="absolute inset-0 gradient-primary rounded-2xl shadow-glow -z-10"
+                      className="absolute inset-0 bg-primary/10 rounded-xl"
                       transition={{ type: "spring", stiffness: 380, damping: 30 }}
                     />
                   )}
-                  <Icon className="size-5" />
-                  <span>{label}</span>
+                  <Icon className={cn("size-5 relative z-10", isActive && "text-primary")} />
+                  <span className="relative z-10">{label}</span>
                 </>
               )}
             </NavLink>

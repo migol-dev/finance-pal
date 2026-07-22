@@ -4,12 +4,13 @@ import { useFinance, ExportScopes, ALL_SCOPES, normalizeImportKeys } from "@/sto
 import { fmt, monthlyAmount, TYPE_LABEL, FREQ_LABEL, ItemType, Frequency, Priority, iconFor, IconRef, FixedItem, CATEGORY_EMOJI, PaymentMethod, PAYMENT_METHOD_LABEL, PAYMENT_METHOD_EMOJI, Account, Denomination, cashTotalFromDenominations, Currency, computeBalances } from "@/lib/finance";
 import DenominationsEditor from "@/components/ui/DenominationsEditor";
 import { Header } from "@/components/app/Header";
-import { Plus, Trash2, Power, Database, RotateCcw, Pencil, Download, Upload, Sun, Moon, Target, History, HandCoins, User, LogOut, Cloud, CloudOff, Loader2 } from "lucide-react";
+import { Plus, Trash2, Power, Database, RotateCcw, Pencil, Download, Upload, Sun, Moon, Target, History, HandCoins, User, LogOut, Cloud, CloudOff, Loader2, Palette } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
 import { motion } from "@/lib/framer";
@@ -33,6 +34,12 @@ export default function Ajustes() {
     theme, toggleTheme, profile, setProfile, 
     accounts, addAccount, updateAccount, removeAccount, syncAllToCloud 
   } = useHybridData();
+  const accentColor = useFinance((s) => s.appSettings.accentColor);
+  const setAccentColor = useFinance((s) => s.setAccentColor);
+  const compactMode = useFinance((s) => s.appSettings.compactMode);
+  const setCompactMode = useFinance((s) => s.setCompactMode);
+  const glassEffect = useFinance((s) => s.appSettings.glassEffect);
+  const setGlassEffect = useFinance((s) => s.setGlassEffect);
   const transactions = useFinance((s) => s.transactions);
   const debts = useFinance((s) => s.debts);
   const balances = useMemo(() => {
@@ -386,11 +393,47 @@ export default function Ajustes() {
           </div>
           <div className="flex-1 text-left">
             <p className="font-semibold text-sm">Tema {theme === "dark" ? "oscuro" : "claro"}</p>
-            <p className="text-xs text-muted-foreground">Toca para cambiar a {theme === "dark" ? "claro" : "oscuro azul"}</p>
+            <p className="text-xs text-muted-foreground">Toca para cambiar a {theme === "dark" ? "claro" : "oscuro"}</p>
           </div>
+          {accentColor !== "blue" && (
+            <div className="flex items-center gap-1 text-xs text-muted-foreground">
+              <Palette className="size-3" />
+              <span className="capitalize">{accentColor}</span>
+            </div>
+          )}
         </button>
 
-        <h2 className="text-xs uppercase tracking-wider font-bold text-muted-foreground pt-2">Más</h2>
+        <div className="space-y-2 pt-2">
+          <Label className="text-xs font-bold text-muted-foreground">Color de acento</Label>
+          <div className="flex gap-2">
+            {(["blue","violet","emerald","rose","amber"] as const).map((c) => {
+              const colors = { blue: "bg-blue-500", violet: "bg-violet-500", emerald: "bg-emerald-500", rose: "bg-rose-500", amber: "bg-amber-500" };
+              return (
+                <button key={c} onClick={() => setAccentColor(c)}
+                  className={`size-10 rounded-xl ${colors[c]} transition-all ${accentColor === c ? "ring-2 ring-offset-2 ring-offset-background ring-foreground scale-110" : "opacity-60 hover:opacity-100"}`}
+                >{accentColor === c && <span className="flex items-center justify-center text-white text-xs font-bold">✓</span>}</button>
+              );
+            })}
+          </div>
+        </div>
+
+        <div className="flex items-center gap-3 mt-2">
+          <Switch checked={compactMode} onCheckedChange={setCompactMode} />
+          <div>
+            <p className="font-semibold text-sm">Modo compacto</p>
+            <p className="text-xs text-muted-foreground">Reduce el espaciado general de la app</p>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-3 mt-2">
+          <Switch checked={glassEffect} onCheckedChange={setGlassEffect} />
+          <div>
+            <p className="font-semibold text-sm">Efecto cristal</p>
+            <p className="text-xs text-muted-foreground">Fondos translúcidos en la barra inferior</p>
+          </div>
+        </div>
+
+        <h2 className="text-xs uppercase tracking-wider font-bold text-muted-foreground pt-4">Más</h2>
         <div className="grid grid-cols-3 lg:flex lg:gap-3 gap-2">
           <Link to="/metas" className="rounded-2xl bg-card border border-border p-3 shadow-soft flex flex-col items-center gap-1.5 hover:bg-muted/50 transition">
             <Target className="size-5 text-primary" /><span className="text-[11px] font-semibold">Metas</span>

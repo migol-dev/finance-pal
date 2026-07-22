@@ -66,7 +66,7 @@ export default function Deudas() {
   return (
     <div>
       <Header title="Me deben" subtitle="Rastrea quién te debe dinero" action={
-        <Button onClick={() => { setEditing(null); setOpen(true); }} className="rounded-2xl gradient-primary text-primary-foreground border-0 shadow-glow h-11"><Plus className="size-4 mr-1" />Nueva</Button>
+        <Button onClick={() => { setEditing(null); setOpen(true); }} className="rounded-xl gradient-primary text-primary-foreground border-0 shadow-glow h-10 text-sm"><Plus className="size-4 mr-1.5" />Nueva</Button>
       } />
 
       <div className="px-5 grid grid-cols-3 gap-2">

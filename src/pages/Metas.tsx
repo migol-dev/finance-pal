@@ -99,14 +99,14 @@ export default function Metas() {
   
 
   return (
-    <div className="pb-24">
+    <div className="pb-28">
       <Header title="Metas" subtitle="Sueños con plan" action={
-        <Button onClick={openNew} className="rounded-2xl gradient-primary text-primary-foreground border-0 shadow-glow h-11"><Plus className="size-4 mr-1" />Nueva</Button>
+        <Button onClick={openNew} className="rounded-xl gradient-primary text-primary-foreground border-0 shadow-glow h-10 text-sm"><Plus className="size-4 mr-1.5" />Nueva</Button>
       } />
 
       <Dialog open={open} onOpenChange={(v) => { setOpen(v); if (!v) setEditing(null); }}>
-          <DialogContent className="rounded-3xl max-h-[90vh] overflow-y-auto">
-            <DialogHeader><DialogTitle>{editing ? "Editar meta" : "Nueva meta"}</DialogTitle></DialogHeader>
+          <DialogContent className="rounded-2xl max-h-[90vh] overflow-y-auto p-5">
+            <DialogHeader><DialogTitle className="text-lg">{editing ? "Editar meta" : "Nueva meta"}</DialogTitle></DialogHeader>
             <DialogDescription className="sr-only">Formulario para crear o editar una meta</DialogDescription>
           <GoalForm initial={editing} onSave={(g) => {
             if (editing) { updateGoal(editing.id, g); toast.success("Actualizado"); }

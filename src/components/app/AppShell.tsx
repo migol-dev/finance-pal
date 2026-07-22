@@ -14,6 +14,8 @@ const SWIPE_ROUTES = ["/", "/movimientos", "/deudas", "/metas", "/ajustes"];
 export function AppShell({ children }: { children: ReactNode }) {
   const setActive = useFinance((s) => s.setActive);
   const theme = useFinance((s) => s.theme);
+  const accentColor = useFinance((s) => s.appSettings.accentColor);
+  const compactMode = useFinance((s) => s.appSettings.compactMode);
   const didInit = useRef(false);
   const [booting, setBooting] = useState(true);
   const location = useLocation();
@@ -21,7 +23,6 @@ export function AppShell({ children }: { children: ReactNode }) {
   const touchRef = useRef<{ x: number; y: number; t: number } | null>(null);
   const lastBackPressRef = useRef<number | null>(null);
 
-  // On first mount of the session, snap to the device's current month/year and request permissions.
   useEffect(() => {
     if (didInit.current) return;
     didInit.current = true;
@@ -36,15 +37,24 @@ export function AppShell({ children }: { children: ReactNode }) {
     return () => clearTimeout(t);
   }, [setActive]);
 
-  // Apply theme on <html>
   useEffect(() => {
     const root = document.documentElement;
     if (theme === "dark") root.classList.add("dark"); else root.classList.remove("dark");
     const meta = document.querySelector('meta[name="theme-color"]');
-    if (meta) meta.setAttribute("content", theme === "dark" ? "#0B1220" : "#F43F5E");
+    if (meta) meta.setAttribute("content", theme === "dark" ? "#0a0e1a" : "#ffffff");
   }, [theme]);
 
-  // Handle native back button for Android: navigate back in-app or exit when at root
+  useEffect(() => {
+    const root = document.documentElement;
+    root.className.split(" ").filter(c => c.startsWith("accent-")).forEach(c => root.classList.remove(c));
+    root.classList.add(`accent-${accentColor}`);
+  }, [accentColor]);
+
+  useEffect(() => {
+    const root = document.documentElement;
+    if (compactMode) root.classList.add("compact"); else root.classList.remove("compact");
+  }, [compactMode]);
+
   useEffect(() => {
     if (!Capacitor.isNativePlatform()) return;
     const listener = CapacitorApp.addListener('backButton', () => {
@@ -53,7 +63,6 @@ export function AppShell({ children }: { children: ReactNode }) {
         navigate(-1);
         return;
       }
-      // Double-press within 2s to exit
       const now = Date.now();
       if (lastBackPressRef.current && now - lastBackPressRef.current < 2000) {
         try { CapacitorApp.exitApp(); } catch (_e) { (navigator as any)['app']?.exitApp?.(); }
@@ -78,7 +87,6 @@ export function AppShell({ children }: { children: ReactNode }) {
     const dy = t.clientY - start.y;
     const dt = Date.now() - start.t;
     if (Math.abs(dx) < 70 || Math.abs(dx) < Math.abs(dy) * 1.5 || dt > 600) return;
-    // Avoid interfering when starting on interactive horizontally-scrollable areas
     const target = e.target as HTMLElement | null;
     if (target?.closest('input,textarea,select,[role="dialog"],.no-swipe')) return;
     const idx = SWIPE_ROUTES.indexOf(location.pathname);
@@ -89,22 +97,21 @@ export function AppShell({ children }: { children: ReactNode }) {
   };
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-background text-foreground">
       {booting && <SplashScreen />}
       <div className="lg:flex lg:h-screen lg:overflow-hidden">
         <DesktopSidebar />
         <main
           onTouchStart={onTouchStart}
           onTouchEnd={onTouchEnd}
-          className="flex-1 lg:overflow-y-auto"
+          className="flex-1 lg:overflow-y-auto lg:h-screen"
         >
-          <div className="mx-auto max-w-md min-h-screen pb-28 safe-top relative lg:max-w-screen-xl lg:pb-8 lg:px-8 xl:px-12 2xl:max-w-[1600px]">
+          <div className="mx-auto w-full min-h-screen pb-28 safe-top lg:pb-8 lg:px-6 xl:px-8 2xl:max-w-[1600px]">
             {children}
           </div>
         </main>
       </div>
       <BottomNav />
-      {/* Double-press to exit handled via Capacitor backButton listener */}
     </div>
   );
 }
