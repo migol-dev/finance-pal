@@ -252,6 +252,19 @@ function AuthGuard() {
   );
 }
 
+function extractParamFromUrl(url: string, param: string): string | null {
+  try {
+    const parsed = new URL(url);
+    return parsed.searchParams.get(param);
+  } catch {
+    const queryStart = url.indexOf('?');
+    if (queryStart !== -1) {
+      return new URLSearchParams(url.substring(queryStart)).get(param);
+    }
+    return null;
+  }
+}
+
 const App = () => {
   useEffect(() => {
     if (isSupabaseEnabled) {
@@ -267,7 +280,13 @@ const App = () => {
     CapApp.addListener('appUrlOpen', async (event) => {
       const url = event.url;
       if (url.startsWith('app.financepal.com://auth/callback')) {
-        await supabase.auth.exchangeCodeForSession(url);
+        const code = extractParamFromUrl(url, 'code');
+        if (code) {
+          const { error } = await supabase.auth.exchangeCodeForSession(code);
+          if (error) {
+            console.error('[AuthCallback] exchangeCodeForSession error:', error.message);
+          }
+        }
       }
     }).then(h => { handle = h; });
 
