@@ -1,6 +1,6 @@
-import { useMemo, useState } from "react";
+import { useMemo, useState, useEffect } from "react";
 import { useHybridData } from "@/hooks/useHybridData";
-import { fmt, iconFor, IconRef, Debt, PaymentMethod, PAYMENT_METHOD_LABEL, PAYMENT_METHOD_EMOJI, fmtDate } from "@/lib/finance";
+import { fmt, iconFor, IconRef, Debt, PaymentMethod, PAYMENT_METHOD_LABEL, PAYMENT_METHOD_EMOJI, fmtDate, Account } from "@/lib/finance";
 
 const localDateNow = () => { const d = new Date(); const pad = (n: number) => String(n).padStart(2, "0"); return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`; };
 import { Header } from "@/components/app/Header";
@@ -317,20 +317,50 @@ function DebtForm({ initial, onSave, accounts }: { initial: Debt | null; onSave:
   );
 }
 
-function PaymentForm({ debt, onSave, accounts }: { debt: Debt; onSave: (p: { amount: number; date: string; note?: string; paymentMethod?: PaymentMethod; accountId?: string }) => void; accounts: any[] }) {
+function PaymentForm({ debt, onSave, accounts }: { debt: Debt; onSave: (p: { amount: number; date: string; note?: string; paymentMethod?: PaymentMethod; accountId?: string; externalPayee?: { clabe?: string; bank?: string; name?: string }; receipt?: string }) => void; accounts: any[] }) {
   const pending = debt.amount - totalPaid(debt);
   const [amount, setAmount] = useState(String(pending > 0 ? pending : ""));
   const [date, setDate] = useState(localDateNow());
   const [note, setNote] = useState("");
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("transfer");
-  const [accountId, setAccountId] = useState<string | undefined>(debt.accountId);
+  const [accountId, setAccountId] = useState<string | undefined>(undefined);
+  const [externalPayee, setExternalPayee] = useState<{ clabe?: string; bank?: string; name?: string } | null>(null);
+  const [receiptData, setReceiptData] = useState<string | undefined>(undefined);
+
+  const cashAccount = accounts.find((a: Account) => a.type === "cash");
+
+  useEffect(() => {
+    if (paymentMethod === "cash") {
+      if (cashAccount) setAccountId(cashAccount.id);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [paymentMethod]);
 
   return (
     <form onSubmit={(e) => {
       e.preventDefault();
       const a = parseFloat(amount);
       if (!a) { toast.error("Ingresa el monto"); return; }
-      onSave({ amount: a, date: new Date(`${date}T12:00:00`).toISOString(), note: note || undefined, paymentMethod, accountId });
+
+      const payload: any = { amount: a, date: new Date(`${date}T12:00:00`).toISOString(), note: note || undefined, paymentMethod };
+
+      if (paymentMethod === "cash") {
+        if (cashAccount) payload.accountId = cashAccount.id;
+      } else if (paymentMethod === "transfer") {
+        if (!accountId) { toast.error("Selecciona la cuenta destino"); return; }
+        payload.accountId = accountId;
+        if (externalPayee?.clabe || externalPayee?.bank || externalPayee?.name) {
+          payload.externalPayee = externalPayee;
+        }
+        if (receiptData) {
+          payload.receipt = receiptData;
+        }
+      } else {
+        // card or other
+        if (accountId) payload.accountId = accountId;
+      }
+
+      onSave(payload);
     }} className="space-y-3 lg:grid lg:grid-cols-2 lg:gap-x-4 lg:gap-y-3 lg:space-y-0">
       <p className="lg:col-span-2 text-xs text-muted-foreground">Pendiente: <span className="font-bold text-foreground">{fmt(pending)}</span></p>
       <div><Label className="text-xs">Monto</Label><Input autoFocus type="number" value={amount} onChange={(e) => setAmount(e.target.value)} className="h-12 text-xl font-bold rounded-2xl" /></div>
@@ -346,19 +376,57 @@ function PaymentForm({ debt, onSave, accounts }: { debt: Debt; onSave: (p: { amo
           </SelectContent>
         </Select>
       </div>
-      <div className="lg:col-span-2">
-        <Label className="text-xs">Cuenta de destino</Label>
-        <Select value={accountId} onValueChange={setAccountId}>
-          <SelectTrigger className="h-11 rounded-2xl">
-            <SelectValue placeholder="Seleccionar cuenta" />
-          </SelectTrigger>
-          <SelectContent>
-            {accounts.map((a) => (
-              <SelectItem key={a.id} value={a.id}>{a.name}</SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      </div>
+
+      {/* Account fields - only show for non-cash methods */}
+      {paymentMethod === "cash" ? (
+        <div className="lg:col-span-2">
+          <p className="text-xs text-muted-foreground">Se abonará a la cuenta de <span className="font-semibold text-foreground">{cashAccount?.name ?? "Efectivo"}</span></p>
+        </div>
+      ) : paymentMethod === "transfer" ? (
+        <>
+          <div>
+            <Label className="text-xs">Cuenta destino (donde se deposita)</Label>
+            <Select value={accountId} onValueChange={setAccountId}>
+              <SelectTrigger className="h-11 rounded-2xl"><SelectValue placeholder="Seleccionar cuenta" /></SelectTrigger>
+              <SelectContent>
+                {accounts.map((a: Account) => (
+                  <SelectItem key={a.id} value={a.id}>{a.name} {a.type === "cash" ? "· Efectivo" : "· Banco"}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="lg:col-span-2 space-y-2">
+            <Label className="text-xs">Cuenta remitente (de quién recibe, opcional)</Label>
+            <Input placeholder="CLABE (18 dígitos)" value={externalPayee?.clabe ?? ""} onChange={(e) => setExternalPayee({ ...(externalPayee ?? {}), clabe: e.target.value })} className="h-11 rounded-2xl" />
+            <Input placeholder="Banco" value={externalPayee?.bank ?? ""} onChange={(e) => setExternalPayee({ ...(externalPayee ?? {}), bank: e.target.value })} className="h-11 rounded-2xl" />
+            <Input placeholder="Nombre del titular" value={externalPayee?.name ?? ""} onChange={(e) => setExternalPayee({ ...(externalPayee ?? {}), name: e.target.value })} className="h-11 rounded-2xl" />
+            <div>
+              <Label className="text-xs">Comprobante (opcional)</Label>
+              <input type="file" accept="image/*" onChange={(e) => {
+                const f = e.target.files?.[0];
+                if (!f) return;
+                const reader = new FileReader();
+                reader.onload = () => setReceiptData(typeof reader.result === "string" ? reader.result : undefined);
+                reader.readAsDataURL(f);
+              }} />
+              {receiptData && <img src={receiptData} alt="comprobante" className="mt-2 rounded max-h-40 object-contain" />}
+            </div>
+          </div>
+        </>
+      ) : (
+        <div>
+          <Label className="text-xs">Cuenta</Label>
+          <Select value={accountId} onValueChange={setAccountId}>
+            <SelectTrigger className="h-11 rounded-2xl"><SelectValue placeholder="Seleccionar cuenta" /></SelectTrigger>
+            <SelectContent>
+              {accounts.map((a: Account) => (
+                <SelectItem key={a.id} value={a.id}>{a.name}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+      )}
+
       <div><Label className="text-xs">Nota</Label><Input value={note} onChange={(e) => setNote(e.target.value)} className="h-11 rounded-2xl" /></div>
       <Button type="submit" className="w-full h-12 rounded-2xl gradient-primary text-primary-foreground border-0 shadow-glow font-bold lg:col-span-2">Guardar abono</Button>
     </form>

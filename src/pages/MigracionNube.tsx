@@ -8,10 +8,8 @@ import { CheckCircle2, AlertCircle, CloudUpload, Loader2, Database, HardDrive, A
 import { useAuth } from '@/context/AuthContext';
 import { useFinance } from '@/store/finance-store';
 import { isSupabaseEnabled } from '@/lib/supabase';
-import { supabase } from '@/lib/supabase';
-import { uploadReceipt } from '@/lib/supabase-storage';
 import { toast } from 'sonner';
-
+import { migrateLocalDataToSupabase, MigrationProgress, MigrationResult } from '@/lib/migration';
 
 function MigracionNubeContent() {
   const { session } = useAuth();
@@ -21,340 +19,24 @@ function MigracionNubeContent() {
   const [isMigrating, setIsMigrating] = useState(false);
   const [step, setStep] = useState<'welcome' | 'migrating' | 'complete' | 'error'>('welcome');
 
-  const needsMigration = isSupabaseEnabled && session && hasLocalData;
-
-  interface MigrationProgress {
-    step: string;
-    current: number;
-    total: number;
-    message: string;
-  }
-
-  interface MigrationResult {
-    success: boolean;
-    message: string;
-    stats?: {
-      accounts: number;
-      transactions: number;
-      fixedItems: number;
-      goals: number;
-      debts: number;
-      debtPayments: number;
-      receipts: number;
-    };
-    error?: string;
-  }
-
-  function sleep(ms: number) {
-    return new Promise(resolve => setTimeout(resolve, ms));
-  }
+  const needsMigration = isSupabaseEnabled && session && hasLocalData();
 
   const startMigration = async () => {
     setIsMigrating(true);
     setStep('migrating');
 
-    try {
-      if (!isSupabaseEnabled) {
-        throw new Error('Supabase no está habilitado');
-      }
+    const result = await migrateLocalDataToSupabase((p) => setProgress(p));
 
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) {
-        throw new Error('Usuario no autenticado');
-      }
-
-      const localStore = useFinance.getState();
-      const userId = user.id;
-
-      // Collect all local data
-      const localData = {
-        accounts: localStore.accounts,
-        transactions: localStore.transactions,
-        fixedItems: localStore.fixedItems,
-        goals: localStore.goals,
-        debts: localStore.debts,
-        changeLog: localStore.changeLog,
-        theme: localStore.theme,
-        profile: localStore.profile,
-      };
-
-      const totalSteps = 7;
-      const updateProgress = (step: string, current: number, total: number, message: string) => {
-        setProgress({ step, current, total, message });
-      };
-
-      // Step 1: Accounts
-      updateProgress('accounts', 1, totalSteps, `Migrando ${localData.accounts.length} cuentas...`);
-
-      for (const account of localData.accounts) {
-        await upsertAccount(userId, account);
-      }
-
-      // Step 2: Transactions
-      updateProgress('transactions', 2, totalSteps, `Migrando ${localData.transactions.length} transacciones...`);
-
-      const receiptsToMigrate: Array<{ transactionId: string; dataUrl: string }> = [];
-
-      for (const tx of localData.transactions) {
-        await upsertTransaction(userId, tx);
-        if (tx.receipt && typeof tx.receipt === 'string' && tx.receipt.startsWith('data:')) {
-          receiptsToMigrate.push({ transactionId: tx.id, dataUrl: tx.receipt });
-        }
-      }
-
-      // Step 3: Fixed Items
-      updateProgress('fixedItems', 3, totalSteps, `Migrando ${localData.fixedItems.length} conceptos fijos...`);
-
-      for (const item of localData.fixedItems) {
-        await upsertFixedItem(userId, item);
-      }
-
-      // Step 4: Goals
-      updateProgress('goals', 4, totalSteps, `Migrando ${localData.goals.length} metas...`);
-
-      for (const goal of localData.goals) {
-        await upsertGoal(userId, goal);
-      }
-
-      // Step 5: Debts
-      updateProgress('debts', 5, totalSteps, `Migrando ${localData.debts.length} deudas...`);
-
-      let totalDebtPayments = 0;
-      for (const debt of localData.debts) {
-        const resolvedDebtId = await upsertDebt(userId, debt);
-        totalDebtPayments += debt.payments.length;
-        for (const payment of debt.payments) {
-          await upsertDebtPayment(userId, resolvedDebtId, payment);
-        }
-      }
-
-      // Step 6: Receipts to Supabase Storage
-      updateProgress('receipts', 6, totalSteps, `Subiendo ${receiptsToMigrate.length} recibos a la nube...`);
-
-      let receiptsUploaded = 0;
-      for (const { transactionId, dataUrl } of receiptsToMigrate) {
-        const url = await uploadReceipt(userId, transactionId, dataUrl);
-        if (url) {
-          await supabase
-            .from('transactions')
-            .update({ receipt: url })
-            .eq('id', transactionId)
-            .eq('user_id', userId);
-          receiptsUploaded++;
-        }
-        await sleep(50);
-      }
-
-      // Step 7: Verify
-      updateProgress('verify', 7, totalSteps, 'Verificando migración...');
-
-      await verifyMigration(userId);
-
-      const result: MigrationResult = {
-        success: true,
-        message: 'Migración completada exitosamente',
-        stats: {
-          accounts: localData.accounts.length,
-          transactions: localData.transactions.length,
-          fixedItems: localData.fixedItems.length,
-          goals: localData.goals.length,
-          debts: localData.debts.length,
-          debtPayments: totalDebtPayments,
-          receipts: receiptsUploaded,
-        },
-      };
-      setResult(result);
-      if (result.success) {
-        setStep('complete');
-        toast.success('¡Migración completada!');
-      }
-    } catch (error: any) {
-      console.error('Migration error:', error);
-      const errMsg = error?.message || 'Error desconocido durante la migración';
-      setResult({ success: false, message: errMsg, error: errMsg });
+    setResult(result);
+    if (result.success) {
+      setStep('complete');
+      toast.success('¡Migración completada!');
+    } else {
       setStep('error');
-      toast.error(error?.message || 'Error en la migración');
-    } finally {
-      setIsMigrating(false);
+      toast.error(result.error || 'Error en la migración');
     }
+    setIsMigrating(false);
   };
-
-  async function upsertAccount(userId: string, account: any) {
-    const payload = {
-      id: account.id,
-      user_id: userId,
-      name: account.name,
-      type: account.type,
-      initial_balance: account.initialBalance ?? 0,
-      currency: account.currency,
-      denominations: account.denominations ?? [],
-      clabe: account.clabe,
-      bank: account.bank,
-      holder_name: account.holderName,
-    };
-
-    const { error } = await supabase
-      .from('accounts')
-      .upsert(payload, { onConflict: 'id' });
-
-    if (error) throw error;
-  }
-
-  async function upsertTransaction(userId: string, tx: any) {
-    const payload = {
-      id: tx.id,
-      user_id: userId,
-      type: tx.type,
-      category: tx.category,
-      concept: tx.concept,
-      amount: tx.amount,
-      date: tx.date,
-      note: tx.note,
-      icon: tx.icon,
-      payment_method: tx.paymentMethod,
-      fixed_id: tx.fixedId,
-      account_id: tx.accountId,
-      transfer_to_account_id: tx.transferToAccountId,
-      external_payee: tx.externalPayee,
-      // Don't include receipt if it's a data URL - will be handled separately
-      receipt: tx.receipt && !tx.receipt.startsWith('data:') ? tx.receipt : null,
-    };
-
-    const { error } = await supabase
-      .from('transactions')
-      .upsert(payload, { onConflict: 'id' });
-
-    if (error) throw error;
-  }
-
-  async function upsertFixedItem(userId: string, item: any) {
-    const payload = {
-      id: item.id,
-      user_id: userId,
-      type: item.type,
-      category: item.category,
-      concept: item.concept,
-      amount: item.amount,
-      frequency: item.frequency,
-      active: item.active,
-      note: item.note,
-      start_date: item.startDate,
-      end_date: item.endDate,
-      priority: item.priority,
-      pay_day: item.payDay,
-      pay_week_day: item.payWeekDay,
-      icon: item.icon,
-      payment_method: item.paymentMethod,
-      account_id: item.accountId,
-    };
-
-    const { error } = await supabase
-      .from('fixed_items')
-      .upsert(payload, { onConflict: 'id' });
-
-    if (error) throw error;
-  }
-
-  async function upsertGoal(userId: string, goal: any) {
-    const payload = {
-      id: goal.id,
-      user_id: userId,
-      name: goal.name,
-      target: goal.target,
-      saved: goal.saved ?? 0,
-      emoji: goal.emoji,
-      color: goal.color,
-      deadline: goal.deadline,
-      icon: goal.icon,
-      purchase_url: goal.purchaseUrl,
-      contributions: goal.contributions ?? [],
-      pinned: goal.pinned,
-      created_at: goal.createdAt,
-    };
-
-    const { error } = await supabase
-      .from('goals')
-      .upsert(payload, { onConflict: 'id' });
-
-    if (error) throw error;
-  }
-
-  async function upsertDebt(userId: string, debt: any): Promise<string> {
-    // If debt has a non-UUID id, generate a proper UUID for Supabase
-    const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-    let resolvedId = debt.id;
-    if (!isUuid.test(debt.id)) {
-      // Check if a debt with same person+amount+concept already exists in Supabase
-      const { data: existing } = await supabase
-        .from('debts')
-        .select('id')
-        .eq('user_id', userId)
-        .eq('person', debt.person)
-        .eq('amount', debt.amount)
-        .eq('concept', debt.concept)
-        .maybeSingle();
-      if (existing) {
-        resolvedId = existing.id;
-      } else {
-        resolvedId = crypto.randomUUID?.() ?? debt.id;
-      }
-    }
-
-    const payload: Record<string, unknown> = {
-      id: resolvedId,
-      user_id: userId,
-      person: debt.person,
-      concept: debt.concept,
-      amount: debt.amount,
-      date: debt.date,
-      due_date: debt.dueDate,
-      note: debt.note,
-      icon: debt.icon,
-    };
-    if (debt.accountId && isUuid.test(debt.accountId)) {
-      payload.account_id = debt.accountId;
-    }
-
-    const { error } = await supabase
-      .from('debts')
-      .upsert(payload, { onConflict: 'id' });
-
-    if (error) throw error;
-    return resolvedId;
-  }
-
-  async function upsertDebtPayment(userId: string, debtId: string, payment: any) {
-    const payload: Record<string, unknown> = {
-      id: payment.id,
-      user_id: userId,
-      debt_id: debtId,
-      amount: payment.amount,
-      date: payment.date,
-      note: payment.note,
-      payment_method: payment.paymentMethod,
-    };
-    if (payment.accountId && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(payment.accountId)) {
-      payload.account_id = payment.accountId;
-    }
-
-    const { error } = await supabase
-      .from('debt_payments')
-      .upsert(payload, { onConflict: 'id' });
-
-    if (error) throw error;
-  }
-
-  async function verifyMigration(userId: string) {
-    // Quick verification that data was inserted
-    const { count: accountsCount } = await supabase
-      .from('accounts')
-      .select('*', { count: 'exact', head: true })
-      .eq('user_id', userId);
-
-    if (!accountsCount || accountsCount === 0) {
-      throw new Error('Verificación fallida: no se migraron cuentas');
-    }
-  }
 
   const handleRetry = () => {
     setStep('welcome');
@@ -363,7 +45,6 @@ function MigracionNubeContent() {
   };
 
   const handleSkip = () => {
-    // Mark as migrated locally so we don't show this again
     localStorage.setItem('finance-pal-migration-skipped', 'true');
     window.location.href = '/';
   };
@@ -372,7 +53,6 @@ function MigracionNubeContent() {
     window.location.href = '/';
   };
 
-  // Redirect early if no migration needed
   useEffect(() => {
     if (!needsMigration) {
       window.location.href = '/';

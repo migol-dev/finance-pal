@@ -33,11 +33,6 @@ async function validateAndCompressImage(dataUrl: string): Promise<{ blob: Blob; 
       bytes[i] = binary.charCodeAt(i);
     }
     
-    if (bytes.length > MAX_FILE_SIZE) {
-      console.error('File too large:', bytes.length);
-      return null;
-    }
-    
     // Basic magic bytes validation
     const magicBytes = bytes.slice(0, 12);
     if (mime === 'image/jpeg' && !(magicBytes[0] === 0xFF && magicBytes[1] === 0xD8 && magicBytes[2] === 0xFF)) {
@@ -53,10 +48,23 @@ async function validateAndCompressImage(dataUrl: string): Promise<{ blob: Blob; 
       return null;
     }
     
-    // Compress if over 1MB
-    if (bytes.length > 1024 * 1024 && typeof document !== 'undefined') {
+    // Always compress images to reduce storage space in the database
+    if (typeof document !== 'undefined') {
       const compressed = await compressImage(dataUrl, mime);
-      if (compressed) return compressed;
+      if (compressed) {
+        // Check compressed size against limit
+        if (compressed.blob.size > MAX_FILE_SIZE) {
+          console.error('Compressed file still too large:', compressed.blob.size);
+          return null;
+        }
+        return compressed;
+      }
+    }
+    
+    // Fallback: check original size before returning raw
+    if (bytes.length > MAX_FILE_SIZE) {
+      console.error('File too large and compression unavailable:', bytes.length);
+      return null;
     }
     
     return { blob: new Blob([bytes], { type: mime }), mime };
@@ -117,7 +125,13 @@ export async function uploadReceipt(userId: string, receiptId: string, dataUrl: 
       });
     
     if (error) {
-      console.error('Supabase Storage upload error:', sanitizeForLog(error));
+      // Silence "bucket not found" or "RLS policy" as configuration issues
+      const msg = sanitizeForLog(error);
+      if (msg.includes('bucket') || msg.includes('not found') || msg.includes('404') || msg.includes('row-level security')) {
+        console.warn('Receipt upload skipped — bucket "receipts" is missing or has no INSERT policy. Create it in Supabase Dashboard → Storage and add RLS policies.');
+      } else {
+        console.error('Supabase Storage upload error:', msg);
+      }
       return null;
     }
     

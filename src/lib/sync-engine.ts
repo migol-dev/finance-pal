@@ -1,6 +1,7 @@
 import { supabase, isSupabaseEnabled } from './supabase';
 import { useSyncStore } from '@/store/sync-store';
 import { rateLimiter, getClientIdentifier } from '@/lib/rate-limiter';
+import { ErrorCodes, logger } from '@/lib/app-error';
 
 type SyncMutation = {
   id: string;
@@ -11,6 +12,10 @@ type SyncMutation = {
   createdAt: number;
   retryCount?: number;
 };
+
+const ALLOWED_TABLES = new Set([
+  'accounts', 'transactions', 'fixed_items', 'goals', 'debts', 'debt_payments',
+]);
 
 const MAX_RETRIES = 3;
 const BASE_DELAY_MS = 1000;
@@ -30,9 +35,9 @@ async function withRetry<T>(
     return await fn();
   } catch (error) {
     if (retryCount >= MAX_RETRIES) throw error;
-    
+
     const delay = BASE_DELAY_MS * Math.pow(2, retryCount) + Math.random() * 1000;
-    console.warn(`Sync retry ${retryCount + 1}/${MAX_RETRIES} after ${delay}ms:`, error);
+    logger.warn(`Sync retry ${retryCount + 1}/${MAX_RETRIES} after ${delay}ms`, { error });
     await sleep(delay);
     return withRetry(fn, retryCount + 1);
   }
@@ -47,10 +52,9 @@ export async function processSyncQueue(): Promise<void> {
   // Rate limit sync operations
   const clientId = getClientIdentifier();
   const rateLimitResult = await rateLimiter.checkLimit(clientId, 'sync');
-  
+
   if (!rateLimitResult.allowed) {
-    console.warn('Sync rate limited, retry after:', rateLimitResult.retryAfter);
-    // Schedule retry after rate limit resets
+    logger.warn('Sync rate limited, retry after: ' + rateLimitResult.retryAfter, { clientId });
     if (rateLimitResult.retryAfter) {
       setTimeout(() => processSyncQueue(), rateLimitResult.retryAfter * 1000);
     }
@@ -67,17 +71,23 @@ export async function processSyncQueue(): Promise<void> {
   try {
     for (const mutation of syncQueue) {
       if (abortController?.signal.aborted) break;
-      
+
+      // Validate table name to prevent injection via table field
+      if (!ALLOWED_TABLES.has(mutation.table)) {
+        logger.error('Blocked sync mutation for disallowed table', ErrorCodes.DB_INSERT_FAILED, { table: mutation.table });
+        removeMutation(mutation.id);
+        continue;
+      }
+
       try {
-        await withRetry(() => applyMutation(mutation));
+        await withRetry(() => applyMutation(mutation, session.user.id));
         removeMutation(mutation.id);
       } catch (error) {
-        console.error('Sync failed permanently for mutation:', mutation, error);
-        
-        // Move to dead letter queue (increment retry count, if max reached -> mark failed)
+        logger.error('Sync failed permanently for mutation', ErrorCodes.SYNC_MUTATION_FAILED, { mutationId: mutation.id, error });
+
         const retryCount = (mutation.retryCount ?? 0) + 1;
         if (retryCount >= MAX_RETRIES) {
-          console.error('Max retries reached, removing from queue:', mutation);
+          logger.error('Max retries reached, removing from queue', ErrorCodes.SYNC_MUTATION_FAILED, { mutationId: mutation.id });
           removeMutation(mutation.id);
         } else {
           removeMutation(mutation.id);
@@ -93,22 +103,24 @@ export async function processSyncQueue(): Promise<void> {
   }
 }
 
-async function applyMutation(mutation: SyncMutation): Promise<void> {
+async function applyMutation(mutation: SyncMutation, userId: string): Promise<void> {
   const { table, action, recordId, payload } = mutation;
 
+  // Ensure the mutation is scoped to the authenticated user
   switch (action) {
     case 'INSERT': {
-      const { error } = await supabase.from(table).insert(payload);
+      const safePayload = { ...payload, user_id: userId };
+      const { error } = await supabase.from(table).insert(safePayload);
       if (error) throw error;
       break;
     }
     case 'UPDATE': {
-      const { error } = await supabase.from(table).update(payload).eq('id', recordId);
+      const { error } = await supabase.from(table).update(payload).eq('id', recordId).eq('user_id', userId);
       if (error) throw error;
       break;
     }
     case 'DELETE': {
-      const { error } = await supabase.from(table).delete().eq('id', recordId);
+      const { error } = await supabase.from(table).delete().eq('id', recordId).eq('user_id', userId);
       if (error) throw error;
       break;
     }
@@ -118,12 +130,11 @@ async function applyMutation(mutation: SyncMutation): Promise<void> {
 export function setupSyncListener(): void {
   if (!isSupabaseEnabled) return;
 
-  // Debounce rapid queue changes
   let debounceTimer: ReturnType<typeof setTimeout> | null = null;
-  
+
   useSyncStore.subscribe(async (state) => {
     if (state.isSyncing) return;
-    
+
     if (state.syncQueue.length > 0) {
       const { data: { session } } = await supabase.auth.getSession();
       if (session) {
@@ -136,11 +147,9 @@ export function setupSyncListener(): void {
   });
 
   window.addEventListener('online', () => {
-    // Small delay to let network stabilize
     setTimeout(() => processSyncQueue(), 1000);
   });
 
-  // Cleanup on page unload
   window.addEventListener('beforeunload', () => {
     if (abortController) abortController.abort();
   });

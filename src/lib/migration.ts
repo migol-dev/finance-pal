@@ -102,10 +102,10 @@ export async function migrateLocalDataToSupabase(
     
     let totalDebtPayments = 0;
     for (const debt of localData.debts) {
-      await upsertDebt(userId, debt);
+      const resolvedDebtId = await upsertDebt(userId, debt);
       totalDebtPayments += debt.payments.length;
       for (const payment of debt.payments) {
-        await upsertDebtPayment(userId, debt.id, payment);
+        await upsertDebtPayment(userId, resolvedDebtId, payment);
       }
     }
 
@@ -245,6 +245,7 @@ async function upsertGoal(userId: string, goal: Goal) {
     purchase_url: goal.purchaseUrl,
     contributions: goal.contributions ?? [],
     pinned: goal.pinned ?? false,
+    created_at: goal.createdAt,
   };
 
   const { error } = await supabase
@@ -254,9 +255,27 @@ async function upsertGoal(userId: string, goal: Goal) {
   if (error) throw error;
 }
 
-async function upsertDebt(userId: string, debt: Debt) {
-  const payload = {
-    id: debt.id,
+async function upsertDebt(userId: string, debt: Debt): Promise<string> {
+  const UuidRE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+  let resolvedId = debt.id;
+  if (!UuidRE.test(debt.id)) {
+    const { data: existing } = await supabase
+      .from('debts')
+      .select('id')
+      .eq('user_id', userId)
+      .eq('person', debt.person)
+      .eq('amount', debt.amount)
+      .eq('concept', debt.concept)
+      .maybeSingle();
+    if (existing) {
+      resolvedId = existing.id;
+    } else {
+      resolvedId = crypto.randomUUID?.() ?? debt.id;
+    }
+  }
+
+  const payload: Record<string, unknown> = {
+    id: resolvedId,
     user_id: userId,
     person: debt.person,
     concept: debt.concept,
@@ -265,18 +284,22 @@ async function upsertDebt(userId: string, debt: Debt) {
     due_date: debt.dueDate,
     note: debt.note,
     icon: debt.icon,
-    account_id: debt.accountId,
   };
+  if (debt.accountId && UuidRE.test(debt.accountId)) {
+    payload.account_id = debt.accountId;
+  }
 
   const { error } = await supabase
     .from('debts')
     .upsert(payload, { onConflict: 'id' });
-  
+
   if (error) throw error;
+  return resolvedId;
 }
 
 async function upsertDebtPayment(userId: string, debtId: string, payment: DebtPayment) {
-  const payload = {
+  const UuidRE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+  const payload: Record<string, unknown> = {
     id: payment.id,
     user_id: userId,
     debt_id: debtId,
@@ -284,13 +307,15 @@ async function upsertDebtPayment(userId: string, debtId: string, payment: DebtPa
     date: payment.date,
     note: payment.note,
     payment_method: payment.paymentMethod,
-    account_id: payment.accountId,
   };
+  if (payment.accountId && UuidRE.test(payment.accountId)) {
+    payload.account_id = payment.accountId;
+  }
 
   const { error } = await supabase
     .from('debt_payments')
     .upsert(payload, { onConflict: 'id' });
-  
+
   if (error) throw error;
 }
 

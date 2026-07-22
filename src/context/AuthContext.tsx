@@ -2,6 +2,7 @@ import React, { createContext, useContext, useEffect, useState, useRef, useCallb
 import { Session, User } from '@supabase/supabase-js';
 import { supabase, isSupabaseEnabled } from '@/lib/supabase';
 import { toast } from 'sonner';
+import { ErrorCodes, logger } from '@/lib/app-error';
 
 interface AuthContextType {
   session: Session | null;
@@ -44,7 +45,11 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     if (refreshTimer.current) clearTimeout(refreshTimer.current);
     
     if (isSupabaseEnabled) {
-      await supabase.auth.signOut();
+      try {
+        await supabase.auth.signOut();
+      } catch (e) {
+        logger.error('Sign out failed', ErrorCodes.AUTH_SIGNOUT_FAILED, { error: e });
+      }
     }
     setSession(null);
     setUser(null);
@@ -66,7 +71,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         scheduleTokenRefreshRef.current?.();
       }
     } catch (e) {
-      console.error('Token refresh failed:', e);
+      logger.error('Token refresh failed', ErrorCodes.AUTH_TOKEN_REFRESH_FAILED, { error: e });
       // If refresh fails, sign out
       await signOutRef.current?.();
     } finally {
@@ -125,6 +130,9 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         resetInactivityTimerRef.current?.();
         scheduleTokenRefreshRef.current?.();
       }
+    }).catch((e) => {
+      logger.error('Failed to get session', ErrorCodes.AUTH_SESSION_EXPIRED, { error: e });
+      setLoading(false);
     });
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {

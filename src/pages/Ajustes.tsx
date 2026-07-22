@@ -1,10 +1,10 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useMemo } from "react";
 import { useHybridData } from "@/hooks/useHybridData";
 import { useFinance, ExportScopes, ALL_SCOPES, normalizeImportKeys } from "@/store/finance-store";
-import { fmt, monthlyAmount, TYPE_LABEL, FREQ_LABEL, ItemType, Frequency, Priority, iconFor, IconRef, FixedItem, CATEGORY_EMOJI, PaymentMethod, PAYMENT_METHOD_LABEL, PAYMENT_METHOD_EMOJI, Account, Denomination, cashTotalFromDenominations, Currency } from "@/lib/finance";
+import { fmt, monthlyAmount, TYPE_LABEL, FREQ_LABEL, ItemType, Frequency, Priority, iconFor, IconRef, FixedItem, CATEGORY_EMOJI, PaymentMethod, PAYMENT_METHOD_LABEL, PAYMENT_METHOD_EMOJI, Account, Denomination, cashTotalFromDenominations, Currency, computeBalances } from "@/lib/finance";
 import DenominationsEditor from "@/components/ui/DenominationsEditor";
 import { Header } from "@/components/app/Header";
-import { Plus, Trash2, Power, Database, RotateCcw, Pencil, Download, Upload, Sun, Moon, Target, History, HandCoins, User, LogOut, Cloud, CloudOff } from "lucide-react";
+import { Plus, Trash2, Power, Database, RotateCcw, Pencil, Download, Upload, Sun, Moon, Target, History, HandCoins, User, LogOut, Cloud, CloudOff, Loader2 } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -15,21 +15,30 @@ import { toast } from "sonner";
 import { motion } from "@/lib/framer";
 import { IconPicker } from "@/components/app/IconPicker";
 import { IconDisplay } from "@/components/app/IconDisplay";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { Capacitor } from "@capacitor/core";
 import { Filesystem, Directory, Encoding } from "@capacitor/filesystem";
 import { Share } from "@capacitor/share";
 import { LocalNotifications } from "@capacitor/local-notifications";
 import { ElegantConfirm } from "@/components/app/ElegantConfirm";
 import { useAuth } from '@/context/AuthContext';
-import { isSupabaseEnabled, setSyncEnabled } from '@/lib/supabase';
+import { supabase, isSupabaseEnabled, setSyncEnabled } from '@/lib/supabase';
+import { useQueryClient } from '@tanstack/react-query';
+import { showUserError } from '@/lib/app-error';
 
 export default function Ajustes() {
+  const queryClient = useQueryClient();
   const { 
     fixedItems, addFixed, updateFixed, removeFixed, toggleFixed, resetAll, exportData, importData, 
     theme, toggleTheme, profile, setProfile, 
-    accounts, addAccount, updateAccount, removeAccount 
+    accounts, addAccount, updateAccount, removeAccount, syncAllToCloud 
   } = useHybridData();
+  const transactions = useFinance((s) => s.transactions);
+  const debts = useFinance((s) => s.debts);
+  const balances = useMemo(() => {
+    const endOfMonth = new Date(2099, 11, 31, 23, 59, 59); // far future to see all
+    return computeBalances(accounts, transactions, debts, endOfMonth);
+  }, [accounts, transactions, debts]);
   const syncFiltersToURL = useFinance((s) => s.syncFiltersToURL);
   const setSyncFiltersToURL = useFinance((s) => s.setSyncFiltersToURL);
   const [open, setOpen] = useState(false);
@@ -52,6 +61,7 @@ export default function Ajustes() {
   const [orphanList, setOrphanList] = useState<string[] | null>(null);
   const [receiptsLoading, setReceiptsLoading] = useState(false);
   const { signOut } = useAuth();
+  const navigate = useNavigate();
   const [syncEnabled, setSyncEnabledState] = useState(isSupabaseEnabled);
 
   const filtered = fixedItems.filter((i) => tab === "all" || i.type === tab);
@@ -100,7 +110,7 @@ export default function Ajustes() {
 
         toast.success("Respaldo listo para guardar");
       } catch (e: any) {
-        toast.error("Error al exportar: " + (e?.message ?? "desconocido"));
+        toast.error(showUserError(e));
       }
       return;
     }
@@ -196,6 +206,67 @@ export default function Ajustes() {
       if (r.ok) {
         toast.success("Datos importados");
         r.warnings?.forEach((w) => toast(w));
+        // If signed in, sync imported data to Supabase
+        if (isSupabaseEnabled) {
+          const state = useFinance.getState();
+          const user = (await supabase.auth.getUser()).data.user;
+          if (user) {
+            let synced = 0;
+            const sc = importConfirmScopes;
+            // Delete all existing data for this user, then insert imported data
+            if (sc.accounts) {
+              await supabase.from('accounts').delete().eq('user_id', user.id);
+              for (const a of state.accounts) {
+                const { error } = await supabase.from('accounts').insert({ id: a.id, user_id: user.id, name: a.name, type: a.type, initial_balance: a.initialBalance, currency: a.currency, clabe: a.clabe, bank: a.bank, holder_name: a.holderName, denominations: a.denominations });
+                if (!error) synced++;
+              }
+            }
+            if (sc.transactions) {
+              await supabase.from('transactions').delete().eq('user_id', user.id);
+              for (const tx of state.transactions) {
+                const { error } = await supabase.from('transactions').insert({ id: tx.id, user_id: user.id, type: tx.type, category: tx.category, concept: tx.concept, amount: tx.amount, date: tx.date, note: tx.note, icon: tx.icon, payment_method: tx.paymentMethod, fixed_id: tx.fixedId, account_id: tx.accountId, transfer_to_account_id: tx.transferToAccountId, external_payee: tx.externalPayee, receipt: tx.receipt });
+                if (!error) synced++;
+              }
+            }
+            if (sc.fixedItems) {
+              await supabase.from('fixed_items').delete().eq('user_id', user.id);
+              for (const f of state.fixedItems) {
+                const { error } = await supabase.from('fixed_items').insert({ id: f.id, user_id: user.id, type: f.type, category: f.category, concept: f.concept, amount: f.amount, frequency: f.frequency, active: f.active, note: f.note, start_date: f.startDate, end_date: f.endDate, priority: f.priority, pay_day: f.payDay, pay_week_day: f.payWeekDay, icon: f.icon, payment_method: f.paymentMethod, account_id: f.accountId });
+                if (!error) synced++;
+              }
+            }
+            if (sc.goals) {
+              await supabase.from('goals').delete().eq('user_id', user.id);
+              for (const g of state.goals) {
+                const { error } = await supabase.from('goals').insert({ id: g.id, user_id: user.id, name: g.name, target: g.target, saved: g.saved, emoji: g.emoji, color: g.color, icon: g.icon, deadline: g.deadline, purchase_url: g.purchaseUrl, contributions: g.contributions, pinned: g.pinned });
+                if (!error) synced++;
+              }
+            }
+            if (sc.debts) {
+              // CASCADE handles debt_payments deletion
+              await supabase.from('debts').delete().eq('user_id', user.id);
+              for (const debt of state.debts) {
+                const { error: debtErr } = await supabase.from('debts').insert({ id: debt.id, user_id: user.id, person: debt.person, concept: debt.concept, amount: debt.amount, date: debt.date, due_date: debt.dueDate, note: debt.note, icon: debt.icon, account_id: debt.accountId });
+                if (!debtErr) {
+                  synced++;
+                  for (const p of debt.payments) {
+                    const pay: Record<string, unknown> = { debt_id: debt.id, user_id: user.id, amount: p.amount, date: p.date, note: p.note, payment_method: p.paymentMethod };
+                    if (p.id) pay.id = p.id;
+                    if (p.accountId) pay.account_id = p.accountId;
+                    if (p.transferToAccountId) pay.transfer_to_account_id = p.transferToAccountId;
+                    if (p.externalPayee) pay.external_payee = p.externalPayee;
+                    if (p.receipt && !p.receipt.startsWith('data:')) pay.receipt_url = p.receipt;
+                    const { error: payErr } = await supabase.from('debt_payments').insert(pay);
+                    if (!payErr) synced++;
+                  }
+                }
+              }
+            }
+            if (synced > 0) toast.success(`Datos reemplazados en la nube: ${synced} registros`);
+            // Invalidate all queries so the UI reloads from Supabase
+            queryClient.invalidateQueries();
+          }
+        }
         setImportOpen(false);
         setPendingFile(null);
         setPendingPayload(null);
@@ -211,7 +282,6 @@ export default function Ajustes() {
       <Header title="Ajustes" subtitle="Configura tus fijos del mes" action={
             <div className="flex items-center gap-2">
               <Button onClick={async () => {
-                // quick background cleanup
                 try {
                   const res = await useFinance.getState().cleanupOrphanReceipts(true);
                   const freed = (res?.freedBytes ?? 0) / 1024;
@@ -220,7 +290,7 @@ export default function Ajustes() {
                   } else {
                     toast('No se encontraron recibos huérfanos');
                   }
-                } catch (e) { toast.error('Error al limpiar recibos'); }
+                } catch { toast.error(showUserError(undefined)); }
               }} variant="ghost" className="h-11"><Trash2 className="size-4 mr-2" />Limpiar</Button>
               <Button onClick={openNew} className="rounded-2xl gradient-primary text-primary-foreground border-0 shadow-glow h-11"><Plus className="size-4 mr-1" />Agregar</Button>
             </div>
@@ -369,11 +439,15 @@ export default function Ajustes() {
 
         {isSupabaseEnabled && (
           <>
+            <SyncAllButton syncAllToCloud={syncAllToCloud} queryClient={queryClient} />
             <h2 className="text-xs uppercase tracking-wider font-bold text-muted-foreground pt-4">Cuenta</h2>
+
+            <AccountSettings />
+
             <button
               onClick={async () => {
                 await signOut();
-                window.location.href = '/';
+                navigate('/');
               }}
               className="w-full rounded-2xl bg-card border border-border p-4 flex items-center gap-3 hover:bg-destructive/10 hover:border-destructive/30 transition group"
             >
@@ -510,12 +584,13 @@ export default function Ajustes() {
             </div>
             {accounts.map((a) => {
               const denomTotal = a.denominations && a.denominations.length > 0 ? cashTotalFromDenominations(a.denominations) : null;
+              const computed = balances[a.id] ?? a.initialBalance ?? 0;
               return (
                 <div key={a.id} className="rounded-2xl bg-card border border-border p-3 shadow-soft flex items-center gap-3">
                   <div className="size-9 rounded-xl bg-primary/10 text-primary flex items-center justify-center">{a.type === "cash" ? <HandCoins className="size-5" /> : <Database className="size-5" />}</div>
                   <div className="flex-1 min-w-0">
                     <p className="font-semibold text-sm truncate">{a.name}</p>
-                    <p className="text-xs text-foreground">{a.type === "cash" ? "Efectivo" : "Cuenta bancaria"} • {a.currency ?? "MXN"} • {fmt(a.initialBalance ?? 0)} {denomTotal != null && <span className="ml-1">· {fmt(denomTotal)}</span>}</p>
+                    <p className="text-xs text-foreground">{a.type === "cash" ? "Efectivo" : "Cuenta bancaria"} • {a.currency ?? "MXN"} • Saldo: {fmt(computed)} {denomTotal != null && <span className="ml-1">· Desglose: {fmt(denomTotal)}</span>}</p>
                   </div>
                   <div className="flex gap-1">
                     <Button onClick={() => { setEditingAccount(a); setAccountsOpen(true); }} className="h-9">Editar</Button>
@@ -552,7 +627,9 @@ export default function Ajustes() {
           open={!!importConfirmScopes}
           onOpenChange={(v) => !v && setImportConfirmScopes(null)}
           title="¿Confirmar importación?"
-          description="Esto reemplazará las secciones seleccionadas con los datos del archivo. ¿Deseas continuar?"
+          description={isSupabaseEnabled
+            ? "Tienes la sesión iniciada en la nube. Los datos importados se guardarán SOLO de forma local — no se subirán automáticamente a Supabase. Si deseas que también se reflejen en la nube, exporta tus datos actuales desde el otro dispositivo e impórtalos aquí. ¿Deseas continuar?"
+            : "Esto reemplazará las secciones seleccionadas con los datos del archivo. ¿Deseas continuar?"}
           onConfirm={handleImportConfirm}
           icon={Upload}
           iconColor="gradient-primary"
@@ -576,6 +653,7 @@ export default function Ajustes() {
 
 
 const SCOPE_LABELS: { key: keyof Required<ExportScopes>; label: string; desc: string }[] = [
+  { key: "accounts", label: "Cuentas", desc: "Bancos, efectivo y otros" },
   { key: "fixedItems", label: "Conceptos fijos", desc: "Ingresos, gastos, ahorros recurrentes" },
   { key: "transactions", label: "Movimientos", desc: "Todos los registros del día a día" },
   { key: "goals", label: "Metas", desc: "Incluye aportes, link y fecha" },
@@ -852,5 +930,180 @@ function AccountForm({ initial, onSave }: { initial: Account | null; onSave: (a:
       )}
       <Button type="submit" className="w-full h-12 rounded-2xl gradient-primary text-primary-foreground border-0 shadow-glow font-bold">Guardar</Button>
     </form>
+  );
+}
+
+function AccountSettings() {
+  const { session } = useAuth();
+  const [emailOpen, setEmailOpen] = useState(false);
+  const [passOpen, setPassOpen] = useState(false);
+  const [newEmail, setNewEmail] = useState('');
+  const [newPass, setNewPass] = useState('');
+  const [confirmPass, setConfirmPass] = useState('');
+  const [changingEmail, setChangingEmail] = useState(false);
+  const [changingPass, setChangingPass] = useState(false);
+
+  const provider = session?.user?.app_metadata?.provider;
+
+  const handleChangeEmail = async () => {
+    if (!newEmail || !newEmail.includes('@')) { toast.error('Correo inválido'); return; }
+    setChangingEmail(true);
+    const { error } = await supabase.auth.updateUser({ email: newEmail });
+    setChangingEmail(false);
+    if (error) { toast.error(error.message); return; }
+    toast.success('Correo actualizado. Revisa tu bandeja para confirmar.');
+    setEmailOpen(false);
+    setNewEmail('');
+  };
+
+  const handleChangePassword = async () => {
+    if (!newPass || newPass.length < 6) { toast.error('La contraseña debe tener al menos 6 caracteres'); return; }
+    if (newPass !== confirmPass) { toast.error('Las contraseñas no coinciden'); return; }
+    setChangingPass(true);
+    const { error } = await supabase.auth.updateUser({ password: newPass });
+    setChangingPass(false);
+    if (error) { toast.error(error.message); return; }
+    toast.success('Contraseña actualizada correctamente');
+    setPassOpen(false);
+    setNewPass('');
+    setConfirmPass('');
+  };
+
+  return (
+    <>
+      {/* Change email */}
+      <div className="flex items-center gap-3 w-full rounded-2xl bg-card border border-border p-4 mt-3">
+        <div className="size-9 rounded-xl bg-primary/10 text-primary flex items-center justify-center shrink-0">
+          <svg className="size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <rect x="2" y="4" width="20" height="16" rx="2" /><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7" />
+          </svg>
+        </div>
+        <div className="flex-1 min-w-0">
+          <p className="font-semibold text-sm truncate">{session?.user?.email ?? 'Correo electrónico'}</p>
+          <p className="text-xs text-muted-foreground">
+            {provider && provider !== 'email' ? `Iniciaste con ${provider}` : 'Contraseña configurada'}
+          </p>
+        </div>
+        <button onClick={() => setEmailOpen(true)} className="text-xs font-semibold text-primary hover:underline shrink-0">Cambiar</button>
+      </div>
+
+      {provider === 'email' || !provider ? (
+        <div className="flex items-center gap-3 w-full rounded-2xl bg-card border border-border p-4 mt-2">
+          <div className="size-9 rounded-xl bg-primary/10 text-primary flex items-center justify-center shrink-0">
+            <svg className="size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <rect x="3" y="11" width="18" height="11" rx="2" ry="2" /><path d="M7 11V7a5 5 0 0 1 10 0v4" />
+            </svg>
+          </div>
+          <div className="flex-1">
+            <p className="font-semibold text-sm">Contraseña</p>
+            <p className="text-xs text-muted-foreground">••••••••</p>
+          </div>
+          <button onClick={() => setPassOpen(true)} className="text-xs font-semibold text-primary hover:underline shrink-0">Cambiar</button>
+        </div>
+      ) : null}
+
+      {/* Email change dialog */}
+      {emailOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/80 backdrop-blur-sm p-4" onClick={() => setEmailOpen(false)}>
+          <div className="max-w-sm w-full rounded-3xl bg-card border border-border shadow-2xl p-6 space-y-4" onClick={(e) => e.stopPropagation()}>
+            <h3 className="text-lg font-extrabold">Cambiar correo</h3>
+            <p className="text-xs text-muted-foreground">Te enviaremos un correo de confirmación a la nueva dirección.</p>
+            <Input value={newEmail} onChange={(e) => setNewEmail(e.target.value)} placeholder="nuevo@correo.com" className="h-11 rounded-2xl" type="email" autoFocus />
+            <div className="flex gap-2">
+              <Button onClick={() => setEmailOpen(false)} variant="outline" className="flex-1 h-11 rounded-2xl">Cancelar</Button>
+              <Button onClick={handleChangeEmail} disabled={changingEmail} className="flex-1 h-11 rounded-2xl gradient-primary text-primary-foreground border-0 shadow-glow">
+                {changingEmail ? <Loader2 className="size-4 animate-spin" /> : 'Guardar'}
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Password change dialog */}
+      {passOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/80 backdrop-blur-sm p-4" onClick={() => setPassOpen(false)}>
+          <div className="max-w-sm w-full rounded-3xl bg-card border border-border shadow-2xl p-6 space-y-4" onClick={(e) => e.stopPropagation()}>
+            <h3 className="text-lg font-extrabold">Cambiar contraseña</h3>
+            <Input value={newPass} onChange={(e) => setNewPass(e.target.value)} placeholder="Nueva contraseña" className="h-11 rounded-2xl" type="password" autoFocus />
+            <Input value={confirmPass} onChange={(e) => setConfirmPass(e.target.value)} placeholder="Confirmar contraseña" className="h-11 rounded-2xl" type="password" />
+            <div className="flex gap-2">
+              <Button onClick={() => setPassOpen(false)} variant="outline" className="flex-1 h-11 rounded-2xl">Cancelar</Button>
+              <Button onClick={handleChangePassword} disabled={changingPass} className="flex-1 h-11 rounded-2xl gradient-primary text-primary-foreground border-0 shadow-glow">
+                {changingPass ? <Loader2 className="size-4 animate-spin" /> : 'Guardar'}
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+    </>
+  );
+}
+
+function SyncAllButton({ syncAllToCloud, queryClient }: { syncAllToCloud: () => Promise<number>; queryClient: any }) {
+  const [state, setState] = useState<'idle' | 'syncing' | 'done'>('idle');
+  const [syncedCount, setSyncedCount] = useState(0);
+
+  const handleClick = async () => {
+    if (state === 'syncing') return;
+    setState('syncing');
+    try {
+      const count = await syncAllToCloud();
+      setSyncedCount(count);
+      setState('done');
+      queryClient.invalidateQueries();
+      setTimeout(() => setState('idle'), 2000);
+    } catch {
+      setState('idle');
+    }
+  };
+
+  return (
+    <button
+      onClick={handleClick}
+      disabled={state === 'syncing'}
+      className={`w-full rounded-2xl border p-4 flex items-center gap-3 transition-all duration-300 group mt-3
+        ${state === 'idle' ? 'bg-card border-border hover:bg-primary/5 hover:border-primary/30' : ''}
+        ${state === 'syncing' ? 'bg-primary/5 border-primary/30' : ''}
+        ${state === 'done' ? 'bg-emerald-50 dark:bg-emerald-950/20 border-emerald-300 dark:border-emerald-700' : ''}`}
+    >
+      <div className={`size-9 rounded-xl flex items-center justify-center transition-all duration-300
+        ${state === 'idle' ? 'bg-primary/10 text-primary group-hover:bg-primary/20' : ''}
+        ${state === 'syncing' ? 'bg-primary/20 text-primary' : ''}
+        ${state === 'done' ? 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400' : ''}`}
+      >
+        {state === 'idle' && <Cloud className="size-4 transition-transform duration-300 group-hover:scale-110" />}
+        {state === 'syncing' && (
+          <svg className="size-4 animate-spin" viewBox="0 0 24 24" fill="none">
+            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+          </svg>
+        )}
+        {state === 'done' && (
+          <svg className="size-4 animate-bounce" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+            <polyline points="20 6 9 17 4 12" />
+          </svg>
+        )}
+      </div>
+      <div className="flex-1 text-left">
+        <p className={`font-semibold text-sm transition-colors duration-300
+          ${state === 'idle' ? 'text-foreground group-hover:text-primary' : ''}
+          ${state === 'syncing' ? 'text-primary' : ''}
+          ${state === 'done' ? 'text-emerald-700 dark:text-emerald-300' : ''}`}
+        >
+          {state === 'idle' && 'Sincronizar todo a la nube'}
+          {state === 'syncing' && 'Sincronizando datos...'}
+          {state === 'done' && `${syncedCount} registros sincronizados`}
+        </p>
+        <p className={`text-xs transition-colors duration-300
+          ${state === 'idle' ? 'text-muted-foreground' : ''}
+          ${state === 'syncing' ? 'text-muted-foreground' : ''}
+          ${state === 'done' ? 'text-emerald-600/70 dark:text-emerald-400/70' : ''}`}
+        >
+          {state === 'idle' && 'Sube cuentas, movimientos, metas y deudas a Supabase'}
+          {state === 'syncing' && 'Borrando datos anteriores y subiendo todo...'}
+          {state === 'done' && 'Todos tus datos están en la nube'}
+        </p>
+      </div>
+    </button>
   );
 }

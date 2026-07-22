@@ -5,9 +5,10 @@ import { Filesystem, Directory, Encoding } from "@capacitor/filesystem";
 import { Capacitor } from "@capacitor/core";
 import { supabase, isSupabaseEnabled } from "@/lib/supabase";
 import { uploadReceipt, deleteReceipt } from "@/lib/supabase-storage";
-import { saveEncryptedState, loadEncryptedState, clearEncryptedState, isEncryptionAvailable } from '@/lib/encrypted-storage';
+import { saveEncryptedState, loadEncryptedState, clearEncryptedState, isEncryptionAvailable, extractReceiptsToIndexedDB, restoreReceiptsFromIndexedDB, saveReceipt as saveReceiptToIndexedDB, deleteReceipt as deleteReceiptFromIndexedDB } from '@/lib/encrypted-storage';
 import { sanitizeForLog } from '@/lib/validators';
 import { useSyncStore } from '@/store/sync-store';
+import { toast } from 'sonner';
 
 /** Current schema version of persisted/exported data. */
 export const SCHEMA_VERSION = 5;
@@ -59,7 +60,7 @@ interface State {
   addDebtPayment: (debtId: string, p: Omit<DebtPayment, "id">) => void;
   removeDebtPayment: (debtId: string, paymentId: string) => void;
 
-  hasLocalData: boolean;
+  hasLocalData: () => boolean;
   clearChangeLog: () => void;
   exportData: (scopes?: ExportScopes) => string;
   importData: (json: string, scopes?: ExportScopes) => Promise<{ ok: boolean; error?: string; warnings?: string[] }>;
@@ -69,6 +70,8 @@ interface State {
   cleanupOrphanReceipts: (deleteFiles?: boolean) => Promise<{ orphans: string[]; freedBytes: number }>;
 
   resetAll: () => void;
+  loadSettingsFromCloud: () => Promise<void>;
+  syncAllToCloud: () => Promise<number>;
 }
 
 /** Selectable data sections for export/import. */
@@ -224,6 +227,9 @@ function sanitizeDebt(raw: any): Debt | null {
         note: isStr(p.note) ? p.note : undefined,
         paymentMethod: inSet(pays, p.paymentMethod) ? p.paymentMethod : undefined,
         accountId: isStr(p.accountId) && isValidUUID(p.accountId) ? p.accountId : undefined,
+        transferToAccountId: isStr(p.transferToAccountId) && isValidUUID(p.transferToAccountId) ? p.transferToAccountId : undefined,
+        externalPayee: isObj(p.externalPayee) ? { clabe: isStr(p.externalPayee.clabe) ? p.externalPayee.clabe : undefined, bank: isStr(p.externalPayee.bank) ? p.externalPayee.bank : undefined, name: isStr(p.externalPayee.name) ? p.externalPayee.name : undefined } : undefined,
+        receipt: isStr(p.receipt) ? p.receipt : undefined,
       }))
     : [];
   return {
@@ -347,16 +353,43 @@ export const useFinance = create<State>()(
       activeYear: now.getFullYear(),
       activeMonth: now.getMonth(),
 
-      get hasLocalData() {
+      hasLocalData: () => {
         const s = get();
         if (!s) return false;
         return ((s.transactions?.length ?? 0) + (s.fixedItems?.length ?? 0) + (s.goals?.length ?? 0) + (s.debts?.length ?? 0)) > 0;
       },
 
-      setProfile: (p) => set((s) => ({ profile: { ...s.profile, ...p } })),
+      setProfile: (p) => {
+        set((s) => ({ profile: { ...s.profile, ...p } }));
+        if (isSupabaseEnabled) {
+          supabase.auth.getSession().then(async ({ data: { session: s2 } }) => {
+            if (s2?.user?.id) {
+              try { await supabase.from('user_settings').upsert(
+                { user_id: s2.user.id, profile: { ...get().profile, ...p } },
+                { onConflict: 'user_id' }
+              ); } catch (e) { /* ignore */ }
+            }
+          });
+        }
+      },
 
-      setTheme: (t) => set({ theme: t }),
-      toggleTheme: () => set((s) => ({ theme: s.theme === "light" ? "dark" : "light" })),
+      setTheme: (t) => {
+        set({ theme: t });
+        if (isSupabaseEnabled) {
+          supabase.auth.getSession().then(async ({ data: { session: s2 } }) => {
+            if (s2?.user?.id) {
+              try { await supabase.from('user_settings').upsert(
+                { user_id: s2.user.id, theme: t },
+                { onConflict: 'user_id' }
+              ); } catch (e) { /* ignore */ }
+            }
+          });
+        }
+      },
+      toggleTheme: () => {
+        const next = get().theme === "light" ? "dark" : "light";
+        get().setTheme(next);
+      },
 
       setActive: (y, m) => set({ activeYear: y, activeMonth: m }),
       resetToToday: () => { const d = new Date(); set({ activeYear: d.getFullYear(), activeMonth: d.getMonth() }); },
@@ -615,10 +648,14 @@ export const useFinance = create<State>()(
           if (cashAcc) nv.accountId = cashAcc.id;
         }
 
-        // If receipt is a data URL and running on native, persist it and replace with path
-        if (typeof nv.receipt === "string" && nv.receipt.startsWith("data:") && Capacitor.isNativePlatform()) {
-          const saved = await get().saveReceiptFile(nv.id, nv.receipt);
-          if (saved) nv.receipt = saved;
+        // If receipt is a data URL, persist original to IndexedDB then upload compressed
+        if (typeof nv.receipt === "string" && nv.receipt.startsWith("data:")) {
+          // Save original to IndexedDB first (before compression replaces it)
+          saveReceiptToIndexedDB(`tx:${nv.id}`, nv.receipt).catch(() => {});
+          if (Capacitor.isNativePlatform()) {
+            const saved = await get().saveReceiptFile(nv.id, nv.receipt);
+            if (saved) nv.receipt = saved;
+          }
         }
         set((s2) => ({ transactions: [nv, ...s2.transactions], changeLog: [logEntry("transaction", nv.id, "create", `Agregó ${nv.type === "income" ? "ingreso" : nv.type === "saving" ? "ahorro" : "gasto"} "${nv.concept}"`), ...s2.changeLog].slice(0, 500) }));
 
@@ -932,7 +969,10 @@ export const useFinance = create<State>()(
             if (nv.accountId && isValidUUID(nv.accountId)) payload.account_id = nv.accountId;
             if (isOnline()) {
               const { error } = await supabase.from('debts').insert(payload);
-              if (error) console.error('Supabase insert error (debts):', sanitizeForLog(error));
+              if (error) {
+                console.error('Supabase insert error (debts):', sanitizeForLog(error));
+                toast.error('Error al guardar deuda en la nube: ' + error.message);
+              }
             } else {
               queueMutation('debts', 'INSERT', nv.id, payload);
             }
@@ -961,7 +1001,10 @@ export const useFinance = create<State>()(
             if (p.accountId && isValidUUID(p.accountId)) payload.account_id = p.accountId;
             if (isOnline()) {
               const { error } = await supabase.from('debts').update(payload).eq('id', idv);
-              if (error) console.error('Supabase update error (debts):', sanitizeForLog(error));
+              if (error) {
+                console.error('Supabase update error (debts):', sanitizeForLog(error));
+                toast.error('Error al actualizar deuda en la nube: ' + error.message);
+              }
             } else {
               queueMutation('debts', 'UPDATE', idv, payload);
             }
@@ -989,7 +1032,36 @@ export const useFinance = create<State>()(
       addDebtPayment: async (debtId, p) => {
         const s = get();
         const debt = s.debts.find((x) => x.id === debtId); if (!debt) return;
-        const payment: DebtPayment = { ...p, id: generateSecureId() };
+
+        // Enforce cash account if paymentMethod is cash
+        const enriched = { ...p };
+        if (enriched.paymentMethod === "cash") {
+          const cashAcc = s.accounts.find(a => a.type === "cash");
+          if (cashAcc) enriched.accountId = cashAcc.id;
+        }
+        const payment: DebtPayment = { ...enriched, id: generateSecureId() };
+
+        // Add payment to store IMMEDIATELY before any async operations
+        // to prevent stale state in React renders / merge logic.
+        set((s) => ({
+          debts: s.debts.map((x) => x.id === debtId ? { ...x, payments: [payment, ...x.payments] } : x),
+          changeLog: [logEntry("debt", debtId, "update", `Abono de ${payment.amount} a deuda de "${debt.person}"`), ...s.changeLog].slice(0, 500),
+        }));
+
+        // Receipt: save original to IndexedDB, upload compressed to Supabase Storage
+        if (payment.receipt && payment.receipt.startsWith('data:')) {
+          saveReceiptToIndexedDB(`pay:${payment.id}`, payment.receipt).catch(() => {});
+          if (isSupabaseEnabled) {
+            const url = await get().saveReceiptFile(payment.id, payment.receipt);
+            if (url) {
+              payment.receipt = url;
+              // Update receipt URL in store after upload
+              set((s) => ({
+                debts: s.debts.map((x) => x.id === debtId ? { ...x, payments: x.payments.map((p) => p.id === payment.id ? { ...p, receipt: url } : p) } : x),
+              }));
+            }
+          }
+        }
 
         // Resolve the debt's UUID for Supabase
         let resolvedDebtId = debtId;
@@ -1027,6 +1099,7 @@ export const useFinance = create<State>()(
                 const { error: debtErr } = await supabase.from('debts').upsert(debtPayload, { onConflict: 'id' });
                 if (debtErr) {
                   console.error('Supabase upsert error (debts):', sanitizeForLog(debtErr));
+                  toast.error('Error al sincronizar deuda: ' + debtErr.message);
                 } else {
                   resolvedDebtId = newId;
                 }
@@ -1038,12 +1111,7 @@ export const useFinance = create<State>()(
           }
         }
 
-        set((s) => ({
-          debts: s.debts.map((x) => x.id === debtId ? { ...x, payments: [payment, ...x.payments] } : x),
-          changeLog: [logEntry("debt", debtId, "update", `Abono de ${payment.amount} a deuda de "${debt.person}"`), ...s.changeLog].slice(0, 500),
-        }));
-
-        // Sync payment to Supabase
+        // Sync payment to Supabase (include ALL fields for cross-device view)
         if (isSupabaseEnabled && isValidUUID(resolvedDebtId)) {
           const user = (await supabase.auth.getUser()).data.user;
           if (user) {
@@ -1059,9 +1127,29 @@ export const useFinance = create<State>()(
             if (payment.accountId && isValidUUID(payment.accountId)) {
               payload.account_id = payment.accountId;
             }
+            if (payment.transferToAccountId && isValidUUID(payment.transferToAccountId)) {
+              payload.transfer_to_account_id = payment.transferToAccountId;
+            }
+            if (payment.externalPayee) {
+              payload.external_payee = payment.externalPayee;
+            }
+            if (payment.receipt && !payment.receipt.startsWith('data:')) {
+              // Only sync remote URLs (data URIs stay local)
+              payload.receipt_url = payment.receipt;
+            }
             if (isOnline()) {
               const { error } = await supabase.from('debt_payments').insert(payload);
-              if (error) console.error('Supabase insert error (debt_payments):', sanitizeForLog(error));
+              if (error) {
+                // If FK violation on account_id, retry without account-dependent fields
+                if (error.code === '23503') {
+                  delete payload.account_id;
+                  delete payload.transfer_to_account_id;
+                  const { error: retryErr } = await supabase.from('debt_payments').insert(payload);
+                  if (retryErr) toast.error('Error al sincronizar abono: ' + retryErr.message);
+                } else {
+                  toast.error('Error al sincronizar abono: ' + error.message);
+                }
+              }
             } else {
               queueMutation('debt_payments', 'INSERT', payment.id, payload);
             }
@@ -1069,6 +1157,12 @@ export const useFinance = create<State>()(
         }
       },
       removeDebtPayment: async (debtId, paymentId) => {
+        // Cleanup receipt from IndexedDB if present
+        const prev = get().debts.find((x) => x.id === debtId);
+        const removedPayment = prev?.payments.find((p) => p.id === paymentId);
+        if (removedPayment?.receipt && removedPayment.receipt.startsWith('data:')) {
+          deleteReceiptFromIndexedDB(`pay:${paymentId}`).catch(() => {});
+        }
         set((s) => ({
           debts: s.debts.map((x) => x.id === debtId ? { ...x, payments: x.payments.filter((p) => p.id !== paymentId) } : x),
           changeLog: [logEntry("debt", debtId, "update", `Eliminó un abono`), ...s.changeLog].slice(0, 500),
@@ -1231,33 +1325,166 @@ export const useFinance = create<State>()(
         const d = new Date();
         set({ fixedItems: [], transactions: [], goals: [], debts: [], changeLog: [], activeYear: d.getFullYear(), activeMonth: d.getMonth() });
       },
+
+      loadSettingsFromCloud: async () => {
+        if (!isSupabaseEnabled) return;
+        const { data: { session: s2 } } = await supabase.auth.getSession();
+        if (!s2?.user?.id) return;
+        const { data } = await supabase
+          .from('user_settings')
+          .select('theme, profile')
+          .eq('user_id', s2.user.id)
+          .maybeSingle();
+        if (data) {
+          if (data.theme === 'dark' || data.theme === 'light') set({ theme: data.theme });
+          if (data.profile && typeof data.profile === 'object') {
+            set({ profile: { name: '', currency: 'MXN', ...data.profile } });
+          }
+        }
+      },
+
+      syncAllToCloud: async () => {
+        if (!isSupabaseEnabled) return 0;
+        const { data: { session: s2 } } = await supabase.auth.getSession();
+        if (!s2?.user?.id) return 0;
+        const userId = s2.user.id;
+        const s = get();
+        let synced = 0;
+
+        // Accounts
+        await supabase.from('accounts').delete().eq('user_id', userId);
+        for (const a of s.accounts) {
+          const { error } = await supabase.from('accounts').insert({
+            id: a.id, user_id: userId, name: a.name, type: a.type,
+            initial_balance: a.initialBalance, currency: a.currency,
+            clabe: a.clabe, bank: a.bank, holder_name: a.holderName,
+            denominations: a.denominations,
+          });
+          if (!error) synced++;
+        }
+
+        // Transactions
+        await supabase.from('transactions').delete().eq('user_id', userId);
+        for (const tx of s.transactions) {
+          const { error } = await supabase.from('transactions').insert({
+            id: tx.id, user_id: userId, type: tx.type, category: tx.category,
+            concept: tx.concept, amount: tx.amount, date: tx.date,
+            note: tx.note, icon: tx.icon, payment_method: tx.paymentMethod,
+            fixed_id: tx.fixedId, account_id: tx.accountId,
+            transfer_to_account_id: tx.transferToAccountId,
+            external_payee: tx.externalPayee, receipt: tx.receipt,
+          });
+          if (!error) synced++;
+        }
+
+        // Fixed Items
+        await supabase.from('fixed_items').delete().eq('user_id', userId);
+        for (const f of s.fixedItems) {
+          const { error } = await supabase.from('fixed_items').insert({
+            id: f.id, user_id: userId, type: f.type, category: f.category,
+            concept: f.concept, amount: f.amount, frequency: f.frequency,
+            active: f.active, note: f.note, start_date: f.startDate,
+            end_date: f.endDate, priority: f.priority, pay_day: f.payDay,
+            pay_week_day: f.payWeekDay, icon: f.icon,
+            payment_method: f.paymentMethod, account_id: f.accountId,
+          });
+          if (!error) synced++;
+        }
+
+        // Goals
+        await supabase.from('goals').delete().eq('user_id', userId);
+        for (const g of s.goals) {
+          const { error } = await supabase.from('goals').insert({
+            id: g.id, user_id: userId, name: g.name, target: g.target,
+            saved: g.saved, emoji: g.emoji, color: g.color, icon: g.icon,
+            deadline: g.deadline, purchase_url: g.purchaseUrl,
+            contributions: g.contributions, pinned: g.pinned,
+          });
+          if (!error) synced++;
+        }
+
+        // Debts (CASCADE deletes payments)
+        await supabase.from('debts').delete().eq('user_id', userId);
+        for (const debt of s.debts) {
+          const { error: debtErr } = await supabase.from('debts').insert({
+            id: debt.id, user_id: userId, person: debt.person,
+            concept: debt.concept, amount: debt.amount, date: debt.date,
+            due_date: debt.dueDate, note: debt.note, icon: debt.icon,
+            account_id: debt.accountId,
+          });
+          if (!debtErr) {
+            synced++;
+            for (const p of debt.payments) {
+              const pay: Record<string, unknown> = {
+                id: p.id, debt_id: debt.id, user_id: userId,
+                amount: p.amount, date: p.date, note: p.note,
+                payment_method: p.paymentMethod,
+              };
+              if (p.accountId) pay.account_id = p.accountId;
+              if (p.transferToAccountId) pay.transfer_to_account_id = p.transferToAccountId;
+              if (p.externalPayee) pay.external_payee = p.externalPayee;
+              if (p.receipt && !p.receipt.startsWith('data:')) pay.receipt_url = p.receipt;
+              const { error: payErr } = await supabase.from('debt_payments').insert(pay);
+              if (!payErr) synced++;
+            }
+          }
+        }
+
+        // Settings (theme + profile)
+        await supabase.from('user_settings').upsert(
+          { user_id: userId, theme: s.theme, profile: s.profile },
+          { onConflict: 'user_id' }
+        );
+
+        return synced;
+      },
     }),
     {
       name: "migol-finanzas-v2",
       version: SCHEMA_VERSION,
       storage: {
         getItem: async (name: string) => {
-          if (isEncryptionAvailable()) {
-            const decrypted = await loadEncryptedState();
-            return decrypted ? JSON.parse(decrypted) : null;
-          }
-          // Fallback to localStorage if encryption not available
+          let data: any = null;
+          // Always try localStorage first (most reliable)
           const item = localStorage.getItem(name);
-          return item ? JSON.parse(item) : null;
+          if (item) {
+            try { data = JSON.parse(item); } catch (e) { /* ignore */ }
+          }
+          // Fallback to encrypted storage
+          if (!data && isEncryptionAvailable()) {
+            const decrypted = await loadEncryptedState();
+            if (decrypted) {
+              try { data = JSON.parse(decrypted); } catch (e) { /* ignore */ }
+            }
+          }
+          // Restore receipts from IndexedDB
+          if (data?.state) await restoreReceiptsFromIndexedDB(data.state);
+          return data;
         },
         setItem: async (name: string, value: any) => {
+          try {
+            if (value?.state) await extractReceiptsToIndexedDB(value.state);
+          } catch (e) { /* ignore receipt extraction errors */ }
           const serialized = JSON.stringify(value);
-          if (isEncryptionAvailable()) {
-            await saveEncryptedState(serialized);
-          } else {
+          // Always save to localStorage (reliable fallback)
+          try {
             localStorage.setItem(name, serialized);
+          } catch (e) {
+            console.error('localStorage setItem failed:', e);
+          }
+          // Also save encrypted (if available) — best-effort
+          if (isEncryptionAvailable()) {
+            try {
+              await saveEncryptedState(serialized);
+            } catch (e) {
+              console.warn('Encrypted save failed, localStorage copy exists:', e);
+            }
           }
         },
         removeItem: async (name: string) => {
+          localStorage.removeItem(name);
           if (isEncryptionAvailable()) {
             await clearEncryptedState();
-          } else {
-            localStorage.removeItem(name);
           }
         },
       } as any,

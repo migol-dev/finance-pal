@@ -108,6 +108,11 @@ export interface DebtPayment {
   note?: string;
   paymentMethod?: PaymentMethod;
   accountId?: string;
+  /** For transfers: destination account id (internal) or external payee info */
+  transferToAccountId?: string;
+  externalPayee?: { clabe?: string; bank?: string; name?: string };
+  /** Optional receipt image as data URL or filesystem path */
+  receipt?: string;
 }
 
 /** Money someone owes you */

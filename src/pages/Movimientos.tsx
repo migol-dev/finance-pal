@@ -1,9 +1,9 @@
-import { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { useHybridData } from "@/hooks/useHybridData";
 import { useFinance } from "@/store/finance-store";
 import { fmt, CATEGORY_EMOJI, MONTHS, iconFor, IconRef, Transaction, PaymentMethod, PAYMENT_METHOD_LABEL, PAYMENT_METHOD_EMOJI, fmtDate, parseDateLocal, Account } from "@/lib/finance";
 import { Header } from "@/components/app/Header";
-import { Plus, Trash2, Search, Pencil, HandCoins, Calendar, SlidersHorizontal } from "lucide-react";
+import { Plus, Trash2, Search, Pencil, Calendar, ChevronDown, SlidersHorizontal } from "lucide-react";
 import { useSearchParams, useNavigate } from "react-router-dom";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -22,7 +22,7 @@ import { ElegantConfirm } from "@/components/app/ElegantConfirm";
 type TxType = "income" | "expense" | "saving" | "transfer";
 
 export default function Movimientos() {
-  const { transactions, addTx, updateTx, removeTx, activeYear, activeMonth, debts, accounts, syncFiltersToURL, setSyncFiltersToURL } = useHybridData();
+  const { transactions, addTx, updateTx, removeTx, activeYear, activeMonth, debts, accounts, removeDebt, removeDebtPayment, syncFiltersToURL, setSyncFiltersToURL } = useHybridData();
   const navigate = useNavigate();
   const [params, setParams] = useSearchParams();
   const [open, setOpen] = useState(false);
@@ -37,6 +37,7 @@ export default function Movimientos() {
   const [dateFrom, setDateFrom] = useState<string>("");
   const [dateTo, setDateTo] = useState<string>("");
   const [deleteConfirm, setDeleteConfirm] = useState<Transaction | null>(null);
+  const [expandedId, setExpandedId] = useState<string | null>(null);
 
   const resetFilters = () => {
     setAccountFilter("all"); setCategoryFilter("all"); setPaymentMethodFilter("all"); setFilter("all"); setQuery(""); setDatePreset("all"); setDateFrom(""); setDateTo("");
@@ -111,6 +112,8 @@ export default function Movimientos() {
   type Row = (Transaction & { _virtual?: false }) | {
     id: string; type: "income" | "expense" | "saving"; category: string; concept: string;
     amount: number; date: string; note?: string; icon?: IconRef; paymentMethod?: PaymentMethod;
+    accountId?: string; transferToAccountId?: string;
+    externalPayee?: { clabe?: string; bank?: string; name?: string }; receipt?: string;
     _virtual: true; _debtId: string;
   };
 
@@ -129,9 +132,12 @@ export default function Movimientos() {
         const pd = parseDateLocal(p.date);
         if (pd.getFullYear() === activeYear && pd.getMonth() === activeMonth) {
           rows.push({
-            id: `pay-${p.id}`, type: "income", category: "Abono",
+            id: `pay-${d.id}-${p.id}`, type: "income", category: "Abono",
             concept: `Abono de ${d.person}`, amount: p.amount, date: p.date,
-            note: p.note, icon: d.icon, paymentMethod: p.paymentMethod, _virtual: true, _debtId: d.id,
+            note: p.note, icon: d.icon, paymentMethod: p.paymentMethod,
+            accountId: p.accountId, transferToAccountId: p.transferToAccountId,
+            externalPayee: p.externalPayee, receipt: p.receipt,
+            _virtual: true, _debtId: d.id,
           });
         }
       });
@@ -200,8 +206,18 @@ export default function Movimientos() {
           <TxForm
             initial={editing ?? { type, date: new Date(activeYear, activeMonth, Math.min(new Date().getDate(), 28)).toISOString() }}
             onSave={(t) => {
-              if (editing) { updateTx(editing.id, t); toast.success("Actualizado"); }
-              else { addTx(t as Omit<Transaction, "id">); toast.success("Movimiento agregado"); }
+              if (editing) {
+                if ((editing as any)._virtual) {
+                  toast.info("Edita el abono desde la sección Deudas");
+                  navigate("/deudas");
+                } else {
+                  updateTx(editing.id, t);
+                  toast.success("Actualizado");
+                }
+              } else {
+                addTx(t as Omit<Transaction, "id">);
+                toast.success("Movimiento agregado");
+              }
               setOpen(false); setEditing(null);
             }}
           />
@@ -374,23 +390,54 @@ export default function Movimientos() {
                   {items.map((t) => {
                     const acct = accounts.find((a) => a.id === (t as any).accountId);
                     if ((t as any)._virtual) {
+                      const allAccounts = useFinance.getState().accounts;
+                      const vacct = accounts.find((a: Account) => a.id === (t as any).accountId) ?? allAccounts.find((a: Account) => a.id === (t as any).accountId);
+                      const ext = (t as any).externalPayee as { clabe?: string; bank?: string; name?: string } | undefined;
+                      const receipt = (t as any).receipt as string | undefined;
+                      const isExpanded = expandedId === t.id;
                       return (
-                        <motion.div key={t.id} layout className="rounded-2xl bg-card border border-border p-3 shadow-soft flex items-center gap-3">
-                          <IconDisplay icon={iconFor(t)} />
-                          <button onClick={() => navigate("/deudas")} className="flex-1 min-w-0 text-left">
-                            <p className="font-semibold text-sm truncate">{t.concept}</p>
-                            <p className="text-xs text-muted-foreground truncate">
-                              <HandCoins className="size-3 inline mr-1" />{t.category}
-                              {acct && <span className="ml-1.5">· {acct.name}</span>}
-                              {t.paymentMethod && <span className="ml-1.5">· {PAYMENT_METHOD_EMOJI[t.paymentMethod]} {PAYMENT_METHOD_LABEL[t.paymentMethod]}</span>}
-                            </p>
-                          </button>
-                          <div className="text-right">
-                            <p className={`font-bold text-sm ${t.type === "income" ? "text-success" : t.type === "saving" ? "text-secondary" : "text-destructive"}`}>
-                              {t.type === "income" ? "+" : "-"}{fmt(t.amount)}
-                            </p>
+                        <motion.div key={t.id} layout className="rounded-2xl bg-card border border-border shadow-soft">
+                          <div className="p-3 flex items-center gap-3">
+                            <IconDisplay icon={iconFor(t)} />
+                            <button onClick={() => openEdit(t as Transaction)} className="flex-1 min-w-0 text-left">
+                              <p className="font-semibold text-sm truncate">{t.concept}</p>
+                              <p className="text-xs text-muted-foreground truncate">
+                                {t.category}
+                                {vacct && <span className="ml-1.5">· {vacct.name}</span>}
+                                {(t as any).paymentMethod && <span className="ml-1.5">· {PAYMENT_METHOD_EMOJI[(t as any).paymentMethod as PaymentMethod]} {PAYMENT_METHOD_LABEL[(t as any).paymentMethod as PaymentMethod]}</span>}
+                              </p>
+                            </button>
+                            <div className="text-right">
+                              <p className="font-bold text-sm text-success">+{fmt(t.amount)}</p>
+                            </div>
+                            <div className="flex flex-col gap-0.5">
+                              <button onClick={() => setExpandedId(isExpanded ? null : t.id)} className="text-muted-foreground hover:text-primary p-1"><ChevronDown className={`size-4 transition-transform ${isExpanded ? "rotate-180" : ""}`} /></button>
+                              <button onClick={() => openEdit(t as Transaction)} className="text-muted-foreground hover:text-primary p-1"><Pencil className="size-4" /></button>
+                            </div>
                           </div>
-                          <button onClick={() => navigate("/deudas")} className="text-[10px] font-bold uppercase text-muted-foreground px-2">Deuda</button>
+                          {isExpanded && (
+                            <div className="px-3 pb-3 space-y-1.5 text-xs text-muted-foreground border-t border-border pt-2">
+                              <p><span className="font-semibold text-foreground">Método:</span> {(t as any).paymentMethod ? `${PAYMENT_METHOD_EMOJI[(t as any).paymentMethod as PaymentMethod]} ${PAYMENT_METHOD_LABEL[(t as any).paymentMethod as PaymentMethod]}` : "No especificado"}</p>
+                              <p><span className="font-semibold text-foreground">Cuenta destino:</span> {vacct?.name ?? `ID: ${(t as any).accountId ?? "No asignada"}`}</p>
+                              {ext?.clabe && <p><span className="font-semibold text-foreground">CLABE:</span> {ext.clabe}</p>}
+                              {ext?.bank && <p><span className="font-semibold text-foreground">Banco:</span> {ext.bank}</p>}
+                              {ext?.name && <p><span className="font-semibold text-foreground">Titular:</span> {ext.name}</p>}
+                              {!ext?.clabe && !ext?.bank && !ext?.name && <p className="text-muted-foreground italic">Sin datos de remitente</p>}
+                              {receipt && receipt.startsWith('data:') ? (
+                                <div>
+                                  <p className="font-semibold text-foreground mb-1">Comprobante:</p>
+                                  <img src={receipt} alt="comprobante" className="rounded max-h-48 object-contain" />
+                                </div>
+                              ) : receipt ? (
+                                <div>
+                                  <p className="font-semibold text-foreground mb-1">Comprobante (remoto):</p>
+                                  <img src={receipt} alt="comprobante" className="rounded max-h-48 object-contain" />
+                                </div>
+                              ) : (
+                                <p className="text-muted-foreground italic">Sin comprobante</p>
+                              )}
+                            </div>
+                          )}
                         </motion.div>
                       );
                     }
@@ -442,23 +489,58 @@ export default function Movimientos() {
                 {Object.entries(grouped).flatMap(([day, items]) =>
                   items.map((t) => {
                     if ((t as any)._virtual) {
+                      const allAccounts = useFinance.getState().accounts;
+                      const vacct = accounts.find((a: Account) => a.id === (t as any).accountId) ?? allAccounts.find((a: Account) => a.id === (t as any).accountId);
+                      const ext = (t as any).externalPayee as { clabe?: string; bank?: string; name?: string } | undefined;
+                      const receipt = (t as any).receipt as string | undefined;
+                      const isExpanded = expandedId === t.id;
                       return (
-                        <tr key={t.id} className="border-b border-border last:border-0 hover:bg-muted/30 transition-colors bg-accent/10">
-                          <td className="p-3 whitespace-nowrap text-muted-foreground text-xs">{day}</td>
-                          <td className="p-3">
-                            <div className="flex items-center gap-2">
-                              <IconDisplay icon={iconFor(t)} />
-                              <span className="font-semibold">{t.concept}</span>
-                            </div>
-                          </td>
-                          <td className="p-3 text-xs text-muted-foreground">{t.category}</td>
-                          <td className="p-3 text-xs">—</td>
-                          <td className="p-3 text-xs text-muted-foreground">—</td>
-                          <td className={`p-3 text-right font-bold text-sm whitespace-nowrap ${t.type === "income" ? "text-success" : "text-destructive"}`}>
-                            {t.type === "income" ? "+" : "-"}{fmt(t.amount)}
-                          </td>
-                          <td className="p-3 text-right text-[10px] text-muted-foreground italic">Deuda</td>
-                        </tr>
+                        <React.Fragment key={t.id}>
+                          <tr className="border-b border-border last:border-0 hover:bg-muted/30 transition-colors bg-accent/10">
+                            <td className="p-3 whitespace-nowrap text-muted-foreground text-xs">{day}</td>
+                            <td className="p-3">
+                              <div className="flex items-center gap-2">
+                                <IconDisplay icon={iconFor(t)} />
+                                <span className="font-semibold">{t.concept}</span>
+                              </div>
+                            </td>
+                            <td className="p-3 text-xs text-muted-foreground">{t.category}</td>
+                            <td className="p-3 text-xs">{(t as any).paymentMethod ? `${PAYMENT_METHOD_EMOJI[(t as any).paymentMethod as PaymentMethod]} ${PAYMENT_METHOD_LABEL[(t as any).paymentMethod as PaymentMethod]}` : "—"}</td>
+                            <td className="p-3 text-xs text-muted-foreground">{vacct?.name ?? "—"}</td>
+                            <td className={`p-3 text-right font-bold text-sm whitespace-nowrap ${t.type === "income" ? "text-success" : "text-destructive"}`}>
+                              {t.type === "income" ? "+" : "-"}{fmt(t.amount)}
+                            </td>
+                            <td className="p-3 text-right whitespace-nowrap">
+                              <button onClick={() => setExpandedId(isExpanded ? null : t.id)} className="text-muted-foreground hover:text-primary p-1"><ChevronDown className={`size-3.5 transition-transform ${isExpanded ? "rotate-180" : ""}`} /></button>
+                              <button onClick={() => openEdit(t as Transaction)} className="text-muted-foreground hover:text-primary p-1"><Pencil className="size-3.5" /></button>
+                            </td>
+                          </tr>
+                          {isExpanded && (
+                            <tr className="border-b border-border bg-muted/20">
+                              <td colSpan={7} className="p-3 text-xs text-muted-foreground space-y-1">
+                                <p><span className="font-semibold text-foreground">Método:</span> {(t as any).paymentMethod ? `${PAYMENT_METHOD_EMOJI[(t as any).paymentMethod as PaymentMethod]} ${PAYMENT_METHOD_LABEL[(t as any).paymentMethod as PaymentMethod]}` : "No especificado"}</p>
+                                <p><span className="font-semibold text-foreground">Cuenta destino:</span> {vacct?.name ?? `ID: ${(t as any).accountId ?? "No asignada"}`}</p>
+                                {ext?.clabe && <p><span className="font-semibold text-foreground">CLABE:</span> {ext.clabe}</p>}
+                                {ext?.bank && <p><span className="font-semibold text-foreground">Banco:</span> {ext.bank}</p>}
+                                {ext?.name && <p><span className="font-semibold text-foreground">Titular:</span> {ext.name}</p>}
+                                {!ext?.clabe && !ext?.bank && !ext?.name && <p className="italic">Sin datos de remitente</p>}
+                                {receipt && receipt.startsWith('data:') ? (
+                                  <div>
+                                    <p className="font-semibold text-foreground mb-1">Comprobante:</p>
+                                    <img src={receipt} alt="comprobante" className="rounded max-h-48 object-contain" />
+                                  </div>
+                                ) : receipt ? (
+                                  <div>
+                                    <p className="font-semibold text-foreground mb-1">Comprobante (remoto):</p>
+                                    <img src={receipt} alt="comprobante" className="rounded max-h-48 object-contain" />
+                                  </div>
+                                ) : (
+                                  <p className="italic">Sin comprobante</p>
+                                )}
+                              </td>
+                            </tr>
+                          )}
+                        </React.Fragment>
                       );
                     }
                     const acct = accounts.find((a) => a.id === (t as any).accountId);
@@ -495,7 +577,24 @@ export default function Movimientos() {
           onOpenChange={(v) => !v && setDeleteConfirm(null)}
           title="¿Eliminar movimiento?"
           description={<span className="text-sm text-muted-foreground">¿Estás seguro de que quieres eliminar <span className="font-bold text-foreground">"{deleteConfirm?.concept}"</span>? Esta acción no se puede deshacer.</span>}
-          onConfirm={() => { if (deleteConfirm) { removeTx(deleteConfirm.id); toast("Eliminado"); setDeleteConfirm(null); } }}
+          onConfirm={() => {
+            if (!deleteConfirm) return;
+            const d = deleteConfirm as any;
+            if (d._virtual) {
+              // Virtual rows: debt or debt payment
+              const debtId = d._debtId;
+              if (d.id.startsWith('pay-')) {
+                const paymentId = d.id.replace(`pay-${debtId}-`, '');
+                removeDebtPayment(debtId, paymentId);
+              } else if (d.id.startsWith('debt-')) {
+                removeDebt(debtId);
+              }
+            } else {
+              removeTx(d.id);
+            }
+            toast("Eliminado");
+            setDeleteConfirm(null);
+          }}
           icon={Trash2}
           iconColor="bg-destructive"
         />
@@ -517,7 +616,12 @@ function TxForm({ initial, onSave }: { initial: Partial<Transaction> & { type: T
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>(initial.paymentMethod ?? "transfer");
   const accounts = useFinance((s: any) => s.accounts);
   const [accountId, setAccountId] = useState<string | undefined>(initial.accountId ?? undefined);
-  const [transferToAccountId, setTransferToAccountId] = useState<string | undefined>((initial as any)?.transferToAccountId ?? undefined);
+  const [transferToAccountId, setTransferToAccountId] = useState<string | undefined>(() => {
+    const initialAny = initial as any;
+    // For virtual debt payments with external payee, pre-select "Cuenta externa"
+    if (initialAny._virtual && initialAny.externalPayee) return "__external";
+    return initialAny.transferToAccountId ?? undefined;
+  });
   const [externalPayee, setExternalPayee] = useState<{ clabe?: string; bank?: string; name?: string } | null>((initial as any)?.externalPayee ?? null);
   const [receiptData, setReceiptData] = useState<string | undefined>((initial as any)?.receipt ?? undefined);
   const cats = Object.keys(CATEGORY_EMOJI);
@@ -704,8 +808,8 @@ function TxForm({ initial, onSave }: { initial: Partial<Transaction> & { type: T
         )}
       </div>
 
-      {/* External Payee for transfers */}
-      {type !== "transfer" && paymentMethod === "transfer" && type !== "income" && (
+      {/* External Payee for transfers (including debt payments) */}
+      {type !== "transfer" && paymentMethod === "transfer" && (type !== "income" || (initial as any)?._virtual) && (
         <div className="lg:col-span-2">
           <Label className="text-xs">Destinatario</Label>
           <Select value={transferToAccountId} onValueChange={(v) => setTransferToAccountId(v || undefined)}>
