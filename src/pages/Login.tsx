@@ -5,6 +5,8 @@ import { useAuth } from '@/context/AuthContext';
 import { toast } from 'sonner';
 import { Mail, Lock, Loader2, LogIn, UserPlus, Wallet } from 'lucide-react';
 import { Progress } from '@/components/ui/progress';
+import { Browser } from '@capacitor/browser';
+import { Capacitor } from '@capacitor/core';
 
 const GoogleIcon = () => (
   <svg className="w-5 h-5" viewBox="0 0 24 24">
@@ -70,16 +72,27 @@ export default function Login() {
   const handleOAuth = async (provider: 'google' | 'github') => {
     setLoading(true);
     try {
-      const options: any = {
-        redirectTo: `${window.location.origin}/auth/callback`,
-      };
-      if (provider === 'google') {
-        options.queryParams = { access_type: 'offline', prompt: 'consent' };
+      const isNative = Capacitor.isNativePlatform();
+
+      if (isNative) {
+        const redirectTo = 'app.financepal.com://auth/callback';
+        const { data, error } = await supabase.auth.signInWithOAuth({ provider, options: { redirectTo } });
+        if (error) throw error;
+        if (data?.url) {
+          await Browser.open({ url: data.url });
+        }
       } else {
-        options.scopes = 'read:user user:email';
+        const options: any = {
+          redirectTo: `${window.location.origin}/auth/callback`,
+        };
+        if (provider === 'google') {
+          options.queryParams = { access_type: 'offline', prompt: 'consent' };
+        } else {
+          options.scopes = 'read:user user:email';
+        }
+        const { error } = await supabase.auth.signInWithOAuth({ provider, options });
+        if (error) throw error;
       }
-      const { error } = await supabase.auth.signInWithOAuth({ provider, options });
-      if (error) throw error;
     } catch (error: any) {
       toast.error(error.message || `Error al iniciar sesión con ${provider}`);
       setLoading(false);

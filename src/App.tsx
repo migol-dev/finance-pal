@@ -1,4 +1,4 @@
-import React, { Suspense, lazy, useRef } from "react";
+import React, { Suspense, lazy, useEffect, useRef } from "react";
 import { QueryClient } from "@tanstack/react-query";
 import { PersistQueryClientProvider } from '@tanstack/react-query-persist-client';
 import { createSyncStoragePersister } from '@tanstack/query-sync-storage-persister';
@@ -10,6 +10,8 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { AppShell } from "@/components/app/AppShell";
 import { ErrorBoundary } from '@/components/ErrorBoundary';
 import { DataConflictDialog } from '@/components/app/DataConflictDialog';
+import { App as CapApp } from '@capacitor/app';
+import { Capacitor } from '@capacitor/core';
 
 const Dashboard = lazy(() => import("./pages/Dashboard"));
 const Movimientos = lazy(() => import("./pages/Movimientos"));
@@ -251,10 +253,26 @@ function AuthGuard() {
 }
 
 const App = () => {
-  React.useEffect(() => {
+  useEffect(() => {
     if (isSupabaseEnabled) {
       setupSyncListener();
     }
+  }, []);
+
+  // Handle OAuth deep links on native (Android)
+  useEffect(() => {
+    if (!Capacitor.isNativePlatform()) return;
+
+    let canceled = false;
+    CapApp.addListener('appUrlOpen', async (event) => {
+      if (canceled) return;
+      const url = event.url;
+      if (url.startsWith('app.financepal.com://auth/callback')) {
+        await supabase.auth.exchangeCodeForSession(url);
+      }
+    });
+
+    return () => { canceled = true; };
   }, []);
 
   return (
