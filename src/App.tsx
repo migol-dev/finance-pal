@@ -263,16 +263,15 @@ const App = () => {
   useEffect(() => {
     if (!Capacitor.isNativePlatform()) return;
 
-    let canceled = false;
+    let handle: any;
     CapApp.addListener('appUrlOpen', async (event) => {
-      if (canceled) return;
       const url = event.url;
       if (url.startsWith('app.financepal.com://auth/callback')) {
         await supabase.auth.exchangeCodeForSession(url);
       }
-    });
+    }).then(h => { handle = h; });
 
-    return () => { canceled = true; };
+    return () => { handle?.remove(); };
   }, []);
 
   return (

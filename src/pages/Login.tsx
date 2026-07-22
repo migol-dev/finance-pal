@@ -76,7 +76,13 @@ export default function Login() {
 
       if (isNative) {
         const redirectTo = 'app.financepal.com://auth/callback';
-        const { data, error } = await supabase.auth.signInWithOAuth({ provider, options: { redirectTo } });
+        const options: any = { redirectTo, skipBrowserRedirect: true };
+        if (provider === 'google') {
+          options.queryParams = { access_type: 'offline', prompt: 'consent' };
+        } else {
+          options.scopes = 'read:user user:email';
+        }
+        const { data, error } = await supabase.auth.signInWithOAuth({ provider, options });
         if (error) throw error;
         if (data?.url) {
           await Browser.open({ url: data.url });
