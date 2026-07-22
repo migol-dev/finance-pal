@@ -14,6 +14,7 @@
 
 [![Version](https://img.shields.io/badge/versión-1.17.8-F43F5E?style=for-the-badge&logo=semantic-release&logoColor=white)](https://github.com/migol-dev/finance-pal/releases)
 [![Platform](https://img.shields.io/badge/Android-nativo-3DDC84?style=for-the-badge&logo=android&logoColor=white)](https://capacitorjs.com/)
+[![Web](https://img.shields.io/badge/Web-Vercel-000000?style=for-the-badge&logo=vercel&logoColor=white)](https://financepal-web.vercel.app)
 [![React](https://img.shields.io/badge/React-18-61DAFB?style=for-the-badge&logo=react&logoColor=white)](https://react.dev/)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.8-3178C6?style=for-the-badge&logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
 [![Vite](https://img.shields.io/badge/Vite-8-646CFF?style=for-the-badge&logo=vite&logoColor=white)](https://vitejs.dev/)
@@ -21,8 +22,9 @@
 
 <br/>
 
-> **Finance Pal** es una aplicación móvil de gestión financiera personal construida con React, TypeScript y Capacitor.  
-> Sin servidores · Sin suscripciones · Sin compromisos. Tus datos viven en tu dispositivo.  
+> **Finance Pal** es una aplicación de gestión financiera personal construida con React, TypeScript y Capacitor.  
+> Disponible como **app Android nativa** y **aplicación web** desplegada en Vercel.  
+> Sin suscripciones · Sin compromisos. Tus datos viven en tu dispositivo.  
 > *Sincronización opcional a la nube mediante Supabase con cifrado de extremo a extremo.*
 
 <br/>
@@ -227,9 +229,12 @@ Cada creación, edición y eliminación queda registrada en un changelog inmutab
 
 ### Experiencia de Usuario
 
+- **Colores de acento**: 5 paletas cromáticas (`blue`, `violet`, `emerald`, `rose`, `amber`) que tiñen toda la interfaz
+- **Modo compacto**: Reduce el espaciado general de la UI para mostrar más información en pantalla
 - **Animaciones Framer Motion**: Transiciones de página con fade + blur, animaciones de entrada por sección
 - **Splash screen** con gradiente y logo al iniciar
-- **Bottom navigation** con iconos y rutas animadas
+- **Bottom navigation** con iconos y rutas animadas (oculta automáticamente en desktop)
+- **Desktop Sidebar** con navegación completa, indicador de sincronización y theme toggle
 - **Carga diferida** (`lazy`) en todas las páginas — sin bloqueo en el inicio
 - **Confirmaciones elegantes** (`ElegantConfirm`) en lugar de `window.confirm`
 - **Toast notifications** con `sonner` para feedback inmediato
@@ -254,6 +259,8 @@ Finance Pal opera **offline-first**: todos tus datos residen localmente en el di
 | Característica | Descripción |
 |---|---|
 | **Autenticación** | Registro e inicio de sesión con email/contraseña, Google OAuth y GitHub OAuth |
+| **Deep linking (Android)** | OAuth con esquema `app.financepal.com://` para flujo PKCE en app nativa |
+| **OAuth web** | Inicio de sesión con Google en navegador con redirect configurable via `VITE_PUBLIC_URL` |
 | **Indicador de fortaleza** | Medidor visual de seguridad al crear contraseñas |
 | **Sesión persistente** | Token de sesión con renovación automática cada 5 min antes de expirar |
 | **Inactividad** | Cierre de sesión automático tras 30 min de inactividad |
@@ -262,7 +269,7 @@ Finance Pal opera **offline-first**: todos tus datos residen localmente en el di
 | **Reintentos** | Hasta 3 reintentos con backoff exponencial ante fallos de sincronización |
 | **Rate limiting** | Límite de 10 ops/s para sincronización, 5/s para autenticación, 3/s para storage |
 | **Detector de red** | Monitoreo de conectividad mediante Capacitor Network plugin |
-| **Indicador visual** | Header muestra estado de sincronización y número de cambios pendientes |
+| **Indicador visual** | Header/Sidebar muestra estado de sincronización y número de cambios pendientes |
 
 ### Stack de Sincronización
 
@@ -463,6 +470,7 @@ finance-pal/
 │   │   ├── rate-limiter.ts         # Rate limiter en memoria para sync/auth/storage
 │   │   ├── validators.ts           # Esquemas Zod de validación para todas las entidades
 │   │   ├── thumbnail.ts            # Generación de thumbnails de recibos
+│   │   ├── accent-palette.ts       # 5 paletas de color de acento (blue, violet, emerald, rose, amber)
 │   │   ├── useRecharts.tsx         # Hook para safe-import de Recharts
 │   │   ├── utils.ts                # cn() helper (clsx + tailwind-merge)
 │   │   └── web-vitals.ts           # Métricas de rendimiento
@@ -490,8 +498,10 @@ finance-pal/
 │   └── find-unused-deps.cjs        # Análisis de dependencias no usadas
 │
 ├── public/                         # Assets públicos (favicon, icons, manifests)
+├── vercel.json                     # Configuración de despliegue Vercel (SPA fallback + headers)
+├── .env.template                   # Template de variables de entorno
 ├── capacitor.config.ts             # Configuración de Capacitor
-├── vite.config.ts                  # Build config + terser + compresión brotli/gzip
+├── vite.config.ts                  # Build config + terser + code splitting
 ├── tailwind.config.ts              # Design tokens, gradientes, variables CSS
 ├── vitest.config.ts                # Configuración de tests
 └── package.json                    # Scripts y dependencias
@@ -561,7 +571,6 @@ finance-pal/
 | **ESLint** | Lint con reglas para React Hooks |
 | **Sharp** | Optimización y generación de imágenes |
 | **rollup-plugin-visualizer** | Análisis del bundle resultante |
-| **vite-plugin-compression** | Compresión brotli + gzip del bundle |
 | **Terser** | Minificación avanzada de JS |
 
 <br/>
@@ -625,6 +634,39 @@ npm run build:dev
 # Analizar el bundle generado
 npm run analyze
 ```
+
+<br/>
+
+---
+
+<br/>
+
+## Despliegue en Vercel (Web)
+
+Finance Pal está disponible como aplicación web gracias a Vercel. Cada push a `main` se despliega automáticamente.
+
+### Acceso
+
+- **Producción**: [https://financepal-web.vercel.app](https://financepal-web.vercel.app)
+
+### Configuración de Entorno
+
+Las siguientes variables deben configurarse en el dashboard de Vercel:
+
+| Variable | Descripción |
+|---|---|
+| `VITE_ENABLE_SUPABASE` | `true` para habilitar sincronización en la nube |
+| `VITE_SUPABASE_URL` | URL de tu proyecto Supabase |
+| `VITE_SUPABASE_ANON_KEY` | Anon key pública de Supabase |
+| `VITE_PUBLIC_URL` | URL del deployment (ej: `https://financepal-web.vercel.app`) |
+
+### Configuración Local
+
+El proyecto incluye `vercel.json` con:
+- **Rewrites**: todas las rutas caen a `index.html` (SPA fallback para React Router)
+- **Headers**: cacheo agresivo para assets con hash (`max-age=31536000, immutable`), sin caché para `index.html`
+
+También incluye `.env.template` como referencia de las variables necesarias.
 
 <br/>
 
@@ -819,7 +861,7 @@ El almacenamiento local puede cifrarse con AES-GCM 256-bit mediante `encrypted-s
 | Script | Descripción |
 |---|---|
 | `npm run dev` | Servidor de desarrollo Vite con HMR |
-| `npm run build` | Build de producción optimizado (brotli + gzip + code splitting) |
+| `npm run build` | Build de producción optimizado (terser + code splitting + tree-shaking) |
 | `npm run build:dev` | Build de desarrollo (con source maps) |
 | `npm run preview` | Preview del bundle compilado |
 | `npm run lint` | ESLint sobre toda la base de código |
@@ -869,12 +911,13 @@ Este proyecto es propiedad de **migol-dev**. Siéntete libre de explorar el cód
 
 **Finance Pal** — Hecho con ❤️ para transformar tus finanzas personales.
 
-*Sin servidores · Sin nube · Sin compromisos · 100% tuyo.*
+*Disponible en Android y Web · Sin suscripciones · 100% tuyo.*
 
 <br/>
 
 [![migol-dev](https://img.shields.io/badge/by-migol--dev-F43F5E?style=flat-square)](https://github.com/migol-dev)
 [![Schema](https://img.shields.io/badge/schema-v5-6366F1?style=flat-square)](#)
+[![Web](https://img.shields.io/badge/web-Vercel-000000?style=flat-square&logo=vercel)](#)
 [![Privacidad](https://img.shields.io/badge/datos-100%25%20locales-10B981?style=flat-square)](#)
 [![Sync](https://img.shields.io/badge/cloud-sync%20optional-8B5CF6?style=flat-square)](#)
 
