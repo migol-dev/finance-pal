@@ -3,7 +3,6 @@ import react from "@vitejs/plugin-react-swc";
 import path from "path";
 import { componentTagger } from "lovable-tagger";
 import { visualizer } from "rollup-plugin-visualizer";
-import compression from "vite-plugin-compression";
 
 // https://vitejs.dev/config/
 export default defineConfig(({ mode }) => ({
@@ -26,17 +25,6 @@ export default defineConfig(({ mode }) => ({
         filename: "dist/stats.html",
         gzipSize: true,
         brotliSize: true,
-      }),
-    // Optimización: Compresión de assets en producción
-    mode === "production" &&
-      compression({
-        algorithm: "brotliCompress",
-        ext: ".br",
-      }),
-    mode === "production" &&
-      compression({
-        algorithm: "gzip",
-        ext: ".gz",
       }),
   ].filter(Boolean),
   build: {
