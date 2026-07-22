@@ -265,6 +265,17 @@ function extractParamFromUrl(url: string, param: string): string | null {
   }
 }
 
+function extractHashParams(url: string): Record<string, string> {
+  const hashIdx = url.indexOf('#');
+  if (hashIdx === -1) return {};
+  const params: Record<string, string> = {};
+  url.substring(hashIdx + 1).split('&').forEach(pair => {
+    const [key, value] = pair.split('=');
+    if (key) params[key] = decodeURIComponent(value || '');
+  });
+  return params;
+}
+
 const App = () => {
   useEffect(() => {
     if (isSupabaseEnabled) {
@@ -280,12 +291,20 @@ const App = () => {
     CapApp.addListener('appUrlOpen', async (event) => {
       const url = event.url;
       if (url.startsWith('app.financepal.com://auth/callback')) {
+        // PKCE flow: code in query string
         const code = extractParamFromUrl(url, 'code');
         if (code) {
           const { error } = await supabase.auth.exchangeCodeForSession(code);
-          if (error) {
-            console.error('[AuthCallback] exchangeCodeForSession error:', error.message);
-          }
+          if (error) console.error('[Auth] PKCE exchange error:', error.message);
+          return;
+        }
+        // Implicit flow: tokens in hash fragment
+        const hashParams = extractHashParams(url);
+        const at = hashParams.access_token;
+        const rt = hashParams.refresh_token;
+        if (at && rt) {
+          const { error } = await supabase.auth.setSession({ access_token: at, refresh_token: rt });
+          if (error) console.error('[Auth] setSession error:', error.message);
         }
       }
     }).then(h => { handle = h; });
