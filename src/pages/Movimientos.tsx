@@ -405,10 +405,7 @@ export default function Movimientos() {
                             {t.type === "income" ? "+" : t.type === "transfer" ? "⇄" : "-"}{fmt(t.amount)}
                           </p>
                         </div>
-                        <div className="flex gap-0.5">
-                          <button onClick={() => openEdit(t as Transaction)} className="text-muted-foreground hover:text-primary p-1"><Pencil className="size-3.5" /></button>
-                          <button onClick={() => setDeleteConfirm(t as Transaction)} className="text-muted-foreground hover:text-destructive p-1"><Trash2 className="size-3.5" /></button>
-                        </div>
+                        <button onClick={() => setDeleteConfirm(t as Transaction)} className="text-muted-foreground hover:text-destructive p-1 shrink-0"><Trash2 className="size-3.5" /></button>
                       </motion.div>
                     );
                   })}

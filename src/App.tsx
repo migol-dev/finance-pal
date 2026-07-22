@@ -117,8 +117,8 @@ function AnimatedRoutes() {
 
 function AuthGuard() {
   const { session, loading } = useAuth();
-  const { hasLocalData, loadSettingsFromCloud } = useFinance();
-  const [resolved, setResolved] = React.useState(false);
+  const { hasLocalData, loadSettingsFromCloud, appSettings, setConflictResolved } = useFinance();
+  const [resolved, setResolved] = React.useState(appSettings.conflictResolved ?? false);
   const [cloudHasData, setCloudHasData] = React.useState<boolean | null>(null);
   const { paused, resume } = useSessionManager();
   const set = useFinance.setState;
@@ -209,8 +209,8 @@ function AuthGuard() {
     if (hasLocalData() && cloudHasData && !resolved) {
       return (
         <DataConflictDialog
-          onUpload={() => { setResolved(true); navigate('/migracion'); }}
-          onDownload={() => setResolved(true)}
+          onUpload={() => { setConflictResolved(); setResolved(true); navigate('/migracion'); }}
+          onDownload={() => { setConflictResolved(); setResolved(true); }}
         />
       );
     }

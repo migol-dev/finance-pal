@@ -85,12 +85,13 @@ export default function Login() {
         const { data, error } = await supabase.auth.signInWithOAuth({ provider, options });
         if (error) throw error;
         if (data?.url) {
-          Browser.open({ url: data.url }); // fire & forget
+          Browser.open({ url: data.url });
         }
         setLoading(false);
       } else {
+        const baseUrl = import.meta.env.VITE_PUBLIC_URL || window.location.origin;
         const options: any = {
-          redirectTo: `${window.location.origin}/auth/callback`,
+          redirectTo: `${baseUrl}/auth/callback`,
         };
         if (provider === 'google') {
           options.queryParams = { access_type: 'offline', prompt: 'consent' };

@@ -53,10 +53,10 @@
     --radius-lg: 1.25rem;
     --radius-xl: 1.5rem;
 
-    --shadow-soft: 0 2px 12px -4px hsl(210 100% 30% / 0.06);
-    --shadow-card: 0 8px 28px -12px hsl(210 100% 30% / 0.08);
-    --shadow-glow: 0 8px 32px -8px hsl(210 100% 50% / 0.2);
-    --shadow-pop: 0 16px 48px -16px hsl(210 100% 50% / 0.15);
+    --shadow-soft: 0 2px 12px -4px hsl(var(--accent-hue) 30% 30% / 0.06);
+    --shadow-card: 0 8px 28px -12px hsl(var(--accent-hue) 30% 30% / 0.08);
+    --shadow-glow: 0 8px 32px -8px hsl(var(--accent-hue) var(--accent-saturation) calc(var(--accent-lightness) - 20%) / 0.2);
+    --shadow-pop: 0 16px 48px -16px hsl(var(--accent-hue) var(--accent-saturation) calc(var(--accent-lightness) - 20%) / 0.15);
 
     --sidebar-background: 0 0% 99%;
     --sidebar-foreground: 250 8% 30%;
@@ -74,6 +74,13 @@
     --accent-hue: 210;
     --accent-saturation: 100%;
     --accent-lightness: 50%;
+    --g-primary: linear-gradient(135deg, hsl(210 100% 50%), hsl(195 100% 55%));
+    --g-success: linear-gradient(135deg, hsl(165 75% 42%), hsl(190 90% 48%));
+    --g-warning: linear-gradient(135deg, hsl(38 95% 50%), hsl(30 90% 52%));
+    --g-destructive: linear-gradient(135deg, hsl(350 80% 56%), hsl(0 80% 58%));
+    --g-secondary: linear-gradient(135deg, hsl(230 80% 55%), hsl(260 75% 60%));
+    --g-sunset: linear-gradient(135deg, hsl(210 100% 50%) 0%, hsl(230 80% 55%) 50%, hsl(260 75% 55%) 100%);
+    --g-ocean: linear-gradient(135deg, hsl(195 100% 45%), hsl(220 100% 50%));
   }
 
   .dark {
@@ -116,10 +123,10 @@
     --input: 225 18% 16%;
     --ring: 210 100% 55%;
 
-    --shadow-soft: 0 2px 12px -4px hsl(210 100% 30% / 0.2);
-    --shadow-card: 0 8px 28px -12px hsl(210 100% 30% / 0.3);
-    --shadow-glow: 0 8px 32px -8px hsl(210 100% 55% / 0.35);
-    --shadow-pop: 0 16px 48px -16px hsl(210 100% 55% / 0.25);
+    --shadow-soft: 0 2px 12px -4px hsl(var(--accent-hue) 30% 30% / 0.2);
+    --shadow-card: 0 8px 28px -12px hsl(var(--accent-hue) 30% 30% / 0.3);
+    --shadow-glow: 0 8px 32px -8px hsl(var(--accent-hue) var(--accent-saturation) calc(var(--accent-lightness) + 5%) / 0.35);
+    --shadow-pop: 0 16px 48px -16px hsl(var(--accent-hue) var(--accent-saturation) calc(var(--accent-lightness) + 5%) / 0.25);
 
     --sidebar-background: 225 25% 7%;
     --sidebar-foreground: 215 18% 72%;
@@ -129,53 +136,185 @@
     --sidebar-accent-foreground: 210 35% 96%;
     --sidebar-border: 225 18% 18%;
     --sidebar-ring: 210 100% 55%;
+    --g-primary: linear-gradient(135deg, hsl(210 100% 55%), hsl(195 100% 60%));
+    --g-success: linear-gradient(135deg, hsl(165 75% 48%), hsl(190 90% 52%));
+    --g-warning: linear-gradient(135deg, hsl(38 95% 55%), hsl(30 90% 57%));
+    --g-destructive: linear-gradient(135deg, hsl(350 80% 58%), hsl(0 80% 60%));
+    --g-secondary: linear-gradient(135deg, hsl(230 80% 60%), hsl(260 75% 62%));
+    --g-sunset: linear-gradient(135deg, hsl(210 100% 55%) 0%, hsl(230 80% 60%) 50%, hsl(260 75% 60%) 100%);
+    --g-ocean: linear-gradient(135deg, hsl(195 100% 50%), hsl(220 100% 52%));
   }
 
-  /* Accent color variants */
+  /* ─── Accent color variants — full palette with explicit gradients ─── */
+  /* Blue (default) */
   .accent-blue {
     --accent-hue: 210; --accent-saturation: 100%; --accent-lightness: 50%;
     --primary: 210 100% 50%; --ring: 210 100% 50%;
     --primary-muted: 210 100% 95%; --primary-glow: 195 100% 60%;
+    --secondary: 230 80% 55%; --secondary-muted: 230 80% 95%;
+    --accent: 190 90% 48%; --accent-muted: 190 90% 94%;
+    --success: 165 75% 42%; --success-muted: 165 75% 92%;
+    --warning: 38 95% 50%; --warning-muted: 38 95% 92%;
+    --destructive: 350 80% 56%; --destructive-muted: 350 80% 93%;
+    --g-primary: linear-gradient(135deg, hsl(210 100% 50%), hsl(195 100% 55%));
+    --g-success: linear-gradient(135deg, hsl(165 75% 42%), hsl(190 90% 48%));
+    --g-warning: linear-gradient(135deg, hsl(38 95% 50%), hsl(30 90% 52%));
+    --g-destructive: linear-gradient(135deg, hsl(350 80% 56%), hsl(0 80% 58%));
+    --g-secondary: linear-gradient(135deg, hsl(230 80% 55%), hsl(260 75% 60%));
+    --g-sunset: linear-gradient(135deg, hsl(210 100% 50%) 0%, hsl(230 80% 55%) 50%, hsl(260 75% 55%) 100%);
+    --g-ocean: linear-gradient(135deg, hsl(195 100% 45%), hsl(220 100% 50%));
   }
   .dark.accent-blue {
     --primary: 210 100% 55%; --ring: 210 100% 55%;
     --primary-muted: 210 50% 15%;
+    --secondary: 230 80% 60%; --secondary-muted: 230 50% 15%;
+    --accent: 190 90% 52%; --accent-muted: 190 50% 14%;
+    --success: 165 75% 48%; --success-muted: 165 40% 14%;
+    --warning: 38 95% 55%; --warning-muted: 38 40% 14%;
+    --destructive: 350 80% 58%; --destructive-muted: 350 40% 14%;
+    --g-primary: linear-gradient(135deg, hsl(210 100% 55%), hsl(195 100% 60%));
+    --g-success: linear-gradient(135deg, hsl(165 75% 48%), hsl(190 90% 52%));
+    --g-warning: linear-gradient(135deg, hsl(38 95% 55%), hsl(30 90% 57%));
+    --g-destructive: linear-gradient(135deg, hsl(350 80% 58%), hsl(0 80% 60%));
+    --g-secondary: linear-gradient(135deg, hsl(230 80% 60%), hsl(260 75% 62%));
+    --g-sunset: linear-gradient(135deg, hsl(210 100% 55%) 0%, hsl(230 80% 60%) 50%, hsl(260 75% 60%) 100%);
+    --g-ocean: linear-gradient(135deg, hsl(195 100% 50%), hsl(220 100% 52%));
   }
+  /* Violet */
   .accent-violet {
     --accent-hue: 260; --accent-saturation: 80%; --accent-lightness: 55%;
     --primary: 260 80% 55%; --ring: 260 80% 55%;
     --primary-muted: 260 80% 94%; --primary-glow: 270 100% 65%;
+    --secondary: 280 70% 50%; --secondary-muted: 280 70% 94%;
+    --accent: 240 80% 52%; --accent-muted: 240 80% 94%;
+    --success: 200 75% 42%; --success-muted: 200 75% 92%;
+    --warning: 45 95% 50%; --warning-muted: 45 95% 92%;
+    --destructive: 350 80% 56%; --destructive-muted: 350 80% 93%;
+    --g-primary: linear-gradient(135deg, hsl(260 80% 55%), hsl(270 85% 60%));
+    --g-success: linear-gradient(135deg, hsl(200 75% 42%), hsl(220 80% 48%));
+    --g-warning: linear-gradient(135deg, hsl(45 95% 50%), hsl(35 90% 52%));
+    --g-destructive: linear-gradient(135deg, hsl(350 80% 56%), hsl(0 80% 58%));
+    --g-secondary: linear-gradient(135deg, hsl(280 70% 50%), hsl(300 65% 55%));
+    --g-sunset: linear-gradient(135deg, hsl(260 80% 55%) 0%, hsl(280 70% 50%) 50%, hsl(300 65% 55%) 100%);
+    --g-ocean: linear-gradient(135deg, hsl(250 85% 48%), hsl(270 80% 52%));
   }
   .dark.accent-violet {
     --primary: 260 80% 60%; --ring: 260 80% 60%;
     --primary-muted: 260 50% 16%;
+    --secondary: 280 70% 55%; --secondary-muted: 280 40% 15%;
+    --accent: 240 80% 55%; --accent-muted: 240 40% 14%;
+    --success: 200 75% 48%; --success-muted: 200 40% 14%;
+    --warning: 45 95% 55%; --warning-muted: 45 40% 14%;
+    --destructive: 350 80% 58%; --destructive-muted: 350 40% 14%;
+    --g-primary: linear-gradient(135deg, hsl(260 80% 60%), hsl(270 85% 65%));
+    --g-success: linear-gradient(135deg, hsl(200 75% 48%), hsl(220 80% 52%));
+    --g-warning: linear-gradient(135deg, hsl(45 95% 55%), hsl(35 90% 57%));
+    --g-destructive: linear-gradient(135deg, hsl(350 80% 58%), hsl(0 80% 60%));
+    --g-secondary: linear-gradient(135deg, hsl(280 70% 55%), hsl(300 65% 58%));
+    --g-sunset: linear-gradient(135deg, hsl(260 80% 60%) 0%, hsl(280 70% 55%) 50%, hsl(300 65% 58%) 100%);
+    --g-ocean: linear-gradient(135deg, hsl(250 85% 52%), hsl(270 80% 55%));
   }
+  /* Emerald */
   .accent-emerald {
     --accent-hue: 160; --accent-saturation: 80%; --accent-lightness: 42%;
     --primary: 160 80% 42%; --ring: 160 80% 42%;
     --primary-muted: 160 80% 93%; --primary-glow: 150 100% 50%;
+    --secondary: 190 70% 48%; --secondary-muted: 190 70% 93%;
+    --accent: 130 80% 45%; --accent-muted: 130 80% 93%;
+    --success: 170 75% 40%; --success-muted: 170 75% 92%;
+    --warning: 40 95% 50%; --warning-muted: 40 95% 92%;
+    --destructive: 350 80% 56%; --destructive-muted: 350 80% 93%;
+    --g-primary: linear-gradient(135deg, hsl(160 80% 42%), hsl(150 85% 48%));
+    --g-success: linear-gradient(135deg, hsl(170 75% 40%), hsl(185 80% 46%));
+    --g-warning: linear-gradient(135deg, hsl(40 95% 50%), hsl(30 90% 52%));
+    --g-destructive: linear-gradient(135deg, hsl(350 80% 56%), hsl(0 80% 58%));
+    --g-secondary: linear-gradient(135deg, hsl(190 70% 48%), hsl(210 65% 52%));
+    --g-sunset: linear-gradient(135deg, hsl(160 80% 42%) 0%, hsl(180 70% 46%) 50%, hsl(200 65% 50%) 100%);
+    --g-ocean: linear-gradient(135deg, hsl(150 85% 40%), hsl(170 80% 45%));
   }
   .dark.accent-emerald {
     --primary: 160 80% 48%; --ring: 160 80% 48%;
     --primary-muted: 160 40% 14%;
+    --secondary: 190 70% 52%; --secondary-muted: 190 40% 14%;
+    --accent: 130 80% 50%; --accent-muted: 130 40% 14%;
+    --success: 170 75% 46%; --success-muted: 170 40% 14%;
+    --warning: 40 95% 55%; --warning-muted: 40 40% 14%;
+    --destructive: 350 80% 58%; --destructive-muted: 350 40% 14%;
+    --g-primary: linear-gradient(135deg, hsl(160 80% 48%), hsl(150 85% 52%));
+    --g-success: linear-gradient(135deg, hsl(170 75% 46%), hsl(185 80% 50%));
+    --g-warning: linear-gradient(135deg, hsl(40 95% 55%), hsl(30 90% 57%));
+    --g-destructive: linear-gradient(135deg, hsl(350 80% 58%), hsl(0 80% 60%));
+    --g-secondary: linear-gradient(135deg, hsl(190 70% 52%), hsl(210 65% 55%));
+    --g-sunset: linear-gradient(135deg, hsl(160 80% 48%) 0%, hsl(180 70% 50%) 50%, hsl(200 65% 52%) 100%);
+    --g-ocean: linear-gradient(135deg, hsl(150 85% 44%), hsl(170 80% 48%));
   }
+  /* Rose */
   .accent-rose {
     --accent-hue: 340; --accent-saturation: 85%; --accent-lightness: 55%;
     --primary: 340 85% 55%; --ring: 340 85% 55%;
     --primary-muted: 340 85% 94%; --primary-glow: 350 100% 65%;
+    --secondary: 10 75% 52%; --secondary-muted: 10 75% 94%;
+    --accent: 320 80% 50%; --accent-muted: 320 80% 94%;
+    --success: 160 75% 42%; --success-muted: 160 75% 92%;
+    --warning: 38 95% 50%; --warning-muted: 38 95% 92%;
+    --destructive: 355 80% 56%; --destructive-muted: 355 80% 93%;
+    --g-primary: linear-gradient(135deg, hsl(340 85% 55%), hsl(350 90% 60%));
+    --g-success: linear-gradient(135deg, hsl(160 75% 42%), hsl(180 80% 48%));
+    --g-warning: linear-gradient(135deg, hsl(38 95% 50%), hsl(28 90% 52%));
+    --g-destructive: linear-gradient(135deg, hsl(355 80% 56%), hsl(5 80% 58%));
+    --g-secondary: linear-gradient(135deg, hsl(10 75% 52%), hsl(20 70% 56%));
+    --g-sunset: linear-gradient(135deg, hsl(340 85% 55%) 0%, hsl(355 75% 52%) 50%, hsl(10 70% 56%) 100%);
+    --g-ocean: linear-gradient(135deg, hsl(330 90% 48%), hsl(350 85% 52%));
   }
   .dark.accent-rose {
     --primary: 340 85% 60%; --ring: 340 85% 60%;
     --primary-muted: 340 50% 16%;
+    --secondary: 10 75% 56%; --secondary-muted: 10 40% 15%;
+    --accent: 320 80% 54%; --accent-muted: 320 40% 14%;
+    --success: 160 75% 48%; --success-muted: 160 40% 14%;
+    --warning: 38 95% 55%; --warning-muted: 38 40% 14%;
+    --destructive: 355 80% 58%; --destructive-muted: 355 40% 14%;
+    --g-primary: linear-gradient(135deg, hsl(340 85% 60%), hsl(350 90% 63%));
+    --g-success: linear-gradient(135deg, hsl(160 75% 48%), hsl(180 80% 52%));
+    --g-warning: linear-gradient(135deg, hsl(38 95% 55%), hsl(28 90% 57%));
+    --g-destructive: linear-gradient(135deg, hsl(355 80% 58%), hsl(5 80% 60%));
+    --g-secondary: linear-gradient(135deg, hsl(10 75% 56%), hsl(20 70% 58%));
+    --g-sunset: linear-gradient(135deg, hsl(340 85% 60%) 0%, hsl(355 75% 56%) 50%, hsl(10 70% 58%) 100%);
+    --g-ocean: linear-gradient(135deg, hsl(330 90% 52%), hsl(350 85% 55%));
   }
+  /* Amber */
   .accent-amber {
     --accent-hue: 38; --accent-saturation: 95%; --accent-lightness: 50%;
     --primary: 38 95% 50%; --ring: 38 95% 50%;
     --primary-muted: 38 95% 92%; --primary-glow: 45 100% 55%;
+    --secondary: 15 85% 50%; --secondary-muted: 15 85% 94%;
+    --accent: 55 85% 48%; --accent-muted: 55 85% 94%;
+    --success: 165 75% 42%; --success-muted: 165 75% 92%;
+    --warning: 10 85% 50%; --warning-muted: 10 85% 92%;
+    --destructive: 350 80% 56%; --destructive-muted: 350 80% 93%;
+    --g-primary: linear-gradient(135deg, hsl(38 95% 50%), hsl(48 100% 55%));
+    --g-success: linear-gradient(135deg, hsl(165 75% 42%), hsl(180 80% 48%));
+    --g-warning: linear-gradient(135deg, hsl(10 85% 50%), hsl(0 80% 52%));
+    --g-destructive: linear-gradient(135deg, hsl(350 80% 56%), hsl(0 80% 58%));
+    --g-secondary: linear-gradient(135deg, hsl(15 85% 50%), hsl(25 80% 54%));
+    --g-sunset: linear-gradient(135deg, hsl(38 95% 50%) 0%, hsl(20 85% 48%) 50%, hsl(10 80% 52%) 100%);
+    --g-ocean: linear-gradient(135deg, hsl(30 90% 45%), hsl(50 85% 50%));
   }
   .dark.accent-amber {
     --primary: 38 95% 55%; --ring: 38 95% 55%;
     --primary-muted: 38 40% 16%;
+    --secondary: 15 85% 54%; --secondary-muted: 15 40% 15%;
+    --accent: 55 85% 52%; --accent-muted: 55 40% 14%;
+    --success: 165 75% 48%; --success-muted: 165 40% 14%;
+    --warning: 10 85% 54%; --warning-muted: 10 40% 14%;
+    --destructive: 350 80% 58%; --destructive-muted: 350 40% 14%;
+    --g-primary: linear-gradient(135deg, hsl(38 95% 55%), hsl(48 100% 58%));
+    --g-success: linear-gradient(135deg, hsl(165 75% 48%), hsl(180 80% 52%));
+    --g-warning: linear-gradient(135deg, hsl(10 85% 54%), hsl(0 80% 56%));
+    --g-destructive: linear-gradient(135deg, hsl(350 80% 58%), hsl(0 80% 60%));
+    --g-secondary: linear-gradient(135deg, hsl(15 85% 54%), hsl(25 80% 56%));
+    --g-sunset: linear-gradient(135deg, hsl(38 95% 55%) 0%, hsl(20 85% 52%) 50%, hsl(10 80% 54%) 100%);
+    --g-ocean: linear-gradient(135deg, hsl(30 90% 48%), hsl(50 85% 52%));
   }
 }
 
@@ -222,19 +361,19 @@
 }
 
 @layer utilities {
-  .gradient-primary { background-image: linear-gradient(135deg, hsl(210 100% 50%), hsl(195 100% 55%)); }
-  .gradient-secondary { background-image: linear-gradient(135deg, hsl(230 80% 55%), hsl(260 75% 60%)); }
-  .gradient-success { background-image: linear-gradient(135deg, hsl(165 75% 42%), hsl(190 90% 48%)); }
-  .gradient-warning { background-image: linear-gradient(135deg, hsl(38 95% 50%), hsl(30 90% 52%)); }
-  .gradient-destructive { background-image: linear-gradient(135deg, hsl(350 80% 56%), hsl(0 80% 58%)); }
-  .gradient-sunset { background-image: linear-gradient(135deg, hsl(210 100% 50%) 0%, hsl(230 80% 55%) 50%, hsl(260 75% 55%) 100%); }
-  .gradient-ocean { background-image: linear-gradient(135deg, hsl(195 100% 45%), hsl(220 100% 50%)); }
+  .gradient-primary { background-image: var(--g-primary); }
+  .gradient-secondary { background-image: var(--g-secondary); }
+  .gradient-success { background-image: var(--g-success); }
+  .gradient-warning { background-image: var(--g-warning); }
+  .gradient-destructive { background-image: var(--g-destructive); }
+  .gradient-sunset { background-image: var(--g-sunset); }
+  .gradient-ocean { background-image: var(--g-ocean); }
 
   .gradient-mesh {
     background-image:
       radial-gradient(at 20% 10%, hsl(var(--accent-hue) var(--accent-saturation) var(--accent-lightness) / 0.12) 0px, transparent 50%),
-      radial-gradient(at 80% 0%, hsl(195 100% 60% / 0.1) 0px, transparent 50%),
-      radial-gradient(at 50% 100%, hsl(230 80% 60% / 0.08) 0px, transparent 50%);
+      radial-gradient(at 80% 0%, hsl(calc(var(--accent-hue) - 15) var(--accent-saturation) calc(var(--accent-lightness) + 10%) / 0.1) 0px, transparent 50%),
+      radial-gradient(at 50% 100%, hsl(calc(var(--accent-hue) + 20) var(--accent-saturation) calc(var(--accent-lightness) + 10%) / 0.08) 0px, transparent 50%);
   }
 
   .shadow-soft { box-shadow: var(--shadow-soft); }
@@ -282,5 +421,53 @@
   }
   html[data-platform="native"] aside.lg\:flex {
     display: none !important;
+  }
+
+  /* ─── Compact Mode ─── */
+  html.compact {
+    --font-size-sm: 0.75rem;
+    --font-size-base: 0.8125rem;
+    --font-size-lg: 0.9375rem;
+  }
+  html.compact .px-5 { padding-left: 1rem; padding-right: 1rem; }
+  html.compact .py-3 { padding-top: 0.625rem; padding-bottom: 0.625rem; }
+  html.compact .py-2\.5 { padding-top: 0.5rem; padding-bottom: 0.5rem; }
+  html.compact .p-4 { padding: 0.75rem; }
+  html.compact .p-3 { padding: 0.625rem; }
+  html.compact .p-6 { padding: 1rem; }
+  html.compact .gap-3 { gap: 0.625rem; }
+  html.compact .gap-2 { gap: 0.375rem; }
+  html.compact .space-y-3 { margin-top: 0; }
+  html.compact .space-y-3 > * + * { margin-top: 0.625rem; }
+  html.compact .space-y-4 > * + * { margin-top: 0.75rem; }
+  html.compact .space-y-2 > * + * { margin-top: 0.375rem; }
+  html.compact h1.text-2xl { font-size: 1.25rem; line-height: 1.4; }
+  html.compact h1.text-3xl { font-size: 1.5rem; line-height: 1.3; }
+  html.compact .size-14 { width: 2.75rem; height: 2.75rem; }
+  html.compact .size-12 { width: 2.5rem; height: 2.5rem; }
+  html.compact .size-10 { width: 2.25rem; height: 2.25rem; }
+  html.compact .size-9 { width: 2rem; height: 2rem; }
+  html.compact .size-8 { width: 1.75rem; height: 1.75rem; }
+  html.compact .h-14 { height: 2.75rem; }
+  html.compact .h-12 { height: 2.5rem; }
+  html.compact .h-11 { height: 2.25rem; }
+  html.compact .h-9 { height: 2rem; }
+  html.compact .rounded-2xl { border-radius: 0.875rem; }
+  html.compact .rounded-3xl { border-radius: 1rem; }
+  html.compact .top-20 { top: 3.5rem; }
+  html.compact a, html.compact button { transition: none; }
+  html.compact .text-xs { font-size: 0.6875rem; }
+  html.compact .text-sm { font-size: 0.75rem; }
+  html.compact .text-base { font-size: 0.8125rem; }
+  html.compact .text-lg { font-size: 0.9375rem; }
+  html.compact .text-xl { font-size: 1.0625rem; }
+  html.compact .pb-28 { padding-bottom: 5rem; }
+
+  /* ─── Glass Effect Toggle ─── */
+  html.disable-glass .glass,
+  html.disable-glass .glass-strong {
+    background: hsl(var(--card));
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
   }
 }

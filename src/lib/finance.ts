@@ -352,6 +352,7 @@ export interface AppSettings {
   accentColor: AccentColor;
   compactMode: boolean;
   glassEffect: boolean;
+  conflictResolved?: boolean;
 }
 
 export const emojiFor = (cat: string) => CATEGORY_EMOJI[cat] ?? "💸";

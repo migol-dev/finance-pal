@@ -20,7 +20,7 @@ export const BottomNav = memo(function BottomNav() {
               end={to === "/"}
               className={({ isActive }) =>
                 cn(
-                  "flex flex-col items-center justify-center gap-0.5 px-3 py-1.5 rounded-xl text-[10px] font-semibold transition-all min-w-[56px] relative",
+                  "flex flex-col items-center justify-center gap-0.5 px-2 py-1.5 rounded-xl text-[9px] font-semibold transition-all min-w-[48px] relative",
                   isActive
                     ? "text-primary"
                     : "text-muted-foreground/70 hover:text-foreground"

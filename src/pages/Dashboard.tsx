@@ -19,7 +19,7 @@ export default function Dashboard() {
   const ensureScheduledTransactions = useFinance((s) => s.ensureScheduledTransactions);
 
   useEffect(() => {
-    try { ensureScheduledTransactions(); } catch (e) { }
+    try { ensureScheduledTransactions(); } catch (e) { /* ignore */ }
   }, [ensureScheduledTransactions]);
   const [hide, setHide] = useState(false);
 
@@ -245,7 +245,7 @@ export default function Dashboard() {
         <div className="absolute -bottom-8 -left-6 size-24 rounded-full bg-white/10 blur-2xl" />
         <div className="relative">
           <p className="text-[11px] uppercase tracking-wider font-semibold opacity-80">Neto acumulado</p>
-          <p className="text-4xl font-extrabold tracking-tight mt-1">{mask(fmt(monthStats.cumulativeNet))}</p>
+          <p className="text-4xl font-extrabold tracking-tight mt-1 truncate">{mask(fmt(monthStats.cumulativeNet))}</p>
           <div className="grid grid-cols-3 gap-2 mt-5">
             <MiniStat icon={<TrendingUp className="size-3.5" />} label="Ingresos" value={mask(fmt(monthStats.income))} />
             <MiniStat icon={<TrendingDown className="size-3.5" />} label="Gastos" value={mask(fmt(monthStats.expense))} />

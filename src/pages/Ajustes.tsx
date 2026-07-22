@@ -286,7 +286,7 @@ export default function Ajustes() {
 
   return (
     <div>
-      <Header title="Ajustes" subtitle="Configura tus fijos del mes" action={
+      <Header title="Ajustes" subtitle="Personaliza tu experiencia" action={
             <div className="flex items-center gap-2">
               <Button onClick={async () => {
                 try {
@@ -298,7 +298,7 @@ export default function Ajustes() {
                     toast('No se encontraron recibos huérfanos');
                   }
                 } catch { toast.error(showUserError(undefined)); }
-              }} variant="ghost" className="h-11"><Trash2 className="size-4 mr-2" />Limpiar</Button>
+              }} variant="ghost" className="h-11 hidden sm:inline-flex"><Trash2 className="size-4 mr-2" />Limpiar</Button>
               <Button onClick={openNew} className="rounded-2xl gradient-primary text-primary-foreground border-0 shadow-glow h-11"><Plus className="size-4 mr-1" />Agregar</Button>
             </div>
           } />

@@ -268,9 +268,9 @@ export default function Deudas() {
 function SumCard({ label, value, tone }: { label: string; value: string; tone: "primary" | "success" | "warning" }) {
   const map = { primary: "gradient-primary", success: "gradient-success", warning: "gradient-sunset" };
   return (
-    <div className={`rounded-2xl p-3 text-primary-foreground shadow-pop ${map[tone]}`}>
-      <p className="text-[10px] uppercase font-bold opacity-90">{label}</p>
-      <p className="text-sm font-extrabold mt-0.5 truncate">{value}</p>
+    <div className={`rounded-2xl p-2.5 text-primary-foreground shadow-pop ${map[tone]}`}>
+      <p className="text-[9px] uppercase font-bold opacity-90 truncate">{label}</p>
+      <p className="text-xs font-extrabold mt-0.5 truncate">{value}</p>
     </div>
   );
 }

@@ -8,6 +8,36 @@ import { Capacitor } from "@capacitor/core";
 import { LocalNotifications } from "@capacitor/local-notifications";
 import { App as CapacitorApp } from "@capacitor/app";
 import { toast } from "sonner";
+import { ACCENT_PALETTES, AccentColor } from "@/lib/accent-palette";
+
+function applyAccentVars(root: HTMLElement, color: AccentColor) {
+  const theme = root.classList.contains("dark") ? "dark" : "light";
+  const p = ACCENT_PALETTES[theme][color];
+  root.style.setProperty("--accent-hue", String(p.hue));
+  root.style.setProperty("--accent-saturation", p.saturation);
+  root.style.setProperty("--accent-lightness", p.lightness);
+  root.style.setProperty("--primary", p.primary);
+  root.style.setProperty("--ring", p.ring);
+  root.style.setProperty("--primary-muted", p.primaryMuted);
+  root.style.setProperty("--primary-glow", p.primaryGlow);
+  root.style.setProperty("--secondary", p.secondary);
+  root.style.setProperty("--secondary-muted", p.secondaryMuted);
+  root.style.setProperty("--accent", p.accent);
+  root.style.setProperty("--accent-muted", p.accentMuted);
+  root.style.setProperty("--success", p.success);
+  root.style.setProperty("--success-muted", p.successMuted);
+  root.style.setProperty("--warning", p.warning);
+  root.style.setProperty("--warning-muted", p.warningMuted);
+  root.style.setProperty("--destructive", p.destructive);
+  root.style.setProperty("--destructive-muted", p.destructiveMuted);
+  root.style.setProperty("--g-primary", p.gradients.primary);
+  root.style.setProperty("--g-success", p.gradients.success);
+  root.style.setProperty("--g-warning", p.gradients.warning);
+  root.style.setProperty("--g-destructive", p.gradients.destructive);
+  root.style.setProperty("--g-secondary", p.gradients.secondary);
+  root.style.setProperty("--g-sunset", p.gradients.sunset);
+  root.style.setProperty("--g-ocean", p.gradients.ocean);
+}
 
 const SWIPE_ROUTES = ["/", "/movimientos", "/deudas", "/metas", "/ajustes"];
 
@@ -16,6 +46,7 @@ export function AppShell({ children }: { children: ReactNode }) {
   const theme = useFinance((s) => s.theme);
   const accentColor = useFinance((s) => s.appSettings.accentColor);
   const compactMode = useFinance((s) => s.appSettings.compactMode);
+  const glassEffect = useFinance((s) => s.appSettings.glassEffect);
   const didInit = useRef(false);
   const [booting, setBooting] = useState(true);
   const location = useLocation();
@@ -42,18 +73,25 @@ export function AppShell({ children }: { children: ReactNode }) {
     if (theme === "dark") root.classList.add("dark"); else root.classList.remove("dark");
     const meta = document.querySelector('meta[name="theme-color"]');
     if (meta) meta.setAttribute("content", theme === "dark" ? "#0a0e1a" : "#ffffff");
-  }, [theme]);
+    applyAccentVars(root, accentColor);
+  }, [theme, accentColor]);
 
   useEffect(() => {
     const root = document.documentElement;
     root.className.split(" ").filter(c => c.startsWith("accent-")).forEach(c => root.classList.remove(c));
     root.classList.add(`accent-${accentColor}`);
+    applyAccentVars(root, accentColor);
   }, [accentColor]);
 
   useEffect(() => {
     const root = document.documentElement;
     if (compactMode) root.classList.add("compact"); else root.classList.remove("compact");
   }, [compactMode]);
+
+  useEffect(() => {
+    const root = document.documentElement;
+    if (!glassEffect) root.classList.add("disable-glass"); else root.classList.remove("disable-glass");
+  }, [glassEffect]);
 
   useEffect(() => {
     if (!Capacitor.isNativePlatform()) return;
@@ -106,7 +144,7 @@ export function AppShell({ children }: { children: ReactNode }) {
           onTouchEnd={onTouchEnd}
           className="flex-1 lg:overflow-y-auto lg:h-screen"
         >
-          <div className="mx-auto w-full min-h-screen pb-28 safe-top lg:pb-8 lg:px-6 xl:px-8 2xl:max-w-[1600px]">
+          <div className="mx-auto w-full min-h-screen pb-32 safe-top lg:pb-8 lg:px-6 xl:px-8 2xl:max-w-[1600px]">
             {children}
           </div>
         </main>

@@ -39,6 +39,7 @@ interface State {
   setAccentColor: (color: AccentColor) => void;
   setCompactMode: (compact: boolean) => void;
   setGlassEffect: (glass: boolean) => void;
+  setConflictResolved: () => void;
 
   addFixed: (i: Omit<FixedItem, "id">) => void;
   updateFixed: (id: string, p: Partial<FixedItem>) => void;
@@ -355,7 +356,7 @@ export const useFinance = create<State>()(
       // whether to mirror filter state to URL query params
       syncFiltersToURL: false,
       setSyncFiltersToURL: (v: boolean) => set({ syncFiltersToURL: v }),
-      appSettings: { accentColor: "blue", compactMode: false, glassEffect: true },
+      appSettings: { accentColor: "blue", compactMode: false, glassEffect: true, conflictResolved: false },
       setAccentColor: (color: AccentColor) => {
         set((s) => ({ appSettings: { ...s.appSettings, accentColor: color } }));
       },
@@ -364,6 +365,9 @@ export const useFinance = create<State>()(
       },
       setGlassEffect: (glass: boolean) => {
         set((s) => ({ appSettings: { ...s.appSettings, glassEffect: glass } }));
+      },
+      setConflictResolved: () => {
+        set((s) => ({ appSettings: { ...s.appSettings, conflictResolved: true } }));
       },
       activeYear: now.getFullYear(),
       activeMonth: now.getMonth(),
@@ -1338,7 +1342,7 @@ export const useFinance = create<State>()(
 
       resetAll: () => {
         const d = new Date();
-        set({ fixedItems: [], transactions: [], goals: [], debts: [], changeLog: [], activeYear: d.getFullYear(), activeMonth: d.getMonth() });
+        set({ fixedItems: [], transactions: [], goals: [], debts: [], changeLog: [], activeYear: d.getFullYear(), activeMonth: d.getMonth(), appSettings: { accentColor: "blue", compactMode: false, glassEffect: true, conflictResolved: false } });
       },
 
       loadSettingsFromCloud: async () => {
@@ -1511,6 +1515,7 @@ export const useFinance = create<State>()(
           changeLog: [],
           theme: "light" as ThemeMode,
           profile: { name: "", currency: "MXN" } as UserProfile,
+          appSettings: { accentColor: "blue", compactMode: false, glassEffect: true, conflictResolved: false },
           ...state,
         };
         // Re-sanitize collections from older versions to drop malformed entries.

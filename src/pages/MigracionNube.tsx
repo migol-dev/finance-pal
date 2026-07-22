@@ -171,18 +171,18 @@ function MigracionNubeContent() {
                       <Progress value={(progress.current / progress.total) * 100} className="h-3" />
                     </div>
 
-                    <div className="grid grid-cols-3 gap-4 text-center">
-                      <div className="rounded-xl bg-muted/50 p-3">
-                        <p className="text-2xl font-bold text-primary">{progress.current}</p>
-                        <p className="text-[10px] text-muted-foreground">Completados</p>
+                    <div className="grid grid-cols-3 gap-2 text-center">
+                      <div className="rounded-xl bg-muted/50 p-2">
+                        <p className="text-lg font-bold text-primary truncate">{progress.current}</p>
+                        <p className="text-[9px] text-muted-foreground">Completados</p>
                       </div>
-                      <div className="rounded-xl bg-muted/50 p-3">
-                        <p className="text-2xl font-bold">{progress.total}</p>
-                        <p className="text-[10px] text-muted-foreground">Total</p>
+                      <div className="rounded-xl bg-muted/50 p-2">
+                        <p className="text-lg font-bold truncate">{progress.total}</p>
+                        <p className="text-[9px] text-muted-foreground">Total</p>
                       </div>
-                      <div className="rounded-xl bg-muted/50 p-3">
-                        <p className="text-2xl font-bold text-success">{Math.round((progress.current / progress.total) * 100)}%</p>
-                        <p className="text-[10px] text-muted-foreground">Progreso</p>
+                      <div className="rounded-xl bg-muted/50 p-2">
+                        <p className="text-lg font-bold text-success truncate">{Math.round((progress.current / progress.total) * 100)}%</p>
+                        <p className="text-[9px] text-muted-foreground">Progreso</p>
                       </div>
                     </div>
                   </div>
@@ -309,12 +309,12 @@ function MigracionNubeContent() {
 
 function StatItem({ icon, label, value }: { icon: React.ReactNode; label: string; value: number }) {
   return (
-    <div className="rounded-xl bg-muted/50 border border-border p-3 space-y-1">
+    <div className="rounded-xl bg-muted/50 border border-border p-2.5 space-y-1">
       <div className="flex items-center justify-center gap-1 text-primary">
         {icon}
       </div>
-      <p className="text-2xl font-extrabold text-center">{value}</p>
-      <p className="text-[10px] text-muted-foreground text-center uppercase tracking-wider">{label}</p>
+      <p className="text-xl font-extrabold text-center truncate">{value}</p>
+      <p className="text-[9px] text-muted-foreground text-center uppercase tracking-wider truncate">{label}</p>
     </div>
   );
 }

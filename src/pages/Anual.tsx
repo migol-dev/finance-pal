@@ -172,7 +172,7 @@ export default function Anual() {
         <div className="absolute -bottom-8 -left-6 size-24 rounded-full bg-white/10 blur-2xl" />
         <div className="relative">
           <p className="text-xs uppercase tracking-wider font-semibold opacity-80">Neto del año</p>
-          <p className="text-4xl font-extrabold tracking-tight mt-1">{fmt(totals.net)}</p>
+          <p className="text-4xl font-extrabold tracking-tight mt-1 truncate">{fmt(totals.net)}</p>
           <YoyBadge current={totals.net} previous={totalsPrev.net} />
           <div className="grid grid-cols-3 gap-2 mt-4">
             <MiniStat icon={<TrendingUp className="size-3.5" />} label="Ingresos" value={fmt(totals.income)} />
@@ -253,18 +253,18 @@ export default function Anual() {
 
           <section className="px-5 mt-5">
             <SectionTitle>Detalle por mes</SectionTitle>
-            <div className="rounded-xl bg-card border border-border shadow-soft overflow-hidden">
-              <table className="w-full text-sm">
+            <div className="rounded-xl bg-card border border-border shadow-soft overflow-x-auto">
+              <table className="w-full text-sm min-w-[400px]">
                 <thead className="bg-muted/60 text-muted-foreground">
-                  <tr><th className="text-left p-3 font-bold">Mes</th><th className="text-right p-3 font-bold">Ingresos</th><th className="text-right p-3 font-bold">Gastos</th><th className="text-right p-3 font-bold">Neto</th></tr>
+                  <tr><th className="text-left p-3 font-bold whitespace-nowrap">Mes</th><th className="text-right p-3 font-bold whitespace-nowrap">Ingresos</th><th className="text-right p-3 font-bold whitespace-nowrap">Gastos</th><th className="text-right p-3 font-bold whitespace-nowrap">Neto</th></tr>
                 </thead>
                 <tbody>
                   {monthly.map((d) => (
                     <tr key={d.mes} onClick={() => { setActive(activeYear, d.idx); navigate("/"); }} className="border-t border-border cursor-pointer hover:bg-muted/30 transition">
-                      <td className="p-3 font-semibold text-sm">{d.mes}</td>
-                      <td className="p-3 text-right text-success font-semibold text-sm">{fmt(d.Ingresos)}</td>
-                      <td className="p-3 text-right text-destructive font-semibold text-sm">{fmt(d.Gastos)}</td>
-                      <td className={`p-3 text-right font-bold text-sm ${d.Neto >= 0 ? "text-foreground" : "text-destructive"}`}>{fmt(d.Neto)}</td>
+                      <td className="p-3 font-semibold text-sm whitespace-nowrap">{d.mes}</td>
+                      <td className="p-3 text-right text-success font-semibold text-sm whitespace-nowrap">{fmt(d.Ingresos)}</td>
+                      <td className="p-3 text-right text-destructive font-semibold text-sm whitespace-nowrap">{fmt(d.Gastos)}</td>
+                      <td className={`p-3 text-right font-bold text-sm whitespace-nowrap ${d.Neto >= 0 ? "text-foreground" : "text-destructive"}`}>{fmt(d.Neto)}</td>
                     </tr>
                   ))}
                 </tbody>

@@ -615,9 +615,9 @@ function SimularTab({ goal }: { goal: Goal }) {
 
 function PaceBox({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-xl bg-white/20 px-2 py-1.5">
-      <p className="text-[9px] uppercase tracking-wide opacity-80">{label}</p>
-      <p className="text-xs font-extrabold leading-tight">{value}</p>
+    <div className="rounded-xl bg-white/20 px-1.5 py-1.5">
+      <p className="text-[8px] uppercase tracking-wide opacity-80 truncate">{label}</p>
+      <p className="text-[10px] font-extrabold leading-tight truncate">{value}</p>
     </div>
   );
 }
