@@ -85,8 +85,9 @@ export default function Login() {
         const { data, error } = await supabase.auth.signInWithOAuth({ provider, options });
         if (error) throw error;
         if (data?.url) {
-          await Browser.open({ url: data.url });
+          Browser.open({ url: data.url }); // fire & forget
         }
+        setLoading(false);
       } else {
         const options: any = {
           redirectTo: `${window.location.origin}/auth/callback`,
