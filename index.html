@@ -8,10 +8,10 @@
     <meta name="description" content="Gestiona ingresos, gastos, ahorros y metas con un diseño vibrante. App instalable en Android." />
     <meta name="author" content="Finance Pal" />
     <!-- Google Fonts with SRI (Subresource Integrity) -->
-    <!-- Hashes generated via: fetch URL -> sha384 hash -->
+    <!-- Hash generated from actual browser response -->
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Plus+Jakarta+Sans:wght@500;600;700;800&display=swap" integrity="sha384-lAJDxiKZ+Bp7Nm+mZpagYbg44fqGe9c088lWQ7L7sSRUOON+zFmDV4k12Z6w3Uwr" crossorigin="anonymous" />
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Plus+Jakarta+Sans:wght@500;600;700;800&display=swap" integrity="sha384-H1ACVsBmsAYPm49vCyenLlCMGbcWXkM/76jghv/G+m5n3nLVO9w0MSiIWvgig0pF" crossorigin="anonymous" />
     <link rel="manifest" href="/manifest.webmanifest" />
     <link rel="apple-touch-icon" href="/icon-192.png" />
     <link rel="icon" type="image/png" href="/icon-192.png" />
@@ -27,15 +27,8 @@
     <meta name="twitter:card" content="summary_large_image" />
     <meta name="twitter:image" content="/icon-512.png" />
 
-    <!-- Security Headers -->
-    <!-- CSP: 'unsafe-eval' removed (most dangerous). 'unsafe-inline' for styles needed by Tailwind.
-         For production, configure stricter CSP with nonces via Vercel Edge Middleware (see vercel.json). -->
-    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; img-src 'self' data: blob: https:; connect-src 'self' https://*.supabase.co wss://*.supabase.co; frame-ancestors 'none'; base-uri 'self'; form-action 'self';" />
-    <meta http-equiv="X-Content-Type-Options" content="nosniff" />
-    <meta http-equiv="X-Frame-Options" content="DENY" />
-    <meta http-equiv="Referrer-Policy" content="strict-origin-when-cross-origin" />
-    <meta http-equiv="Permissions-Policy" content="camera=(), microphone=(), geolocation=(), payment=()" />
-    <meta http-equiv="Strict-Transport-Security" content="max-age=31536000; includeSubDomains; preload" />
+    <!-- Security Headers managed by Vercel (vercel.json) -->
+    <!-- CSP, HSTS, X-Frame-Options, etc. delivered via HTTP headers -->
   </head>
   <body>
     <div id="root"></div>
