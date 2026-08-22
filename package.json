@@ -22,11 +22,11 @@
     "generate-font-sri": "node scripts/generate-font-sri.js"
   },
   "dependencies": {
-    "@capacitor/app": "^8.1.0",
+    "@capacitor/app": "^8.1.1",
     "@capacitor/browser": "^8.0.4",
-    "@capacitor/core": "^8.3.1",
+    "@capacitor/core": "^8.5.0",
     "@capacitor/filesystem": "^8.1.2",
-    "@capacitor/local-notifications": "^8.0.2",
+    "@capacitor/local-notifications": "^8.3.0",
     "@capacitor/network": "^8.0.1",
     "@capacitor/push-notifications": "^8.1.2",
     "@capacitor/share": "^8.0.1",
@@ -90,8 +90,8 @@
     "zustand": "^5.0.12"
   },
   "devDependencies": {
-    "@capacitor/android": "^8.3.1",
-    "@capacitor/cli": "^8.3.1",
+    "@capacitor/android": "^8.5.0",
+    "@capacitor/cli": "^8.5.0",
     "@eslint/js": "^9.32.0",
     "@tailwindcss/typography": "^0.5.16",
     "@testing-library/jest-dom": "^6.6.0",
