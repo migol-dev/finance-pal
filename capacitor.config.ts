@@ -4,10 +4,10 @@ const config: CapacitorConfig = {
   appId: 'app.financepal.com',
   appName: 'Finance Pal',
   webDir: 'dist',
-//  server: {
-//    url: 'https://5d87779d-6e13-460f-bb57-c0fa6d4860f8.lovableproject.com?forceHideBadge=true',
-//    cleartext: true,
-//  },
+  server: {
+    url: 'https://financepal-web.vercel.app',
+    cleartext: true,
+  },
   plugins: {
     LocalNotifications: {
       smallIcon: 'ic_stat_icon_config_sample',

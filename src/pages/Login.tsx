@@ -26,8 +26,11 @@ const GitHubIcon = () => (
 // OAuth Redirect URI Allowlist - Security: Prevent open redirect attacks
 const OAUTH_REDIRECT_ALLOWLIST = [
   'app.financepal.com://auth/callback', // Native Android app
-  'http://localhost:8080/auth/callback', // Local development
+  'https://financepal-web.vercel.app/auth/callback', // Production web/PWA
+  'http://localhost:5173/auth/callback', // Local development (Vite default)
+  'http://localhost:8080/auth/callback', // Local development (legacy)
   'http://localhost:3000/auth/callback', // Alternative local port
+  'http://127.0.0.1:5173/auth/callback',
   'http://127.0.0.1:8080/auth/callback',
   'http://127.0.0.1:3000/auth/callback',
 ];
