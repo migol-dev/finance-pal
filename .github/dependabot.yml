@@ -1,0 +1,92 @@
+# Dependabot configuration for automated dependency updates
+# This file enables automated security updates and version updates for npm dependencies
+
+version: 2
+updates:
+  # npm dependencies (package.json)
+  - package-ecosystem: "npm"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "09:00"
+      timezone: "America/Mexico_City"
+    # Security updates only - more frequent
+    open-pull-requests-limit: 10
+    # Group related dependencies to reduce PR noise
+    groups:
+      # React ecosystem
+      react-ecosystem:
+        patterns:
+          - "react"
+          - "react-dom"
+          - "react-router*"
+          - "@types/react*"
+        update-types:
+          - "minor"
+          - "patch"
+      # Radix UI components
+      radix-ui:
+        patterns:
+          - "@radix-ui/*"
+        update-types:
+          - "minor"
+          - "patch"
+      # TanStack Query
+      tanstack:
+        patterns:
+          - "@tanstack/*"
+        update-types:
+          - "minor"
+          - "patch"
+      # Capacitor
+      capacitor:
+        patterns:
+          - "@capacitor/*"
+        update-types:
+          - "minor"
+          - "patch"
+      # Development tools
+      dev-tools:
+        patterns:
+          - "eslint*"
+          - "typescript*"
+          - "vite*"
+          - "vitest*"
+          - "@testing-library/*"
+          - "tailwind*"
+          - "postcss*"
+        update-types:
+          - "minor"
+          - "patch"
+    # Labels for PRs
+    labels:
+      - "dependencies"
+      - "npm"
+    # Commit message prefix
+    commit-message:
+      prefix: "chore(deps)"
+      include: "scope"
+    # Allow security updates to be merged automatically if tests pass
+    allow:
+      - dependency-type: "direct"
+      - dependency-type: "indirect"
+    # Ignore major version updates for stability (review manually)
+    ignore:
+      - dependency-name: "*"
+        update-types: ["version-update:semver-major"]
+
+  # GitHub Actions dependencies
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "09:00"
+      timezone: "America/Mexico_City"
+    labels:
+      - "dependencies"
+      - "github-actions"
+    commit-message:
+      prefix: "chore(deps)"
+      include: "scope"

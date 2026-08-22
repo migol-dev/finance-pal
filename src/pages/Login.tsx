@@ -23,6 +23,51 @@ const GitHubIcon = () => (
   </svg>
 );
 
+// OAuth Redirect URI Allowlist - Security: Prevent open redirect attacks
+const OAUTH_REDIRECT_ALLOWLIST = [
+  'app.financepal.com://auth/callback', // Native Android app
+  'http://localhost:8080/auth/callback', // Local development
+  'http://localhost:3000/auth/callback', // Alternative local port
+  'http://127.0.0.1:8080/auth/callback',
+  'http://127.0.0.1:3000/auth/callback',
+];
+
+function isValidRedirectUri(uri: string): boolean {
+  try {
+    const parsed = new URL(uri);
+    // Allow exact matches from allowlist
+    if (OAUTH_REDIRECT_ALLOWLIST.includes(uri)) return true;
+    // Allow any subdomain of financepal.com in production
+    if (parsed.hostname.endsWith('.financepal.com') && parsed.pathname === '/auth/callback') return true;
+    // Allow localhost with any port in development
+    if (parsed.hostname === 'localhost' || parsed.hostname === '127.0.0.1') return true;
+    return false;
+  } catch {
+    return false;
+  }
+}
+
+function getValidatedRedirectUri(provider: 'google' | 'github'): string {
+  const isNative = Capacitor.isNativePlatform();
+  
+  if (isNative) {
+    const redirectUri = 'app.financepal.com://auth/callback';
+    if (!isValidRedirectUri(redirectUri)) {
+      throw new Error('URI de redirección nativa no permitida');
+    }
+    return redirectUri;
+  }
+  
+  // Web: use VITE_PUBLIC_URL or current origin
+  const baseUrl = import.meta.env.VITE_PUBLIC_URL || window.location.origin;
+  const redirectUri = `${baseUrl}/auth/callback`;
+  
+  if (!isValidRedirectUri(redirectUri)) {
+    throw new Error(`URI de redirección no permitida: ${redirectUri}. Configure VITE_PUBLIC_URL correctamente.`);
+  }
+  return redirectUri;
+}
+
 function calculatePasswordStrength(password: string): { score: number; label: string; color: string; feedback: string[] } {
   let score = 0;
   const feedback: string[] = [];
@@ -72,35 +117,27 @@ export default function Login() {
   const handleOAuth = async (provider: 'google' | 'github') => {
     setLoading(true);
     try {
+      // Validate redirect URI before initiating OAuth
+      const redirectTo = getValidatedRedirectUri(provider);
       const isNative = Capacitor.isNativePlatform();
 
+      const options: any = { redirectTo };
       if (isNative) {
-        const redirectTo = 'app.financepal.com://auth/callback';
-        const options: any = { redirectTo, skipBrowserRedirect: true };
-        if (provider === 'google') {
-          options.queryParams = { access_type: 'offline', prompt: 'consent' };
-        } else {
-          options.scopes = 'read:user user:email';
-        }
-        const { data, error } = await supabase.auth.signInWithOAuth({ provider, options });
-        if (error) throw error;
-        if (data?.url) {
-          Browser.open({ url: data.url });
-        }
-        setLoading(false);
-      } else {
-        const baseUrl = import.meta.env.VITE_PUBLIC_URL || window.location.origin;
-        const options: any = {
-          redirectTo: `${baseUrl}/auth/callback`,
-        };
-        if (provider === 'google') {
-          options.queryParams = { access_type: 'offline', prompt: 'consent' };
-        } else {
-          options.scopes = 'read:user user:email';
-        }
-        const { error } = await supabase.auth.signInWithOAuth({ provider, options });
-        if (error) throw error;
+        options.skipBrowserRedirect = true;
       }
+      if (provider === 'google') {
+        options.queryParams = { access_type: 'offline', prompt: 'consent' };
+      } else {
+        options.scopes = 'read:user user:email';
+      }
+
+      const { data, error } = await supabase.auth.signInWithOAuth({ provider, options });
+      if (error) throw error;
+
+      if (isNative && data?.url) {
+        Browser.open({ url: data.url });
+      }
+      setLoading(false);
     } catch (error: any) {
       toast.error(error.message || `Error al iniciar sesión con ${provider}`);
       setLoading(false);

@@ -1,5 +1,6 @@
 import { create } from 'zustand';
-import { persist } from 'zustand/middleware';
+import { persist, StateStorage } from 'zustand/middleware';
+import { saveEncryptedState, loadEncryptedState, isEncryptionAvailable } from '@/lib/encrypted-storage';
 
 export type SyncActionType = 'INSERT' | 'UPDATE' | 'DELETE';
 
@@ -22,6 +23,34 @@ interface SyncState {
   setSyncing: (isSyncing: boolean) => void;
 }
 
+const STORAGE_KEY = 'finance-pal-sync-queue';
+
+const encryptedStorage: StateStorage = {
+  getItem: async (name: string): Promise<string | null> => {
+    if (name !== STORAGE_KEY) return null;
+    if (!isEncryptionAvailable()) return localStorage.getItem(name);
+    return await loadEncryptedState();
+  },
+  setItem: async (name: string, value: string): Promise<void> => {
+    if (name !== STORAGE_KEY) return;
+    if (!isEncryptionAvailable()) {
+      localStorage.setItem(name, value);
+      return;
+    }
+    await saveEncryptedState(value);
+  },
+  removeItem: async (name: string): Promise<void> => {
+    if (name !== STORAGE_KEY) return;
+    if (!isEncryptionAvailable()) {
+      localStorage.removeItem(name);
+      return;
+    }
+    // clearEncryptedState removes the salt too, which we don't want for just this key
+    // So we'll just remove the specific key
+    localStorage.removeItem(name);
+  },
+};
+
 export const useSyncStore = create<SyncState>()(
   persist(
     (set) => ({
@@ -33,7 +62,7 @@ export const useSyncStore = create<SyncState>()(
             ...state.syncQueue,
             {
               ...mutation,
-              id: Math.random().toString(36).slice(2, 10),
+              id: crypto.randomUUID(),
               createdAt: Date.now(),
             },
           ],
@@ -46,7 +75,8 @@ export const useSyncStore = create<SyncState>()(
       setSyncing: (isSyncing) => set({ isSyncing }),
     }),
     {
-      name: 'finance-pal-sync-queue',
+      name: STORAGE_KEY,
+      storage: encryptedStorage,
     }
   )
 );

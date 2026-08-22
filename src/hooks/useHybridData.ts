@@ -1,10 +1,10 @@
 import { useMemo, useCallback } from 'react';
 import { useFinance } from '@/store/finance-store';
-import { useAccounts, useTransactions, useFixedItems, useGoals, useDebts } from '@/hooks/useSupabaseQueries';
+import { useAccounts, useTransactions, useFixedItems, useGoals, useGoalFolders, useDebts } from '@/hooks/useSupabaseQueries';
 import { isSupabaseEnabled } from '@/lib/supabase';
 import { useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '@/context/AuthContext';
-import { Debt, DebtPayment } from '@/lib/finance';
+import { Debt, DebtPayment, GoalFolder } from '@/lib/finance';
 
 function mergeById<T extends { id: string }>(primary: T[], secondary: T[]): T[] {
   if (secondary.length === 0) return primary;
@@ -23,11 +23,12 @@ export function useHybridData() {
   const { data: remoteTransactions, isLoading: transactionsLoading } = useTransactions();
   const { data: remoteFixedItems, isLoading: fixedItemsLoading } = useFixedItems();
   const { data: remoteGoals, isLoading: goalsLoading } = useGoals();
+  const { data: remoteGoalFolders, isLoading: goalFoldersLoading } = useGoalFolders();
   const { data: remoteDebts, isLoading: debtsLoading } = useDebts();
 
   const isLoading = useMemo(() =>
-    accountsLoading || transactionsLoading || fixedItemsLoading || goalsLoading || debtsLoading,
-  [accountsLoading, transactionsLoading, fixedItemsLoading, goalsLoading, debtsLoading]);
+    accountsLoading || transactionsLoading || fixedItemsLoading || goalsLoading || goalFoldersLoading || debtsLoading,
+  [accountsLoading, transactionsLoading, fixedItemsLoading, goalsLoading, goalFoldersLoading, debtsLoading]);
 
   const isOnline = isSupabaseEnabled && !!session;
 
@@ -59,6 +60,13 @@ export function useHybridData() {
       : store.goals;
   }, [isOnline, remoteGoals, store.goals]);
 
+  const goalFolders = useMemo(() => {
+    const remote = remoteGoalFolders;
+    return isOnline && Array.isArray(remote) && remote.length > 0
+      ? mergeById(remote, store.goalFolders)
+      : store.goalFolders;
+  }, [isOnline, remoteGoalFolders, store.goalFolders]);
+
   const debts = useMemo(() => {
     const remote = remoteDebts;
     return isOnline && Array.isArray(remote) && remote.length > 0
@@ -71,6 +79,7 @@ export function useHybridData() {
     queryClient.invalidateQueries({ queryKey: ['transactions'] });
     queryClient.invalidateQueries({ queryKey: ['fixed_items'] });
     queryClient.invalidateQueries({ queryKey: ['goals'] });
+    queryClient.invalidateQueries({ queryKey: ['goal_folders'] });
     queryClient.invalidateQueries({ queryKey: ['debts'] });
   }, [queryClient]);
 
@@ -128,6 +137,7 @@ export function useHybridData() {
     transactions,
     fixedItems,
     goals,
+    goalFolders,
     debts,
     theme: store.theme,
     profile: store.profile,
@@ -141,6 +151,7 @@ export function useHybridData() {
     addTx: store.addTx, updateTx: store.updateTx, removeTx: store.removeTx,
     addFixed: store.addFixed, updateFixed: store.updateFixed, removeFixed: store.removeFixed, toggleFixed: store.toggleFixed,
     addGoal: store.addGoal, updateGoal: store.updateGoal, removeGoal: store.removeGoal, contributeGoal: store.contributeGoal,
+    addGoalFolder: store.addGoalFolder, updateGoalFolder: store.updateGoalFolder, removeGoalFolder: store.removeGoalFolder, reorderGoalFolders: store.reorderGoalFolders,
     addDebt: wrappedAddDebt,
     updateDebt: wrappedUpdateDebt,
     removeDebt: wrappedRemoveDebt,

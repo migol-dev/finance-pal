@@ -2,6 +2,7 @@ import { supabase, isSupabaseEnabled } from './supabase';
 import { useSyncStore } from '@/store/sync-store';
 import { rateLimiter, getClientIdentifier } from '@/lib/rate-limiter';
 import { ErrorCodes, logger } from '@/lib/app-error';
+import { validationSchemas } from '@/lib/validators';
 
 type SyncMutation = {
   id: string;
@@ -17,11 +18,46 @@ const ALLOWED_TABLES = new Set([
   'accounts', 'transactions', 'fixed_items', 'goals', 'debts', 'debt_payments',
 ]);
 
+const TABLE_TO_SCHEMA: Record<string, keyof typeof validationSchemas> = {
+  accounts: 'account',
+  transactions: 'transaction',
+  fixed_items: 'fixedItem',
+  goals: 'goal',
+  debts: 'debt',
+  debt_payments: 'debtPayment',
+};
+
 const MAX_RETRIES = 3;
 const BASE_DELAY_MS = 1000;
 
-let processingLock = false;
-let abortController: AbortController | null = null;
+// Per-user mutex map to prevent concurrent sync for same user
+// Different users can sync concurrently without blocking each other
+const processingLocks = new Map<string, boolean>();
+const abortControllers = new Map<string, AbortController>();
+
+function getUserLock(userId: string): boolean {
+  return processingLocks.get(userId) ?? false;
+}
+
+function setUserLock(userId: string, locked: boolean): void {
+  if (locked) {
+    processingLocks.set(userId, true);
+  } else {
+    processingLocks.delete(userId);
+  }
+}
+
+function getAbortController(userId: string): AbortController | null {
+  return abortControllers.get(userId) ?? null;
+}
+
+function setAbortController(userId: string, controller: AbortController | null): void {
+  if (controller) {
+    abortControllers.set(userId, controller);
+  } else {
+    abortControllers.delete(userId);
+  }
+}
 
 function sleep(ms: number): Promise<void> {
   return new Promise(resolve => setTimeout(resolve, ms));
@@ -43,11 +79,28 @@ async function withRetry<T>(
   }
 }
 
+function validatePayload(table: string, payload: unknown): { success: boolean; data?: any; error?: string } {
+  const schemaKey = TABLE_TO_SCHEMA[table];
+  if (!schemaKey) return { success: true, data: payload };
+  const schema = validationSchemas[schemaKey];
+  const result = schema.safeParse(payload);
+  if (!result.success) {
+    const issues = result.error.issues.map(i => `${i.path.join('.')}: ${i.message}`).join('; ');
+    return { success: false, error: `Validation failed for ${table}: ${issues}` };
+  }
+  return { success: true, data: result.data };
+}
+
 export async function processSyncQueue(): Promise<void> {
-  if (!isSupabaseEnabled || processingLock) return;
+  if (!isSupabaseEnabled) return;
 
   const { data: { session } } = await supabase.auth.getSession();
   if (!session) return;
+
+  const userId = session.user.id;
+  
+  // Check per-user lock - don't block other users
+  if (getUserLock(userId)) return;
 
   // Rate limit sync operations
   const clientId = getClientIdentifier();
@@ -64,13 +117,14 @@ export async function processSyncQueue(): Promise<void> {
   const { syncQueue, removeMutation, setSyncing, addMutation } = useSyncStore.getState();
   if (syncQueue.length === 0) return;
 
-  processingLock = true;
-  abortController = new AbortController();
+  setUserLock(userId, true);
+  const controller = new AbortController();
+  setAbortController(userId, controller);
   setSyncing(true);
 
   try {
     for (const mutation of syncQueue) {
-      if (abortController?.signal.aborted) break;
+      if (controller.signal.aborted) break;
 
       // Validate table name to prevent injection via table field
       if (!ALLOWED_TABLES.has(mutation.table)) {
@@ -80,7 +134,7 @@ export async function processSyncQueue(): Promise<void> {
       }
 
       try {
-        await withRetry(() => applyMutation(mutation, session.user.id));
+        await withRetry(() => applyMutation(mutation, userId));
         removeMutation(mutation.id);
       } catch (error) {
         logger.error('Sync failed permanently for mutation', ErrorCodes.SYNC_MUTATION_FAILED, { mutationId: mutation.id, error });
@@ -98,24 +152,33 @@ export async function processSyncQueue(): Promise<void> {
     }
   } finally {
     setSyncing(false);
-    processingLock = false;
-    abortController = null;
+    setUserLock(userId, false);
+    setAbortController(userId, null);
   }
 }
 
 async function applyMutation(mutation: SyncMutation, userId: string): Promise<void> {
   const { table, action, recordId, payload } = mutation;
 
+  // Validate payload with Zod schema before DB operation
+  if (payload) {
+    const validation = validatePayload(table, payload);
+    if (!validation.success) {
+      logger.error('Sync payload validation failed', ErrorCodes.DB_INSERT_FAILED, { table, error: validation.error });
+      throw new Error(validation.error);
+    }
+  }
+
   // Ensure the mutation is scoped to the authenticated user
   switch (action) {
     case 'INSERT': {
-      const safePayload = { ...payload, user_id: userId };
+      const safePayload = { ...(validation?.data ?? payload), user_id: userId };
       const { error } = await supabase.from(table).insert(safePayload);
       if (error) throw error;
       break;
     }
     case 'UPDATE': {
-      const { error } = await supabase.from(table).update(payload).eq('id', recordId).eq('user_id', userId);
+      const { error } = await supabase.from(table).update(validation?.data ?? payload).eq('id', recordId).eq('user_id', userId);
       if (error) throw error;
       break;
     }
@@ -151,6 +214,9 @@ export function setupSyncListener(): void {
   });
 
   window.addEventListener('beforeunload', () => {
-    if (abortController) abortController.abort();
+    // Abort all pending sync operations
+    for (const [userId, controller] of abortControllers.entries()) {
+      controller.abort();
+    }
   });
 }

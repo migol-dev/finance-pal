@@ -1,8 +1,8 @@
 import { useMemo, useState } from "react";
 import { useHybridData } from "@/hooks/useHybridData";
-import { fmt, fmt2, iconFor, IconRef, Goal, fmtDate, parseDateLocal, Account } from "@/lib/finance";
+import { fmt, fmt2, iconFor, IconRef, Goal, GoalFolder, fmtDate, parseDateLocal, Account } from "@/lib/finance";
 import { Header } from "@/components/app/Header";
-import { Plus, Trash2, Pencil, Minus, CalendarDays, ExternalLink, Sparkles, AlertTriangle, CheckCircle2, Star, ChevronRight, X } from "lucide-react";
+import { Plus, Trash2, Pencil, Minus, CalendarDays, ExternalLink, Sparkles, AlertTriangle, CheckCircle2, Star, ChevronRight, X, FolderOpen, FolderPlus, MoreHorizontal, GripVertical, ChevronDown } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -87,21 +87,209 @@ function statusFor(goal: Goal) {
   return { kind: "ontrack" as const, diff };
 }
 
+function FolderTreeNode({ 
+  folder, 
+  level, 
+  selectedFolderId, 
+  onSelect, 
+  onEdit, 
+  onDelete, 
+  onAddChild,
+  goalCount,
+  goalFolders
+}: { 
+  folder: GoalFolder & { children: GoalFolder[] };
+  level: number;
+  selectedFolderId: string | null;
+  onSelect: (id: string | null) => void;
+  onEdit: (folder: GoalFolder) => void;
+  onDelete: (id: string) => void;
+  onAddChild: () => void;
+  goalCount: number;
+  goalFolders: GoalFolder[];
+}) {
+  const [expanded, setExpanded] = useState(true);
+  const hasChildren = folder.children.length > 0;
+  const isSelected = selectedFolderId === folder.id;
+  const indent = level * 16;
+
+  return (
+    <div className="group">
+      <button
+        onClick={() => onSelect(folder.id)}
+        className={cn(
+          "w-full flex items-center gap-2 px-2 py-1.5 rounded-xl text-sm font-medium transition",
+          isSelected ? "bg-primary text-primary-foreground shadow-glow" : "hover:bg-accent text-accent-foreground"
+        )}
+        style={{ paddingLeft: 8 + indent }}
+      >
+        {hasChildren && (
+          <button
+            onClick={(e) => { e.stopPropagation(); setExpanded(!expanded); }}
+            className="flex-shrink-0 size-6 rounded p-0.5 hover:bg-white/10 transition"
+            aria-label={expanded ? "Contraer" : "Expandir"}
+          >
+            <ChevronDown className={cn("size-4 transition-transform", expanded && "rotate-90")} />
+          </button>
+        )}
+        {!hasChildren && <div className="flex-shrink-0 size-6" />}
+        <IconDisplay 
+          icon={folder.icon ?? { kind: "emoji", value: "📁" }} 
+          size="sm" 
+          className="flex-shrink-0 bg-white/20" 
+        />
+        <span className="flex-1 truncate">{folder.name}</span>
+        <span className="text-xs opacity-70">{goalCount}</span>
+        <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+          <button onClick={(e) => { e.stopPropagation(); onAddChild(); }} className="size-7 rounded-lg hover:bg-white/10 p-0.5" aria-label="Añadir subcarpeta">
+            <FolderPlus className="size-3.5" />
+          </button>
+          <button onClick={(e) => { e.stopPropagation(); onEdit(folder); }} className="size-7 rounded-lg hover:bg-white/10 p-0.5" aria-label="Editar carpeta">
+            <Pencil className="size-3.5" />
+          </button>
+          <button onClick={(e) => { e.stopPropagation(); onDelete(folder.id); }} className="size-7 rounded-lg hover:bg-white/10 p-0.5 text-destructive" aria-label="Eliminar carpeta">
+            <Trash2 className="size-3.5" />
+          </button>
+        </div>
+      </button>
+      
+      {expanded && hasChildren && (
+        <div className="mt-0.5">
+          {folder.children.map((child) => (
+            <FolderTreeNode
+              key={child.id}
+              folder={child}
+              level={level + 1}
+              selectedFolderId={selectedFolderId}
+              onSelect={onSelect}
+              onEdit={onEdit}
+              onDelete={onDelete}
+              onAddChild={() => onAddChild()}
+              goalCount={goalFolders.find(f => f.id === child.id) ? goalCount : 0}
+              goalFolders={goalFolders}
+            />
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function FolderForm({ initial, onSave }: { initial: GoalFolder | null; onSave: (f: Omit<GoalFolder, "id">) => void }) {
+  const [name, setName] = useState(initial?.name ?? "");
+  const [color, setColor] = useState(initial?.color ?? PALETTES[0]);
+  const [icon, setIcon] = useState<IconRef>(initial?.icon ?? { kind: "emoji", value: "📁" });
+
+  return (
+    <form onSubmit={(e) => {
+      e.preventDefault();
+      if (!name) { toast.error("Completa el nombre"); return; }
+      onSave({ name, color, icon, parentId: initial?.parentId, order: initial?.order ?? 0, createdAt: initial?.createdAt ?? new Date().toISOString() });
+    }} className="space-y-3">
+      <div className="flex justify-center"><IconPicker value={icon} onChange={setIcon} /></div>
+      <div><Label className="text-xs">Nombre</Label><Input autoFocus value={name} onChange={(e) => setName(e.target.value)} placeholder="Ej. Biker" className="h-11 rounded-2xl" /></div>
+      <div>
+        <Label className="text-xs">Color</Label>
+        <div className="flex gap-2 mt-1">
+          {PALETTES.map((p) => <button key={p} type="button" onClick={() => setColor(p)} className={`flex-1 h-10 rounded-xl ${p} transition ${color === p ? "ring-4 ring-offset-2 ring-primary" : ""}`} />)}
+        </div>
+      </div>
+      <Button type="submit" className="w-full h-12 rounded-2xl gradient-primary text-primary-foreground border-0 shadow-glow font-bold">{initial?.id ? "Guardar cambios" : "Crear carpeta"}</Button>
+    </form>
+  );
+}
+
 export default function Metas() {
-  const { goals, addGoal, updateGoal, removeGoal, contributeGoal, accounts } = useHybridData();
+  const { 
+    goals, 
+    goalFolders,
+    addGoal, 
+    updateGoal, 
+    removeGoal, 
+    contributeGoal, 
+    accounts,
+    addGoalFolder,
+    updateGoalFolder,
+    removeGoalFolder,
+    reorderGoalFolders,
+  } = useHybridData();
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<Goal | null>(null);
   const [detailId, setDetailId] = useState<string | null>(null);
+  const [folderOpen, setFolderOpen] = useState(false);
+  const [editingFolder, setEditingFolder] = useState<GoalFolder | null>(null);
+  const [selectedFolderId, setSelectedFolderId] = useState<string | null>(null); // null = all, "uncategorized" = no folder
 
   const detailGoal = useMemo(() => goals.find(g => g.id === detailId) || null, [goals, detailId]);
 
+  // Build folder tree
+  const folderTree = useMemo(() => {
+    const folderMap = new Map<string, GoalFolder & { children: GoalFolder[] }>();
+    goalFolders.forEach(f => folderMap.set(f.id, { ...f, children: [] }));
+    
+    const roots: (GoalFolder & { children: GoalFolder[] })[] = [];
+    goalFolders.forEach(f => {
+      const folder = folderMap.get(f.id)!;
+      if (f.parentId) {
+        const parent = folderMap.get(f.parentId);
+        if (parent) parent.children.push(folder);
+      } else {
+        roots.push(folder);
+      }
+    });
+    
+    // Sort by order
+    const sortFolders = (folders: (GoalFolder & { children: GoalFolder[] })[]) => 
+      folders.sort((a, b) => a.order - b.order).forEach(f => sortFolders(f.children));
+    sortFolders(roots);
+    
+    return roots;
+  }, [goalFolders]);
+
+  // Get goals for selected folder
+  const filteredGoals = useMemo(() => {
+    if (selectedFolderId === null) return goals; // All goals
+    if (selectedFolderId === "uncategorized") return goals.filter(g => !g.folderId);
+    return goals.filter(g => g.folderId === selectedFolderId);
+  }, [goals, selectedFolderId]);
+
+  // Count goals in folder (including subfolders)
+  const getFolderGoalCount = (folderId: string): number => {
+    let count = goals.filter(g => g.folderId === folderId).length;
+    const getChildren = (id: string) => goalFolders.filter(f => f.parentId === id);
+    const children = getChildren(folderId);
+    children.forEach(c => count += getFolderGoalCount(c.id));
+    return count;
+  };
+
   const openNew = () => { setEditing(null); setOpen(true); };
   
+  const openNewFolder = (parentId?: string) => { 
+    setEditingFolder({ 
+      id: '', 
+      name: '', 
+      color: PALETTES[0], 
+      order: goalFolders.length,
+      createdAt: new Date().toISOString(),
+      parentId 
+    } as GoalFolder); 
+    setFolderOpen(true); 
+  };
+
+  const openEditFolder = (folder: GoalFolder) => { 
+    setEditingFolder(folder); 
+    setFolderOpen(true); 
+  };
 
   return (
     <div className="pb-28">
       <Header title="Metas" subtitle="Sueños con plan" action={
-        <Button onClick={openNew} className="rounded-xl gradient-primary text-primary-foreground border-0 shadow-glow h-10 text-sm"><Plus className="size-4 mr-1.5" />Nueva</Button>
+        <div className="flex items-center gap-2">
+          <Button onClick={openNewFolder} variant="ghost" className="h-10 rounded-xl px-3">
+            <FolderPlus className="size-4 mr-1.5" />Carpeta
+          </Button>
+          <Button onClick={openNew} className="rounded-xl gradient-primary text-primary-foreground border-0 shadow-glow h-10 text-sm"><Plus className="size-4 mr-1.5" />Nueva</Button>
+        </div>
       } />
 
       <Dialog open={open} onOpenChange={(v) => { setOpen(v); if (!v) setEditing(null); }}>
@@ -110,28 +298,95 @@ export default function Metas() {
             <DialogDescription className="sr-only">Formulario para crear o editar una meta</DialogDescription>
           <GoalForm initial={editing} onSave={(g) => {
             if (editing) { updateGoal(editing.id, g); toast.success("Actualizado"); }
-            else { addGoal(g); toast.success("Meta creada ✨"); }
+            else { addGoal({ ...g, folderId: selectedFolderId === "uncategorized" ? undefined : selectedFolderId || undefined }); toast.success("Meta creada ✨"); }
             setOpen(false); setEditing(null);
           }} />
         </DialogContent>
       </Dialog>
 
-      <div className="px-5 lg:grid lg:grid-cols-2 xl:grid-cols-3 lg:gap-4 lg:space-y-0 space-y-4">
-        {goals.length === 0 && (
-          <div className="rounded-2xl bg-muted/50 border border-dashed border-border p-8 text-center">
-            <p className="text-4xl mb-2">🎯</p>
-            <p className="text-sm text-muted-foreground">Crea tu primera meta de ahorro</p>
-          </div>
-        )}
-        <AnimatePresence>
-          {goals.map((g, i) => (
-            <GoalCompactCard key={g.id} goal={g} index={i}
-              onViewMore={() => setDetailId(g.id)}
-              onContribute={(amt, date, acc) => contributeGoal(g.id, amt, date, acc)}
-              accounts={accounts}
-            />
-          ))}
-        </AnimatePresence>
+      <Dialog open={folderOpen} onOpenChange={(v) => { setFolderOpen(v); if (!v) setEditingFolder(null); }}>
+        <DialogContent className="rounded-2xl max-h-[90vh] overflow-y-auto p-5">
+          <DialogHeader><DialogTitle className="text-lg">{editingFolder?.id ? "Editar carpeta" : "Nueva carpeta"}</DialogTitle></DialogHeader>
+          <DialogDescription className="sr-only">Formulario para crear o editar una carpeta</DialogDescription>
+          <FolderForm initial={editingFolder} onSave={(f) => {
+            if (editingFolder?.id) { updateGoalFolder(editingFolder.id, f); toast.success("Carpeta actualizada"); }
+            else { addGoalFolder(f); toast.success("Carpeta creada ✨"); }
+            setFolderOpen(false); setEditingFolder(null);
+          }} />
+        </DialogContent>
+      </Dialog>
+
+      <div className="lg:grid lg:grid-cols-[280px_1fr] lg:gap-4">
+        {/* Folder Sidebar */}
+        <aside className="lg:sticky lg:top-16 lg:h-[calc(100vh-8rem)] lg:overflow-y-auto space-y-2 p-2 bg-card/50 rounded-2xl border border-border">
+          <button 
+            onClick={() => setSelectedFolderId(null)}
+            className={cn("w-full flex items-center gap-3 px-3 py-2 rounded-xl text-sm font-medium transition", 
+              selectedFolderId === null ? "bg-primary text-primary-foreground shadow-glow" : "hover:bg-accent text-accent-foreground")}
+          >
+            <FolderOpen className="size-5" />
+            <span className="flex-1 truncate">Todas las metas</span>
+            <span className="text-xs opacity-70">{goals.length}</span>
+          </button>
+          
+          <button 
+            onClick={() => setSelectedFolderId("uncategorized")}
+            className={cn("w-full flex items-center gap-3 px-3 py-2 rounded-xl text-sm font-medium transition",
+              selectedFolderId === "uncategorized" ? "bg-primary text-primary-foreground shadow-glow" : "hover:bg-accent text-accent-foreground")}
+          >
+            <FolderOpen className="size-5 opacity-50" />
+            <span className="flex-1 truncate">Sin carpeta</span>
+            <span className="text-xs opacity-70">{goals.filter(g => !g.folderId).length}</span>
+          </button>
+
+          <div className="border-t border-border my-2" />
+          
+          {folderTree.length === 0 ? (
+            <p className="px-3 py-2 text-xs text-muted-foreground text-center">Sin carpetas aún</p>
+          ) : (
+            <>
+              {folderTree.map((folder, i) => (
+                <FolderTreeNode 
+                  key={folder.id} 
+                  folder={folder} 
+                  level={0}
+                  selectedFolderId={selectedFolderId}
+                  onSelect={setSelectedFolderId}
+                  onEdit={openEditFolder}
+                  onDelete={removeGoalFolder}
+                  onAddChild={() => openNewFolder(folder.id)}
+                  goalCount={getFolderGoalCount(folder.id)}
+                  goalFolders={goalFolders}
+                />
+              ))}
+            </>
+          )}
+        </aside>
+
+        {/* Goals Grid */}
+        <div className="px-5 lg:px-0">
+          {filteredGoals.length === 0 && (
+            <div className="rounded-2xl bg-muted/50 border border-dashed border-border p-8 text-center">
+              <p className="text-4xl mb-2">🎯</p>
+              <p className="text-sm text-muted-foreground">
+                {selectedFolderId === "uncategorized" 
+                  ? "No hay metas sin carpeta. Arrastra metas aquí o crea una nueva."
+                  : selectedFolderId === null
+                  ? "Crea tu primera meta de ahorro"
+                  : `La carpeta está vacía. Crea una meta o arrastra una aquí.`}
+              </p>
+            </div>
+          )}
+          <AnimatePresence>
+            {filteredGoals.map((g, i) => (
+              <GoalCompactCard key={g.id} goal={g} index={i}
+                onViewMore={() => setDetailId(g.id)}
+                onContribute={(amt, date, acc) => contributeGoal(g.id, amt, date, acc)}
+                accounts={accounts}
+              />
+            ))}
+          </AnimatePresence>
+        </div>
       </div>
 
       <Dialog open={!!detailId} onOpenChange={(v) => { if(!v) setDetailId(null); }}>
@@ -407,7 +662,6 @@ function ResumenTab({ goal }: { goal: Goal }) {
   }, [goal]);
 
   
-
   return (
     <div className="rounded-2xl bg-white/15 backdrop-blur-sm p-3 space-y-3">
       {pace && pace.remaining > 0 && (

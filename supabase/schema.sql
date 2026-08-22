@@ -74,9 +74,28 @@ CREATE TABLE goals (
   purchase_url text,
   contributions jsonb DEFAULT '[]'::jsonb,
   pinned boolean DEFAULT false,
+  folder_id uuid REFERENCES goal_folders(id) ON DELETE SET NULL,
   created_at timestamp with time zone DEFAULT now(),
   updated_at timestamp with time zone DEFAULT now()
 );
+
+-- 4b. Tabla Goal Folders (carpetas anidadas para metas)
+CREATE TABLE goal_folders (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id uuid REFERENCES auth.users(id) NOT NULL DEFAULT auth.uid(),
+  name text NOT NULL,
+  color text,
+  icon jsonb,
+  parent_id uuid REFERENCES goal_folders(id) ON DELETE CASCADE,
+  "order" integer DEFAULT 0,
+  created_at timestamp with time zone DEFAULT now(),
+  updated_at timestamp with time zone DEFAULT now()
+);
+
+-- Índices para Goals y Goal Folders
+CREATE INDEX IF NOT EXISTS idx_goals_folder_id ON goals(folder_id);
+CREATE INDEX IF NOT EXISTS idx_goal_folders_user_id ON goal_folders(user_id);
+CREATE INDEX IF NOT EXISTS idx_goal_folders_parent_id ON goal_folders(parent_id);
 
 -- 5. Tabla Debts
 CREATE TABLE debts (
@@ -172,6 +191,12 @@ CREATE POLICY "Users can insert their own goals" ON goals FOR INSERT WITH CHECK 
 CREATE POLICY "Users can update their own goals" ON goals FOR UPDATE USING (auth.uid() = user_id);
 CREATE POLICY "Users can delete their own goals" ON goals FOR DELETE USING (auth.uid() = user_id);
 
+-- Políticas para Goal Folders
+CREATE POLICY "Users can view their own goal folders" ON goal_folders FOR SELECT USING (auth.uid() = user_id);
+CREATE POLICY "Users can insert their own goal folders" ON goal_folders FOR INSERT WITH CHECK (auth.uid() = user_id);
+CREATE POLICY "Users can update their own goal folders" ON goal_folders FOR UPDATE USING (auth.uid() = user_id);
+CREATE POLICY "Users can delete their own goal folders" ON goal_folders FOR DELETE USING (auth.uid() = user_id);
+
 -- Políticas para Debts
 CREATE POLICY "Users can view their own debts" ON debts FOR SELECT USING (auth.uid() = user_id);
 CREATE POLICY "Users can insert their own debts" ON debts FOR INSERT WITH CHECK (auth.uid() = user_id);
@@ -211,6 +236,48 @@ BEGIN
 END $$;
 
 -- =========================================
+-- VISTAS DE SEGURIDAD (Column-Level Security)
+-- =========================================
+-- Estas vistas ocultan columnas sensibles (clabe, bank, holder_name, external_payee)
+-- y usan SECURITY BARRIER para evitar filtraciones vía plan de ejecución
+
+-- Vista segura para accounts (sin datos bancarios sensibles)
+CREATE OR REPLACE VIEW accounts_safe AS
+SELECT id, user_id, name, type, initial_balance, currency, denominations, created_at, updated_at
+FROM accounts
+WITH SECURITY BARRIER;
+
+ALTER VIEW accounts_safe SET (security_barrier = true);
+GRANT SELECT ON accounts_safe TO authenticated;
+
+-- Vista segura para transactions (sin external_payee)
+CREATE OR REPLACE VIEW transactions_safe AS
+SELECT id, user_id, type, category, concept, amount, date, note, icon, payment_method, fixed_id, account_id, transfer_to_account_id, receipt, created_at, updated_at
+FROM transactions
+WITH SECURITY BARRIER;
+
+ALTER VIEW transactions_safe SET (security_barrier = true);
+GRANT SELECT ON transactions_safe TO authenticated;
+
+-- Vista segura para debt_payments (sin external_payee)
+CREATE OR REPLACE VIEW debt_payments_safe AS
+SELECT id, user_id, debt_id, amount, date, note, payment_method, account_id, transfer_to_account_id, receipt_url, created_at
+FROM debt_payments
+WITH SECURITY BARRIER;
+
+ALTER VIEW debt_payments_safe SET (security_barrier = true);
+GRANT SELECT ON debt_payments_safe TO authenticated;
+
+-- RLS en las vistas seguras (heredan de las tablas base pero añaden capa extra)
+ALTER VIEW accounts_safe ENABLE ROW LEVEL SECURITY;
+ALTER VIEW transactions_safe ENABLE ROW LEVEL SECURITY;
+ALTER VIEW debt_payments_safe ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Users can view their own safe accounts" ON accounts_safe FOR SELECT USING (auth.uid() = user_id);
+CREATE POLICY "Users can view their own safe transactions" ON transactions_safe FOR SELECT USING (auth.uid() = user_id);
+CREATE POLICY "Users can view their own safe debt payments" ON debt_payments_safe FOR SELECT USING (auth.uid() = user_id);
+
+-- =========================================
 -- ÍNDICES DE RENDIMIENTO (para consultas RLS)
 -- =========================================
 -- Estas consultas se ejecutan con IF NOT EXISTS para ser seguras al repetirse
@@ -236,6 +303,7 @@ CREATE OR REPLACE FUNCTION cleanup_stale_sessions()
 RETURNS integer
 LANGUAGE plpgsql
 SECURITY DEFINER
+SET search_path = ''
 AS $$
 DECLARE
   deleted_count integer;

@@ -1,14 +1,15 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
-import { FixedItem, Transaction, Goal, Debt, DebtPayment, ChangeLogEntry, ChangeAction, ChangeEntity, IconRef, isFixedActiveInMonth, parseDateLocal, Account, ThemeMode, Currency, UserProfile, AccentColor, AppSettings } from "@/lib/finance";
+import { FixedItem, Transaction, Goal, Debt, DebtPayment, ChangeLogEntry, ChangeAction, ChangeEntity, IconRef, isFixedActiveInMonth, parseDateLocal, Account, ThemeMode, Currency, UserProfile, AccentColor, AppSettings, GoalFolder, NotificationPreferences, DEFAULT_NOTIFICATION_PREFS } from "@/lib/finance";
 import { Filesystem, Directory, Encoding } from "@capacitor/filesystem";
 import { Capacitor } from "@capacitor/core";
 import { supabase, isSupabaseEnabled } from "@/lib/supabase";
 import { uploadReceipt, deleteReceipt } from "@/lib/supabase-storage";
 import { saveEncryptedState, loadEncryptedState, clearEncryptedState, isEncryptionAvailable, extractReceiptsToIndexedDB, restoreReceiptsFromIndexedDB, saveReceipt as saveReceiptToIndexedDB, deleteReceipt as deleteReceiptFromIndexedDB } from '@/lib/encrypted-storage';
-import { sanitizeForLog } from '@/lib/validators';
+import { sanitizeForLog, validationSchemas } from '@/lib/validators';
 import { useSyncStore } from '@/store/sync-store';
 import { toast } from 'sonner';
+import { audit } from '@/lib/audit-logger';
 
 /** Current schema version of persisted/exported data. */
 export const SCHEMA_VERSION = 5;
@@ -18,6 +19,7 @@ interface State {
   transactions: Transaction[];
   goals: Goal[];
   debts: Debt[];
+  goalFolders: GoalFolder[];
   changeLog: ChangeLogEntry[];
   theme: ThemeMode;
   profile: UserProfile;
@@ -39,6 +41,7 @@ interface State {
   setAccentColor: (color: AccentColor) => void;
   setCompactMode: (compact: boolean) => void;
   setGlassEffect: (glass: boolean) => void;
+  setNotificationPrefs: (prefs: Partial<NotificationPreferences>) => void;
   setConflictResolved: () => void;
 
   addFixed: (i: Omit<FixedItem, "id">) => void;
@@ -59,6 +62,11 @@ interface State {
   updateGoal: (id: string, p: Partial<Goal>) => void;
   removeGoal: (id: string) => void;
   contributeGoal: (id: string, amount: number, date?: string, accountId?: string) => void;
+
+  addGoalFolder: (f: Omit<GoalFolder, "id">) => void;
+  updateGoalFolder: (id: string, p: Partial<GoalFolder>) => void;
+  removeGoalFolder: (id: string) => void;
+  reorderGoalFolders: (folders: GoalFolder[]) => void;
 
   addDebt: (d: Omit<Debt, "id" | "payments">) => void;
   updateDebt: (id: string, p: Partial<Debt>) => void;
@@ -86,15 +94,22 @@ export interface ExportScopes {
   transactions?: boolean;
   accounts?: boolean;
   goals?: boolean;
+  goalFolders?: boolean;
   debts?: boolean;
   changeLog?: boolean;
   theme?: boolean;
   profile?: boolean;
+  // PII exclusion options
+  excludePII?: boolean;           // Exclude all personally identifiable information
+  excludeBankDetails?: boolean;   // Exclude CLABE, bank name, holder name
+  excludeEmail?: boolean;         // Exclude email from profile
+  excludeReceipts?: boolean;      // Exclude receipt data URLs
 }
 
 export const ALL_SCOPES: Required<ExportScopes> = {
-  fixedItems: true, transactions: true, goals: true, debts: true,
+  fixedItems: true, transactions: true, goals: true, goalFolders: true, debts: true,
   changeLog: true, theme: true, profile: true, accounts: true,
+  excludePII: false, excludeBankDetails: false, excludeEmail: false, excludeReceipts: false,
 };
 
 const now = new Date();
@@ -129,6 +144,65 @@ function diffFields<T extends Record<string, any>>(prev: T, next: Partial<T>) {
 
 function logEntry(entity: ChangeEntity, entityId: string, action: ChangeAction, label: string, changes?: { field: string; from?: unknown; to?: unknown }[]): ChangeLogEntry {
   return { id: generateSecureId(), at: new Date().toISOString(), entity, entityId, action, label, changes };
+}
+
+/* ─────────────────────────────  Zod Validation Helpers  ───────────────────────────── */
+
+function validateEntityData<T>(schemaKey: keyof typeof validationSchemas, data: unknown): { success: true; data: T } | { success: false; error: string } {
+  const schema = validationSchemas[schemaKey];
+  const result = schema.safeParse(data);
+  if (result.success) return { success: true, data: result.data };
+  const issues = result.error.issues.map(i => `${i.path.join('.')}: ${i.message}`).join('; ');
+  return { success: false, error: `Validation failed: ${issues}` };
+}
+
+function validateAndThrow<T>(schemaKey: keyof typeof validationSchemas, data: unknown): T {
+  const result = validateEntityData(schemaKey, data);
+  if (!result.success) throw new Error(result.error);
+  return result.data;
+}
+
+/* ─────────────────────────────  PII Sanitization Helpers (Export) ───────────────────────────── */
+
+// Sanitize account data for PII exclusion on export
+function sanitizeAccountForExport(account: Account, opts: { excludeBankDetails?: boolean }): Account {
+  if (!opts.excludeBankDetails) return account;
+  return {
+    ...account,
+    clabe: undefined,
+    bank: undefined,
+    holderName: undefined,
+  };
+}
+
+// Sanitize transaction data for PII exclusion on export
+function sanitizeTransactionForExport(tx: Transaction, opts: { excludeReceipts?: boolean; excludeBankDetails?: boolean }): Transaction {
+  const result = { ...tx };
+  if (opts.excludeReceipts) {
+    result.receipt = undefined;
+  }
+  if (opts.excludeBankDetails) {
+    result.externalPayee = undefined;
+  }
+  return result;
+}
+
+// Sanitize debt payment data for PII exclusion on export
+function sanitizeDebtPaymentForExport(payment: DebtPayment, opts: { excludeBankDetails?: boolean }): DebtPayment {
+  if (!opts.excludeBankDetails) return payment;
+  return {
+    ...payment,
+    externalPayee: undefined,
+  };
+}
+
+// Sanitize profile data for PII exclusion on export
+function sanitizeProfileForExport(profile: UserProfile, opts: { excludeEmail?: boolean }): UserProfile {
+  if (!opts.excludeEmail) return profile;
+  return {
+    ...profile,
+    email: undefined,
+  };
 }
 
 /* ─────────────────────────────  Schema validation  ───────────────────────────── */
@@ -220,6 +294,19 @@ function sanitizeGoal(raw: any): Goal | null {
   } as Goal;
 }
 
+function sanitizeGoalFolder(raw: any): GoalFolder | null {
+  if (!isObj(raw) || !isStr(raw.name)) return null;
+  return {
+    id: isStr(raw.id) && isValidUUID(raw.id) ? raw.id : generateSecureId(),
+    name: raw.name,
+    color: isStr(raw.color) ? raw.color : "gradient-primary",
+    icon: sanitizeIcon(raw.icon),
+    parentId: isStr(raw.parentId) && isValidUUID(raw.parentId) ? raw.parentId : undefined,
+    order: isNum(raw.order) ? raw.order : 0,
+    createdAt: isStr(raw.createdAt) ? raw.createdAt : new Date().toISOString(),
+  } as GoalFolder;
+}
+
 function sanitizeDebt(raw: any): Debt | null {
   if (!isObj(raw) || !isStr(raw.person) || !isNum(raw.amount)) return null;
   const pays = ["cash","transfer","card","other"] as const;
@@ -290,6 +377,7 @@ export function normalizeImportKeys(obj: any): any {
   if (Array.isArray(obj)) return obj.map(normalizeImportKeys);
   const keyMap: Record<string, string> = {
     cuentas: "accounts", movimientos: "transactions", metas: "goals",
+    carpetas_metas: "goalFolders",
     deudas: "debts", fijos: "fixedItems", conceptos: "fixedItems",
     historial: "changeLog", perfil: "profile", tema: "theme",
     initial_balance: "initialBalance", holder_name: "holderName",
@@ -350,13 +438,14 @@ export const useFinance = create<State>()(
       ],
       goals: [],
       debts: [],
+      goalFolders: [],
       changeLog: [],
       theme: "light",
       profile: { name: "", currency: "MXN" },
       // whether to mirror filter state to URL query params
       syncFiltersToURL: false,
       setSyncFiltersToURL: (v: boolean) => set({ syncFiltersToURL: v }),
-      appSettings: { accentColor: "blue", compactMode: false, glassEffect: true, conflictResolved: false },
+      appSettings: { accentColor: "blue", compactMode: false, glassEffect: true, conflictResolved: false, notifications: DEFAULT_NOTIFICATION_PREFS },
       setAccentColor: (color: AccentColor) => {
         set((s) => ({ appSettings: { ...s.appSettings, accentColor: color } }));
       },
@@ -365,6 +454,9 @@ export const useFinance = create<State>()(
       },
       setGlassEffect: (glass: boolean) => {
         set((s) => ({ appSettings: { ...s.appSettings, glassEffect: glass } }));
+      },
+      setNotificationPrefs: (prefs: Partial<NotificationPreferences>) => {
+        set((s) => ({ appSettings: { ...s.appSettings, notifications: { ...s.appSettings.notifications, ...prefs } } }));
       },
       setConflictResolved: () => {
         set((s) => ({ appSettings: { ...s.appSettings, conflictResolved: true } }));
@@ -676,6 +768,10 @@ export const useFinance = create<State>()(
             if (saved) nv.receipt = saved;
           }
         }
+
+        // Validate with Zod before saving
+        validateAndThrow('transaction', nv);
+
         set((s2) => ({ transactions: [nv, ...s2.transactions], changeLog: [logEntry("transaction", nv.id, "create", `Agregó ${nv.type === "income" ? "ingreso" : nv.type === "saving" ? "ahorro" : "gasto"} "${nv.concept}"`), ...s2.changeLog].slice(0, 500) }));
 
         // Sync to Supabase
@@ -727,6 +823,11 @@ export const useFinance = create<State>()(
             await get().deleteReceiptIfExists(prev.receipt);
           }
         }
+
+        // Validate merged transaction with Zod
+        const merged = { ...prev, ...patch };
+        validateAndThrow('transaction', merged);
+
         set((s2) => ({ transactions: s2.transactions.map((x) => x.id === idv ? { ...x, ...patch } : x), changeLog: [logEntry("transaction", idv, "update", `Editó "${prev.concept}"`, diffFields(prev, patch)), ...s2.changeLog].slice(0, 500) }));
 
         // Sync to Supabase
@@ -783,6 +884,10 @@ export const useFinance = create<State>()(
           return {};
         }
         const nv = { ...a, id: generateSecureId() } as Account;
+
+        // Validate with Zod
+        validateAndThrow('account', nv);
+
         set((s) => ({ accounts: [nv, ...s.accounts] }));
 
         // Sync to Supabase
@@ -813,6 +918,11 @@ export const useFinance = create<State>()(
       updateAccount: async (idv, p) => {
         const s = get();
         const prev = s.accounts.find((x) => x.id === idv);
+        const merged = { ...prev, ...p };
+        
+        // Validate with Zod
+        validateAndThrow('account', merged);
+        
         set((s) => ({ accounts: s.accounts.map((x) => x.id === idv ? { ...x, ...p } : x) }));
 
         // Sync to Supabase
@@ -863,6 +973,10 @@ export const useFinance = create<State>()(
             ? [{ id: generateSecureId(), date: new Date().toISOString(), amount: g.saved }]
             : []),
         } as Goal;
+
+        // Validate with Zod
+        validateAndThrow('goal', nv);
+
         const nextGoals = nv.pinned ? [nv, ...s.goals.map((x: Goal) => ({ ...x, pinned: false }))] : [nv, ...s.goals];
         const state = { goals: nextGoals, changeLog: [logEntry("goal", nv.id, "create", `Creó meta "${nv.name}"`), ...s.changeLog].slice(0, 500) };
         set(state);
@@ -898,6 +1012,11 @@ export const useFinance = create<State>()(
         const s = get();
         const prev = s.goals.find((x) => x.id === idv); if (!prev) return;
         const ch = diffFields(prev, p);
+        const merged = { ...prev, ...p };
+        
+        // Validate with Zod
+        validateAndThrow('goal', merged);
+        
         let nextGoals = s.goals.map((x) => x.id === idv ? { ...x, ...p } : x);
         // If pinning this goal, unpin others
         if ((p as any).pinned === true) {
@@ -948,6 +1067,94 @@ export const useFinance = create<State>()(
           }
         }
       },
+      addGoalFolder: async (f) => {
+        const s = get();
+        const nv = {
+          ...f,
+          id: generateSecureId(),
+          createdAt: f.createdAt ?? new Date().toISOString(),
+        } as GoalFolder;
+        const nextFolders = [nv, ...s.goalFolders];
+        const state = { goalFolders: nextFolders, changeLog: [logEntry("goal", nv.id, "create", `Creó carpeta "${nv.name}"`), ...s.changeLog].slice(0, 500) };
+        set(state);
+
+        // Sync to Supabase
+        if (isSupabaseEnabled) {
+          const user = (await supabase.auth.getUser()).data.user;
+          if (user) {
+            const payload = {
+              id: nv.id,
+              user_id: user.id,
+              name: nv.name,
+              color: nv.color,
+              icon: nv.icon,
+              parent_id: nv.parentId,
+              "order": nv.order,
+            };
+            if (isOnline()) {
+              const { error } = await supabase.from('goal_folders').insert(payload);
+              if (error) console.error('Supabase insert error (goal_folders):', sanitizeForLog(error));
+            } else {
+              queueMutation('goal_folders', 'INSERT', nv.id, payload);
+            }
+          }
+        }
+      },
+      updateGoalFolder: async (idv, p) => {
+        const s = get();
+        const prev = s.goalFolders.find((x) => x.id === idv); if (!prev) return;
+        const ch = diffFields(prev, p);
+        const nextFolders = s.goalFolders.map((x) => x.id === idv ? { ...x, ...p } : x);
+        set({ goalFolders: nextFolders, changeLog: [logEntry("goal", idv, "update", `Editó carpeta "${prev.name}"`, ch), ...s.changeLog].slice(0, 500) });
+
+        // Sync to Supabase
+        if (isSupabaseEnabled) {
+          const user = (await supabase.auth.getUser()).data.user;
+          if (user) {
+            const payload = {
+              name: p.name,
+              color: p.color,
+              icon: p.icon,
+              parent_id: p.parentId,
+              "order": p.order,
+            };
+            if (isOnline()) {
+              const { error } = await supabase.from('goal_folders').update(payload).eq('id', idv);
+              if (error) console.error('Supabase update error (goal_folders):', sanitizeForLog(error));
+            } else {
+              queueMutation('goal_folders', 'UPDATE', idv, payload);
+            }
+          }
+        }
+      },
+      removeGoalFolder: async (idv) => {
+        const s = get();
+        const prev = s.goalFolders.find((x) => x.id === idv);
+        // Also unassign goals in this folder
+        const nextGoals = s.goals.map((g) => g.folderId === idv ? { ...g, folderId: undefined } : g);
+        // Also remove child folders (cascade delete)
+        const childIds = s.goalFolders.filter(f => f.parentId === idv).map(f => f.id);
+        const nextFolders = s.goalFolders.filter((x) => x.id !== idv && !childIds.includes(x.id));
+        set({ 
+          goalFolders: nextFolders, 
+          goals: nextGoals,
+          changeLog: [logEntry("goal", idv, "delete", `Eliminó carpeta "${prev?.name ?? ""}"`), ...s.changeLog].slice(0, 500) 
+        });
+
+        // Sync to Supabase (CASCADE will handle child folders)
+        if (isSupabaseEnabled) {
+          const user = (await supabase.auth.getUser()).data.user;
+          if (user) {
+            if (isOnline()) {
+              const { error } = await supabase.from('goal_folders').delete().eq('id', idv);
+              if (error) console.error('Supabase delete error (goal_folders):', sanitizeForLog(error));
+            } else {
+              queueMutation('goal_folders', 'DELETE', idv);
+            }
+          }
+        }
+      },
+reorderGoalFolders: (folders) => set({ goalFolders: folders }),
       contributeGoal: (idv, amount, date, accountId) => set((s) => {
         const g = s.goals.find((x) => x.id === idv);
         const txId = generateSecureId();
@@ -965,9 +1172,12 @@ export const useFinance = create<State>()(
           changeLog: [logEntry("goal", idv, "update", `${amount >= 0 ? "Aportó" : "Retiró"} ${Math.abs(amount)} a "${g?.name ?? ""}"`, [{ field: "saved", from: g?.saved, to: (g?.saved ?? 0) + amount }]), ...s.changeLog].slice(0, 500),
         };
       }),
-
-      addDebt: async (d) => {
+addDebt: async (d) => {
         const nv: Debt = { ...d, id: generateSecureId(), payments: [] };
+
+        // Validate with Zod
+        validateAndThrow('debt', nv);
+
         set((s) => ({ debts: [nv, ...s.debts], changeLog: [logEntry("debt", nv.id, "create", `Registró deuda de ${nv.person} por ${nv.amount}`), ...s.changeLog].slice(0, 500) }));
 
         // Sync to Supabase
@@ -1002,6 +1212,11 @@ export const useFinance = create<State>()(
         const s = get();
         const prev = s.debts.find((x) => x.id === idv); if (!prev) return;
         const ch = diffFields(prev, p);
+        const merged = { ...prev, ...p };
+        
+        // Validate with Zod
+        validateAndThrow('debt', merged);
+        
         set({ debts: s.debts.map((x) => x.id === idv ? { ...x, ...p } : x), changeLog: [logEntry("debt", idv, "update", `Editó deuda de "${prev.person}"`, ch), ...s.changeLog].slice(0, 500) });
 
         // Sync to Supabase
@@ -1059,6 +1274,9 @@ export const useFinance = create<State>()(
           if (cashAcc) enriched.accountId = cashAcc.id;
         }
         const payment: DebtPayment = { ...enriched, id: generateSecureId() };
+
+        // Validate with Zod
+        validateAndThrow('debtPayment', payment);
 
         // Add payment to store IMMEDIATELY before any async operations
         // to prevent stale state in React renders / merge logic.
@@ -1207,14 +1425,26 @@ export const useFinance = create<State>()(
         const s = get();
         const sc = { ...ALL_SCOPES, ...(scopes ?? {}) };
         const data: Record<string, unknown> = {};
+        
+        const piiOpts = {
+          excludeBankDetails: sc.excludeBankDetails ?? sc.excludePII,
+          excludeEmail: sc.excludeEmail ?? sc.excludePII,
+          excludeReceipts: sc.excludeReceipts ?? sc.excludePII,
+        };
+        
         if (sc.fixedItems) data.fixedItems = s.fixedItems;
-        if (sc.transactions) data.transactions = s.transactions;
-        if (sc.accounts) data.accounts = s.accounts;
+        if (sc.transactions) data.transactions = s.transactions.map(tx => sanitizeTransactionForExport(tx, piiOpts));
+        if (sc.accounts) data.accounts = s.accounts.map(acc => sanitizeAccountForExport(acc, piiOpts));
         if (sc.goals) data.goals = s.goals;
-        if (sc.debts) data.debts = s.debts;
+        if (sc.goalFolders) data.goalFolders = s.goalFolders;
+        if (sc.debts) data.debts = s.debts.map(debt => ({
+          ...debt,
+          payments: debt.payments.map(p => sanitizeDebtPaymentForExport(p, piiOpts)),
+        }));
         if (sc.changeLog) data.changeLog = s.changeLog;
         if (sc.theme) data.theme = s.theme;
-        if (sc.profile) data.profile = s.profile;
+        if (sc.profile) data.profile = sanitizeProfileForExport(s.profile, piiOpts);
+        
         const payload = {
           app: "finance-pal",
           version: SCHEMA_VERSION,
@@ -1222,6 +1452,11 @@ export const useFinance = create<State>()(
           scopes: sc,
           data,
         };
+        // Audit log: data exported
+        const userId = (supabase.auth.getUser()).data?.user?.id;
+        if (userId) {
+          audit.dataExported(userId, Object.keys(sc).filter(k => sc[k as keyof typeof sc]));
+        }
         return JSON.stringify(payload, null, 2);
       },
 
@@ -1237,6 +1472,11 @@ export const useFinance = create<State>()(
           const { data, warnings } = migrateImported(parsed);
           const sc = { ...ALL_SCOPES, ...(scopes ?? {}) };
           const cur = get();
+          // Audit log: data imported
+          const userId = (await supabase.auth.getUser()).data?.user?.id;
+          if (userId) {
+            audit.dataImported(userId, Object.keys(sc).filter(k => sc[k as keyof typeof sc]));
+          }
 
           const fixedItems = sc.fixedItems && Array.isArray(data.fixedItems)
             ? (data.fixedItems as any[]).map(sanitizeFixed).filter((x): x is FixedItem => !!x)
@@ -1260,6 +1500,9 @@ export const useFinance = create<State>()(
           const goals = sc.goals && Array.isArray(data.goals)
             ? (data.goals as any[]).map(sanitizeGoal).filter((x): x is Goal => !!x)
             : cur.goals;
+          const goalFolders = sc.goalFolders && Array.isArray(data.goalFolders)
+            ? (data.goalFolders as any[]).map(sanitizeGoalFolder).filter((x): x is GoalFolder => !!x)
+            : cur.goalFolders;
           const debts = sc.debts && Array.isArray(data.debts)
             ? (data.debts as any[]).map(sanitizeDebt).filter((x): x is Debt => !!x)
             : cur.debts;
@@ -1273,7 +1516,7 @@ export const useFinance = create<State>()(
             ? sanitizeProfile(data.profile)
             : cur.profile;
 
-          set({ fixedItems, transactions, accounts, goals, debts, changeLog, theme, profile });
+          set({ fixedItems, transactions, accounts, goals, goalFolders, debts, changeLog, theme, profile });
           // After importing, also migrate any in-place dataURL receipts from existing state
           try { await get().migrateReceiptsInPlace(); } catch (e) { /* ignore */ }
           return { ok: true, warnings };
@@ -1343,6 +1586,11 @@ export const useFinance = create<State>()(
       resetAll: () => {
         const d = new Date();
         set({ fixedItems: [], transactions: [], goals: [], debts: [], changeLog: [], activeYear: d.getFullYear(), activeMonth: d.getMonth(), appSettings: { accentColor: "blue", compactMode: false, glassEffect: true, conflictResolved: false } });
+        // Audit log: all data deleted
+        const userId = (supabase.auth.getUser()).data?.user?.id;
+        if (userId) {
+          audit.dataDeleted(userId);
+        }
       },
 
       loadSettingsFromCloud: async () => {
@@ -1418,6 +1666,17 @@ export const useFinance = create<State>()(
             saved: g.saved, emoji: g.emoji, color: g.color, icon: g.icon,
             deadline: g.deadline, purchase_url: g.purchaseUrl,
             contributions: g.contributions, pinned: g.pinned,
+            folder_id: g.folderId,
+          });
+          if (!error) synced++;
+        }
+
+        // Goal Folders
+        await supabase.from('goal_folders').delete().eq('user_id', userId);
+        for (const f of s.goalFolders) {
+          const { error } = await supabase.from('goal_folders').insert({
+            id: f.id, user_id: userId, name: f.name, color: f.color,
+            icon: f.icon, parent_id: f.parentId, "order": f.order,
           });
           if (!error) synced++;
         }

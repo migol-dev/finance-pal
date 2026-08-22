@@ -1,10 +1,10 @@
-import { useEffect, useRef, useState, useMemo } from "react";
+import { useEffect, useRef, useState, useMemo, useCallback } from "react";
 import { useHybridData } from "@/hooks/useHybridData";
 import { useFinance, ExportScopes, ALL_SCOPES, normalizeImportKeys } from "@/store/finance-store";
-import { fmt, monthlyAmount, TYPE_LABEL, FREQ_LABEL, ItemType, Frequency, Priority, iconFor, IconRef, FixedItem, CATEGORY_EMOJI, PaymentMethod, PAYMENT_METHOD_LABEL, PAYMENT_METHOD_EMOJI, Account, Denomination, cashTotalFromDenominations, Currency, computeBalances } from "@/lib/finance";
+import { fmt, monthlyAmount, TYPE_LABEL, FREQ_LABEL, ItemType, Frequency, Priority, iconFor, IconRef, FixedItem, CATEGORY_EMOJI, PAYMENT_METHOD_LABEL, PAYMENT_METHOD_EMOJI, Account, Denomination, cashTotalFromDenominations, Currency, computeBalances, PaymentMethod, NotificationPreferences, DEFAULT_NOTIFICATION_PREFS } from "@/lib/finance";
 import DenominationsEditor from "@/components/ui/DenominationsEditor";
 import { Header } from "@/components/app/Header";
-import { Plus, Trash2, Power, Database, RotateCcw, Pencil, Download, Upload, Sun, Moon, Target, History, HandCoins, User, LogOut, Cloud, CloudOff, Loader2, Palette } from "lucide-react";
+import { Plus, Trash2, Power, Database, RotateCcw, Pencil, Download, Upload, Sun, Moon, Target, History, HandCoins, User, LogOut, Cloud, CloudOff, Loader2, Palette, Bell, BellOff, Clock, Moon as MoonIcon, Shield, ShieldCheck, ShieldOff, Smartphone, QrCode, Key } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -26,6 +26,8 @@ import { useAuth } from '@/context/AuthContext';
 import { supabase, isSupabaseEnabled, setSyncEnabled } from '@/lib/supabase';
 import { useQueryClient } from '@tanstack/react-query';
 import { showUserError } from '@/lib/app-error';
+import { scheduleAllNotifications, requestNotificationPermissions, cancelAllLocalNotifications } from '@/lib/notifications';
+import { audit } from '@/lib/audit-logger';
 
 export default function Ajustes() {
   const queryClient = useQueryClient();
@@ -433,6 +435,9 @@ export default function Ajustes() {
           </div>
         </div>
 
+        <h2 className="text-xs uppercase tracking-wider font-bold text-muted-foreground pt-4">Notificaciones</h2>
+        <NotificationSettings />
+
         <h2 className="text-xs uppercase tracking-wider font-bold text-muted-foreground pt-4">Más</h2>
         <div className="grid grid-cols-3 lg:flex lg:gap-3 gap-2">
           <Link to="/metas" className="rounded-2xl bg-card border border-border p-3 shadow-soft flex flex-col items-center gap-1.5 hover:bg-muted/50 transition">
@@ -463,6 +468,10 @@ export default function Ajustes() {
                   setSyncEnabledState(next);
                   setSyncEnabled(next);
                   toast.success(next ? 'Sincronización con la nube activada' : 'Sincronización con la nube desactivada');
+                  // Audit log: sync toggled
+                  if (session?.user?.id) {
+                    audit.syncToggled(session.user.id, next);
+                  }
                 }}
                 className={`flex items-center gap-2 w-full rounded-2xl border p-3 transition ${
                   syncEnabled ? 'border-primary/30 bg-primary/5' : 'border-border bg-card'
@@ -980,13 +989,38 @@ function AccountSettings() {
   const { session } = useAuth();
   const [emailOpen, setEmailOpen] = useState(false);
   const [passOpen, setPassOpen] = useState(false);
+  const [mfaOpen, setMfaOpen] = useState(false);
   const [newEmail, setNewEmail] = useState('');
   const [newPass, setNewPass] = useState('');
   const [confirmPass, setConfirmPass] = useState('');
+  const [mfaCode, setMfaCode] = useState('');
   const [changingEmail, setChangingEmail] = useState(false);
   const [changingPass, setChangingPass] = useState(false);
+  const [enrollingMfa, setEnrollingMfa] = useState(false);
+  const [verifyingMfa, setVerifyingMfa] = useState(false);
+  const [mfaEnrolled, setMfaEnrolled] = useState(false);
+  const [mfaQrCode, setMfaQrCode] = useState<string | null>(null);
+  const [mfaSecret, setMfaSecret] = useState<string | null>(null);
+  const [mfaFactorId, setMfaFactorId] = useState<string | null>(null);
 
   const provider = session?.user?.app_metadata?.provider;
+
+  const checkMfaStatus = useCallback(async () => {
+    if (!session?.user) return;
+    try {
+      const { data } = await supabase.auth.mfa.listFactors();
+      const totpFactor = data?.all?.find((f: any) => f.factor_type === 'totp' && f.status === 'verified');
+      setMfaEnrolled(!!totpFactor);
+      if (totpFactor) setMfaFactorId(totpFactor.id);
+    } catch (e) {
+      console.error('Failed to check MFA status:', e);
+    }
+  }, [session]);
+
+  // Check MFA enrollment status on mount
+  useEffect(() => {
+    checkMfaStatus();
+  }, [checkMfaStatus]);
 
   const handleChangeEmail = async () => {
     if (!newEmail || !newEmail.includes('@')) { toast.error('Correo inválido'); return; }
@@ -997,6 +1031,10 @@ function AccountSettings() {
     toast.success('Correo actualizado. Revisa tu bandeja para confirmar.');
     setEmailOpen(false);
     setNewEmail('');
+    // Audit log: email changed
+    if (session?.user?.id) {
+      audit.emailChanged(session.user.id, { newEmail });
+    }
   };
 
   const handleChangePassword = async () => {
@@ -1010,6 +1048,76 @@ function AccountSettings() {
     setPassOpen(false);
     setNewPass('');
     setConfirmPass('');
+    // Audit log: password changed
+    if (session?.user?.id) {
+      audit.passwordChanged(session.user.id);
+    }
+  };
+
+  const handleEnrollMfa = async () => {
+    setEnrollingMfa(true);
+    try {
+      const { data, error } = await supabase.auth.mfa.enroll({
+        factorType: 'totp',
+        issuer: 'Finance Pal',
+        friendlyName: session?.user?.email ?? 'Finance Pal',
+      });
+      if (error) throw error;
+      if (data?.totp?.qr_code) {
+        setMfaQrCode(data.totp.qr_code);
+        setMfaSecret(data.totp.secret);
+        setMfaFactorId(data.totp.factor_id);
+        setMfaOpen(true);
+      }
+    } catch (e: any) {
+      toast.error(e.message || 'Error al configurar 2FA');
+    } finally {
+      setEnrollingMfa(false);
+    }
+  };
+
+  const handleVerifyMfa = async () => {
+    if (!mfaCode || mfaCode.length !== 6) { toast.error('Código de 6 dígitos requerido'); return; }
+    if (!mfaFactorId) { toast.error('Factor ID no disponible'); return; }
+    setVerifyingMfa(true);
+    try {
+      const { error } = await supabase.auth.mfa.verify({
+        factorId: mfaFactorId,
+        code: mfaCode,
+      });
+      if (error) throw error;
+      toast.success('2FA activado correctamente');
+      setMfaEnrolled(true);
+      setMfaOpen(false);
+      setMfaCode('');
+      setMfaQrCode(null);
+      setMfaSecret(null);
+      // Audit log: MFA enabled
+      if (session?.user?.id) {
+        audit.mfaEnabled(session.user.id);
+      }
+    } catch (e: any) {
+      toast.error(e.message || 'Código inválido');
+    } finally {
+      setVerifyingMfa(false);
+    }
+  };
+
+  const handleUnenrollMfa = async () => {
+    if (!mfaFactorId) return;
+    try {
+      const { error } = await supabase.auth.mfa.unenroll({ factorId: mfaFactorId });
+      if (error) throw error;
+      toast.success('2FA desactivado');
+      setMfaEnrolled(false);
+      setMfaFactorId(null);
+      // Audit log: MFA disabled
+      if (session?.user?.id) {
+        audit.mfaDisabled(session.user.id);
+      }
+    } catch (e: any) {
+      toast.error(e.message || 'Error al desactivar 2FA');
+    }
   };
 
   return (
@@ -1045,6 +1153,30 @@ function AccountSettings() {
         </div>
       ) : null}
 
+      {/* Two-Factor Authentication (MFA) */}
+      {isSupabaseEnabled && session?.user && (
+        <div className="flex items-center gap-3 w-full rounded-2xl bg-card border border-border p-4 mt-2">
+          <div className={`size-9 rounded-xl flex items-center justify-center shrink-0 ${mfaEnrolled ? 'bg-green/10 text-green' : 'bg-primary/10 text-primary'}`}>
+            {mfaEnrolled ? <ShieldCheck className="size-4" /> : <Shield className="size-4" />}
+          </div>
+          <div className="flex-1">
+            <p className="font-semibold text-sm">Autenticación de dos factores (2FA)</p>
+            <p className="text-xs text-muted-foreground">
+              {mfaEnrolled ? 'Activado - Tu cuenta tiene una capa extra de seguridad' : 'Desactivado - Añade una capa extra de seguridad con TOTP'}
+            </p>
+          </div>
+          {mfaEnrolled ? (
+            <Button variant="outline" size="sm" onClick={handleUnenrollMfa} className="h-9 rounded-xl shrink-0">
+              <ShieldOff className="size-3.5 mr-1.5" /> Desactivar
+            </Button>
+          ) : (
+            <Button variant="default" size="sm" onClick={handleEnrollMfa} disabled={enrollingMfa} className="h-9 rounded-xl shrink-0">
+              {enrollingMfa ? <Loader2 className="size-3.5 animate-spin mr-1.5" /> : <> <Smartphone className="size-3.5 mr-1.5" /> Activar 2FA </>}
+            </Button>
+          )}
+        </div>
+      )}
+
       {/* Email change dialog */}
       {emailOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/80 backdrop-blur-sm p-4" onClick={() => setEmailOpen(false)}>
@@ -1073,6 +1205,46 @@ function AccountSettings() {
               <Button onClick={() => setPassOpen(false)} variant="outline" className="flex-1 h-11 rounded-2xl">Cancelar</Button>
               <Button onClick={handleChangePassword} disabled={changingPass} className="flex-1 h-11 rounded-2xl gradient-primary text-primary-foreground border-0 shadow-glow">
                 {changingPass ? <Loader2 className="size-4 animate-spin" /> : 'Guardar'}
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* MFA Enrollment/Verification Dialog */}
+      {mfaOpen && mfaQrCode && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/80 backdrop-blur-sm p-4" onClick={() => { setMfaOpen(false); setMfaQrCode(null); setMfaSecret(null); setMfaFactorId(null); }}>
+          <div className="max-w-sm w-full rounded-3xl bg-card border border-border shadow-2xl p-6 space-y-4" onClick={(e) => e.stopPropagation()}>
+            <h3 className="text-lg font-extrabold">Configurar autenticación de dos factores</h3>
+            <p className="text-xs text-muted-foreground">
+              Escanea este código QR con tu app de autenticación (Google Authenticator, Authy, 1Password, etc.)
+            </p>
+            <div className="flex justify-center">
+              <img 
+                src={`https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(mfaQrCode)}`} 
+                alt="2FA QR Code" 
+                className="rounded-xl border border-border bg-white p-2"
+              />
+            </div>
+            <p className="text-xs font-mono text-muted-foreground break-all bg-muted p-2 rounded-lg">
+              Clave secreta: {mfaSecret}
+            </p>
+            <p className="text-xs text-muted-foreground">
+              Introduce el código de 6 dígitos de tu app para verificar:
+            </p>
+            <Input 
+              value={mfaCode} 
+              onChange={(e) => setMfaCode(e.target.value)} 
+              placeholder="123456" 
+              className="h-11 rounded-2xl text-center text-2xl tracking-widest" 
+              type="text" 
+              maxLength={6}
+              autoFocus 
+            />
+            <div className="flex gap-2">
+              <Button onClick={() => { setMfaOpen(false); setMfaQrCode(null); setMfaSecret(null); setMfaFactorId(null); }} variant="outline" className="flex-1 h-11 rounded-2xl">Cancelar</Button>
+              <Button onClick={handleVerifyMfa} disabled={verifyingMfa} className="flex-1 h-11 rounded-2xl gradient-primary text-primary-foreground border-0 shadow-glow">
+                {verifyingMfa ? <Loader2 className="size-4 animate-spin" /> : 'Verificar y activar'}
               </Button>
             </div>
           </div>
@@ -1148,5 +1320,175 @@ function SyncAllButton({ syncAllToCloud, queryClient }: { syncAllToCloud: () => 
         </p>
       </div>
     </button>
+  );
+}
+
+function NotificationSettings() {
+  const prefs = useFinance((s) => s.appSettings.notifications);
+  const setNotificationPrefs = useFinance((s) => s.setNotificationPrefs);
+  const { goals, fixedItems } = useHybridData();
+
+  const toggleEnabled = (key: keyof NotificationPreferences, value: boolean) => {
+    setNotificationPrefs({ [key]: value });
+    if (key === "enabled" && value) {
+      // Re-schedule when enabling
+      scheduleAllNotifications(goals, fixedItems, { ...prefs, enabled: true }).catch(console.warn);
+    } else if (key === "enabled" && !value) {
+      cancelAllLocalNotifications().catch(console.warn);
+    }
+  };
+
+  const updateUpcomingDays = (days: number[]) => {
+    setNotificationPrefs({ upcomingDays: days });
+    if (prefs.enabled) {
+      scheduleAllNotifications(goals, fixedItems, { ...prefs, upcomingDays: days }).catch(console.warn);
+    }
+  };
+
+  const toggleDay = (day: number) => {
+    const newDays = prefs.upcomingDays.includes(day)
+      ? prefs.upcomingDays.filter(d => d !== day)
+      : [...prefs.upcomingDays, day].sort((a, b) => a - b);
+    updateUpcomingDays(newDays);
+  };
+
+  const testNotification = async () => {
+    const { LocalNotifications } = await import("@capacitor/local-notifications");
+    const perm = await LocalNotifications.requestPermissions();
+    if (perm.display !== "granted") {
+      toast.error("Permisos de notificación denegados");
+      return;
+    }
+    await LocalNotifications.schedule({
+      notifications: [{
+        id: 999999,
+        title: "Notificación de prueba",
+        body: "¡Las notificaciones funcionan correctamente! 🎉",
+        schedule: { at: new Date(Date.now() + 1000) },
+        extra: { test: true },
+      }]
+    });
+    toast.success("Notificación de prueba enviada");
+  };
+
+  return (
+    <div className="space-y-3">
+      <div className="rounded-2xl bg-card border border-border p-4 space-y-4">
+        <div className="flex items-center gap-3">
+          <div className="size-10 rounded-xl bg-primary/10 text-primary flex items-center justify-center">
+            <Bell className="size-5" />
+          </div>
+          <div className="flex-1">
+            <p className="font-semibold text-sm">Notificaciones</p>
+            <p className="text-xs text-muted-foreground">Recibe avisos de metas y pagos próximos</p>
+          </div>
+          <Switch checked={prefs.enabled} onCheckedChange={toggleEnabled} />
+        </div>
+
+        {prefs.enabled && (
+          <>
+            <div className="border-t border-border pt-4 space-y-3">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="font-medium text-sm">Notificaciones push (servidor)</p>
+                  <p className="text-xs text-muted-foreground">Requiere configuración de Supabase Edge Functions</p>
+                </div>
+                <Switch checked={prefs.pushEnabled} onCheckedChange={(v) => toggleEnabled("pushEnabled", v)} />
+              </div>
+
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="font-medium text-sm">Notificaciones locales (dispositivo)</p>
+                  <p className="text-xs text-muted-foreground">Funcionan sin conexión, gratis</p>
+                </div>
+                <Switch checked={prefs.localEnabled} onCheckedChange={(v) => toggleEnabled("localEnabled", v)} />
+              </div>
+
+<div className="border-t border-border pt-3"></div>
+               
+              <p className="font-medium text-sm">Avisos de metas</p>
+              <div className="space-y-2">
+                <label className="flex items-center justify-between cursor-pointer">
+                  <div>
+                    <p className="font-medium text-sm">Meta próxima a vencer</p>
+                    <p className="text-xs text-muted-foreground">Avisar con antelación</p>
+                  </div>
+                  <Switch checked={prefs.upcomingDays.length > 0} onCheckedChange={(v) => {
+                    if (v) updateUpcomingDays([7, 3, 1]);
+                    else updateUpcomingDays([]);
+                  }} />
+                </label>
+                
+                {prefs.upcomingDays.length > 0 && (
+                  <div className="flex flex-wrap gap-2 ml-2">
+                    {[1, 3, 7, 14].map((day) => (
+                      <button
+                        key={day}
+                        onClick={() => toggleDay(day)}
+                        className={`px-3 py-1.5 rounded-full text-xs font-medium transition ${
+                          prefs.upcomingDays.includes(day)
+                            ? "bg-primary text-primary-foreground"
+                            : "bg-muted text-muted-foreground hover:bg-muted/50"
+                        }`}
+                      >
+                        {day} día{day === 1 ? "" : "s"}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="font-medium text-sm">Meta vencida</p>
+                  <p className="text-xs text-muted-foreground">Avisar cuando pase la fecha límite sin completar</p>
+                </div>
+                <Switch checked={prefs.overdueAlert} onCheckedChange={(v) => toggleEnabled("overdueAlert", v)} />
+              </div>
+
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="font-medium text-sm">Ritmo atrasado</p>
+                  <p className="text-xs text-muted-foreground">Avisar si vas por debajo del ritmo necesario</p>
+                </div>
+                <Switch checked={prefs.behindPaceAlert} onCheckedChange={(v) => toggleEnabled("behindPaceAlert", v)} />
+              </div>
+
+<div className="border-t border-border pt-3"></div>
+               
+              <p className="font-medium text-sm">Avisos de pagos fijos</p>
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="font-medium text-sm">Pagos recurrentes próximos</p>
+                  <p className="text-xs text-muted-foreground">Recordar 3 días antes de pagos mensuales/semanales</p>
+                </div>
+                <Switch checked={prefs.fixedItemReminders} onCheckedChange={(v) => toggleEnabled("fixedItemReminders", v)} />
+              </div>
+
+<div className="border-t border-border pt-3"></div>
+               
+              <p className="font-medium text-sm">Horario silencioso</p>
+              <p className="text-xs text-muted-foreground mb-2">No enviar notificaciones en este rango horario</p>
+              <div className="flex items-center gap-3">
+                <div className="flex-1">
+                  <Label className="text-xs">Desde</Label>
+                  <Input type="time" value={prefs.quietHours.start} onChange={(e) => setNotificationPrefs({ quietHours: { ...prefs.quietHours, start: e.target.value } })} className="h-10 rounded-xl mt-1" />
+                </div>
+                <div className="flex-1">
+                  <Label className="text-xs">Hasta</Label>
+                  <Input type="time" value={prefs.quietHours.end} onChange={(e) => setNotificationPrefs({ quietHours: { ...prefs.quietHours, end: e.target.value } })} className="h-10 rounded-xl mt-1" />
+                </div>
+              </div>
+
+<div className="border-t border-border pt-3"></div>
+               
+              <Button onClick={testNotification} variant="outline" className="w-full h-11 rounded-xl">
+                <Bell className="size-4 mr-2" />Enviar notificación de prueba
+              </Button>
+            </div>
+          </>
+        )}
+      </div>
+    </div>
   );
 }

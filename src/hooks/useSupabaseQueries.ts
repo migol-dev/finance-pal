@@ -1,14 +1,15 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase, isSupabaseEnabled } from '@/lib/supabase';
 import { useAuth } from '@/context/AuthContext';
-import { Account, Transaction, FixedItem, Goal, Debt } from '@/lib/finance';
+import { Account, Transaction, FixedItem, Goal, Debt, GoalFolder } from '@/lib/finance';
 import { AppError, ErrorCodes } from '@/lib/app-error';
 
-const ACCOUNT_COLS = 'id, name, type, initial_balance, currency, denominations, clabe, bank, holder_name, created_at';
-const TX_COLS = 'id, type, category, concept, amount, date, note, icon, payment_method, fixed_id, account_id, transfer_to_account_id, external_payee, receipt';
+const ACCOUNT_COLS = 'id, name, type, initial_balance, currency, denominations, created_at';
+const TX_COLS = 'id, type, category, concept, amount, date, note, icon, payment_method, fixed_id, account_id, transfer_to_account_id, receipt';
 const FIXED_COLS = 'id, type, category, concept, amount, frequency, active, note, start_date, end_date, priority, pay_day, pay_week_day, icon, payment_method, account_id, created_at';
-const GOAL_COLS = 'id, name, target, saved, emoji, color, deadline, icon, purchase_url, contributions, pinned, created_at';
-const DEBT_COLS = 'id, person, concept, amount, date, due_date, note, icon, account_id, created_at, payments:debt_payments(id, amount, date, note, payment_method, account_id)';
+const GOAL_COLS = 'id, name, target, saved, emoji, color, deadline, icon, purchase_url, contributions, pinned, folder_id, created_at';
+const FOLDER_COLS = 'id, name, color, icon, parent_id, "order", created_at';
+const DEBT_COLS = 'id, person, concept, amount, date, due_date, note, icon, account_id, created_at, payments:debt_payments_safe(id, amount, date, note, payment_method, account_id)';
 
 const FIFTEEN_MIN = 1000 * 60 * 15;
 
@@ -29,7 +30,7 @@ export function useSupabaseQuery<T>(
 
 export async function fetchAccounts(userId: string) {
   const { data, error } = await supabase
-    .from('accounts')
+    .from('accounts_safe')
     .select(ACCOUNT_COLS)
     .eq('user_id', userId)
     .order('created_at', { ascending: true });
@@ -40,7 +41,7 @@ export async function fetchAccounts(userId: string) {
 
 export async function fetchTransactions(userId: string) {
   const { data, error } = await supabase
-    .from('transactions')
+    .from('transactions_safe')
     .select(TX_COLS)
     .eq('user_id', userId)
     .order('date', { ascending: false });
@@ -71,6 +72,17 @@ export async function fetchGoals(userId: string) {
   return (data ?? []).map(mapGoalFromDb);
 }
 
+export async function fetchGoalFolders(userId: string) {
+  const { data, error } = await supabase
+    .from('goal_folders')
+    .select(FOLDER_COLS)
+    .eq('user_id', userId)
+    .order('"order"', { ascending: true });
+
+  if (error) throw new AppError(ErrorCodes.DB_QUERY_FAILED, 'Error fetching goal folders', { originalError: error, context: { userId } });
+  return (data ?? []).map(mapGoalFolderFromDb);
+}
+
 export async function fetchDebts(userId: string) {
   const { data, error } = await supabase
     .from('debts')
@@ -90,9 +102,9 @@ function mapAccountFromDb(row: any): Account {
     initialBalance: Number(row.initial_balance ?? 0),
     currency: row.currency,
     denominations: row.denominations ?? [],
-    clabe: row.clabe,
-    bank: row.bank,
-    holderName: row.holder_name,
+    clabe: row.clabe ?? undefined,
+    bank: row.bank ?? undefined,
+    holderName: row.holder_name ?? undefined,
   };
 }
 
@@ -110,7 +122,7 @@ function mapTransactionFromDb(row: any): Transaction {
     fixedId: row.fixed_id,
     accountId: row.account_id,
     transferToAccountId: row.transfer_to_account_id,
-    externalPayee: row.external_payee,
+    externalPayee: row.external_payee ?? undefined,
     receipt: row.receipt,
   };
 }
@@ -149,6 +161,19 @@ function mapGoalFromDb(row: any): Goal {
     purchaseUrl: row.purchase_url,
     contributions: row.contributions ?? [],
     pinned: row.pinned,
+    folderId: row.folder_id,
+    createdAt: row.created_at,
+  };
+}
+
+function mapGoalFolderFromDb(row: any): GoalFolder {
+  return {
+    id: row.id,
+    name: row.name,
+    color: row.color,
+    icon: row.icon,
+    parentId: row.parent_id,
+    order: row.order ?? 0,
     createdAt: row.created_at,
   };
 }
@@ -207,6 +232,14 @@ export function useGoals() {
   });
 }
 
+export function useGoalFolders() {
+  const { session } = useAuth();
+  return useSupabaseQuery(['goal_folders'], () => {
+    if (!session?.user?.id) throw new AppError(ErrorCodes.AUTH_NOT_AUTHENTICATED, 'Cannot fetch goal folders without session');
+    return fetchGoalFolders(session.user.id);
+  });
+}
+
 export function useDebts() {
   const { session } = useAuth();
   return useSupabaseQuery(['debts'], () => {
@@ -222,6 +255,7 @@ export function useInvalidateAll() {
     queryClient.invalidateQueries({ queryKey: ['transactions'] });
     queryClient.invalidateQueries({ queryKey: ['fixed_items'] });
     queryClient.invalidateQueries({ queryKey: ['goals'] });
+    queryClient.invalidateQueries({ queryKey: ['goal_folders'] });
     queryClient.invalidateQueries({ queryKey: ['debts'] });
   };
 }

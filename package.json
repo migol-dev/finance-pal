@@ -18,7 +18,8 @@
     "android:build:release:win": "npx cap copy android && cd android && gradlew.bat assembleRelease",
     "optimize-images": "node scripts/optimize-images.js",
     "generate-icons": "node scripts/generate-icons.js src/assets/nuevo_logo.png",
-    "cleanup-receipts": "node scripts/cleanup-receipts.cjs"
+    "cleanup-receipts": "node scripts/cleanup-receipts.cjs",
+    "generate-font-sri": "node scripts/generate-font-sri.js"
   },
   "dependencies": {
     "@capacitor/app": "^8.1.0",
@@ -27,6 +28,7 @@
     "@capacitor/filesystem": "^8.1.2",
     "@capacitor/local-notifications": "^8.0.2",
     "@capacitor/network": "^8.0.1",
+    "@capacitor/push-notifications": "^8.1.2",
     "@capacitor/share": "^8.0.1",
     "@hookform/resolvers": "^3.10.0",
     "@radix-ui/react-accordion": "^1.2.11",

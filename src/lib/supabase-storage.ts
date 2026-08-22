@@ -138,7 +138,7 @@ export async function uploadReceipt(userId: string, receiptId: string, dataUrl: 
     // Generate signed URL instead of public URL for better security
     const { data, error: urlError } = await supabase.storage
       .from(STORAGE_BUCKET)
-      .createSignedUrl(path, 60 * 60 * 24 * 365); // 1 year
+      .createSignedUrl(path, 60 * 60); // 1 hour
     
     if (urlError || !data?.signedUrl) {
       console.error('Failed to create signed URL:', sanitizeForLog(urlError));
@@ -187,7 +187,7 @@ export async function getReceiptSignedUrl(userId: string, path: string): Promise
     
     const { data, error } = await supabase.storage
       .from(STORAGE_BUCKET)
-      .createSignedUrl(path, 60 * 60 * 24 * 7); // 7 days
+      .createSignedUrl(path, 60 * 60); // 1 hour
     
     if (error || !data?.signedUrl) {
       console.error('Failed to get signed URL:', sanitizeForLog(error));

@@ -31,6 +31,7 @@ import { setupSyncListener } from '@/lib/sync-engine';
 import { useFinance } from '@/store/finance-store';
 import { useSessionManager } from '@/hooks/useSessionManager';
 import { handleError } from '@/lib/app-error';
+import { saveEncryptedState, loadEncryptedState, isEncryptionAvailable, migrateReceiptsToEncrypted } from '@/lib/encrypted-storage';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -47,8 +48,34 @@ const queryClient = new QueryClient({
   },
 });
 
+const QUERY_CACHE_KEY = 'finance-pal-query-cache';
+
+const encryptedQueryStorage = {
+  getItem: async (key: string): Promise<string | null> => {
+    if (key !== QUERY_CACHE_KEY) return null;
+    if (!isEncryptionAvailable()) return window.localStorage.getItem(key);
+    return await loadEncryptedState();
+  },
+  setItem: async (key: string, value: string): Promise<void> => {
+    if (key !== QUERY_CACHE_KEY) return;
+    if (!isEncryptionAvailable()) {
+      window.localStorage.setItem(key, value);
+      return;
+    }
+    await saveEncryptedState(value);
+  },
+  removeItem: async (key: string): Promise<void> => {
+    if (key !== QUERY_CACHE_KEY) return;
+    if (!isEncryptionAvailable()) {
+      window.localStorage.removeItem(key);
+      return;
+    }
+    window.localStorage.removeItem(key);
+  },
+};
+
 const persister = createSyncStoragePersister({
-  storage: window.localStorage,
+  storage: encryptedQueryStorage,
 });
 
 function PageFade({ children }: { children: React.ReactNode }) {
@@ -281,6 +308,8 @@ const App = () => {
     if (isSupabaseEnabled) {
       setupSyncListener();
     }
+    // Migrate any unencrypted receipts in IndexedDB to encrypted storage
+    migrateReceiptsToEncrypted().catch((e) => console.warn('Receipt migration failed:', e));
   }, []);
 
   // Handle OAuth deep links on native (Android)

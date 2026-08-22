@@ -83,21 +83,30 @@ export interface Transaction {
   receipt?: string;
 }
 
+export interface GoalFolder {
+  id: string;
+  name: string;
+  color: string;
+  icon?: IconRef;
+  parentId?: string;
+  order: number;
+  createdAt: string;
+}
+
 export interface Goal {
   id: string;
   name: string;
   target: number;
   saved: number;
-  emoji: string;          // legacy fallback
-  color: string;          // tailwind gradient utility class
+  emoji: string;
+  color: string;
   deadline?: string;
-  icon?: IconRef;         // new — preferred
+  icon?: IconRef;
   purchaseUrl?: string;
-  /** Per-contribution log used for charts and calendar views. */
   contributions?: { id: string; date: string; amount: number }[];
-  /** When the goal was created — used as the start of the ideal plan. */
   createdAt?: string;
-  pinned?: boolean; // show as main goal on dashboard
+  pinned?: boolean;
+  folderId?: string;
 }
 
 /** Records a payment received against a debt */
@@ -240,6 +249,16 @@ export function parseDateLocal(d: string | Date): Date {
   return new Date(d);
 }
 
+export function startOfDay(d: Date): Date {
+  const x = new Date(d);
+  x.setHours(0, 0, 0, 0);
+  return x;
+}
+
+export function daysBetween(a: Date, b: Date): number {
+  return Math.max(0, Math.round((startOfDay(b).getTime() - startOfDay(a).getTime()) / 86400000));
+}
+
 /** Compute per-account balances by applying transactions to each account's initialBalance. */
 export function computeBalances(accounts: Account[], transactions: Transaction[], debts: Debt[] = [], endDate?: Date) {
   const map: Record<string, number> = {};
@@ -353,7 +372,30 @@ export interface AppSettings {
   compactMode: boolean;
   glassEffect: boolean;
   conflictResolved?: boolean;
+  notifications: NotificationPreferences;
 }
+
+export interface NotificationPreferences {
+  enabled: boolean;
+  pushEnabled: boolean;
+  localEnabled: boolean;
+  upcomingDays: number[];
+  overdueAlert: boolean;
+  behindPaceAlert: boolean;
+  fixedItemReminders: boolean;
+  quietHours: { start: string; end: string };
+}
+
+export const DEFAULT_NOTIFICATION_PREFS: NotificationPreferences = {
+  enabled: true,
+  pushEnabled: true,
+  localEnabled: true,
+  upcomingDays: [7, 3, 1],
+  overdueAlert: true,
+  behindPaceAlert: true,
+  fixedItemReminders: true,
+  quietHours: { start: "22:00", end: "08:00" },
+};
 
 export const emojiFor = (cat: string) => CATEGORY_EMOJI[cat] ?? "💸";
 

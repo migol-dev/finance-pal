@@ -3,12 +3,14 @@ import { useLocation, useNavigate } from "react-router-dom";
 import { BottomNav } from "./BottomNav";
 import { DesktopSidebar } from "./DesktopSidebar";
 import { useFinance } from "@/store/finance-store";
+import { useHybridData } from "@/hooks/useHybridData";
 import { SplashScreen } from "./SplashScreen";
 import { Capacitor } from "@capacitor/core";
 import { LocalNotifications } from "@capacitor/local-notifications";
 import { App as CapacitorApp } from "@capacitor/app";
 import { toast } from "sonner";
 import { ACCENT_PALETTES, AccentColor } from "@/lib/accent-palette";
+import { scheduleAllNotifications, requestNotificationPermissions } from "@/lib/notifications";
 
 function applyAccentVars(root: HTMLElement, color: AccentColor) {
   const theme = root.classList.contains("dark") ? "dark" : "light";
@@ -47,6 +49,8 @@ export function AppShell({ children }: { children: ReactNode }) {
   const accentColor = useFinance((s) => s.appSettings.accentColor);
   const compactMode = useFinance((s) => s.appSettings.compactMode);
   const glassEffect = useFinance((s) => s.appSettings.glassEffect);
+  const notificationPrefs = useFinance((s) => s.appSettings.notifications);
+  const { goals, fixedItems } = useHybridData();
   const didInit = useRef(false);
   const [booting, setBooting] = useState(true);
   const location = useLocation();
@@ -60,13 +64,17 @@ export function AppShell({ children }: { children: ReactNode }) {
     const d = new Date();
     setActive(d.getFullYear(), d.getMonth());
 
-    if (Capacitor.isNativePlatform()) {
-      LocalNotifications.requestPermissions().catch(console.warn);
+    // Request notification permissions
+    requestNotificationPermissions().catch(console.warn);
+
+    // Schedule notifications
+    if (notificationPrefs?.enabled) {
+      scheduleAllNotifications(goals, fixedItems, notificationPrefs).catch(console.warn);
     }
 
     const t = setTimeout(() => setBooting(false), 900);
     return () => clearTimeout(t);
-  }, [setActive]);
+  }, [setActive, notificationPrefs, goals, fixedItems]);
 
   useEffect(() => {
     const root = document.documentElement;

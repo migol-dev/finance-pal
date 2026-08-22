@@ -3,6 +3,7 @@ import { Session, User } from '@supabase/supabase-js';
 import { supabase, isSupabaseEnabled } from '@/lib/supabase';
 import { toast } from 'sonner';
 import { ErrorCodes, logger } from '@/lib/app-error';
+import { audit } from '@/lib/audit-logger';
 
 interface AuthContextType {
   session: Session | null;
@@ -41,6 +42,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const scheduleTokenRefreshRef = useRef<() => void>();
 
   const signOut = useCallback(async () => {
+    const userId = session?.user?.id;
     if (inactivityTimer.current) clearTimeout(inactivityTimer.current);
     if (refreshTimer.current) clearTimeout(refreshTimer.current);
     
@@ -53,7 +55,12 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     }
     setSession(null);
     setUser(null);
-  }, []);
+    
+    // Audit log: user logout
+    if (userId) {
+      audit.logout(userId, { reason: 'manual' });
+    }
+  }, [session]);
 
   // Set refs after defining functions
   signOutRef.current = signOut;
@@ -135,14 +142,22 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       setLoading(false);
     });
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      const isNewSession = event === 'SIGNED_IN' && session;
+      const isSignOut = event === 'SIGNED_OUT';
+      
       setSession(session);
       setUser(session?.user ?? null);
       
-      if (session) {
+      if (isNewSession) {
         resetInactivityTimerRef.current?.();
         scheduleTokenRefreshRef.current?.();
-      } else {
+        
+        // Audit log: user login
+        if (session?.user?.id) {
+          audit.login(session.user.id, { provider: session.user.app_metadata?.provider ?? 'email' });
+        }
+      } else if (isSignOut) {
         if (inactivityTimer.current) clearTimeout(inactivityTimer.current);
         if (refreshTimer.current) clearTimeout(refreshTimer.current);
       }
