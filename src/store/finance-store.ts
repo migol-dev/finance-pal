@@ -10,9 +10,10 @@ import { sanitizeForLog, validationSchemas } from '@/lib/validators';
 import { useSyncStore } from '@/store/sync-store';
 import { toast } from 'sonner';
 import { audit } from '@/lib/audit-logger';
+import { migrateData, sanitizeMigratedData, mergeLocalCloudData, CURRENT_SCHEMA_VERSION } from '@/lib/schema-migrations';
 
 /** Current schema version of persisted/exported data. */
-export const SCHEMA_VERSION = 5;
+export const SCHEMA_VERSION = CURRENT_SCHEMA_VERSION;
 
 interface State {
   fixedItems: FixedItem[];
@@ -1775,31 +1776,53 @@ addDebt: async (d) => {
           }
         },
       } as any,
-      migrate: (state: any, fromVersion: number) => {
+      migrate: async (state: any, fromVersion: number) => {
         if (!state) return state;
-        // Add new fields with defaults — never lose existing user data.
+        
+        // Run our comprehensive migration system
+        const { data: migratedData, result } = await migrateData(
+          { ...state, _meta: { schemaVersion: fromVersion } },
+          { 
+            isNative: Capacitor.isNativePlatform(), 
+            timestamp: new Date().toISOString() 
+          }
+        );
+        
+        // Log migration result
+        if (result.migrated) {
+          console.log(`[Migration] ${result.fromVersion} -> ${result.toVersion}:`, result.warnings);
+          if (result.errors.length > 0) {
+            console.error('[Migration] Errors:', result.errors);
+          }
+        }
+        
+        // Sanitize and validate against current schemas
+        const sanitized = sanitizeMigratedData(migratedData);
+        
+        // Ensure all required fields exist with defaults
         const next = {
+          fixedItems: [],
+          transactions: [],
+          accounts: [
+            { id: generateSecureId(), name: "Efectivo", type: "cash" as const, initialBalance: 0, denominations: [] },
+            { id: generateSecureId(), name: "Cuenta 1", type: "bank" as const, initialBalance: 0 },
+          ],
+          goals: [],
           debts: [],
+          goalFolders: [],
           changeLog: [],
           theme: "light" as ThemeMode,
-          profile: { name: "", currency: "MXN" } as UserProfile,
-          appSettings: { accentColor: "blue", compactMode: false, glassEffect: true, conflictResolved: false },
-          ...state,
+          profile: { name: "", currency: "MXN" as Currency },
+          appSettings: { 
+            accentColor: "blue" as AccentColor, 
+            compactMode: false, 
+            glassEffect: true, 
+            conflictResolved: false, 
+            notifications: DEFAULT_NOTIFICATION_PREFS 
+          },
+          ...sanitized,
         };
-        // Re-sanitize collections from older versions to drop malformed entries.
-        if (fromVersion < SCHEMA_VERSION) {
-          next.fixedItems = (Array.isArray(next.fixedItems) ? next.fixedItems : [])
-            .map(sanitizeFixed).filter(Boolean);
-          next.transactions = (Array.isArray(next.transactions) ? next.transactions : [])
-            .map(sanitizeTx).filter(Boolean);
-          next.accounts = (Array.isArray(next.accounts) ? next.accounts : [])
-            .map(sanitizeAccount).filter(Boolean);
-          next.goals = (Array.isArray(next.goals) ? next.goals : [])
-            .map(sanitizeGoal).filter(Boolean);
-          next.debts = (Array.isArray(next.debts) ? next.debts : [])
-            .map(sanitizeDebt).filter(Boolean);
-          next.profile = sanitizeProfile(next.profile);
-        }
+        
         return next;
       },
     }

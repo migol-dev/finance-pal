@@ -10,6 +10,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { AppShell } from "@/components/app/AppShell";
 import { ErrorBoundary } from '@/components/ErrorBoundary';
 import { DataConflictDialog } from '@/components/app/DataConflictDialog';
+import { UpdateNotification } from '@/components/app/UpdateNotification';
 import { App as CapApp } from '@capacitor/app';
 import { Capacitor } from '@capacitor/core';
 
@@ -350,6 +351,8 @@ const App = () => {
             <Sonner />
             <BrowserRouter>
               <AuthGuard />
+              {/* Update notification - non-intrusive, checks GitHub releases */}
+              <UpdateNotification position="bottom" autoHideSeconds={30} />
             </BrowserRouter>
           </AuthProvider>
         </TooltipProvider>
