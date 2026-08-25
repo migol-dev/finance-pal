@@ -1074,6 +1074,10 @@ export const useFinance = create<State>()(
           id: generateSecureId(),
           createdAt: f.createdAt ?? new Date().toISOString(),
         } as GoalFolder;
+
+        // Validate with Zod
+        validateAndThrow('goalFolder', nv);
+
         const nextFolders = [nv, ...s.goalFolders];
         const state = { goalFolders: nextFolders, changeLog: [logEntry("goal", nv.id, "create", `Creó carpeta "${nv.name}"`), ...s.changeLog].slice(0, 500) };
         set(state);
@@ -1104,6 +1108,11 @@ export const useFinance = create<State>()(
         const s = get();
         const prev = s.goalFolders.find((x) => x.id === idv); if (!prev) return;
         const ch = diffFields(prev, p);
+        const merged = { ...prev, ...p };
+        
+        // Validate with Zod
+        validateAndThrow('goalFolder', merged);
+        
         const nextFolders = s.goalFolders.map((x) => x.id === idv ? { ...x, ...p } : x);
         set({ goalFolders: nextFolders, changeLog: [logEntry("goal", idv, "update", `Editó carpeta "${prev.name}"`, ch), ...s.changeLog].slice(0, 500) });
 

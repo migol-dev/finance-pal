@@ -112,6 +112,17 @@ export const goalSchema = z.object({
   })).max(10000).optional(),
   createdAt: z.string().datetime({ offset: true, local: true }).optional(),
   pinned: z.boolean().optional(),
+  folderId: z.string().uuid().optional(),
+}).strict();
+
+export const goalFolderSchema = z.object({
+  id: z.string().uuid({ message: 'Invalid folder ID format' }),
+  name: z.string().min(1, 'Name required').max(100, 'Name too long'),
+  color: z.string().max(50).default('gradient-primary'),
+  icon: iconRefSchema.optional(),
+  parentId: z.string().uuid().optional(),
+  order: z.number().int().nonnegative(),
+  createdAt: z.string().datetime({ offset: true, local: true }).optional(),
 }).strict();
 
 export const debtPaymentSchema = z.object({
@@ -204,6 +215,7 @@ export const validationSchemas = {
   transaction: transactionSchema,
   fixedItem: fixedItemSchema,
   goal: goalSchema,
+  goalFolder: goalFolderSchema,
   debt: debtSchema,
   debtPayment: debtPaymentSchema,
   changeLogEntry: changeLogEntrySchema,
