@@ -91,8 +91,24 @@ export function DataConflictDialog({ onUpload, onDownload }: Props) {
         })),
       });
 
+      // Ensure default accounts exist if cloud has none
+      let accounts = (accountsRes.data ?? []).map(mapAccount);
+      if (accounts.length === 0) {
+        const generateSecureId = () => crypto.randomUUID();
+        accounts = [
+          { id: generateSecureId(), name: "Efectivo", type: "cash", initialBalance: 0, denominations: [] },
+          { id: generateSecureId(), name: "Cuenta 1", type: "bank", initialBalance: 0 },
+        ];
+        // Create in Supabase
+        if (session?.user?.id) {
+          await supabase.from('accounts').insert(accounts.map(a => ({
+            ...a, user_id: session.user.id, currency: 'MXN'
+          })));
+        }
+      }
+
       set({
-        accounts: (accountsRes.data ?? []).map(mapAccount),
+        accounts,
         transactions: (txRes.data ?? []).map(mapTx),
         fixedItems: (fixedRes.data ?? []).map(mapFixed),
         goals: (goalsRes.data ?? []).map(mapGoal),

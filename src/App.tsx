@@ -254,8 +254,24 @@ function AuthGuard() {
                 supabase.from('debts').select('*, payments:debt_payments(*)').eq('user_id', userId),
                 supabase.from('goal_folders').select('*').eq('user_id', userId).order('"order"', { ascending: true }),
               ]);
+              
+              // Ensure default accounts exist if cloud has none
+              let accounts = (accountsRes.data ?? []).map((r: any) => ({ id: r.id, name: r.name, type: r.type, initialBalance: Number(r.initial_balance ?? 0), currency: r.currency, denominations: r.denominations ?? [], clabe: r.clabe, bank: r.bank, holderName: r.holder_name }));
+              if (accounts.length === 0) {
+                const generateSecureId = () => crypto.randomUUID();
+                const defaultAccounts = [
+                  { id: generateSecureId(), name: "Efectivo", type: "cash", initialBalance: 0, denominations: [] },
+                  { id: generateSecureId(), name: "Cuenta 1", type: "bank", initialBalance: 0 },
+                ];
+                accounts = defaultAccounts;
+                // Create in Supabase
+                await supabase.from('accounts').insert(defaultAccounts.map(a => ({
+                  ...a, user_id: userId, currency: 'MXN'
+                })));
+              }
+              
               set({
-                accounts: (accountsRes.data ?? []).map((r: any) => ({ id: r.id, name: r.name, type: r.type, initialBalance: Number(r.initial_balance ?? 0), currency: r.currency, denominations: r.denominations ?? [], clabe: r.clabe, bank: r.bank, holderName: r.holder_name })),
+                accounts,
                 transactions: (txRes.data ?? []).map((r: any) => ({ id: r.id, type: r.type, category: r.category, concept: r.concept, amount: Number(r.amount), date: r.date, note: r.note, icon: r.icon, paymentMethod: r.payment_method, fixedId: r.fixed_id, accountId: r.account_id, transferToAccountId: r.transfer_to_account_id, externalPayee: r.external_payee, receipt: r.receipt })),
                 fixedItems: (fixedRes.data ?? []).map((r: any) => ({ id: r.id, type: r.type, category: r.category, concept: r.concept, amount: Number(r.amount), frequency: r.frequency, active: r.active, note: r.note, startDate: r.start_date, endDate: r.end_date, priority: r.priority, payDay: r.pay_day, payWeekDay: r.pay_week_day, icon: r.icon, paymentMethod: r.payment_method, accountId: r.account_id })),
                 goals: (goalsRes.data ?? []).map((r: any) => ({ id: r.id, name: r.name, target: Number(r.target), saved: Number(r.saved ?? 0), emoji: r.emoji, color: r.color, deadline: r.deadline, icon: r.icon, purchaseUrl: r.purchase_url, contributions: r.contributions ?? [], pinned: r.pinned, createdAt: r.created_at })),
