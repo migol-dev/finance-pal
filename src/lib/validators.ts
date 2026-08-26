@@ -130,8 +130,12 @@ export const goalFolderSchema = z.object({
     z.object({ id: z.string().uuid() }).transform(obj => obj.id),
     z.null(),
     z.undefined(),
-    z.literal('') // Accept empty string from forms
-  ]).optional().transform(val => val === '' ? undefined : val),
+    z.literal('')
+  ]).optional().transform(val => {
+    if (val === '' || val === null || val === undefined) return undefined;
+    if (typeof val === 'object' && val?.id) return val.id;
+    return val;
+  }),
   order: z.number().int().nonnegative(),
   createdAt: z.string().datetime({ offset: true, local: true }).optional(),
 }).strict();

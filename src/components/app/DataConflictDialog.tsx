@@ -29,6 +29,12 @@ export function DataConflictDialog({ onUpload, onDownload }: Props) {
     setLoading("download");
     const userId = session.user.id;
 
+    // Safety timeout - force resolve after 15 seconds
+    const timeoutId = setTimeout(() => {
+      console.warn('[DataConflictDialog] Download timeout - forcing resolve');
+      onDownload();
+    }, 15000);
+
     try {
       const [accountsRes, txRes, fixedRes, goalsRes, debtsRes, foldersRes] = await Promise.all([
         supabase.from("accounts").select("*").eq("user_id", userId),
@@ -122,6 +128,7 @@ export function DataConflictDialog({ onUpload, onDownload }: Props) {
       console.error("Download error:", e);
       toast.error("Error al descargar datos: " + (e?.message ?? ""));
     } finally {
+      clearTimeout(timeoutId);
       setLoading(null);
       onDownload(); // Always resolve conflict even on error
     }

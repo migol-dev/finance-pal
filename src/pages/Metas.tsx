@@ -273,7 +273,7 @@ export default function Metas() {
       color: PALETTES[0], 
       order: goalFolders.length,
       createdAt: new Date().toISOString(),
-      parentId 
+      parentId: parentId ?? undefined
     } as GoalFolder); 
     setFolderOpen(true); 
   };

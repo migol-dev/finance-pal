@@ -257,7 +257,12 @@ function AuthGuard() {
           onUpload={() => { setConflictResolved(); setResolved(true); navigate('/migracion'); }}
           onDownload={async () => { 
             setConflictResolved(); 
-            // Actually download cloud data
+            // Actually download cloud data with timeout safety
+            const timeoutId = setTimeout(() => {
+              console.warn('[AuthGuard] Conflict download timeout - forcing resolve');
+              setResolved(true);
+            }, 15000);
+            
             try {
               const userId = session!.user.id;
               const [accountsRes, txRes, fixedRes, goalsRes, debtsRes, foldersRes] = await Promise.all([
@@ -295,6 +300,7 @@ function AuthGuard() {
             } catch (e) {
               handleError(e, 'Conflict download');
             } finally {
+              clearTimeout(timeoutId);
               setResolved(true);
             }
           }}
