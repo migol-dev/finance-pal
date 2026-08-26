@@ -30,12 +30,13 @@ export function DataConflictDialog({ onUpload, onDownload }: Props) {
     const userId = session.user.id;
 
     try {
-      const [accountsRes, txRes, fixedRes, goalsRes, debtsRes] = await Promise.all([
+      const [accountsRes, txRes, fixedRes, goalsRes, debtsRes, foldersRes] = await Promise.all([
         supabase.from("accounts").select("*").eq("user_id", userId),
         supabase.from("transactions").select("*").eq("user_id", userId).order("date", { ascending: false }),
         supabase.from("fixed_items").select("*").eq("user_id", userId),
         supabase.from("goals").select("*").eq("user_id", userId),
         supabase.from("debts").select("*, payments:debt_payments(*)").eq("user_id", userId),
+        supabase.from("goal_folders").select("*").eq("user_id", userId).order('"order"', { ascending: true }),
       ]);
 
       if (accountsRes.error) throw accountsRes.error;
@@ -43,6 +44,7 @@ export function DataConflictDialog({ onUpload, onDownload }: Props) {
       if (fixedRes.error) throw fixedRes.error;
       if (goalsRes.error) throw goalsRes.error;
       if (debtsRes.error) throw debtsRes.error;
+      if (foldersRes.error) throw foldersRes.error;
 
       const mapAccount = (r: any) => ({
         id: r.id, name: r.name, type: r.type,
@@ -74,6 +76,11 @@ export function DataConflictDialog({ onUpload, onDownload }: Props) {
         pinned: r.pinned, createdAt: r.created_at,
       });
 
+      const mapFolder = (r: any) => ({
+        id: r.id, name: r.name, color: r.color, icon: r.icon,
+        parentId: r.parent_id, order: r.order ?? 0, createdAt: r.created_at,
+      });
+
       const mapDebt = (r: any) => ({
         id: r.id, person: r.person, concept: r.concept, amount: Number(r.amount),
         date: r.date, dueDate: r.due_date, note: r.note, icon: r.icon,
@@ -89,6 +96,7 @@ export function DataConflictDialog({ onUpload, onDownload }: Props) {
         transactions: (txRes.data ?? []).map(mapTx),
         fixedItems: (fixedRes.data ?? []).map(mapFixed),
         goals: (goalsRes.data ?? []).map(mapGoal),
+        goalFolders: (foldersRes.data ?? []).map(mapFolder),
         debts: (debtsRes.data ?? []).map(mapDebt),
       });
 
@@ -99,6 +107,7 @@ export function DataConflictDialog({ onUpload, onDownload }: Props) {
       toast.error("Error al descargar datos: " + (e?.message ?? ""));
     } finally {
       setLoading(null);
+      onDownload(); // Always resolve conflict even on error
     }
   };
 
