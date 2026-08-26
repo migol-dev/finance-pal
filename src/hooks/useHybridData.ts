@@ -13,6 +13,29 @@ function mergeById<T extends { id: string }>(primary: T[], secondary: T[]): T[] 
   return [...primary, ...secondary.filter(s => !primaryIds.has(s.id))];
 }
 
+function mergeGoals(primary: any[], secondary: any[]): any[] {
+  if (secondary.length === 0) return primary;
+  if (primary.length === 0) return secondary;
+  const primaryMap = new Map(primary.map(p => [p.id, p]));
+  const secondaryMap = new Map(secondary.map(s => [s.id, s]));
+  const allIds = new Set([...primaryMap.keys(), ...secondaryMap.keys()]);
+  
+  return Array.from(allIds).map(id => {
+    const p = primaryMap.get(id);
+    const s = secondaryMap.get(id);
+    if (!p) return s;
+    if (!s) return p;
+    // Merge: prefer local for saved/contributions, remote for other fields
+    return {
+      ...p,
+      saved: s.saved ?? p.saved,
+      contributions: [...(p.contributions ?? []), ...(s.contributions ?? [])].filter(
+        (c, i, arr) => arr.findIndex(x => x.id === c.id) === i
+      ),
+    };
+  });
+}
+
 export function useHybridData() {
   const { session } = useAuth();
   const queryClient = useQueryClient();
@@ -56,7 +79,7 @@ export function useHybridData() {
   const goals = useMemo(() => {
     const remote = remoteGoals;
     return isOnline && Array.isArray(remote) && remote.length > 0
-      ? mergeById(remote, store.goals)
+      ? mergeGoals(remote, store.goals)
       : store.goals;
   }, [isOnline, remoteGoals, store.goals]);
 

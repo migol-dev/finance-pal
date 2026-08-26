@@ -184,7 +184,9 @@ function FolderForm({ initial, onSave }: { initial: GoalFolder | null; onSave: (
     <form onSubmit={(e) => {
       e.preventDefault();
       if (!name) { toast.error("Completa el nombre"); return; }
-      onSave({ name, color, icon, parentId: initial?.parentId, order: initial?.order ?? 0, createdAt: initial?.createdAt ?? new Date().toISOString() });
+      const payload: Omit<GoalFolder, "id"> = { name, color, icon, order: initial?.order ?? 0, createdAt: initial?.createdAt ?? new Date().toISOString() };
+      if (initial?.parentId) payload.parentId = initial.parentId;
+      onSave(payload);
     }} className="space-y-3">
       <div className="flex justify-center"><IconPicker value={icon} onChange={setIcon} /></div>
       <div><Label className="text-xs">Nombre</Label><Input autoFocus value={name} onChange={(e) => setName(e.target.value)} placeholder="Ej. Biker" className="h-11 rounded-2xl" /></div>

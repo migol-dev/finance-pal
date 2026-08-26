@@ -152,6 +152,20 @@ function AuthGuard() {
   const set = useFinance.setState;
   const navigate = useNavigate();
   const checkingCloudRef = useRef(false);
+  const resolveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Safety timeout to prevent infinite loading
+  React.useEffect(() => {
+    if (!resolved && hasLocalData() && cloudHasData !== null) {
+      resolveTimeoutRef.current = setTimeout(() => {
+        console.warn('[AuthGuard] Conflict resolution timeout - forcing resolve');
+        setResolved(true);
+      }, 15000); // 15 seconds max
+    }
+    return () => {
+      if (resolveTimeoutRef.current) clearTimeout(resolveTimeoutRef.current);
+    };
+  }, [resolved, cloudHasData]);
 
   React.useEffect(() => {
     if (!session?.user?.id) return;
