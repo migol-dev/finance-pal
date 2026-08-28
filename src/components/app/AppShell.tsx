@@ -11,6 +11,7 @@ import { App as CapacitorApp } from "@capacitor/app";
 import { toast } from "sonner";
 import { ACCENT_PALETTES, AccentColor } from "@/lib/accent-palette";
 import { scheduleAllNotifications, requestNotificationPermissions } from "@/lib/notifications";
+import { isSupabaseEnabled } from "@/lib/supabase";
 
 function applyAccentVars(root: HTMLElement, color: AccentColor) {
   const theme = root.classList.contains("dark") ? "dark" : "light";
@@ -59,21 +60,29 @@ export function AppShell({ children }: { children: ReactNode }) {
   const lastBackPressRef = useRef<number | null>(null);
 
   useEffect(() => {
-    if (didInit.current) return;
-    didInit.current = true;
-    const d = new Date();
-    setActive(d.getFullYear(), d.getMonth());
-
-    // Request notification permissions
-    requestNotificationPermissions().catch(console.warn);
-
-    // Schedule notifications
-    if (notificationPrefs?.enabled) {
-      scheduleAllNotifications(goals, fixedItems, notificationPrefs).catch(console.warn);
-    }
-
+    // Only handle the boot screen timeout here, completely decoupled from data dependencies
     const t = setTimeout(() => setBooting(false), 900);
     return () => clearTimeout(t);
+  }, []);
+
+  useEffect(() => {
+    if (didInit.current) return;
+    
+    // We wait until we actually have some data loaded before scheduling notifications
+    // or if we're offline, we just schedule with what we have
+    if (goals.length > 0 || fixedItems.length > 0 || !isSupabaseEnabled) {
+      didInit.current = true;
+      const d = new Date();
+      setActive(d.getFullYear(), d.getMonth());
+
+      // Request notification permissions
+      requestNotificationPermissions().catch(console.warn);
+
+      // Schedule notifications
+      if (notificationPrefs?.enabled) {
+        scheduleAllNotifications(goals, fixedItems, notificationPrefs).catch(console.warn);
+      }
+    }
   }, [setActive, notificationPrefs, goals, fixedItems]);
 
   useEffect(() => {
