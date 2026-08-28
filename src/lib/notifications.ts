@@ -74,6 +74,9 @@ export async function requestNotificationPermissions(): Promise<PermissionStatus
     if (typeof window !== "undefined" && "Notification" in window) {
       try {
         const perm = await Notification.requestPermission();
+        if (perm === "granted") {
+          import("./web-push").then(m => m.subscribeToWebPush()).catch(console.warn);
+        }
         return {
           display: perm === "granted" ? "granted" : "denied",
           badge: perm === "granted" ? "granted" : "denied",
