@@ -21,14 +21,14 @@ function mergeGoals(primary: any[], secondary: any[]): any[] {
   const allIds = new Set([...primaryMap.keys(), ...secondaryMap.keys()]);
   
   return Array.from(allIds).map(id => {
-    const p = primaryMap.get(id);
-    const s = secondaryMap.get(id);
+    const p = primaryMap.get(id); // remote
+    const s = secondaryMap.get(id); // local
     if (!p) return s;
     if (!s) return p;
-    // Merge: prefer local for saved/contributions, remote for other fields
     return {
+      ...s,
       ...p,
-      saved: s.saved ?? p.saved,
+      saved: (typeof p.saved === 'number' && p.saved > 0) ? p.saved : (s.saved ?? 0),
       contributions: [...(p.contributions ?? []), ...(s.contributions ?? [])].filter(
         (c, i, arr) => arr.findIndex(x => x.id === c.id) === i
       ),
@@ -57,42 +57,42 @@ export function useHybridData() {
 
   const accounts = useMemo(() => {
     const remote = remoteAccounts;
-    return isOnline && Array.isArray(remote) && remote.length > 0
+    return isOnline && Array.isArray(remote)
       ? mergeById(remote, store.accounts)
       : store.accounts;
   }, [isOnline, remoteAccounts, store.accounts]);
 
   const transactions = useMemo(() => {
     const remote = remoteTransactions;
-    return isOnline && Array.isArray(remote) && remote.length > 0
+    return isOnline && Array.isArray(remote)
       ? mergeById(remote, store.transactions)
       : store.transactions;
   }, [isOnline, remoteTransactions, store.transactions]);
 
   const fixedItems = useMemo(() => {
     const remote = remoteFixedItems;
-    return isOnline && Array.isArray(remote) && remote.length > 0
+    return isOnline && Array.isArray(remote)
       ? mergeById(remote, store.fixedItems)
       : store.fixedItems;
   }, [isOnline, remoteFixedItems, store.fixedItems]);
 
   const goals = useMemo(() => {
     const remote = remoteGoals;
-    return isOnline && Array.isArray(remote) && remote.length > 0
+    return isOnline && Array.isArray(remote)
       ? mergeGoals(remote, store.goals)
       : store.goals;
   }, [isOnline, remoteGoals, store.goals]);
 
   const goalFolders = useMemo(() => {
     const remote = remoteGoalFolders;
-    return isOnline && Array.isArray(remote) && remote.length > 0
+    return isOnline && Array.isArray(remote)
       ? mergeById(remote, store.goalFolders)
       : store.goalFolders;
   }, [isOnline, remoteGoalFolders, store.goalFolders]);
 
   const debts = useMemo(() => {
     const remote = remoteDebts;
-    return isOnline && Array.isArray(remote) && remote.length > 0
+    return isOnline && Array.isArray(remote)
       ? mergeById(remote, store.debts)
       : store.debts;
   }, [isOnline, remoteDebts, store.debts]);
@@ -106,8 +106,117 @@ export function useHybridData() {
     queryClient.invalidateQueries({ queryKey: ['debts'] });
   }, [queryClient]);
 
+  const invalidateAccounts = useCallback(() => queryClient.invalidateQueries({ queryKey: ['accounts'] }), [queryClient]);
+  const invalidateTransactions = useCallback(() => queryClient.invalidateQueries({ queryKey: ['transactions'] }), [queryClient]);
+  const invalidateFixedItems = useCallback(() => queryClient.invalidateQueries({ queryKey: ['fixed_items'] }), [queryClient]);
+  const invalidateGoals = useCallback(() => queryClient.invalidateQueries({ queryKey: ['goals'] }), [queryClient]);
+  const invalidateGoalFolders = useCallback(() => queryClient.invalidateQueries({ queryKey: ['goal_folders'] }), [queryClient]);
   const invalidateDebts = useCallback(() => queryClient.invalidateQueries({ queryKey: ['debts'] }), [queryClient]);
 
+  // Wrapped folder mutations
+  const wrappedAddGoalFolder = useCallback(async (f: Omit<GoalFolder, 'id'>) => {
+    await store.addGoalFolder(f);
+    invalidateGoalFolders();
+  }, [store, invalidateGoalFolders]);
+
+  const wrappedUpdateGoalFolder = useCallback(async (id: string, p: Partial<GoalFolder>) => {
+    await store.updateGoalFolder(id, p);
+    invalidateGoalFolders();
+  }, [store, invalidateGoalFolders]);
+
+  const wrappedRemoveGoalFolder = useCallback(async (id: string) => {
+    await store.removeGoalFolder(id);
+    invalidateGoalFolders();
+    invalidateGoals();
+  }, [store, invalidateGoalFolders, invalidateGoals]);
+
+  const wrappedReorderGoalFolders = useCallback((folders: GoalFolder[]) => {
+    store.reorderGoalFolders(folders);
+    invalidateGoalFolders();
+  }, [store, invalidateGoalFolders]);
+
+  // Wrapped goal mutations
+  const wrappedAddGoal = useCallback(async (g: any) => {
+    await store.addGoal(g);
+    invalidateGoals();
+  }, [store, invalidateGoals]);
+
+  const wrappedUpdateGoal = useCallback(async (id: string, p: any) => {
+    await store.updateGoal(id, p);
+    invalidateGoals();
+  }, [store, invalidateGoals]);
+
+  const wrappedRemoveGoal = useCallback(async (id: string) => {
+    await store.removeGoal(id);
+    invalidateGoals();
+  }, [store, invalidateGoals]);
+
+  const wrappedContributeGoal = useCallback((id: string, amount: number, date?: string, accountId?: string) => {
+    store.contributeGoal(id, amount, date, accountId);
+    invalidateGoals();
+    invalidateTransactions();
+  }, [store, invalidateGoals, invalidateTransactions]);
+
+  // Wrapped account mutations
+  const wrappedAddAccount = useCallback(async (a: any) => {
+    await store.addAccount(a);
+    invalidateAccounts();
+  }, [store, invalidateAccounts]);
+
+  const wrappedUpdateAccount = useCallback(async (id: string, p: any) => {
+    await store.updateAccount(id, p);
+    invalidateAccounts();
+  }, [store, invalidateAccounts]);
+
+  const wrappedRemoveAccount = useCallback(async (id: string) => {
+    await store.removeAccount(id);
+    invalidateAccounts();
+  }, [store, invalidateAccounts]);
+
+  const wrappedMergeAccounts = useCallback(async (sourceId: string, targetId: string) => {
+    await store.mergeAccounts(sourceId, targetId);
+    invalidateAccounts();
+    invalidateTransactions();
+  }, [store, invalidateAccounts, invalidateTransactions]);
+
+  // Wrapped transaction mutations
+  const wrappedAddTx = useCallback(async (t: any) => {
+    await store.addTx(t);
+    invalidateTransactions();
+  }, [store, invalidateTransactions]);
+
+  const wrappedUpdateTx = useCallback(async (id: string, p: any) => {
+    await store.updateTx(id, p);
+    invalidateTransactions();
+  }, [store, invalidateTransactions]);
+
+  const wrappedRemoveTx = useCallback(async (id: string) => {
+    await store.removeTx(id);
+    invalidateTransactions();
+  }, [store, invalidateTransactions]);
+
+  // Wrapped fixed item mutations
+  const wrappedAddFixed = useCallback(async (f: any) => {
+    await store.addFixed(f);
+    invalidateFixedItems();
+  }, [store, invalidateFixedItems]);
+
+  const wrappedUpdateFixed = useCallback(async (id: string, p: any) => {
+    await store.updateFixed(id, p);
+    invalidateFixedItems();
+  }, [store, invalidateFixedItems]);
+
+  const wrappedRemoveFixed = useCallback(async (id: string) => {
+    await store.removeFixed(id);
+    invalidateFixedItems();
+  }, [store, invalidateFixedItems]);
+
+  const wrappedToggleFixed = useCallback(async (id: string) => {
+    await store.toggleFixed(id);
+    invalidateFixedItems();
+  }, [store, invalidateFixedItems]);
+
+  // Wrapped debt mutations
   const wrappedAddDebtPayment = useCallback(async (debtId: string, p: Omit<DebtPayment, 'id'>) => {
     const state = useFinance.getState();
     const storeDebts = state.debts;
@@ -170,11 +279,11 @@ export function useHybridData() {
     isLoading,
     isSupabaseEnabled,
 
-    addAccount: store.addAccount, updateAccount: store.updateAccount, removeAccount: store.removeAccount, mergeAccounts: store.mergeAccounts,
-    addTx: store.addTx, updateTx: store.updateTx, removeTx: store.removeTx,
-    addFixed: store.addFixed, updateFixed: store.updateFixed, removeFixed: store.removeFixed, toggleFixed: store.toggleFixed,
-    addGoal: store.addGoal, updateGoal: store.updateGoal, removeGoal: store.removeGoal, contributeGoal: store.contributeGoal,
-    addGoalFolder: store.addGoalFolder, updateGoalFolder: store.updateGoalFolder, removeGoalFolder: store.removeGoalFolder, reorderGoalFolders: store.reorderGoalFolders,
+    addAccount: wrappedAddAccount, updateAccount: wrappedUpdateAccount, removeAccount: wrappedRemoveAccount, mergeAccounts: wrappedMergeAccounts,
+    addTx: wrappedAddTx, updateTx: wrappedUpdateTx, removeTx: wrappedRemoveTx,
+    addFixed: wrappedAddFixed, updateFixed: wrappedUpdateFixed, removeFixed: wrappedRemoveFixed, toggleFixed: wrappedToggleFixed,
+    addGoal: wrappedAddGoal, updateGoal: wrappedUpdateGoal, removeGoal: wrappedRemoveGoal, contributeGoal: wrappedContributeGoal,
+    addGoalFolder: wrappedAddGoalFolder, updateGoalFolder: wrappedUpdateGoalFolder, removeGoalFolder: wrappedRemoveGoalFolder, reorderGoalFolders: wrappedReorderGoalFolders,
     addDebt: wrappedAddDebt,
     updateDebt: wrappedUpdateDebt,
     removeDebt: wrappedRemoveDebt,

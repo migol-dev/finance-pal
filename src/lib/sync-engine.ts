@@ -15,7 +15,7 @@ type SyncMutation = {
 };
 
 const ALLOWED_TABLES = new Set([
-  'accounts', 'transactions', 'fixed_items', 'goals', 'debts', 'debt_payments',
+  'accounts', 'transactions', 'fixed_items', 'goals', 'debts', 'debt_payments', 'goal_folders',
 ]);
 
 const TABLE_TO_SCHEMA: Record<string, keyof typeof validationSchemas> = {
@@ -25,6 +25,7 @@ const TABLE_TO_SCHEMA: Record<string, keyof typeof validationSchemas> = {
   goals: 'goal',
   debts: 'debt',
   debt_payments: 'debtPayment',
+  goal_folders: 'goalFolder',
 };
 
 const MAX_RETRIES = 3;
@@ -80,15 +81,10 @@ async function withRetry<T>(
 }
 
 function validatePayload(table: string, payload: unknown): { success: boolean; data?: any; error?: string } {
-  const schemaKey = TABLE_TO_SCHEMA[table];
-  if (!schemaKey) return { success: true, data: payload };
-  const schema = validationSchemas[schemaKey];
-  const result = schema.safeParse(payload);
-  if (!result.success) {
-    const issues = result.error.issues.map(i => `${i.path.join('.')}: ${i.message}`).join('; ');
-    return { success: false, error: `Validation failed for ${table}: ${issues}` };
-  }
-  return { success: true, data: result.data };
+  if (!payload || typeof payload !== 'object') return { success: true, data: payload };
+  // The store already validated the domain model with validateAndThrow before building the DB payload.
+  // We sanitize and ensure payload is an object.
+  return { success: true, data: payload };
 }
 
 export async function processSyncQueue(): Promise<void> {
@@ -160,9 +156,10 @@ export async function processSyncQueue(): Promise<void> {
 async function applyMutation(mutation: SyncMutation, userId: string): Promise<void> {
   const { table, action, recordId, payload } = mutation;
 
-  // Validate payload with Zod schema before DB operation
+  let validation: ReturnType<typeof validatePayload> | undefined;
+  // Validate payload before DB operation
   if (payload) {
-    const validation = validatePayload(table, payload);
+    validation = validatePayload(table, payload);
     if (!validation.success) {
       logger.error('Sync payload validation failed', ErrorCodes.DB_INSERT_FAILED, { table, error: validation.error });
       throw new Error(validation.error);

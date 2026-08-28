@@ -199,52 +199,54 @@ async function deleteFileNative(path: string): Promise<void> {
   await Filesystem.deleteFile({ path, directory: Directory.Data });
 }
 
-export async function saveEncryptedState(state: string): Promise<void> {
+export async function saveEncryptedState(state: string, key: string = STORAGE_KEY): Promise<void> {
   try {
     await ensureFilesystem();
     const encrypted = await encryptData(state);
     if (isNativePlatform()) {
-      await writeFileNative(STORAGE_KEY, encrypted);
+      await writeFileNative(key, encrypted);
     } else {
-      localStorage.setItem(STORAGE_KEY, encrypted);
+      localStorage.setItem(key, encrypted);
     }
   } catch (e) {
-    console.error('Failed to save encrypted state:', e);
+    console.error(`Failed to save encrypted state for ${key}:`, e);
     throw e;
   }
 }
 
-export async function loadEncryptedState(): Promise<string | null> {
+export async function loadEncryptedState(key: string = STORAGE_KEY): Promise<string | null> {
   try {
     await ensureFilesystem();
     let encrypted: string;
     if (isNativePlatform()) {
-      encrypted = await readFileNative(STORAGE_KEY);
+      encrypted = await readFileNative(key);
     } else {
-      encrypted = localStorage.getItem(STORAGE_KEY) ?? '';
+      encrypted = localStorage.getItem(key) ?? '';
     }
     
     if (!encrypted) return null;
     return await decryptData(encrypted);
   } catch (e) {
-    console.error('Failed to load encrypted state:', e);
+    console.error(`Failed to load encrypted state for ${key}:`, e);
     return null;
   }
 }
 
-export async function clearEncryptedState(): Promise<void> {
+export async function clearEncryptedState(key: string = STORAGE_KEY): Promise<void> {
   try {
     await ensureFilesystem();
     if (isNativePlatform()) {
-      await deleteFileNative(STORAGE_KEY);
+      await deleteFileNative(key);
     } else {
-      localStorage.removeItem(STORAGE_KEY);
+      localStorage.removeItem(key);
     }
-    localStorage.removeItem(`${STORAGE_KEY}-salt`);
-    cryptoKey = null;
-    keyPromise = null;
+    if (key === STORAGE_KEY) {
+      localStorage.removeItem(`${STORAGE_KEY}-salt`);
+      cryptoKey = null;
+      keyPromise = null;
+    }
   } catch (e) {
-    console.error('Failed to clear encrypted state:', e);
+    console.error(`Failed to clear encrypted state for ${key}:`, e);
   }
 }
 

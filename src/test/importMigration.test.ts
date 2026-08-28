@@ -7,16 +7,18 @@ describe("importData / migrate sanitization", () => {
   });
 
   it("importa solo cuentas y transacciones válidas y devuelve advertencias de migración", async () => {
+    const validAcctId = "11111111-1111-4111-8111-111111111111";
+    const validTxId = "22222222-2222-4222-8222-222222222222";
     const payload = {
       app: "finance-pal",
       version: 1,
       data: {
         accounts: [
-          { id: "ok", name: "Cuenta OK", type: "bank", initialBalance: 100 },
+          { id: validAcctId, name: "Cuenta OK", type: "bank", initialBalance: 100 },
           { id: "bad", type: "cash" },
         ],
         transactions: [
-          { id: "t1", type: "income", category: "Trabajo", concept: "Sueldo", amount: 100, date: new Date().toISOString(), accountId: "ok" },
+          { id: validTxId, type: "income", category: "Trabajo", concept: "Sueldo", amount: 100, date: new Date().toISOString(), accountId: validAcctId },
           { id: "t2", type: "expense", concept: "Sin monto" },
         ]
       }
@@ -27,12 +29,12 @@ describe("importData / migrate sanitization", () => {
     expect(res.warnings && res.warnings.length > 0).toBe(true);
 
     const s = useFinance.getState();
-    const okAcct = s.accounts.find((a) => a.id === "ok");
+    const okAcct = s.accounts.find((a) => a.id === validAcctId);
     expect(okAcct).toBeTruthy();
     const badAcct = s.accounts.find((a) => a.id === "bad");
     expect(badAcct).toBeUndefined();
 
-    const tx = s.transactions.find((t) => t.id === "t1");
+    const tx = s.transactions.find((t) => t.id === validTxId);
     expect(tx).toBeTruthy();
     const invalidTx = s.transactions.find((t) => t.id === "t2");
     expect(invalidTx).toBeUndefined();

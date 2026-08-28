@@ -29,9 +29,13 @@ export function DataConflictDialog({ onUpload, onDownload }: Props) {
     setLoading("download");
     const userId = session.user.id;
 
+    // Clear any pending local mutations so they don't overwrite cloud data
+    useSyncStore.getState().clearQueue();
+
     // Safety timeout - force resolve after 15 seconds
     const timeoutId = setTimeout(() => {
       console.warn('[DataConflictDialog] Download timeout - forcing resolve');
+      setLoading(null);
       onDownload();
     }, 15000);
 
@@ -79,7 +83,7 @@ export function DataConflictDialog({ onUpload, onDownload }: Props) {
         id: r.id, name: r.name, target: Number(r.target), saved: Number(r.saved ?? 0),
         emoji: r.emoji, color: r.color, deadline: r.deadline, icon: r.icon,
         purchaseUrl: r.purchase_url, contributions: r.contributions ?? [],
-        pinned: r.pinned, createdAt: r.created_at,
+        pinned: r.pinned, folderId: r.folder_id, createdAt: r.created_at,
       });
 
       const mapFolder = (r: any) => ({
@@ -123,14 +127,13 @@ export function DataConflictDialog({ onUpload, onDownload }: Props) {
       });
 
       toast.success("Datos de la nube descargados correctamente");
-      onDownload();
     } catch (e: any) {
       console.error("Download error:", e);
       toast.error("Error al descargar datos: " + (e?.message ?? ""));
     } finally {
       clearTimeout(timeoutId);
       setLoading(null);
-      onDownload(); // Always resolve conflict even on error
+      onDownload();
     }
   };
 

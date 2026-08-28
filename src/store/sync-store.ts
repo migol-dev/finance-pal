@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { persist, StateStorage } from 'zustand/middleware';
-import { saveEncryptedState, loadEncryptedState, isEncryptionAvailable } from '@/lib/encrypted-storage';
+import { saveEncryptedState, loadEncryptedState, clearEncryptedState, isEncryptionAvailable } from '@/lib/encrypted-storage';
 
 export type SyncActionType = 'INSERT' | 'UPDATE' | 'DELETE';
 
@@ -24,30 +24,33 @@ interface SyncState {
 }
 
 const STORAGE_KEY = 'finance-pal-sync-queue';
+const ENCRYPTED_STORAGE_KEY = 'finance-pal-sync-queue-encrypted';
 
 const encryptedStorage: StateStorage = {
   getItem: async (name: string): Promise<string | null> => {
     if (name !== STORAGE_KEY) return null;
     if (!isEncryptionAvailable()) return localStorage.getItem(name);
-    return await loadEncryptedState();
+    const encrypted = await loadEncryptedState(ENCRYPTED_STORAGE_KEY);
+    if (encrypted) return encrypted;
+    return localStorage.getItem(name);
   },
   setItem: async (name: string, value: string): Promise<void> => {
     if (name !== STORAGE_KEY) return;
-    if (!isEncryptionAvailable()) {
-      localStorage.setItem(name, value);
-      return;
+    localStorage.setItem(name, value);
+    if (isEncryptionAvailable()) {
+      try {
+        await saveEncryptedState(value, ENCRYPTED_STORAGE_KEY);
+      } catch (e) {
+        console.warn('Sync queue encrypted save failed:', e);
+      }
     }
-    await saveEncryptedState(value);
   },
   removeItem: async (name: string): Promise<void> => {
     if (name !== STORAGE_KEY) return;
-    if (!isEncryptionAvailable()) {
-      localStorage.removeItem(name);
-      return;
-    }
-    // clearEncryptedState removes the salt too, which we don't want for just this key
-    // So we'll just remove the specific key
     localStorage.removeItem(name);
+    if (isEncryptionAvailable()) {
+      await clearEncryptedState(ENCRYPTED_STORAGE_KEY);
+    }
   },
 };
 

@@ -468,7 +468,7 @@ export const useFinance = create<State>()(
       hasLocalData: () => {
         const s = get();
         if (!s) return false;
-        return ((s.transactions?.length ?? 0) + (s.fixedItems?.length ?? 0) + (s.goals?.length ?? 0) + (s.debts?.length ?? 0)) > 0;
+        return ((s.transactions?.length ?? 0) + (s.fixedItems?.length ?? 0) + (s.goals?.length ?? 0) + (s.debts?.length ?? 0) + (s.goalFolders?.length ?? 0)) > 0;
       },
 
       setProfile: (p) => {
