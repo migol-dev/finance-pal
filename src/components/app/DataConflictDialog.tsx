@@ -28,11 +28,7 @@ export function DataConflictDialog({ onUpload, onDownload }: Props) {
   const handleDownload = async () => {
     if (!session?.user?.id) return;
     setLoading("download");
-    const userId = session.user.id;
-
-    // Clear any pending local mutations so they don't overwrite cloud data
-    useSyncStore.getState().clearQueue();
-
+    
     // Safety timeout - force resolve after 15 seconds
     const timeoutId = setTimeout(() => {
       console.warn('[DataConflictDialog] Download timeout - forcing resolve');
@@ -41,6 +37,14 @@ export function DataConflictDialog({ onUpload, onDownload }: Props) {
     }, 15000);
 
     try {
+      const userId = session.user.id;
+
+      try {
+        // Clear any pending local mutations so they don't overwrite cloud data
+        useSyncStore.getState().clearQueue();
+      } catch (e) {
+        console.warn('Could not clear sync queue:', e);
+      }
       const [accountsRes, txRes, fixedRes, goalsRes, debtsRes, foldersRes] = await Promise.all([
         supabase.from("accounts").select("*").eq("user_id", userId),
         supabase.from("transactions").select("*").eq("user_id", userId).order("date", { ascending: false }),
