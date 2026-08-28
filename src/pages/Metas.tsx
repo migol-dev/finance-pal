@@ -366,7 +366,7 @@ export default function Metas() {
         </aside>
 
         {/* Goals Grid */}
-        <div className="px-5 lg:px-0">
+        <div className="px-5 lg:px-0 space-y-4">
           {filteredGoals.length === 0 && (
             <div className="rounded-2xl bg-muted/50 border border-dashed border-border p-8 text-center">
               <p className="text-4xl mb-2">🎯</p>

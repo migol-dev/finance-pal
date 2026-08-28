@@ -264,7 +264,12 @@ function AuthGuard() {
       return (
         <DataConflictDialog
           onUpload={() => { setConflictResolved(); setResolved(true); navigate('/migracion'); }}
-          onDownload={() => { setConflictResolved(); setResolved(true); }}
+          onDownload={() => { 
+            // Wipe local data so it doesn't get merged
+            set({ fixedItems: [], transactions: [], goals: [], debts: [], goalFolders: [], accounts: [] });
+            setConflictResolved(); 
+            setResolved(true); 
+          }}
         />
       );
     }

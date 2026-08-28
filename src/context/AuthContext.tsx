@@ -75,6 +75,19 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         logger.error('Sign out failed', ErrorCodes.AUTH_SIGNOUT_FAILED, { error: e });
       }
     }
+    
+    // Clear local data completely to avoid merging it into another user's session
+    useFinance.setState({
+      fixedItems: [],
+      transactions: [],
+      goals: [],
+      debts: [],
+      goalFolders: [],
+      changeLog: [],
+      accounts: [],
+    });
+    useSyncStore.getState().clearQueue();
+    
     setSession(null);
     setUser(null);
     setMfaRequired(false);

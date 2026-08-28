@@ -51,3 +51,6 @@ src/App.css
 
 # Example / placeholder test files
 src/test/example.test.ts
+
+# Supabase CLI temp
+supabase/.temp/

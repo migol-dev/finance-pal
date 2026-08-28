@@ -1220,11 +1220,18 @@ function AccountSettings() {
               Escanea este código QR con tu app de autenticación (Google Authenticator, Authy, 1Password, etc.)
             </p>
             <div className="flex justify-center">
-              <img 
-                src={`https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(mfaQrCode)}`} 
-                alt="2FA QR Code" 
-                className="rounded-xl border border-border bg-white p-2"
-              />
+              {mfaQrCode.startsWith('data:') ? (
+                <img 
+                  src={mfaQrCode} 
+                  alt="2FA QR Code" 
+                  className="rounded-xl border border-border bg-white p-2"
+                />
+              ) : (
+                <div 
+                  className="rounded-xl border border-border bg-white p-2 flex items-center justify-center [&>svg]:w-48 [&>svg]:h-48"
+                  dangerouslySetInnerHTML={{ __html: mfaQrCode }} 
+                />
+              )}
             </div>
             <p className="text-xs font-mono text-muted-foreground break-all bg-muted p-2 rounded-lg">
               Clave secreta: {mfaSecret}
