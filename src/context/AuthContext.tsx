@@ -9,16 +9,20 @@ interface AuthContextType {
   session: Session | null;
   user: User | null;
   loading: boolean;
+  mfaRequired: boolean;
   signOut: () => Promise<void>;
   refreshSession: () => Promise<void>;
+  checkMfaStatus: () => Promise<boolean>;
 }
 
 const AuthContext = createContext<AuthContextType>({
   session: null,
   user: null,
   loading: true,
+  mfaRequired: false,
   signOut: async () => {},
   refreshSession: async () => {},
+  checkMfaStatus: async () => false,
 });
 
 // Session timeout: 30 minutes of inactivity
@@ -30,6 +34,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [session, setSession] = useState<Session | null>(null);
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
+  const [mfaRequired, setMfaRequired] = useState(false);
   
   const inactivityTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const refreshTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -40,6 +45,23 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const refreshSessionRef = useRef<() => Promise<void>>();
   const resetInactivityTimerRef = useRef<() => void>();
   const scheduleTokenRefreshRef = useRef<() => void>();
+
+  const checkMfaStatus = useCallback(async (): Promise<boolean> => {
+    if (!isSupabaseEnabled) return false;
+    try {
+      const { data, error } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
+      if (error) throw error;
+      if (data) {
+        const needsMfa = data.currentLevel === 'aal1' && data.nextLevel === 'aal2';
+        setMfaRequired(needsMfa);
+        return needsMfa;
+      }
+    } catch (e) {
+      console.warn('[AuthContext] Failed to get MFA assurance level:', e);
+    }
+    setMfaRequired(false);
+    return false;
+  }, []);
 
   const signOut = useCallback(async () => {
     const userId = session?.user?.id;
@@ -55,6 +77,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     }
     setSession(null);
     setUser(null);
+    setMfaRequired(false);
     
     // Audit log: user logout
     if (userId) {
@@ -75,6 +98,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       if (data.session) {
         setSession(data.session);
         setUser(data.session.user);
+        await checkMfaStatus();
         scheduleTokenRefreshRef.current?.();
       }
     } catch (e) {
@@ -84,7 +108,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     } finally {
       isRefreshing.current = false;
     }
-  }, []);
+  }, [checkMfaStatus]);
 
   refreshSessionRef.current = refreshSession;
 
@@ -128,21 +152,21 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       return;
     }
 
-    supabase.auth.getSession().then(({ data: { session } }) => {
+    supabase.auth.getSession().then(async ({ data: { session } }) => {
       setSession(session);
       setUser(session?.user ?? null);
-      setLoading(false);
-      
       if (session) {
+        await checkMfaStatus();
         resetInactivityTimerRef.current?.();
         scheduleTokenRefreshRef.current?.();
       }
+      setLoading(false);
     }).catch((e) => {
       logger.error('Failed to get session', ErrorCodes.AUTH_SESSION_EXPIRED, { error: e });
       setLoading(false);
     });
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
       const isNewSession = event === 'SIGNED_IN' && session;
       const isSignOut = event === 'SIGNED_OUT';
       
@@ -150,6 +174,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       setUser(session?.user ?? null);
       
       if (isNewSession) {
+        await checkMfaStatus();
         resetInactivityTimerRef.current?.();
         scheduleTokenRefreshRef.current?.();
         
@@ -158,6 +183,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
           audit.login(session.user.id, { provider: session.user.app_metadata?.provider ?? 'email' });
         }
       } else if (isSignOut) {
+        setMfaRequired(false);
         if (inactivityTimer.current) clearTimeout(inactivityTimer.current);
         if (refreshTimer.current) clearTimeout(refreshTimer.current);
       }
@@ -179,10 +205,10 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         window.removeEventListener(event, handleActivity);
       });
     };
-  }, []);
+  }, [checkMfaStatus]);
 
   return (
-    <AuthContext.Provider value={{ session, user, loading, signOut, refreshSession }}>
+    <AuthContext.Provider value={{ session, user, loading, mfaRequired, signOut, refreshSession, checkMfaStatus }}>
       {children}
     </AuthContext.Provider>
   );

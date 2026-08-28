@@ -144,7 +144,7 @@ function AnimatedRoutes() {
 }
 
 function AuthGuard() {
-  const { session, loading } = useAuth();
+  const { session, loading, mfaRequired } = useAuth();
   const { hasLocalData, loadSettingsFromCloud, appSettings, setConflictResolved } = useFinance();
   const [resolved, setResolved] = React.useState(appSettings.conflictResolved ?? false);
   const [cloudHasData, setCloudHasData] = React.useState<boolean | null>(null);
@@ -252,7 +252,7 @@ function AuthGuard() {
     if (loading) {
       return suspenseFallback;
     }
-    if (!session) {
+    if (!session || mfaRequired) {
       return (
         <Suspense fallback={suspenseFallback}>
           <Login />

@@ -3,7 +3,7 @@ import { motion } from '@/lib/framer';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/context/AuthContext';
 import { toast } from 'sonner';
-import { Mail, Lock, Loader2, LogIn, UserPlus, Wallet } from 'lucide-react';
+import { Mail, Lock, Loader2, LogIn, UserPlus, Wallet, ShieldCheck, Key, ArrowLeft } from 'lucide-react';
 import { Progress } from '@/components/ui/progress';
 import { Browser } from '@capacitor/browser';
 import { Capacitor } from '@capacitor/core';
@@ -111,11 +111,28 @@ function PasswordStrengthMeter({ password }: { password: string }) {
 }
 
 export default function Login() {
-  const { session } = useAuth();
+  const { session, mfaRequired, signOut, checkMfaStatus } = useAuth();
   const [isLogin, setIsLogin] = useState(true);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
+
+  // 2FA state
+  const [mfaCode, setMfaCode] = useState('');
+  const [verifyingMfa, setVerifyingMfa] = useState(false);
+  const [mfaFactorId, setMfaFactorId] = useState<string | null>(null);
+
+  // Load TOTP factor ID if MFA is required
+  React.useEffect(() => {
+    if (session && mfaRequired) {
+      supabase.auth.mfa.listFactors().then(({ data, error }) => {
+        if (!error && data?.all) {
+          const totp = data.all.find((f: any) => f.factor_type === 'totp' && f.status === 'verified');
+          if (totp) setMfaFactorId(totp.id);
+        }
+      }).catch(console.error);
+    }
+  }, [session, mfaRequired]);
 
   const handleOAuth = async (provider: 'google' | 'github') => {
     setLoading(true);
@@ -165,7 +182,10 @@ export default function Login() {
       if (isLogin) {
         const { error } = await supabase.auth.signInWithPassword({ email, password });
         if (error) throw error;
-        toast.success('Sesión iniciada correctamente');
+        const needsMfa = await checkMfaStatus();
+        if (!needsMfa) {
+          toast.success('Sesión iniciada correctamente');
+        }
       } else {
         const { error } = await supabase.auth.signUp({ email, password });
         if (error) throw error;
@@ -178,13 +198,115 @@ export default function Login() {
     }
   };
 
-  if (session) {
+  const handleMfaSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!mfaCode || mfaCode.length !== 6) {
+      toast.error('Introduce el código de 6 dígitos');
+      return;
+    }
+    setVerifyingMfa(true);
+    try {
+      let factorId = mfaFactorId;
+      if (!factorId) {
+        const { data, error } = await supabase.auth.mfa.listFactors();
+        if (error) throw error;
+        const totp = data?.all?.find((f: any) => f.factor_type === 'totp' && f.status === 'verified');
+        if (!totp) throw new Error('No se encontró el factor de autenticación');
+        factorId = totp.id;
+        setMfaFactorId(totp.id);
+      }
+
+      const { data: challengeData, error: challengeError } = await supabase.auth.mfa.challenge({ factorId });
+      if (challengeError) throw challengeError;
+
+      const { error: verifyError } = await supabase.auth.mfa.verify({
+        factorId,
+        challengeId: challengeData.id,
+        code: mfaCode,
+      });
+      if (verifyError) throw verifyError;
+
+      await checkMfaStatus();
+      toast.success('Autenticación de dos factores verificada');
+    } catch (error: any) {
+      toast.error(error.message || 'Código 2FA incorrecto o expirado');
+    } finally {
+      setVerifyingMfa(false);
+    }
+  };
+
+  // If user is logged in and does not need MFA, show redirecting banner
+  if (session && !mfaRequired) {
     return (
       <div className="flex h-screen w-full items-center justify-center p-4 bg-background">
         <div className="text-center">
           <h2 className="text-xl font-bold mb-2">Ya has iniciado sesión</h2>
           <p className="text-sm text-muted-foreground">Serás redirigido en breve.</p>
         </div>
+      </div>
+    );
+  }
+
+  // 2FA TOTP Challenge Screen
+  if (session && mfaRequired) {
+    return (
+      <div className="flex min-h-screen w-full items-center justify-center p-4 bg-background relative overflow-hidden">
+        <div className="absolute inset-0 gradient-mesh opacity-50" />
+        <motion.div
+          initial={{ opacity: 0, scale: 0.95 }}
+          animate={{ opacity: 1, scale: 1 }}
+          className="w-full max-w-sm relative"
+        >
+          <div className="bg-card border border-border rounded-2xl p-6 shadow-card space-y-4">
+            <div className="text-center">
+              <div className="size-14 rounded-2xl bg-primary/10 text-primary flex items-center justify-center mx-auto mb-3">
+                <ShieldCheck className="size-7" />
+              </div>
+              <h1 className="text-xl font-extrabold tracking-tight">Verificación en dos pasos</h1>
+              <p className="text-xs text-muted-foreground mt-1">
+                Ingresa el código de 6 dígitos generado por tu aplicación de autenticación (Google Authenticator, Authy, etc.).
+              </p>
+            </div>
+
+            <form onSubmit={handleMfaSubmit} className="space-y-4">
+              <div className="relative">
+                <Key className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
+                <input
+                  type="text"
+                  inputMode="numeric"
+                  pattern="[0-9]*"
+                  maxLength={6}
+                  placeholder="123456"
+                  className="w-full pl-10 pr-4 py-3 bg-muted/50 border border-border rounded-xl text-center text-lg tracking-[0.3em] font-mono outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all"
+                  value={mfaCode}
+                  onChange={(e) => setMfaCode(e.target.value.replace(/\D/g, ''))}
+                  autoFocus
+                  required
+                />
+              </div>
+
+              <button
+                type="submit"
+                disabled={verifyingMfa || mfaCode.length !== 6}
+                className="w-full py-2.5 bg-primary text-primary-foreground font-semibold rounded-xl flex items-center justify-center gap-2 hover:bg-primary/90 transition-all disabled:opacity-60 text-sm shadow-glow"
+              >
+                {verifyingMfa ? (
+                  <Loader2 className="size-4 animate-spin" />
+                ) : (
+                  <>Verificar código</>
+                )}
+              </button>
+
+              <button
+                type="button"
+                onClick={() => signOut()}
+                className="w-full py-2 bg-transparent text-muted-foreground hover:text-foreground font-medium rounded-xl flex items-center justify-center gap-2 text-xs transition-colors"
+              >
+                <ArrowLeft className="size-3.5" /> Cancelar e iniciar con otra cuenta
+              </button>
+            </form>
+          </div>
+        </motion.div>
       </div>
     );
   }

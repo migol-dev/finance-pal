@@ -66,20 +66,47 @@ function generateNotificationId(type: NotificationType, entityId: string, extra?
   return extra ? `${base}_${extra}` : base;
 }
 
+// Web in-memory timer map for scheduled notifications
+const webNotificationTimers = new Map<string, ReturnType<typeof setTimeout>>();
+
 export async function requestNotificationPermissions(): Promise<PermissionStatus> {
   if (!Capacitor.isNativePlatform()) {
-    // On web, just return granted (browser handles permission)
-    return { display: "granted", badge: "granted", alert: "granted" };
+    if (typeof window !== "undefined" && "Notification" in window) {
+      try {
+        const perm = await Notification.requestPermission();
+        return {
+          display: perm === "granted" ? "granted" : "denied",
+          badge: perm === "granted" ? "granted" : "denied",
+          alert: perm === "granted" ? "granted" : "denied",
+        };
+      } catch (e) {
+        console.warn("Web notification permission request failed:", e);
+        return { display: "denied", badge: "denied", alert: "denied" };
+      }
+    }
+    return { display: "denied", badge: "denied", alert: "denied" };
   }
   
-  const localPerm = await LocalNotifications.requestPermissions();
-  const pushPerm = await PushNotifications.requestPermissions();
-  
-  return {
-    display: localPerm.display === "granted" && pushPerm.receive === "granted" ? "granted" : "denied",
-    badge: localPerm.badge,
-    alert: localPerm.alert,
-  };
+  try {
+    const localPerm = await LocalNotifications.requestPermissions();
+    let pushGranted = false;
+    try {
+      const pushPerm = await PushNotifications.requestPermissions();
+      pushGranted = pushPerm.receive === "granted";
+    } catch {
+      // Push might not be configured, local notification is primary
+      pushGranted = true;
+    }
+    
+    return {
+      display: localPerm.display === "granted" ? "granted" : "denied",
+      badge: localPerm.badge,
+      alert: localPerm.alert,
+    };
+  } catch (e) {
+    console.warn("Native notification permission request failed:", e);
+    return { display: "denied", badge: "denied", alert: "denied" };
+  }
 }
 
 export async function registerPushNotifications(): Promise<string | null> {
@@ -119,38 +146,134 @@ export function setupPushListeners(
 }
 
 export async function scheduleLocalNotification(notification: ScheduledNotification): Promise<void> {
-  if (!Capacitor.isNativePlatform()) return;
-  
-  const { display } = await LocalNotifications.checkPermissions();
-  if (display !== "granted") return;
-  
-  await LocalNotifications.schedule({
-    notifications: [
-      {
-        id: Math.abs(hashCode(notification.id)),
-        title: notification.title,
-        body: notification.body,
-        schedule: { at: notification.scheduledAt },
-        extra: { ...notification.payload, type: notification.type, entityId: notification.entityId },
-        sound: "default",
-        smallIcon: "ic_notification",
-        iconColor: "#3B82F6",
-      }
-    ]
-  });
+  if (Capacitor.isNativePlatform()) {
+    try {
+      const { display } = await LocalNotifications.checkPermissions();
+      if (display !== "granted") return;
+      
+      await LocalNotifications.schedule({
+        notifications: [
+          {
+            id: Math.abs(hashCode(notification.id)),
+            title: notification.title,
+            body: notification.body,
+            schedule: { at: notification.scheduledAt },
+            extra: { ...notification.payload, type: notification.type, entityId: notification.entityId },
+            sound: "default",
+            smallIcon: "ic_notification",
+            iconColor: "#3B82F6",
+          }
+        ]
+      });
+    } catch (e) {
+      console.warn("Native local notification scheduling failed:", e);
+    }
+    return;
+  }
+
+  // Web Notification Scheduling
+  if (typeof window !== "undefined" && "Notification" in window) {
+    // Clear previous timer for same ID if any
+    if (webNotificationTimers.has(notification.id)) {
+      clearTimeout(webNotificationTimers.get(notification.id)!);
+      webNotificationTimers.delete(notification.id);
+    }
+
+    if (Notification.permission !== "granted") return;
+
+    const delay = notification.scheduledAt.getTime() - Date.now();
+    // Max 32-bit signed integer for setTimeout is 2147483647 ms (~24.8 days)
+    if (delay > 0 && delay <= 2147483647) {
+      const timer = setTimeout(() => {
+        try {
+          if (Notification.permission === "granted") {
+            new Notification(notification.title, {
+              body: notification.body,
+              icon: "/icon-192.png",
+              data: notification.payload,
+            });
+          }
+        } catch (e) {
+          console.warn("Web Notification trigger failed:", e);
+        } finally {
+          webNotificationTimers.delete(notification.id);
+        }
+      }, delay);
+      webNotificationTimers.set(notification.id, timer);
+    }
+  }
 }
 
 export async function cancelLocalNotification(id: string): Promise<void> {
-  if (!Capacitor.isNativePlatform()) return;
-  await LocalNotifications.cancel({ notifications: [{ id: Math.abs(hashCode(id)) }] });
+  if (Capacitor.isNativePlatform()) {
+    try {
+      await LocalNotifications.cancel({ notifications: [{ id: Math.abs(hashCode(id)) }] });
+    } catch (e) {
+      console.warn("Native notification cancel failed:", e);
+    }
+    return;
+  }
+
+  if (webNotificationTimers.has(id)) {
+    clearTimeout(webNotificationTimers.get(id)!);
+    webNotificationTimers.delete(id);
+  }
 }
 
 export async function cancelAllLocalNotifications(): Promise<void> {
-  if (!Capacitor.isNativePlatform()) return;
-  const pending = await LocalNotifications.getPending();
-  if (pending.notifications.length > 0) {
-    await LocalNotifications.cancel({ notifications: pending.notifications.map(n => ({ id: n.id })) });
+  if (Capacitor.isNativePlatform()) {
+    try {
+      const pending = await LocalNotifications.getPending();
+      if (pending.notifications.length > 0) {
+        await LocalNotifications.cancel({ notifications: pending.notifications.map(n => ({ id: n.id })) });
+      }
+    } catch (e) {
+      console.warn("Native cancel all notifications failed:", e);
+    }
+    return;
   }
+
+  webNotificationTimers.forEach(timer => clearTimeout(timer));
+  webNotificationTimers.clear();
+}
+
+export async function sendTestNotification(): Promise<boolean> {
+  if (Capacitor.isNativePlatform()) {
+    const perm = await LocalNotifications.requestPermissions();
+    if (perm.display !== "granted") {
+      throw new Error("Permisos de notificación denegados en el dispositivo");
+    }
+    await LocalNotifications.schedule({
+      notifications: [{
+        id: 999999,
+        title: "Notificación de prueba",
+        body: "¡Las notificaciones funcionan correctamente en Android! 🎉",
+        schedule: { at: new Date(Date.now() + 1000) },
+        extra: { test: true },
+        sound: "default",
+        smallIcon: "ic_notification",
+        iconColor: "#3B82F6",
+      }]
+    });
+    return true;
+  }
+
+  if (typeof window !== "undefined" && "Notification" in window) {
+    let perm = Notification.permission;
+    if (perm !== "granted") {
+      perm = await Notification.requestPermission();
+    }
+    if (perm !== "granted") {
+      throw new Error("Permisos de notificación denegados en el navegador");
+    }
+    new Notification("Notificación de prueba", {
+      body: "¡Las notificaciones funcionan correctamente en la Web! 🎉",
+      icon: "/icon-192.png",
+    });
+    return true;
+  }
+
+  throw new Error("Este navegador no soporta notificaciones de escritorio");
 }
 
 function hashCode(str: string): number {

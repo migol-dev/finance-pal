@@ -26,7 +26,7 @@ import { useAuth } from '@/context/AuthContext';
 import { supabase, isSupabaseEnabled, setSyncEnabled } from '@/lib/supabase';
 import { useQueryClient } from '@tanstack/react-query';
 import { showUserError } from '@/lib/app-error';
-import { scheduleAllNotifications, requestNotificationPermissions, cancelAllLocalNotifications } from '@/lib/notifications';
+import { scheduleAllNotifications, requestNotificationPermissions, cancelAllLocalNotifications, sendTestNotification } from '@/lib/notifications';
 import { audit } from '@/lib/audit-logger';
 
 export default function Ajustes() {
@@ -1328,10 +1328,10 @@ function NotificationSettings() {
   const setNotificationPrefs = useFinance((s) => s.setNotificationPrefs);
   const { goals, fixedItems } = useHybridData();
 
-  const toggleEnabled = (key: keyof NotificationPreferences, value: boolean) => {
+  const toggleEnabled = async (key: keyof NotificationPreferences, value: boolean) => {
     setNotificationPrefs({ [key]: value });
     if (key === "enabled" && value) {
-      // Re-schedule when enabling
+      await requestNotificationPermissions().catch(console.warn);
       scheduleAllNotifications(goals, fixedItems, { ...prefs, enabled: true }).catch(console.warn);
     } else if (key === "enabled" && !value) {
       cancelAllLocalNotifications().catch(console.warn);
@@ -1353,22 +1353,12 @@ function NotificationSettings() {
   };
 
   const testNotification = async () => {
-    const { LocalNotifications } = await import("@capacitor/local-notifications");
-    const perm = await LocalNotifications.requestPermissions();
-    if (perm.display !== "granted") {
-      toast.error("Permisos de notificación denegados");
-      return;
+    try {
+      await sendTestNotification();
+      toast.success("Notificación de prueba enviada 🎉");
+    } catch (e: any) {
+      toast.error(e?.message || "No se pudo enviar la notificación de prueba");
     }
-    await LocalNotifications.schedule({
-      notifications: [{
-        id: 999999,
-        title: "Notificación de prueba",
-        body: "¡Las notificaciones funcionan correctamente! 🎉",
-        schedule: { at: new Date(Date.now() + 1000) },
-        extra: { test: true },
-      }]
-    });
-    toast.success("Notificación de prueba enviada");
   };
 
   return (
