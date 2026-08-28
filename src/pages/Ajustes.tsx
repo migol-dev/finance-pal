@@ -34,7 +34,8 @@ export default function Ajustes() {
   const { 
     fixedItems, addFixed, updateFixed, removeFixed, toggleFixed, resetAll, exportData, importData, 
     theme, toggleTheme, profile, setProfile, 
-    accounts, addAccount, updateAccount, removeAccount, syncAllToCloud 
+    accounts, addAccount, updateAccount, removeAccount, syncAllToCloud,
+    transactions, debts,
   } = useHybridData();
   const accentColor = useFinance((s) => s.appSettings.accentColor);
   const setAccentColor = useFinance((s) => s.setAccentColor);
@@ -42,8 +43,6 @@ export default function Ajustes() {
   const setCompactMode = useFinance((s) => s.setCompactMode);
   const glassEffect = useFinance((s) => s.appSettings.glassEffect);
   const setGlassEffect = useFinance((s) => s.setGlassEffect);
-  const transactions = useFinance((s) => s.transactions);
-  const debts = useFinance((s) => s.debts);
   const balances = useMemo(() => {
     const endOfMonth = new Date(2099, 11, 31, 23, 59, 59); // far future to see all
     return computeBalances(accounts, transactions, debts, endOfMonth);
@@ -690,7 +689,7 @@ export default function Ajustes() {
         <Dialog open={accountsOpen} onOpenChange={setAccountsOpen}>
           <DialogContent className="rounded-3xl max-h-[90vh] overflow-y-auto">
             <DialogHeader><DialogTitle>{editingAccount ? "Editar cuenta" : "Nueva cuenta"}</DialogTitle></DialogHeader>
-            <AccountForm initial={editingAccount} onSave={(a) => {
+            <AccountForm accounts={accounts} initial={editingAccount} onSave={(a) => {
               if (editingAccount) { updateAccount(editingAccount.id, a); toast.success("Cuenta actualizada"); }
               else { addAccount(a); toast.success("Cuenta creada"); }
               setAccountsOpen(false); setEditingAccount(null);
@@ -919,8 +918,7 @@ function FixedForm({ initial, onSave }: { initial: FixedItem | null; onSave: (i:
   );
 }
 
-function AccountForm({ initial, onSave }: { initial: Account | null; onSave: (a: Omit<Account, "id">) => void }) {
-  const accounts = useFinance((s) => s.accounts);
+function AccountForm({ initial, onSave, accounts }: { initial: Account | null; onSave: (a: Omit<Account, "id">) => void; accounts: Account[] }) {
   const [name, setName] = useState(initial?.name ?? "");
   const [type, setType] = useState<Account["type"]>(initial?.type ?? "bank");
   const [initialBalance, setInitialBalance] = useState(initial?.initialBalance ? String(initial?.initialBalance) : "0");
@@ -1066,7 +1064,7 @@ function AccountSettings() {
       if (data?.totp?.qr_code) {
         setMfaQrCode(data.totp.qr_code);
         setMfaSecret(data.totp.secret);
-        setMfaFactorId(data.totp.factor_id);
+        setMfaFactorId(data.id || (data as any)?.totp?.id || (data as any)?.totp?.factor_id);
         setMfaOpen(true);
       }
     } catch (e: any) {

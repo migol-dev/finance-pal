@@ -198,6 +198,7 @@ export default function Movimientos() {
           <DialogHeader><DialogTitle className="text-lg">{editing ? "Editar movimiento" : "Nuevo movimiento"}</DialogTitle></DialogHeader>
           <DialogDescription className="sr-only">Formulario para crear o editar un movimiento</DialogDescription>
           <TxForm
+            accounts={accounts}
             initial={editing ?? { type, date: new Date(activeYear, activeMonth, Math.min(new Date().getDate(), 28)).toISOString() }}
             onSave={(t) => {
               if (editing) {
@@ -516,7 +517,7 @@ export default function Movimientos() {
 }
 
 /* ─── TxForm (unchanged functionality) ─── */
-function TxForm({ initial, onSave }: { initial: Partial<Transaction> & { type: TxType }; onSave: (t: Omit<Transaction, "id">) => void }) {
+function TxForm({ initial, onSave, accounts }: { initial: Partial<Transaction> & { type: TxType }; onSave: (t: Omit<Transaction, "id">) => void; accounts: Account[] }) {
   const [type, setType] = useState<TxType>(initial.type);
   const [category, setCategory] = useState(initial.category ?? "Otros");
   const [concept, setConcept] = useState(initial.concept ?? "");
@@ -527,7 +528,6 @@ function TxForm({ initial, onSave }: { initial: Partial<Transaction> & { type: T
   const [note, setNote] = useState(initial.note ?? "");
   const [icon, setIcon] = useState<IconRef | undefined>(initial.icon);
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>(initial.paymentMethod ?? "transfer");
-  const accounts = useFinance((s: any) => s.accounts);
   const [accountId, setAccountId] = useState<string | undefined>(initial.accountId ?? undefined);
   const [transferToAccountId, setTransferToAccountId] = useState<string | undefined>(() => {
     const initialAny = initial as any;

@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { useFinance } from "@/store/finance-store";
+import { useHybridData } from "@/hooks/useHybridData";
 import { fmt, fmt2, monthlyAmount, MONTHS, MONTHS_SHORT, isFixedActiveInMonth, iconFor, PAYMENT_METHOD_LABEL, PAYMENT_METHOD_EMOJI, PaymentMethod, parseDateLocal } from "@/lib/finance";
 import { Header } from "@/components/app/Header";
 import { PillTabs } from "@/components/app/PillTabs";
@@ -27,16 +27,18 @@ const COLORS = [
 ];
 
 export default function Anual() {
-  const fixedItems = useFinance((s) => s.fixedItems);
-  const transactions = useFinance((s) => s.transactions);
-  const debts = useFinance((s) => s.debts);
-  const goals = useFinance((s) => s.goals);
-  const activeYear = useFinance((s) => s.activeYear);
-  const activeMonth = useFinance((s) => s.activeMonth);
-  const setActive = useFinance((s) => s.setActive);
+  const {
+    fixedItems,
+    transactions,
+    debts,
+    goals,
+    activeYear,
+    activeMonth,
+    setActive,
+    accounts,
+  } = useHybridData();
   const navigate = useNavigate();
   const [tab, setTab] = useState<Tab>("general");
-  const accounts = useFinance((s) => s.accounts);
 
   const buildMonthly = useMemo(() => {
     return (year: number): MonthRow[] => MONTHS.map((_, idx) => {

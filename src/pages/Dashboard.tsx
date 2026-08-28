@@ -1,5 +1,5 @@
 import { useMemo, useState, useEffect, memo, type ReactNode } from "react";
-import { useFinance } from "@/store/finance-store";
+import { useHybridData } from "@/hooks/useHybridData";
 import { fmt, monthlyAmount, MONTHS, isFixedActiveInMonth, iconFor, fmtDate, parseDateLocal, computeBalances, cashTotalFromDenominations } from "@/lib/finance";
 import { Eye, EyeOff, TrendingUp, TrendingDown, PiggyBank, Plus, Bell, BarChart3, Wallet } from "lucide-react";
 import { Link } from "react-router-dom";
@@ -8,15 +8,17 @@ import { MonthSwitcher } from "@/components/app/MonthSwitcher";
 import { IconDisplay } from "@/components/app/IconDisplay";
 
 export default function Dashboard() {
-  const fixedItems = useFinance((s) => s.fixedItems);
-  const transactions = useFinance((s) => s.transactions);
-  const accounts = useFinance((s) => s.accounts);
-  const goals = useFinance((s) => s.goals);
-  const debts = useFinance((s) => s.debts);
-  const activeYear = useFinance((s) => s.activeYear);
-  const activeMonth = useFinance((s) => s.activeMonth);
-  const profile = useFinance((s) => s.profile);
-  const ensureScheduledTransactions = useFinance((s) => s.ensureScheduledTransactions);
+  const {
+    fixedItems,
+    transactions,
+    accounts,
+    goals,
+    debts,
+    activeYear,
+    activeMonth,
+    profile,
+    ensureScheduledTransactions,
+  } = useHybridData();
 
   useEffect(() => {
     try { ensureScheduledTransactions(); } catch (e) { /* ignore */ }
@@ -120,6 +122,10 @@ export default function Dashboard() {
     const endOfMonth = new Date(activeYear, activeMonth + 1, 0, 23, 59, 59);
     let cumulativeNet = 0;
 
+    for (const a of accounts) {
+      cumulativeNet += (a.initialBalance ?? 0);
+    }
+
     for (const t of transactions) {
       if (parseDateLocal(t.date) <= endOfMonth) {
         const isInternalTransfer = t.type === "transfer" || (t.transferToAccountId && accounts.some((a) => a.id === t.transferToAccountId));
@@ -139,6 +145,11 @@ export default function Dashboard() {
           cumulativeNet += p.amount;
         }
       }
+    }
+
+    if (accounts.length > 0) {
+      const computed = computeBalances(accounts, transactions, debts, endOfMonth);
+      cumulativeNet = Object.values(computed).reduce((acc, b) => acc + b, 0);
     }
 
     return {
