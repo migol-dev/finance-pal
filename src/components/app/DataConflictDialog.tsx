@@ -7,6 +7,7 @@ import { supabase } from "@/lib/supabase";
 import { useFinance } from "@/store/finance-store";
 import { useAuth } from "@/context/AuthContext";
 import { toast } from "sonner";
+import { useSyncStore } from "@/store/sync-store";
 
 interface Props {
   onUpload: () => void;

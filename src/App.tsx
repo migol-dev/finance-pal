@@ -186,8 +186,12 @@ function AuthGuard() {
         const hasAnyData = results.some(({ count }) => (count ?? 0) > 0);
         setCloudHasData(hasAnyData);
       })
-      .catch(() => {
-        setCloudHasData(false);
+      .catch((err) => {
+        console.error('[AuthGuard] Error checking cloud data:', err);
+        // If the query fails (e.g. network error), don't falsely assume cloud is empty.
+        // Set it to true to be safe, which will show the dialog instead of auto-migrating,
+        // or just let it time out and resolve.
+        setCloudHasData(true);
       });
   }, [session?.user?.id, loadSettingsFromCloud]);
 
@@ -197,7 +201,9 @@ function AuthGuard() {
     if (hasLocalData() && !cloudHasData) {
       // Only local data exists → auto-upload
       setResolved(true);
-      navigate('/migracion');
+      if (localStorage.getItem('finance-pal-migration-skipped') !== 'true') {
+        navigate('/migracion');
+      }
     } else if (!hasLocalData() && cloudHasData) {
       // Only cloud data exists → auto-download
       const downloadCloud = async () => {

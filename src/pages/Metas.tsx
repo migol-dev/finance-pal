@@ -287,7 +287,7 @@ export default function Metas() {
     <div className="pb-28">
       <Header title="Metas" subtitle="Sueños con plan" action={
         <div className="flex items-center gap-2">
-          <Button onClick={openNewFolder} variant="ghost" className="h-10 rounded-xl px-3">
+          <Button onClick={() => openNewFolder()} variant="ghost" className="h-10 rounded-xl px-3">
             <FolderPlus className="size-4 mr-1.5" />Carpeta
           </Button>
           <Button onClick={openNew} className="rounded-xl gradient-primary text-primary-foreground border-0 shadow-glow h-10 text-sm"><Plus className="size-4 mr-1.5" />Nueva</Button>
