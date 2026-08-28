@@ -113,7 +113,12 @@ export function DataConflictDialog({ onUpload, onDownload }: Props) {
         // Create in Supabase
         if (session?.user?.id) {
           await supabase.from('accounts').insert(accounts.map(a => ({
-            ...a, user_id: session.user.id, currency: 'MXN'
+            id: a.id,
+            name: a.name,
+            type: a.type,
+            initial_balance: a.initialBalance,
+            currency: 'MXN',
+            user_id: session.user.id
           })));
         }
       }
