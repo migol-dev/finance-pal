@@ -173,8 +173,9 @@ export function useHybridData() {
     invalidateAccounts();
   }, [store, invalidateAccounts]);
 
-  const wrappedMergeAccounts = useCallback(async (sourceId: string, targetId: string) => {
-    await store.mergeAccounts(sourceId, targetId);
+  const wrappedMergeAccounts = useCallback(async (sourceId: string | string[], targetId: string) => {
+    const fromIds = Array.isArray(sourceId) ? sourceId : [sourceId];
+    await store.mergeAccounts(fromIds, targetId);
     invalidateAccounts();
     invalidateTransactions();
   }, [store, invalidateAccounts, invalidateTransactions]);

@@ -21,13 +21,13 @@ import { ElegantConfirm } from "@/components/app/ElegantConfirm";
 
 type TxType = "income" | "expense" | "saving" | "transfer";
 
-const DATE_PRESETS = [
+const DATE_PRESETS: { key: "today" | "yesterday" | "last7" | "last30" | "custom"; label: string; icon?: typeof Calendar }[] = [
   { key: "today", label: "Hoy", icon: Calendar },
   { key: "yesterday", label: "Ayer" },
   { key: "last7", label: "7 días" },
   { key: "last30", label: "30 días" },
   { key: "custom", label: "Personalizado" },
-] as const;
+];
 
 const FILTER_TABS = [
   { k: "all", label: "Todo" },
@@ -163,7 +163,7 @@ export default function Movimientos() {
         return (t.concept || "").toLowerCase().includes(q) || (t.category || "").toLowerCase().includes(q) || pmLabel.toLowerCase().includes(q);
       })
       .filter((t) => {
-        if (!startDate) return true;
+        if (!startDate || !endDate) return true;
         const d = dateOnly(parseDateLocal(t.date));
         return d >= startDate && d <= endDate;
       })

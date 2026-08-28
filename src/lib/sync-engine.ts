@@ -2,7 +2,6 @@ import { supabase, isSupabaseEnabled } from './supabase';
 import { useSyncStore } from '@/store/sync-store';
 import { rateLimiter, getClientIdentifier } from '@/lib/rate-limiter';
 import { ErrorCodes, logger } from '@/lib/app-error';
-import { validationSchemas } from '@/lib/validators';
 
 type SyncMutation = {
   id: string;
@@ -17,16 +16,6 @@ type SyncMutation = {
 const ALLOWED_TABLES = new Set([
   'accounts', 'transactions', 'fixed_items', 'goals', 'debts', 'debt_payments', 'goal_folders',
 ]);
-
-const TABLE_TO_SCHEMA: Record<string, keyof typeof validationSchemas> = {
-  accounts: 'account',
-  transactions: 'transaction',
-  fixed_items: 'fixedItem',
-  goals: 'goal',
-  debts: 'debt',
-  debt_payments: 'debtPayment',
-  goal_folders: 'goalFolder',
-};
 
 const MAX_RETRIES = 3;
 const BASE_DELAY_MS = 1000;
@@ -46,10 +35,6 @@ function setUserLock(userId: string, locked: boolean): void {
   } else {
     processingLocks.delete(userId);
   }
-}
-
-function getAbortController(userId: string): AbortController | null {
-  return abortControllers.get(userId) ?? null;
 }
 
 function setAbortController(userId: string, controller: AbortController | null): void {
@@ -80,7 +65,7 @@ async function withRetry<T>(
   }
 }
 
-function validatePayload(table: string, payload: unknown): { success: boolean; data?: any; error?: string } {
+function validatePayload(_table: string, payload: unknown): { success: boolean; data?: any; error?: string } {
   if (!payload || typeof payload !== 'object') return { success: true, data: payload };
   // The store already validated the domain model with validateAndThrow before building the DB payload.
   // We sanitize and ensure payload is an object.
@@ -212,7 +197,7 @@ export function setupSyncListener(): void {
 
   window.addEventListener('beforeunload', () => {
     // Abort all pending sync operations
-    for (const [userId, controller] of abortControllers.entries()) {
+    for (const controller of abortControllers.values()) {
       controller.abort();
     }
   });

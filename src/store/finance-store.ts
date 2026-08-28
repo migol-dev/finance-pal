@@ -10,7 +10,7 @@ import { sanitizeForLog, validationSchemas } from '@/lib/validators';
 import { useSyncStore } from '@/store/sync-store';
 import { toast } from 'sonner';
 import { audit } from '@/lib/audit-logger';
-import { migrateData, sanitizeMigratedData, mergeLocalCloudData, CURRENT_SCHEMA_VERSION } from '@/lib/schema-migrations';
+import { migrateData, sanitizeMigratedData, CURRENT_SCHEMA_VERSION } from '@/lib/schema-migrations';
 
 /** Current schema version of persisted/exported data. */
 export const SCHEMA_VERSION = CURRENT_SCHEMA_VERSION;
@@ -152,13 +152,13 @@ function logEntry(entity: ChangeEntity, entityId: string, action: ChangeAction, 
 function validateEntityData<T>(schemaKey: keyof typeof validationSchemas, data: unknown): { success: true; data: T } | { success: false; error: string } {
   const schema = validationSchemas[schemaKey];
   const result = schema.safeParse(data);
-  if (result.success) return { success: true, data: result.data };
+  if (result.success) return { success: true, data: result.data as unknown as T };
   const issues = result.error.issues.map(i => `${i.path.join('.')}: ${i.message}`).join('; ');
   return { success: false, error: `Validation failed: ${issues}` };
 }
 
 function validateAndThrow<T>(schemaKey: keyof typeof validationSchemas, data: unknown): T {
-  const result = validateEntityData(schemaKey, data);
+  const result = validateEntityData<T>(schemaKey, data);
   if (!result.success) throw new Error(result.error);
   return result.data;
 }
@@ -1463,10 +1463,13 @@ addDebt: async (d) => {
           data,
         };
         // Audit log: data exported
-        const userId = (supabase.auth.getUser()).data?.user?.id;
-        if (userId) {
-          audit.dataExported(userId, Object.keys(sc).filter(k => sc[k as keyof typeof sc]));
-        }
+        supabase.auth.getUser().then(({ data: authData }) => {
+          const userId = authData?.user?.id;
+          if (userId) {
+            audit.dataExported(userId, Object.keys(sc).filter(k => sc[k as keyof typeof sc]));
+          }
+        }).catch(console.error);
+        
         return JSON.stringify(payload, null, 2);
       },
 
@@ -1595,12 +1598,14 @@ addDebt: async (d) => {
 
       resetAll: () => {
         const d = new Date();
-        set({ fixedItems: [], transactions: [], goals: [], debts: [], changeLog: [], activeYear: d.getFullYear(), activeMonth: d.getMonth(), appSettings: { accentColor: "blue", compactMode: false, glassEffect: true, conflictResolved: false } });
+        set({ fixedItems: [], transactions: [], goals: [], debts: [], changeLog: [], activeYear: d.getFullYear(), activeMonth: d.getMonth(), appSettings: { accentColor: "blue", compactMode: false, glassEffect: true, conflictResolved: false, notifications: DEFAULT_NOTIFICATION_PREFS } });
         // Audit log: all data deleted
-        const userId = (supabase.auth.getUser()).data?.user?.id;
-        if (userId) {
-          audit.dataDeleted(userId);
-        }
+        supabase.auth.getUser().then(({ data: authData }) => {
+          const userId = authData?.user?.id;
+          if (userId) {
+            audit.dataDeleted(userId);
+          }
+        }).catch(console.error);
       },
 
       loadSettingsFromCloud: async () => {

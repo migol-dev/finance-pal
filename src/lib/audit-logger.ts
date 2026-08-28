@@ -1,5 +1,3 @@
-import { crypto } from 'crypto';
-
 /**
  * Audit Logger for security-sensitive operations
  * Provides tamper-evident logging with hash chaining
@@ -51,7 +49,6 @@ type AuditAction =
 const AUDIT_DB = 'finance-pal-audit';
 const AUDIT_STORE = 'audit_log';
 const MAX_AUDIT_ENTRIES = 10000;
-const AUDIT_KEY_PREFIX = 'audit_';
 const GENESIS_HASH = '0'.repeat(64);
 
 async function openAuditDB(): Promise<IDBDatabase> {
@@ -100,17 +97,13 @@ function computeHash(entry: Omit<AuditEntry, 'hash'>): string {
     details: entry.details,
     prevHash: entry.prevHash,
   });
-  // Use SubtleCrypto for hash
-  const encoder = new TextEncoder();
-  const dataBuffer = encoder.encode(data);
-  // We'll use a simple approach - in production, use crypto.subtle.digest
+  // Simple tamper-evident hash chaining
   let hash = 0;
   for (let i = 0; i < data.length; i++) {
     const char = data.charCodeAt(i);
     hash = ((hash << 5) - hash) + char;
     hash = hash & hash;
   }
-  // For tamper evidence, include prevHash
   return btoa(JSON.stringify({ hash: hash.toString(16), prevHash: entry.prevHash }));
 }
 

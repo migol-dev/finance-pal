@@ -8,8 +8,6 @@ import { isSupabaseEnabled } from "@/lib/supabase";
 import { SyncIndicator } from "./SyncIndicator";
 import { Sun, Moon, BarChart3, History, Wallet } from "lucide-react";
 
-const appIcon = "/icon-512.webp";
-
 export const DesktopSidebar = memo(function DesktopSidebar() {
   const theme = useFinance((s) => s.theme);
   const toggleTheme = useFinance((s) => s.toggleTheme);

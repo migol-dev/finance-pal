@@ -6,7 +6,6 @@ import { useFinance } from "@/store/finance-store";
 import { useHybridData } from "@/hooks/useHybridData";
 import { SplashScreen } from "./SplashScreen";
 import { Capacitor } from "@capacitor/core";
-import { LocalNotifications } from "@capacitor/local-notifications";
 import { App as CapacitorApp } from "@capacitor/app";
 import { toast } from "sonner";
 import { ACCENT_PALETTES, AccentColor } from "@/lib/accent-palette";

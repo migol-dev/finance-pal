@@ -1,10 +1,10 @@
 import { useEffect, useRef, useState, useMemo, useCallback } from "react";
 import { useHybridData } from "@/hooks/useHybridData";
 import { useFinance, ExportScopes, ALL_SCOPES, normalizeImportKeys } from "@/store/finance-store";
-import { fmt, monthlyAmount, TYPE_LABEL, FREQ_LABEL, ItemType, Frequency, Priority, iconFor, IconRef, FixedItem, CATEGORY_EMOJI, PAYMENT_METHOD_LABEL, PAYMENT_METHOD_EMOJI, Account, Denomination, cashTotalFromDenominations, Currency, computeBalances, PaymentMethod, NotificationPreferences, DEFAULT_NOTIFICATION_PREFS } from "@/lib/finance";
+import { fmt, monthlyAmount, TYPE_LABEL, FREQ_LABEL, ItemType, Frequency, Priority, iconFor, IconRef, FixedItem, CATEGORY_EMOJI, PAYMENT_METHOD_LABEL, PAYMENT_METHOD_EMOJI, Account, Denomination, cashTotalFromDenominations, Currency, computeBalances, PaymentMethod, NotificationPreferences } from "@/lib/finance";
 import DenominationsEditor from "@/components/ui/DenominationsEditor";
 import { Header } from "@/components/app/Header";
-import { Plus, Trash2, Power, Database, RotateCcw, Pencil, Download, Upload, Sun, Moon, Target, History, HandCoins, User, LogOut, Cloud, CloudOff, Loader2, Palette, Bell, BellOff, Clock, Moon as MoonIcon, Shield, ShieldCheck, ShieldOff, Smartphone, QrCode, Key } from "lucide-react";
+import { Plus, Trash2, Power, Database, RotateCcw, Pencil, Download, Upload, Sun, Moon, Target, History, HandCoins, User, LogOut, Cloud, CloudOff, Loader2, Palette, Bell, Shield, ShieldCheck, ShieldOff, Smartphone } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -68,7 +68,7 @@ export default function Ajustes() {
   const [receiptsOpen, setReceiptsOpen] = useState(false);
   const [orphanList, setOrphanList] = useState<string[] | null>(null);
   const [receiptsLoading, setReceiptsLoading] = useState(false);
-  const { signOut } = useAuth();
+  const { signOut, session } = useAuth();
   const navigate = useNavigate();
   const [syncEnabled, setSyncEnabledState] = useState(isSupabaseEnabled);
 
@@ -188,10 +188,15 @@ export default function Ajustes() {
         transactions: Array.isArray(data.transactions) && data.transactions.length >= 0,
         accounts: Array.isArray(data.accounts) && data.accounts.length >= 0,
         goals: Array.isArray(data.goals) && data.goals.length >= 0,
+        goalFolders: Array.isArray(data.goalFolders) && data.goalFolders.length >= 0,
         debts: Array.isArray(data.debts) && data.debts.length >= 0,
         changeLog: Array.isArray(data.changeLog),
         theme: data.theme === "dark" || data.theme === "light",
         profile: !!data.profile,
+        excludePII: false,
+        excludeBankDetails: false,
+        excludeEmail: false,
+        excludeReceipts: false,
       };
       setPendingFile(file);
       setPendingPayload(text);
@@ -1079,8 +1084,12 @@ function AccountSettings() {
     if (!mfaFactorId) { toast.error('Factor ID no disponible'); return; }
     setVerifyingMfa(true);
     try {
+      const { data: challengeData, error: challengeError } = await supabase.auth.mfa.challenge({ factorId: mfaFactorId });
+      if (challengeError) throw challengeError;
+
       const { error } = await supabase.auth.mfa.verify({
         factorId: mfaFactorId,
+        challengeId: challengeData.id,
         code: mfaCode,
       });
       if (error) throw error;
@@ -1377,7 +1386,7 @@ function NotificationSettings() {
             <p className="font-semibold text-sm">Notificaciones</p>
             <p className="text-xs text-muted-foreground">Recibe avisos de metas y pagos próximos</p>
           </div>
-          <Switch checked={prefs.enabled} onCheckedChange={toggleEnabled} />
+          <Switch checked={prefs.enabled} onCheckedChange={(v) => toggleEnabled("enabled", v)} />
         </div>
 
         {prefs.enabled && (

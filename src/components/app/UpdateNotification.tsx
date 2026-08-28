@@ -1,9 +1,8 @@
-import { useEffect, useState } from 'react';
+import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Button } from '@/components/ui/button';
 import { Github, X, Loader2 } from 'lucide-react';
 import { checkForUpdates, dismissVersion, VersionInfo } from '@/lib/version-check';
-import { toast } from 'sonner';
 
 interface UpdateNotificationProps {
   /** Position of the notification */
@@ -21,7 +20,7 @@ interface UpdateNotificationProps {
 export function UpdateNotification({
   position = 'bottom',
   autoHideSeconds = 30,
-  checkIntervalHours = 6,
+  checkIntervalHours: _checkIntervalHours = 6,
 }: UpdateNotificationProps = {}) {
   const [updateInfo, setUpdateInfo] = useState<VersionInfo | null>(null);
   const [checking, setChecking] = useState(false);
@@ -66,6 +65,7 @@ export function UpdateNotification({
   if (!updateInfo || dismissed) return null;
 
   const handleDismiss = () => {
+    setDismissed(true);
     setUpdateInfo(null);
     dismissVersion(updateInfo.latest);
   };
@@ -73,6 +73,7 @@ export function UpdateNotification({
   const handleUpdate = () => {
     window.open(updateInfo.releaseUrl, '_blank', 'noopener,noreferrer');
     dismissVersion(updateInfo.latest);
+    setDismissed(true);
     setUpdateInfo(null);
   };
 
@@ -162,42 +163,4 @@ export function UpdateNotification({
       </motion.div>
     </AnimatePresence>
   );
-}
- 
-/**
- * Simpler toast-based notification (alternative)
- * Usage: import { useUpdateToast } from '@/components/app/UpdateNotification';
- * Then call useUpdateToast() in your component
- */
-export function useUpdateToast() {
-  useEffect(() => {
-    let mounted = true;
-    
-    async function check() {
-      try {
-        const { checkForUpdates, dismissVersion } = await import('@/lib/version-check');
-        const info = await checkForUpdates();
-        if (mounted && info) {
-          const { toast } = await import('sonner');
-          toast.info(`Nueva versión ${info.latest} disponible`, {
-            description: info.releaseNotes?.slice(0, 100) + '...',
-            action: {
-              label: 'Ver en GitHub',
-              onClick: () => {
-                window.open(info.releaseUrl, '_blank', 'noopener,noreferrer');
-                dismissVersion(info.latest);
-              },
-            },
-            dismissible: true,
-            duration: 15000,
-          });
-        }
-      } catch (e) {
-        console.warn('Update check failed:', e);
-      }
-    }
- 
-    const timer = setTimeout(check, 3000);
-    return () => { mounted = false; clearTimeout(timer); };
-  }, []);
 }

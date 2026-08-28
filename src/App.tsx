@@ -1,7 +1,7 @@
 import React, { Suspense, lazy, useEffect, useRef } from "react";
 import { QueryClient } from "@tanstack/react-query";
 import { PersistQueryClientProvider } from '@tanstack/react-query-persist-client';
-import { createSyncStoragePersister } from '@tanstack/query-sync-storage-persister';
+import { createAsyncStoragePersister } from '@tanstack/query-async-storage-persister';
 import { BrowserRouter, Route, Routes, useLocation, useNavigate } from "react-router-dom";
 import { AnimatePresence, motion } from "@/lib/framer";
 import { Toaster as Sonner } from "@/components/ui/sonner";
@@ -75,7 +75,7 @@ const encryptedQueryStorage = {
   },
 };
 
-const persister = createSyncStoragePersister({
+const persister = createAsyncStoragePersister({
   storage: encryptedQueryStorage,
 });
 

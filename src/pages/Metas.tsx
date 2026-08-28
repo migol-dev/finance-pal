@@ -2,7 +2,7 @@ import { useMemo, useState } from "react";
 import { useHybridData } from "@/hooks/useHybridData";
 import { fmt, fmt2, iconFor, IconRef, Goal, GoalFolder, fmtDate, parseDateLocal, Account } from "@/lib/finance";
 import { Header } from "@/components/app/Header";
-import { Plus, Trash2, Pencil, Minus, CalendarDays, ExternalLink, Sparkles, AlertTriangle, CheckCircle2, Star, ChevronRight, X, FolderOpen, FolderPlus, MoreHorizontal, GripVertical, ChevronDown } from "lucide-react";
+import { Plus, Trash2, Pencil, Minus, CalendarDays, ExternalLink, Sparkles, AlertTriangle, CheckCircle2, Star, ChevronRight, X, FolderOpen, FolderPlus, ChevronDown } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -87,6 +87,8 @@ function statusFor(goal: Goal) {
   return { kind: "ontrack" as const, diff };
 }
 
+type FolderNode = GoalFolder & { children: FolderNode[] };
+
 function FolderTreeNode({ 
   folder, 
   level, 
@@ -98,7 +100,7 @@ function FolderTreeNode({
   goalCount,
   goalFolders
 }: { 
-  folder: GoalFolder & { children: GoalFolder[] };
+  folder: FolderNode;
   level: number;
   selectedFolderId: string | null;
   onSelect: (id: string | null) => void;
@@ -213,7 +215,6 @@ export default function Metas() {
     addGoalFolder,
     updateGoalFolder,
     removeGoalFolder,
-    reorderGoalFolders,
   } = useHybridData();
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<Goal | null>(null);
@@ -226,10 +227,10 @@ export default function Metas() {
 
   // Build folder tree
   const folderTree = useMemo(() => {
-    const folderMap = new Map<string, GoalFolder & { children: GoalFolder[] }>();
+    const folderMap = new Map<string, FolderNode>();
     goalFolders.forEach(f => folderMap.set(f.id, { ...f, children: [] }));
     
-    const roots: (GoalFolder & { children: GoalFolder[] })[] = [];
+    const roots: FolderNode[] = [];
     goalFolders.forEach(f => {
       const folder = folderMap.get(f.id)!;
       if (f.parentId) {
@@ -241,8 +242,9 @@ export default function Metas() {
     });
     
     // Sort by order
-    const sortFolders = (folders: (GoalFolder & { children: GoalFolder[] })[]) => 
+    const sortFolders = (folders: FolderNode[]) => {
       folders.sort((a, b) => a.order - b.order).forEach(f => sortFolders(f.children));
+    };
     sortFolders(roots);
     
     return roots;
@@ -347,7 +349,7 @@ export default function Metas() {
             <p className="px-3 py-2 text-xs text-muted-foreground text-center">Sin carpetas aún</p>
           ) : (
             <>
-              {folderTree.map((folder, i) => (
+              {folderTree.map((folder) => (
                 <FolderTreeNode 
                   key={folder.id} 
                   folder={folder} 

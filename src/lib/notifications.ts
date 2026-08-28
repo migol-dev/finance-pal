@@ -2,7 +2,7 @@ import { LocalNotifications, PermissionStatus } from "@capacitor/local-notificat
 import { PushNotifications, PushNotificationSchema, Token } from "@capacitor/push-notifications";
 import { Capacitor } from "@capacitor/core";
 import { Goal, FixedItem } from "./finance";
-import { startOfDay, parseDateLocal, daysBetween } from "./finance";
+import { startOfDay, parseDateLocal } from "./finance";
 
 export interface NotificationPreferences {
   enabled: boolean;
@@ -79,36 +79,27 @@ export async function requestNotificationPermissions(): Promise<PermissionStatus
         }
         return {
           display: perm === "granted" ? "granted" : "denied",
-          badge: perm === "granted" ? "granted" : "denied",
-          alert: perm === "granted" ? "granted" : "denied",
         };
       } catch (e) {
         console.warn("Web notification permission request failed:", e);
-        return { display: "denied", badge: "denied", alert: "denied" };
+        return { display: "denied" };
       }
     }
-    return { display: "denied", badge: "denied", alert: "denied" };
+    return { display: "denied" };
   }
   
   try {
     const localPerm = await LocalNotifications.requestPermissions();
-    let pushGranted = false;
     try {
-      const pushPerm = await PushNotifications.requestPermissions();
-      pushGranted = pushPerm.receive === "granted";
+      await PushNotifications.requestPermissions();
     } catch {
       // Push might not be configured, local notification is primary
-      pushGranted = true;
     }
     
-    return {
-      display: localPerm.display === "granted" ? "granted" : "denied",
-      badge: localPerm.badge,
-      alert: localPerm.alert,
-    };
+    return localPerm;
   } catch (e) {
     console.warn("Native notification permission request failed:", e);
-    return { display: "denied", badge: "denied", alert: "denied" };
+    return { display: "denied" };
   }
 }
 
@@ -302,7 +293,6 @@ function paceFor(goal: Goal) {
 
 function statusFor(goal: Goal) {
   if (!goal.deadline) return null;
-  const today = new Date();
   // Simplified status check
   const pace = paceFor(goal);
   if (!pace) return null;

@@ -8,6 +8,7 @@ import { useFinance } from "@/store/finance-store";
 import { useAuth } from "@/context/AuthContext";
 import { toast } from "sonner";
 import { useSyncStore } from "@/store/sync-store";
+import { Account } from "@/lib/finance";
 
 interface Props {
   onUpload: () => void;
@@ -61,7 +62,7 @@ export function DataConflictDialog({ onUpload, onDownload }: Props) {
       if (debtsRes.error) throw debtsRes.error;
       if (foldersRes.error) throw foldersRes.error;
 
-      const mapAccount = (r: any) => ({
+      const mapAccount = (r: any): Account => ({
         id: r.id, name: r.name, type: r.type,
         initialBalance: Number(r.initial_balance ?? 0),
         currency: r.currency, denominations: r.denominations ?? [],
@@ -107,7 +108,7 @@ export function DataConflictDialog({ onUpload, onDownload }: Props) {
       });
 
       // Ensure default accounts exist if cloud has none
-      let accounts = (accountsRes.data ?? []).map(mapAccount);
+      let accounts: Account[] = (accountsRes.data ?? []).map(mapAccount);
       if (accounts.length === 0) {
         const generateSecureId = () => crypto.randomUUID();
         accounts = [

@@ -131,11 +131,7 @@ export const goalFolderSchema = z.object({
     z.null(),
     z.undefined(),
     z.literal('')
-  ]).optional().transform(val => {
-    if (val === '' || val === null || val === undefined) return undefined;
-    if (typeof val === 'object' && val?.id) return val.id;
-    return val;
-  }),
+  ]).optional().transform(val => (val === '' || val === null ? undefined : val)),
   order: z.number().int().nonnegative(),
   createdAt: z.string().datetime({ offset: true, local: true }).optional(),
 }).strict();

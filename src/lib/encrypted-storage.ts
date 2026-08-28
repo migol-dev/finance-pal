@@ -313,7 +313,11 @@ export async function loadReceipt(key: string): Promise<string | undefined> {
       try {
         // Try to decrypt (new encrypted format)
         const decrypted = await decryptData(stored);
-        resolve(decrypted);
+        if (decrypted !== null) {
+          resolve(decrypted);
+          return;
+        }
+        throw new Error('Decryption failed');
       } catch {
         // Migration: if decryption fails, assume it's legacy unencrypted data
         if (typeof stored === 'string' && stored.startsWith('data:')) {

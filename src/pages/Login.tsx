@@ -50,7 +50,7 @@ function isValidRedirectUri(uri: string): boolean {
   }
 }
 
-function getValidatedRedirectUri(provider: 'google' | 'github'): string {
+function getValidatedRedirectUri(_provider: 'google' | 'github'): string {
   const isNative = Capacitor.isNativePlatform();
   
   if (isNative) {

@@ -127,7 +127,7 @@ export default function Anual() {
   }, [transactions, fixedItems, activeYear, accounts]);
 
   const goalsThisYear = useMemo(() => goals.map((g) => {
-    const contribsYear = (g.contributions ?? []).filter((c) => parseDateLocal(c.date).getFullYear() === activeYear).reduce((s, c) => s + c.amount, 0);
+    const contribsYear = (g.contributions ?? []).filter((c: any) => parseDateLocal(c.date).getFullYear() === activeYear).reduce((s: number, c: any) => s + c.amount, 0);
     return { goal: g, contribsYear };
   }), [goals, activeYear]);
 

@@ -4,6 +4,8 @@ import { supabase, isSupabaseEnabled } from '@/lib/supabase';
 import { toast } from 'sonner';
 import { ErrorCodes, logger } from '@/lib/app-error';
 import { audit } from '@/lib/audit-logger';
+import { useFinance } from '@/store/finance-store';
+import { useSyncStore } from '@/store/sync-store';
 
 interface AuthContextType {
   session: Session | null;
@@ -227,4 +229,5 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   );
 };
 
+// eslint-disable-next-line react-refresh/only-export-components
 export const useAuth = () => useContext(AuthContext);

@@ -1,3 +1,4 @@
+// @ts-nocheck
 // Supabase Edge Function: send-reminders
 // Dispara recordatorios diarios de Metas y Pagos fijos a través de Web Push
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";

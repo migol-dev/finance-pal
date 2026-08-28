@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { persist, StateStorage } from 'zustand/middleware';
+import { persist, StateStorage, createJSONStorage } from 'zustand/middleware';
 import { saveEncryptedState, loadEncryptedState, clearEncryptedState, isEncryptionAvailable } from '@/lib/encrypted-storage';
 
 export type SyncActionType = 'INSERT' | 'UPDATE' | 'DELETE';
@@ -79,7 +79,7 @@ export const useSyncStore = create<SyncState>()(
     }),
     {
       name: STORAGE_KEY,
-      storage: encryptedStorage,
+      storage: createJSONStorage(() => encryptedStorage),
     }
   )
 );

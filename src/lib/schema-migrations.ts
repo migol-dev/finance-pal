@@ -9,12 +9,10 @@
  * v5 - Current: added encrypted storage, audit logging, MFA support
  */
 import { 
-  FixedItem, Transaction, Goal, Debt, DebtPayment, 
-  ChangeLogEntry, Account, ThemeMode, Currency, 
-  UserProfile, AccentColor, AppSettings, GoalFolder,
-  NotificationPreferences, DEFAULT_NOTIFICATION_PREFS
+  Currency, 
+  AppSettings, 
+  DEFAULT_NOTIFICATION_PREFS
 } from '@/lib/finance';
-import { generateSecureId } from '@/lib/crypto-utils';
 
 export const CURRENT_SCHEMA_VERSION = 5;
 
@@ -38,8 +36,7 @@ interface MigrationResult {
  */
 const migrations: Record<number, (data: any, ctx: MigrationContext) => Promise<any>> = {
   // v1 -> v2: Add accounts and fixed_items structure
-  1: async (data, ctx) => {
-    const warnings: string[] = [];
+  1: async (data) => {
     return {
       ...data,
       accounts: data.accounts ?? [],
@@ -56,7 +53,7 @@ const migrations: Record<number, (data: any, ctx: MigrationContext) => Promise<a
   },
 
   // v2 -> v3: Add goals and debts with proper structure
-  2: async (data, ctx) => {
+  2: async (data) => {
     return {
       ...data,
       goals: (data.goals ?? []).map((g: any) => ({
@@ -80,7 +77,7 @@ const migrations: Record<number, (data: any, ctx: MigrationContext) => Promise<a
   },
 
   // v3 -> v4: Add goalFolders and folderId on goals
-  3: async (data, ctx) => {
+  3: async (data) => {
     return {
       ...data,
       goalFolders: data.goalFolders ?? [],
@@ -98,7 +95,7 @@ const migrations: Record<number, (data: any, ctx: MigrationContext) => Promise<a
   },
 
   // v4 -> v5: Add encrypted receipts, audit fields, MFA, notifications
-  4: async (data, ctx) => {
+  4: async (data) => {
     return {
       ...data,
       transactions: (data.transactions ?? []).map((t: any) => ({
@@ -152,15 +149,12 @@ const migrations: Record<number, (data: any, ctx: MigrationContext) => Promise<a
  * Default app settings
  */
 function getDefaultAppSettings(): AppSettings {
-  const now = new Date();
   return {
     accentColor: 'rose',
     compactMode: false,
     glassEffect: true,
     conflictResolved: false,
     notifications: DEFAULT_NOTIFICATION_PREFS,
-    firstRunVersion: CURRENT_SCHEMA_VERSION,
-    lastMigrationVersion: 0,
   };
 }
 
@@ -224,7 +218,6 @@ export function mergeLocalCloudData<T extends { id: string }>(
   options: { preferNewer?: boolean } = {}
 ): T[] {
   const merged = new Map<string, T>();
-  const now = Date.now();
 
   // Add cloud data first
   for (const item of cloud) {
