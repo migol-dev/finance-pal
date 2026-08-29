@@ -11,7 +11,7 @@ const appVersion = packageJson.version;
 
 // https://vitejs.dev/config/
 export default defineConfig(({ mode }) => {
-  const env = loadEnv(mode, process.cwd(), '');
+  const _env = loadEnv(mode, process.cwd(), '');
   return {
     server: {
       host: "::",
@@ -80,7 +80,7 @@ export default defineConfig(({ mode }) => {
               if (id.includes("date-fns") || id.includes("zod") || id.includes("clsx")) {
                 return "vendor-utils";
               }
-              if (id.includes("cmdk") || id.includes("embla-carousel") || id.includes("react-day-picker") || id.includes("react-window")) {
+              if (id.includes("embla-carousel") || id.includes("react-day-picker") || id.includes("react-window")) {
                 return "vendor-widgets";
               }
               return "vendor";

@@ -1,9 +1,12 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { motion } from '@/lib/framer';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/context/AuthContext';
+import { useSystemTheme } from '@/hooks/useSystemTheme';
+import { useFinance } from '@/store/finance-store';
+import { ACCENT_PALETTES } from '@/lib/accent-palette';
 import { toast } from 'sonner';
-import { Mail, Lock, Loader2, LogIn, UserPlus, Wallet, ShieldCheck, Key, ArrowLeft } from 'lucide-react';
+import { Mail, Lock, Loader2, LogIn, UserPlus, Wallet, ShieldCheck, Key, ArrowLeft, Sparkles } from 'lucide-react';
 import { Progress } from '@/components/ui/progress';
 import { Browser } from '@capacitor/browser';
 import { Capacitor } from '@capacitor/core';
@@ -80,7 +83,7 @@ function calculatePasswordStrength(password: string): { score: number; label: st
   if (/[A-Z]/.test(password)) score += 1; else feedback.push('Mayúsculas');
   if (/[0-9]/.test(password)) score += 1; else feedback.push('Números');
   if (/[^a-zA-Z0-9]/.test(password)) score += 1; else feedback.push('Símbolos');
-  if (/(.)\1{2,}/.test(password)) score = Math.max(0, score - 1);
+  if (/(.)\\1{2,}/.test(password)) score = Math.max(0, score - 1);
   if (/^(?:password|123456|qwerty|admin|finance)/i.test(password)) score = 0;
 
   const labels = ['Muy débil', 'Débil', 'Media', 'Fuerte', 'Muy fuerte'];
@@ -110,8 +113,90 @@ function PasswordStrengthMeter({ password }: { password: string }) {
   );
 }
 
+/* ─── Floating Particles ─── */
+function FloatingParticles() {
+  const particles = useMemo(() => 
+    Array.from({ length: 6 }, (_, i) => ({
+      id: i,
+      size: Math.random() * 4 + 2,
+      left: Math.random() * 100,
+      delay: Math.random() * 8,
+      duration: Math.random() * 12 + 14,
+    })), []
+  );
+
+  return (
+    <div className="absolute inset-0 overflow-hidden pointer-events-none">
+      {particles.map((p) => (
+        <div
+          key={p.id}
+          className="absolute rounded-full bg-primary/20 login-particle"
+          style={{
+            width: p.size,
+            height: p.size,
+            left: `${p.left}%`,
+            bottom: '-10px',
+            animationDuration: `${p.duration}s`,
+            animationDelay: `${p.delay}s`,
+          }}
+        />
+      ))}
+    </div>
+  );
+}
+
+/* ─── Animated Background Orbs ─── */
+function AnimatedBackground() {
+  return (
+    <div className="absolute inset-0 overflow-hidden pointer-events-none">
+      {/* Grid pattern */}
+      <div className="absolute inset-0 login-grid-bg" />
+      
+      {/* Orb 1 — Primary */}
+      <div
+        className="absolute login-orb-1 rounded-full"
+        style={{
+          width: '340px',
+          height: '340px',
+          top: '-5%',
+          right: '-10%',
+          background: 'radial-gradient(circle, hsl(var(--primary) / 0.3), transparent 70%)',
+        }}
+      />
+      {/* Orb 2 — Accent */}
+      <div
+        className="absolute login-orb-2 rounded-full"
+        style={{
+          width: '280px',
+          height: '280px',
+          bottom: '-8%',
+          left: '-8%',
+          background: 'radial-gradient(circle, hsl(var(--accent) / 0.25), transparent 70%)',
+        }}
+      />
+      {/* Orb 3 — Secondary */}
+      <div
+        className="absolute login-orb-3 rounded-full"
+        style={{
+          width: '200px',
+          height: '200px',
+          top: '40%',
+          left: '50%',
+          transform: 'translateX(-50%)',
+          background: 'radial-gradient(circle, hsl(var(--secondary) / 0.15), transparent 70%)',
+        }}
+      />
+      
+      {/* Floating particles */}
+      <FloatingParticles />
+    </div>
+  );
+}
+
 export default function Login() {
   const { session, mfaRequired, signOut, checkMfaStatus } = useAuth();
+  const { resolvedTheme } = useSystemTheme();
+  const accentColor = useFinance((s) => s.appSettings.accentColor);
   const [isLogin, setIsLogin] = useState(true);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -121,6 +206,28 @@ export default function Login() {
   const [mfaCode, setMfaCode] = useState('');
   const [verifyingMfa, setVerifyingMfa] = useState(false);
   const [mfaFactorId, setMfaFactorId] = useState<string | null>(null);
+
+  // Apply theme on Login page (outside AppShell)
+  useEffect(() => {
+    const root = document.documentElement;
+    if (resolvedTheme === "dark") root.classList.add("dark"); else root.classList.remove("dark");
+    const meta = document.querySelector('meta[name="theme-color"]');
+    if (meta) meta.setAttribute("content", resolvedTheme === "dark" ? "#0a0e1a" : "#ffffff");
+    // Apply accent vars
+    const theme = root.classList.contains("dark") ? "dark" : "light";
+    const p = ACCENT_PALETTES[theme][accentColor];
+    root.style.setProperty("--accent-hue", String(p.hue));
+    root.style.setProperty("--accent-saturation", p.saturation);
+    root.style.setProperty("--accent-lightness", p.lightness);
+    root.style.setProperty("--primary", p.primary);
+    root.style.setProperty("--ring", p.ring);
+    root.style.setProperty("--primary-muted", p.primaryMuted);
+    root.style.setProperty("--primary-glow", p.primaryGlow);
+    root.style.setProperty("--secondary", p.secondary);
+    root.style.setProperty("--secondary-muted", p.secondaryMuted);
+    root.style.setProperty("--accent", p.accent);
+    root.style.setProperty("--accent-muted", p.accentMuted);
+  }, [resolvedTheme, accentColor]);
 
   // Load TOTP factor ID if MFA is required
   React.useEffect(() => {
@@ -172,7 +279,7 @@ export default function Login() {
     }
     if (!isLogin) {
       const strength = calculatePasswordStrength(password);
-      if (strength.score < 2) {
+      if (strength.score < 3) {
         toast.error('La contraseña es demasiado débil. Usa al menos 8 caracteres con mayúsculas, números y símbolos.');
         return;
       }
@@ -238,11 +345,19 @@ export default function Login() {
   // If user is logged in and does not need MFA, show redirecting banner
   if (session && !mfaRequired) {
     return (
-      <div className="flex h-screen w-full items-center justify-center p-4 bg-background">
-        <div className="text-center">
+      <div className="flex h-screen w-full items-center justify-center p-4 bg-background relative overflow-hidden">
+        <AnimatedBackground />
+        <motion.div
+          initial={{ opacity: 0, scale: 0.9 }}
+          animate={{ opacity: 1, scale: 1 }}
+          className="text-center relative z-10"
+        >
+          <div className="size-16 rounded-2xl gradient-primary shadow-glow flex items-center justify-center mx-auto mb-4">
+            <Wallet className="size-8 text-primary-foreground" />
+          </div>
           <h2 className="text-xl font-bold mb-2">Ya has iniciado sesión</h2>
           <p className="text-sm text-muted-foreground">Serás redirigido en breve.</p>
-        </div>
+        </motion.div>
       </div>
     );
   }
@@ -251,25 +366,40 @@ export default function Login() {
   if (session && mfaRequired) {
     return (
       <div className="flex min-h-screen w-full items-center justify-center p-4 bg-background relative overflow-hidden">
-        <div className="absolute inset-0 gradient-mesh opacity-50" />
+        <AnimatedBackground />
         <motion.div
           initial={{ opacity: 0, scale: 0.95 }}
           animate={{ opacity: 1, scale: 1 }}
-          className="w-full max-w-sm relative"
+          className="w-full max-w-sm relative z-10"
         >
-          <div className="bg-card border border-border rounded-2xl p-6 shadow-card space-y-4">
-            <div className="text-center">
-              <div className="size-14 rounded-2xl bg-primary/10 text-primary flex items-center justify-center mx-auto mb-3">
-                <ShieldCheck className="size-7" />
+          <div className="login-glass-card rounded-3xl p-7 shadow-pop space-y-5">
+            <motion.div
+              initial={{ opacity: 0, y: 12 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.1 }}
+              className="text-center"
+            >
+              <div className="size-16 rounded-2xl bg-primary/10 text-primary flex items-center justify-center mx-auto mb-4">
+                <motion.div
+                  animate={{ rotate: [0, -8, 8, -4, 0] }}
+                  transition={{ duration: 2, repeat: Infinity, repeatDelay: 3 }}
+                >
+                  <ShieldCheck className="size-8" />
+                </motion.div>
               </div>
-              <h1 className="text-xl font-extrabold tracking-tight">Verificación en dos pasos</h1>
-              <p className="text-xs text-muted-foreground mt-1">
-                Ingresa el código de 6 dígitos generado por tu aplicación de autenticación (Google Authenticator, Authy, etc.).
+              <h1 className="text-2xl font-extrabold tracking-tight">Verificación 2FA</h1>
+              <p className="text-xs text-muted-foreground mt-2 leading-relaxed">
+                Ingresa el código de 6 dígitos generado por tu aplicación de autenticación.
               </p>
-            </div>
+            </motion.div>
 
             <form onSubmit={handleMfaSubmit} className="space-y-4">
-              <div className="relative">
+              <motion.div
+                initial={{ opacity: 0, y: 12 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.2 }}
+                className="relative"
+              >
                 <Key className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
                 <input
                   type="text"
@@ -277,33 +407,41 @@ export default function Login() {
                   pattern="[0-9]*"
                   maxLength={6}
                   placeholder="123456"
-                  className="w-full pl-10 pr-4 py-3 bg-muted/50 border border-border rounded-xl text-center text-lg tracking-[0.3em] font-mono outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all"
+                  className="w-full pl-10 pr-4 py-3.5 bg-muted/30 border border-border/50 rounded-2xl text-center text-lg tracking-[0.3em] font-mono outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all"
                   value={mfaCode}
                   onChange={(e) => setMfaCode(e.target.value.replace(/\D/g, ''))}
                   autoFocus
                   required
                 />
-              </div>
+              </motion.div>
 
-              <button
+              <motion.button
+                initial={{ opacity: 0, y: 12 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.3 }}
+                whileHover={{ scale: 1.01 }}
+                whileTap={{ scale: 0.98 }}
                 type="submit"
                 disabled={verifyingMfa || mfaCode.length !== 6}
-                className="w-full py-2.5 bg-primary text-primary-foreground font-semibold rounded-xl flex items-center justify-center gap-2 hover:bg-primary/90 transition-all disabled:opacity-60 text-sm shadow-glow"
+                className="w-full py-3 gradient-primary text-primary-foreground font-semibold rounded-2xl flex items-center justify-center gap-2 transition-all disabled:opacity-60 text-sm shadow-glow hover:shadow-pop"
               >
                 {verifyingMfa ? (
                   <Loader2 className="size-4 animate-spin" />
                 ) : (
                   <>Verificar código</>
                 )}
-              </button>
+              </motion.button>
 
-              <button
+              <motion.button
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ delay: 0.4 }}
                 type="button"
                 onClick={() => signOut()}
                 className="w-full py-2 bg-transparent text-muted-foreground hover:text-foreground font-medium rounded-xl flex items-center justify-center gap-2 text-xs transition-colors"
               >
                 <ArrowLeft className="size-3.5" /> Cancelar e iniciar con otra cuenta
-              </button>
+              </motion.button>
             </form>
           </div>
         </motion.div>
@@ -313,55 +451,118 @@ export default function Login() {
 
   return (
     <div className="flex min-h-screen w-full items-center justify-center p-4 bg-background relative overflow-hidden">
-      <div className="absolute inset-0 gradient-mesh opacity-50" />
-      <motion.div
-        initial={{ opacity: 0, y: 24 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="w-full max-w-sm relative"
-      >
-        <div className="bg-card border border-border rounded-2xl p-6 shadow-card">
-          <div className="text-center mb-6">
-            <div className="size-12 rounded-xl gradient-primary shadow-glow flex items-center justify-center mx-auto mb-3">
-              <Wallet className="size-6 text-primary-foreground" />
-            </div>
-            <h1 className="text-xl font-extrabold tracking-tight">Finance Pal</h1>
-            <p className="text-sm text-muted-foreground mt-1">
-              {isLogin ? 'Inicia sesión para continuar' : 'Crea tu cuenta para empezar'}
-            </p>
-          </div>
+      {/* Animated background */}
+      <AnimatedBackground />
 
-          <form onSubmit={handleSubmit} className="space-y-3">
-            <div className="relative">
-              <Mail className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
+      {/* Main card */}
+      <motion.div
+        initial={{ opacity: 0, y: 30, scale: 0.96 }}
+        animate={{ opacity: 1, y: 0, scale: 1 }}
+        transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
+        className="w-full max-w-[420px] relative z-10"
+      >
+        <div className="login-glass-card rounded-3xl p-8 shadow-pop">
+          {/* Header with animated logo */}
+          <motion.div
+            initial={{ opacity: 0, y: 16 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.15, duration: 0.5 }}
+            className="text-center mb-8"
+          >
+            <motion.div
+              animate={{ 
+                boxShadow: [
+                  '0 0 20px 0 hsl(var(--primary) / 0.3)',
+                  '0 0 40px 5px hsl(var(--primary) / 0.4)',
+                  '0 0 20px 0 hsl(var(--primary) / 0.3)',
+                ]
+              }}
+              transition={{ duration: 3, repeat: Infinity, ease: "easeInOut" }}
+              className="size-16 rounded-2xl gradient-primary flex items-center justify-center mx-auto mb-5"
+            >
+              <motion.div
+                animate={{ rotate: [0, -5, 5, 0] }}
+                transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
+              >
+                <Wallet className="size-8 text-primary-foreground" />
+              </motion.div>
+            </motion.div>
+            
+            <h1 className="text-3xl font-extrabold tracking-tight login-text-gradient">
+              Finance Pal
+            </h1>
+            <motion.p
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ delay: 0.4 }}
+              className="text-sm text-muted-foreground mt-2 flex items-center justify-center gap-1.5"
+            >
+              <Sparkles className="size-3.5 text-primary" />
+              {isLogin ? 'Bienvenido de nuevo' : 'Crea tu cuenta para empezar'}
+            </motion.p>
+          </motion.div>
+
+          <form onSubmit={handleSubmit} className="space-y-3.5">
+            {/* Email input */}
+            <motion.div
+              initial={{ opacity: 0, x: -20 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ delay: 0.2, duration: 0.4 }}
+              className="relative group"
+            >
+              <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 size-4 text-muted-foreground group-focus-within:text-primary transition-colors" />
               <input
                 type="email"
                 placeholder="Correo electrónico"
-                className="w-full pl-10 pr-4 py-2.5 bg-muted/50 border border-border rounded-xl text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all"
+                className="w-full pl-11 pr-4 py-3 bg-muted/30 border border-border/50 rounded-2xl text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 focus:bg-muted/50 transition-all placeholder:text-muted-foreground/60"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 autoComplete="email"
                 required
               />
-            </div>
-            <div className="relative">
-              <Lock className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
+            </motion.div>
+
+            {/* Password input */}
+            <motion.div
+              initial={{ opacity: 0, x: -20 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ delay: 0.25, duration: 0.4 }}
+              className="relative group"
+            >
+              <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 size-4 text-muted-foreground group-focus-within:text-primary transition-colors" />
               <input
                 type="password"
                 placeholder="Contraseña"
-                className="w-full pl-10 pr-4 py-2.5 bg-muted/50 border border-border rounded-xl text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all"
+                className="w-full pl-11 pr-4 py-3 bg-muted/30 border border-border/50 rounded-2xl text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 focus:bg-muted/50 transition-all placeholder:text-muted-foreground/60"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 autoComplete={isLogin ? 'current-password' : 'new-password'}
                 required
                 minLength={8}
               />
-            </div>
-            {!isLogin && <PasswordStrengthMeter password={password} />}
+            </motion.div>
 
-            <button
+            {/* Password strength meter (register only) */}
+            {!isLogin && (
+              <motion.div
+                initial={{ opacity: 0, height: 0 }}
+                animate={{ opacity: 1, height: 'auto' }}
+                exit={{ opacity: 0, height: 0 }}
+              >
+                <PasswordStrengthMeter password={password} />
+              </motion.div>
+            )}
+
+            {/* Submit button */}
+            <motion.button
+              initial={{ opacity: 0, y: 12 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.3, duration: 0.4 }}
+              whileHover={{ scale: 1.01, boxShadow: '0 12px 40px -8px hsl(var(--primary) / 0.35)' }}
+              whileTap={{ scale: 0.98 }}
               type="submit"
               disabled={loading}
-              className="w-full py-2.5 bg-primary text-primary-foreground font-semibold rounded-xl flex items-center justify-center gap-2 hover:bg-primary/90 transition-all disabled:opacity-60 text-sm"
+              className="w-full py-3 gradient-primary text-primary-foreground font-semibold rounded-2xl flex items-center justify-center gap-2 transition-all disabled:opacity-60 text-sm shadow-glow"
             >
               {loading ? (
                 <Loader2 className="size-4 animate-spin" />
@@ -370,36 +571,82 @@ export default function Login() {
               ) : (
                 <><UserPlus className="size-4" /> Crear Cuenta</>
               )}
-            </button>
+            </motion.button>
 
-            <div className="relative my-4">
+            {/* Divider */}
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ delay: 0.35 }}
+              className="relative my-5"
+            >
               <div className="absolute inset-0 flex items-center">
-                <div className="w-full border-t border-border" />
+                <div className="w-full border-t border-border/50" />
               </div>
               <div className="relative flex justify-center text-[11px] uppercase">
-                <span className="bg-card px-2 text-muted-foreground font-medium">O continúa con</span>
+                <span className="login-glass-card px-3 py-0.5 rounded-full text-muted-foreground font-medium tracking-wider">
+                  O continúa con
+                </span>
               </div>
-            </div>
+            </motion.div>
 
-            <div className="grid grid-cols-2 gap-2">
-              <button type="button" disabled={loading} onClick={() => handleOAuth('google')}
-                className="py-2.5 bg-background border border-border rounded-xl flex items-center justify-center gap-2 hover:bg-muted/50 transition-all disabled:opacity-60 text-sm font-medium">
+            {/* OAuth buttons */}
+            <motion.div
+              initial={{ opacity: 0, y: 12 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.4, duration: 0.4 }}
+              className="grid grid-cols-2 gap-3"
+            >
+              <motion.button
+                whileHover={{ scale: 1.02, y: -1 }}
+                whileTap={{ scale: 0.97 }}
+                type="button"
+                disabled={loading}
+                onClick={() => handleOAuth('google')}
+                className="py-3 bg-muted/30 border border-border/50 rounded-2xl flex items-center justify-center gap-2.5 hover:bg-muted/50 hover:border-border transition-all disabled:opacity-60 text-sm font-medium"
+              >
                 <GoogleIcon /> Google
-              </button>
-              <button type="button" disabled={loading} onClick={() => handleOAuth('github')}
-                className="py-2.5 bg-background border border-border rounded-xl flex items-center justify-center gap-2 hover:bg-muted/50 transition-all disabled:opacity-60 text-sm font-medium">
+              </motion.button>
+              <motion.button
+                whileHover={{ scale: 1.02, y: -1 }}
+                whileTap={{ scale: 0.97 }}
+                type="button"
+                disabled={loading}
+                onClick={() => handleOAuth('github')}
+                className="py-3 bg-muted/30 border border-border/50 rounded-2xl flex items-center justify-center gap-2.5 hover:bg-muted/50 hover:border-border transition-all disabled:opacity-60 text-sm font-medium"
+              >
                 <GitHubIcon /> GitHub
-              </button>
-            </div>
+              </motion.button>
+            </motion.div>
           </form>
 
-          <div className="mt-5 text-center">
-            <button type="button" onClick={() => { setIsLogin(!isLogin); setPassword(''); }}
-              className="text-sm text-primary hover:underline font-medium">
+          {/* Toggle login/register */}
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.5 }}
+            className="mt-6 text-center"
+          >
+            <button
+              type="button"
+              onClick={() => { setIsLogin(!isLogin); setPassword(''); }}
+              className="text-sm text-primary hover:text-primary/80 font-medium transition-colors relative group"
+            >
               {isLogin ? '¿No tienes cuenta? Regístrate' : '¿Ya tienes cuenta? Inicia Sesión'}
+              <span className="absolute -bottom-0.5 left-0 w-0 h-[1.5px] bg-primary group-hover:w-full transition-all duration-300" />
             </button>
-          </div>
+          </motion.div>
         </div>
+
+        {/* Subtle footer */}
+        <motion.p
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 0.6 }}
+          className="text-center text-[11px] text-muted-foreground/50 mt-4"
+        >
+          Gestión financiera inteligente y segura
+        </motion.p>
       </motion.div>
     </div>
   );

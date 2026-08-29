@@ -356,7 +356,7 @@ export const COMMON_EMOJIS = [
   "🐾","🐶","🐱","🌱","🌳","🌸","🛟","🧳","🏖️","⛰️",
 ];
 
-export type ThemeMode = "light" | "dark";
+export type ThemeMode = "light" | "dark" | "system";
 export type AccentColor = "blue" | "violet" | "emerald" | "rose" | "amber";
 export type Currency = "MXN" | "USD" | "EUR" | "COP" | "ARS" | "CLP" | "PEN" | "BRL";
 

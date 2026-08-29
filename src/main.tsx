@@ -13,4 +13,19 @@ if (import.meta.env.PROD) {
 	import("./lib/web-vitals").then((m) => m.initWebVitals?.()).catch(() => {});
 }
 
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('/sw.js').then(reg => {
+    reg.onupdatefound = () => {
+      const installingWorker = reg.installing;
+      if (installingWorker) {
+        installingWorker.onstatechange = () => {
+          if (installingWorker.state === 'installed' && navigator.serviceWorker.controller) {
+            console.log('Update available');
+          }
+        };
+      }
+    };
+  });
+}
+
 createRoot(document.getElementById("root")!).render(<App />);

@@ -138,22 +138,32 @@ export function SyncIndicator({ showLabel = true, compact = false, className = "
   // Desktop: with label and colored background
   const stateMeta: Record<SyncState, { icon: "cloud" | "offline" | "spinner"; color: string; bg: string; label: string }> = {
     synced: { icon: "cloud", color: "text-green-500", bg: "bg-green-500/10", label: "Sincronizado" },
-    syncing: { icon: "spinner", color: "text-blue-500", bg: "bg-blue-500/10", label: "Sincronizando..." },
-    pending: { icon: "cloud", color: "text-yellow-500", bg: "bg-yellow-500/10", label: "Pendiente" },
+    syncing: { icon: "spinner", color: "text-blue-500", bg: "bg-blue-500/10", label: `Sincronizando (${syncQueue.length})` },
+    pending: { icon: "cloud", color: "text-yellow-500", bg: "bg-yellow-500/10", label: `Pendiente (${syncQueue.length}) - Clic para reintentar` },
     offline: { icon: "offline", color: "text-yellow-500", bg: "bg-yellow-500/10", label: "Sin conexión" },
   };
   const meta = stateMeta[state];
 
+  const handleRetry = () => {
+    if (state === "pending") {
+      import("@/lib/sync-engine").then((mod) => {
+        mod.processSyncQueue();
+      });
+    }
+  };
+
   return (
-    <motion.div
+    <motion.button
       layout
-      className={`rounded-2xl flex items-center gap-2 text-xs ${showLabel ? "p-2" : "p-1.5"} ${meta.bg} ${meta.color} ${className}`}
+      onClick={handleRetry}
+      disabled={state !== "pending"}
+      className={`rounded-2xl flex items-center gap-2 text-xs border-0 outline-none ${showLabel ? "p-2" : "p-1.5"} ${meta.bg} ${meta.color} ${className} ${state === "pending" ? "cursor-pointer hover:opacity-80 transition-opacity" : "cursor-default"}`}
     >
       <DesktopSyncIcon state={state} color={meta.color} queueLen={syncQueue.length} />
       {showLabel && (
         <AnimatePresence mode="wait">
           <motion.span
-            key={state}
+            key={state + syncQueue.length}
             initial={{ opacity: 0, y: 6 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -6 }}
@@ -164,6 +174,6 @@ export function SyncIndicator({ showLabel = true, compact = false, className = "
         </AnimatePresence>
       )}
       {state === "syncing" && <UploadDots colorClass={meta.color} />}
-    </motion.div>
+    </motion.button>
   );
 }

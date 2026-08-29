@@ -36,11 +36,66 @@ function mergeGoals(primary: any[], secondary: any[]): any[] {
   });
 }
 
+import { useShallow } from 'zustand/react/shallow';
+
 export function useHybridData() {
   const { session } = useAuth();
   const queryClient = useQueryClient();
 
-  const store = useFinance();
+  const store = useFinance(useShallow(s => ({
+    accounts: s.accounts,
+    transactions: s.transactions,
+    fixedItems: s.fixedItems,
+    goals: s.goals,
+    goalFolders: s.goalFolders,
+    debts: s.debts,
+    theme: s.theme,
+    profile: s.profile,
+    activeYear: s.activeYear,
+    activeMonth: s.activeMonth,
+    changeLog: s.changeLog,
+    
+    addAccount: s.addAccount,
+    updateAccount: s.updateAccount,
+    removeAccount: s.removeAccount,
+    mergeAccounts: s.mergeAccounts,
+    
+    addGoalFolder: s.addGoalFolder,
+    updateGoalFolder: s.updateGoalFolder,
+    removeGoalFolder: s.removeGoalFolder,
+    reorderGoalFolders: s.reorderGoalFolders,
+    
+    addGoal: s.addGoal,
+    updateGoal: s.updateGoal,
+    removeGoal: s.removeGoal,
+    contributeGoal: s.contributeGoal,
+    
+    addTx: s.addTx,
+    updateTx: s.updateTx,
+    removeTx: s.removeTx,
+    
+    addFixed: s.addFixed,
+    updateFixed: s.updateFixed,
+    removeFixed: s.removeFixed,
+    toggleFixed: s.toggleFixed,
+    
+    setProfile: s.setProfile,
+    setTheme: s.setTheme,
+    toggleTheme: s.toggleTheme,
+    setActive: s.setActive,
+    resetToToday: s.resetToToday,
+    ensureScheduledTransactions: s.ensureScheduledTransactions,
+    syncFiltersToURL: s.syncFiltersToURL,
+    setSyncFiltersToURL: s.setSyncFiltersToURL,
+    clearChangeLog: s.clearChangeLog,
+    exportData: s.exportData,
+    importData: s.importData,
+    migrateReceiptsInPlace: s.migrateReceiptsInPlace,
+    cleanupOrphanReceipts: s.cleanupOrphanReceipts,
+    resetAll: s.resetAll,
+    loadSettingsFromCloud: s.loadSettingsFromCloud,
+    syncAllToCloud: s.syncAllToCloud
+  })));
 
   const { data: remoteAccounts, isLoading: accountsLoading } = useAccounts();
   const { data: remoteTransactions, isLoading: transactionsLoading } = useTransactions();

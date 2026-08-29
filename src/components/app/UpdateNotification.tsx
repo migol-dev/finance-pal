@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion, AnimatePresence } from '@/lib/framer';
 import { Button } from '@/components/ui/button';
 import { Github, X, Loader2 } from 'lucide-react';
 import { checkForUpdates, dismissVersion, VersionInfo } from '@/lib/version-check';

@@ -1,3 +1,24 @@
+const CACHE_VERSION = 'fp-v1.19.38';
+
+self.addEventListener('install', (event) => {
+  self.skipWaiting();
+});
+
+self.addEventListener('activate', (event) => {
+  event.waitUntil(
+    caches.keys().then((cacheNames) => {
+      return Promise.all(
+        cacheNames.map((cacheName) => {
+          if (cacheName !== CACHE_VERSION) {
+            return caches.delete(cacheName);
+          }
+        })
+      );
+    })
+  );
+  self.clients.claim();
+});
+
 // Service Worker para Web Push - Finance Pal
 self.addEventListener("push", (event) => {
   let data = {

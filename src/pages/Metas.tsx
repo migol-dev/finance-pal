@@ -370,15 +370,25 @@ export default function Metas() {
         {/* Goals Grid */}
         <div className="px-5 lg:px-0 space-y-4">
           {filteredGoals.length === 0 && (
-            <div className="rounded-2xl bg-muted/50 border border-dashed border-border p-8 text-center">
-              <p className="text-4xl mb-2">🎯</p>
-              <p className="text-sm text-muted-foreground">
+            <div className="rounded-3xl bg-card border border-dashed border-border p-8 text-center shadow-soft flex flex-col items-center">
+              <p className="text-5xl mb-4">🎯</p>
+              <p className="text-base font-bold mb-2">
                 {selectedFolderId === "uncategorized" 
-                  ? "No hay metas sin carpeta. Arrastra metas aquí o crea una nueva."
+                  ? "No hay metas sin carpeta"
                   : selectedFolderId === null
-                  ? "Crea tu primera meta de ahorro"
-                  : `La carpeta está vacía. Crea una meta o arrastra una aquí.`}
+                  ? "No tienes metas de ahorro"
+                  : `Esta carpeta está vacía`}
               </p>
+              <p className="text-xs text-muted-foreground mb-5 max-w-[280px]">
+                {selectedFolderId === "uncategorized" 
+                  ? "Todas tus metas están organizadas en carpetas."
+                  : selectedFolderId === null
+                  ? "Crea tu primera meta y empieza a ahorrar para cumplir tus sueños."
+                  : "Crea una nueva meta o arrastra una existente aquí."}
+              </p>
+              <Button onClick={openNew} className="h-10 px-5 rounded-xl gradient-primary text-primary-foreground font-bold border-0 shadow-glow">
+                Crear nueva meta
+              </Button>
             </div>
           )}
           <AnimatePresence>
@@ -467,7 +477,7 @@ function GoalCompactCard({ goal, index, onViewMore, onContribute, accounts }: {
           <button onClick={() => handleQuickAdd(100)} className="flex-1 h-10 rounded-2xl bg-white/15 hover:bg-white/25 active:scale-95 transition text-[11px] font-black border border-white/10">+100</button>
           <button onClick={() => handleQuickAdd(500)} className="flex-1 h-10 rounded-2xl bg-white/15 hover:bg-white/25 active:scale-95 transition text-[11px] font-black border border-white/10">+500</button>
           <button onClick={() => handleQuickAdd(1000)} className="flex-1 h-10 rounded-2xl bg-white/15 hover:bg-white/25 active:scale-95 transition text-[11px] font-black border border-white/10">+1k</button>
-          <button onClick={onViewMore} className="size-10 rounded-2xl bg-white/25 hover:bg-white/35 active:scale-95 transition flex items-center justify-center border border-white/20"><Plus className="size-4" /></button>
+          <button aria-label="Agregar" onClick={onViewMore} className="size-10 rounded-2xl bg-white/25 hover:bg-white/35 active:scale-95 transition flex items-center justify-center border border-white/20"><Plus className="size-4" /></button>
         </div>
       </div>
 
@@ -550,8 +560,8 @@ function GoalDetailContent({ goal, onEdit, onDelete, onContribute, onTogglePin, 
         <button onClick={onTogglePin} className={cn("h-14 rounded-2xl flex items-center justify-center transition active:scale-90", goal.pinned ? "bg-white text-foreground" : "bg-white/10 text-white")}>
           <Star className={cn("size-6", goal.pinned ? "fill-current" : "")} />
         </button>
-        <button onClick={onEdit} className="h-14 rounded-2xl bg-white/10 flex items-center justify-center active:scale-90 transition"><Pencil className="size-6" /></button>
-        <button onClick={() => setDeleteConfirm(true)} className="h-14 rounded-2xl bg-white/10 flex items-center justify-center active:scale-90 transition"><Trash2 className="size-6" /></button>
+        <button aria-label="Editar" onClick={onEdit} className="h-14 rounded-2xl bg-white/10 flex items-center justify-center active:scale-90 transition"><Pencil className="size-6" /></button>
+        <button aria-label="Eliminar" onClick={() => setDeleteConfirm(true)} className="h-14 rounded-2xl bg-white/10 flex items-center justify-center active:scale-90 transition"><Trash2 className="size-6" /></button>
         <ContribCustom onAdd={(v, acc) => onContribute(v, undefined, acc)} accounts={accounts} />
       </div>
 

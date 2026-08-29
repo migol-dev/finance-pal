@@ -343,9 +343,13 @@ export default function Movimientos() {
 
       <div className="px-4 sm:px-5 mt-5 space-y-5">
         {Object.keys(grouped).length === 0 && (
-          <div className="rounded-xl bg-muted/50 border border-dashed border-border p-8 text-center">
-            <p className="text-4xl mb-2">📭</p>
-            <p className="text-sm text-muted-foreground">Sin movimientos en {MONTHS[activeMonth]} {activeYear}</p>
+          <div className="rounded-3xl bg-card border border-dashed border-border p-8 text-center shadow-soft flex flex-col items-center">
+            <p className="text-5xl mb-4">📭</p>
+            <p className="text-base font-bold mb-2">No hay movimientos</p>
+            <p className="text-xs text-muted-foreground mb-5 max-w-[250px]">No encontramos registros en {MONTHS[activeMonth]} {activeYear}. ¡Agrega tu primer movimiento!</p>
+            <Button onClick={openNew} className="h-10 px-5 rounded-xl gradient-primary text-primary-foreground font-bold border-0 shadow-glow">
+              Crear movimiento
+            </Button>
           </div>
         )}
         <div className="lg:hidden">
@@ -366,14 +370,23 @@ export default function Movimientos() {
                         <motion.div key={t.id} layout className="rounded-xl bg-card border border-border shadow-soft">
                           <div className="p-3 flex items-center gap-3">
                             <IconDisplay icon={iconFor(t)} />
-                            <button onClick={() => openEdit(t as Transaction)} className="flex-1 min-w-0 text-left">
-                              <p className="font-semibold text-sm truncate">{t.concept}</p>
+                            <div className="flex-1 min-w-0 flex flex-col">
+                              <div className="flex items-center gap-2 mb-0.5">
+                                <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded uppercase ${t.category === "Abono" ? "bg-success/20 text-success" : "bg-destructive/20 text-destructive"}`}>
+                                  {t.category === "Abono" ? "ABONO" : "DEUDA"}
+                                </span>
+                                <button onClick={() => navigate(`/deudas?id=${(t as any)._debtId}`)} className="font-semibold text-sm truncate hover:underline text-left">
+                                  {t.concept}
+                                </button>
+                              </div>
                               <p className="text-xs text-muted-foreground truncate">
                                 {t.category}{vacct && <span className="ml-1">· {vacct.name}</span>}
                               </p>
-                            </button>
+                            </div>
                             <div className="text-right">
-                              <p className="font-bold text-sm text-success">+{fmt(t.amount)}</p>
+                              <p className={`font-bold text-sm ${t.type === "income" ? "text-success" : "text-destructive"}`}>
+                                {t.type === "income" ? "+" : "-"}{fmt(t.amount)}
+                              </p>
                             </div>
                             <button onClick={() => setExpandedId(isExpanded ? null : t.id)} className="text-muted-foreground hover:text-primary p-1">
                               <ChevronDown className={`size-4 transition-transform ${isExpanded ? "rotate-180" : ""}`} />
@@ -386,7 +399,7 @@ export default function Movimientos() {
                               {ext?.clabe && <p><span className="font-semibold text-foreground">CLABE:</span> {ext.clabe}</p>}
                               {ext?.bank && <p><span className="font-semibold text-foreground">Banco:</span> {ext.bank}</p>}
                               {ext?.name && <p><span className="font-semibold text-foreground">Titular:</span> {ext.name}</p>}
-                              {receipt && <img src={receipt} alt="comprobante" className="rounded max-h-40 object-contain mt-1" />}
+                              {receipt && <img src={receipt} alt="comprobante" loading="lazy" className="rounded max-h-40 object-contain mt-1" />}
                             </div>
                           )}
                         </motion.div>
@@ -406,7 +419,7 @@ export default function Movimientos() {
                             {t.type === "income" ? "+" : t.type === "transfer" ? "⇄" : "-"}{fmt(t.amount)}
                           </p>
                         </div>
-                        <button onClick={() => setDeleteConfirm(t as Transaction)} className="text-muted-foreground hover:text-destructive p-1 shrink-0"><Trash2 className="size-3.5" /></button>
+                        <button aria-label="Eliminar" onClick={() => setDeleteConfirm(t as Transaction)} className="text-muted-foreground hover:text-destructive p-1 shrink-0"><Trash2 className="size-3.5" /></button>
                       </motion.div>
                     );
                   })}
@@ -443,14 +456,24 @@ export default function Movimientos() {
                         <React.Fragment key={t.id}>
                           <tr className="border-b border-border last:border-0 hover:bg-muted/20 transition-colors bg-accent/5">
                             <td className="p-3 whitespace-nowrap text-muted-foreground text-xs">{day}</td>
-                            <td className="p-3"><div className="flex items-center gap-2"><IconDisplay icon={iconFor(t)} /><span className="font-semibold">{t.concept}</span></div></td>
+                            <td className="p-3">
+                              <div className="flex items-center gap-2">
+                                <IconDisplay icon={iconFor(t)} />
+                                <button onClick={() => navigate(`/deudas?id=${(t as any)._debtId}`)} className="font-semibold hover:underline text-left">
+                                  {t.concept}
+                                </button>
+                                <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded uppercase ${t.category === "Abono" ? "bg-success/20 text-success" : "bg-destructive/20 text-destructive"}`}>
+                                  {t.category === "Abono" ? "ABONO" : "DEUDA"}
+                                </span>
+                              </div>
+                            </td>
                             <td className="p-3 text-xs text-muted-foreground">{t.category}</td>
                             <td className="p-3 text-xs">{(t as any).paymentMethod ? `${PAYMENT_METHOD_EMOJI[(t as any).paymentMethod as PaymentMethod]} ${PAYMENT_METHOD_LABEL[(t as any).paymentMethod as PaymentMethod]}` : "—"}</td>
                             <td className="p-3 text-xs text-muted-foreground">{vacct?.name ?? "—"}</td>
                             <td className={`p-3 text-right font-bold text-sm whitespace-nowrap ${t.type === "income" ? "text-success" : "text-destructive"}`}>{t.type === "income" ? "+" : "-"}{fmt(t.amount)}</td>
                             <td className="p-3 text-right whitespace-nowrap">
-                              <button onClick={() => setExpandedId(isExpanded ? null : t.id)} className="text-muted-foreground hover:text-primary p-1"><ChevronDown className={`size-3.5 transition-transform ${isExpanded ? "rotate-180" : ""}`} /></button>
-                              <button onClick={() => openEdit(t as Transaction)} className="text-muted-foreground hover:text-primary p-1"><Pencil className="size-3.5" /></button>
+                              <button aria-label="Expandir" onClick={() => setExpandedId(isExpanded ? null : t.id)} className="text-muted-foreground hover:text-primary p-1"><ChevronDown className={`size-3.5 transition-transform ${isExpanded ? "rotate-180" : ""}`} /></button>
+                              <button aria-label="Editar" onClick={() => openEdit(t as Transaction)} className="text-muted-foreground hover:text-primary p-1"><Pencil className="size-3.5" /></button>
                             </td>
                           </tr>
                           {isExpanded && (
@@ -461,7 +484,7 @@ export default function Movimientos() {
                                 {ext?.clabe && <p><span className="font-semibold text-foreground">CLABE:</span> {ext.clabe}</p>}
                                 {ext?.bank && <p><span className="font-semibold text-foreground">Banco:</span> {ext.bank}</p>}
                                 {ext?.name && <p><span className="font-semibold text-foreground">Titular:</span> {ext.name}</p>}
-                                {receipt && <img src={receipt} alt="comprobante" className="rounded max-h-36 object-contain mt-1" />}
+                                {receipt && <img src={receipt} alt="comprobante" loading="lazy" className="rounded max-h-36 object-contain mt-1" />}
                               </td>
                             </tr>
                           )}
@@ -480,8 +503,8 @@ export default function Movimientos() {
                           {t.type === "income" ? "+" : t.type === "transfer" ? "⇄" : "-"}{fmt(t.amount)}
                         </td>
                         <td className="p-3 text-right whitespace-nowrap">
-                          <button onClick={() => openEdit(t as Transaction)} className="text-muted-foreground hover:text-primary p-1"><Pencil className="size-3.5" /></button>
-                          <button onClick={() => setDeleteConfirm(t as Transaction)} className="text-muted-foreground hover:text-destructive p-1"><Trash2 className="size-3.5" /></button>
+                          <button aria-label="Editar" onClick={() => openEdit(t as Transaction)} className="text-muted-foreground hover:text-primary p-1"><Pencil className="size-3.5" /></button>
+                          <button aria-label="Eliminar" onClick={() => setDeleteConfirm(t as Transaction)} className="text-muted-foreground hover:text-destructive p-1"><Trash2 className="size-3.5" /></button>
                         </td>
                       </tr>
                     );
@@ -566,9 +589,10 @@ function TxForm({ initial, onSave, accounts }: { initial: Partial<Transaction> &
         payload.accountId = accountId;
         if (transferToAccountId === "__external") {
           const c = externalPayee?.clabe ?? "";
-          if (!/^[0-9]{18}$/.test((c || "").replace(/\s+/g, ""))) { toast.error("CLABE inválida (18 dígitos)"); return; }
+          const cleanedClabe = c.replace(/\s+/g, "");
+          if (!/^[0-9]{18}$/.test(cleanedClabe)) { toast.error("CLABE inválida (18 dígitos)"); return; }
           if (!externalPayee?.bank || !externalPayee?.name) { toast.error("Completa los datos del beneficiario externo"); return; }
-          payload.externalPayee = externalPayee;
+          payload.externalPayee = { ...externalPayee, clabe: cleanedClabe };
         } else if (transferToAccountId) { payload.transferToAccountId = transferToAccountId; }
         if (receiptData) {
           if (Capacitor.isNativePlatform()) {
@@ -580,7 +604,7 @@ function TxForm({ initial, onSave, accounts }: { initial: Partial<Transaction> &
               const fname = `receipt-${Date.now()}.${ext}`;
               const res = await Filesystem.writeFile({ path: `receipts/${fname}`, data: base64, directory: Directory.Data, encoding: Encoding.UTF8 });
               payload.receipt = res.uri ?? `receipts/${fname}`;
-            } catch (e) { payload.receipt = receiptData; }
+            } catch { payload.receipt = receiptData; }
           } else { payload.receipt = receiptData; }
         }
       } else if (paymentMethod === "card") {

@@ -40,22 +40,26 @@ export const motion: any = fallback;
 export let AnimatePresence: any = ({ children }: { children: React.ReactNode }) => <>{children}</>;
 
 if (typeof window !== "undefined") {
-  // Dynamic load framer-motion in background; when ready, replace fallback components
-  import("framer-motion").then((mod) => {
-    try {
-      const mm = (mod as any).motion || (mod as any);
-      if (mm) {
-        Object.keys(mm).forEach((k) => {
-          try { motion[k] = mm[k]; } catch (e) { /* ignore */ }
-        });
+  const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  if (!prefersReducedMotion) {
+    // Dynamic load framer-motion in background; when ready, replace fallback components
+    import("framer-motion").then((mod) => {
+      try {
+        const mm = (mod as any).motion || (mod as any);
+        if (mm) {
+          Object.keys(mm).forEach((k) => {
+            try { motion[k] = mm[k]; } catch { /* ignore */ }
+          });
+        }
+        if ((mod as any).AnimatePresence) AnimatePresence = (mod as any).AnimatePresence;
+      } catch {
+        // ignore
       }
-      if ((mod as any).AnimatePresence) AnimatePresence = (mod as any).AnimatePresence;
-    } catch (e) {
-      // ignore
-    }
-  }).catch(() => {
-    // ignore load failures
-  });
+    }).catch(() => {
+      // ignore load failures
+    });
+  }
 }
 
 export default null;

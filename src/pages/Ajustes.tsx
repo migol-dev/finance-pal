@@ -4,7 +4,7 @@ import { useFinance, ExportScopes, ALL_SCOPES, normalizeImportKeys } from "@/sto
 import { fmt, monthlyAmount, TYPE_LABEL, FREQ_LABEL, ItemType, Frequency, Priority, iconFor, IconRef, FixedItem, CATEGORY_EMOJI, PAYMENT_METHOD_LABEL, PAYMENT_METHOD_EMOJI, Account, Denomination, cashTotalFromDenominations, Currency, computeBalances, PaymentMethod, NotificationPreferences } from "@/lib/finance";
 import DenominationsEditor from "@/components/ui/DenominationsEditor";
 import { Header } from "@/components/app/Header";
-import { Plus, Trash2, Power, Database, RotateCcw, Pencil, Download, Upload, Sun, Moon, Target, History, HandCoins, User, LogOut, Cloud, CloudOff, Loader2, Palette, Bell, Shield, ShieldCheck, ShieldOff, Smartphone } from "lucide-react";
+import { Plus, Trash2, Power, Database, RotateCcw, Pencil, Download, Upload, Sun, Moon, Monitor, Target, History, HandCoins, User, LogOut, Cloud, CloudOff, Loader2, Bell, Shield, ShieldCheck, ShieldOff, Smartphone } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -28,12 +28,14 @@ import { useQueryClient } from '@tanstack/react-query';
 import { showUserError } from '@/lib/app-error';
 import { scheduleAllNotifications, requestNotificationPermissions, cancelAllLocalNotifications, sendTestNotification } from '@/lib/notifications';
 import { audit } from '@/lib/audit-logger';
+import { useSystemTheme } from '@/hooks/useSystemTheme';
+import type { ThemeMode } from '@/lib/finance';
 
 export default function Ajustes() {
   const queryClient = useQueryClient();
   const { 
     fixedItems, addFixed, updateFixed, removeFixed, toggleFixed, resetAll, exportData, importData, 
-    theme, toggleTheme, profile, setProfile, 
+    profile, setProfile, 
     accounts, addAccount, updateAccount, removeAccount, syncAllToCloud,
     transactions, debts,
   } = useHybridData();
@@ -152,7 +154,7 @@ export default function Ajustes() {
           files: [file],
         });
         toast.success("Exportación compartida");
-      } catch (e) {
+      } catch {
         downloadFallback(json, filename);
       }
       return;
@@ -229,50 +231,60 @@ export default function Ajustes() {
             // Delete all existing data for this user, then insert imported data
             if (sc.accounts) {
               await supabase.from('accounts').delete().eq('user_id', user.id);
-              for (const a of state.accounts) {
-                const { error } = await supabase.from('accounts').insert({ id: a.id, user_id: user.id, name: a.name, type: a.type, initial_balance: a.initialBalance, currency: a.currency, clabe: a.clabe, bank: a.bank, holder_name: a.holderName, denominations: a.denominations });
-                if (!error) synced++;
+              const records = state.accounts.map(a => ({ id: a.id, user_id: user.id, name: a.name, type: a.type, initial_balance: a.initialBalance, currency: a.currency, clabe: a.clabe, bank: a.bank, holder_name: a.holderName, denominations: a.denominations }));
+              for (let i = 0; i < records.length; i += 500) {
+                const { error, data } = await supabase.from('accounts').insert(records.slice(i, i + 500)).select('id');
+                if (!error && data) synced += data.length;
               }
             }
             if (sc.transactions) {
               await supabase.from('transactions').delete().eq('user_id', user.id);
-              for (const tx of state.transactions) {
-                const { error } = await supabase.from('transactions').insert({ id: tx.id, user_id: user.id, type: tx.type, category: tx.category, concept: tx.concept, amount: tx.amount, date: tx.date, note: tx.note, icon: tx.icon, payment_method: tx.paymentMethod, fixed_id: tx.fixedId, account_id: tx.accountId, transfer_to_account_id: tx.transferToAccountId, external_payee: tx.externalPayee, receipt: tx.receipt });
-                if (!error) synced++;
+              const records = state.transactions.map(tx => ({ id: tx.id, user_id: user.id, type: tx.type, category: tx.category, concept: tx.concept, amount: tx.amount, date: tx.date, note: tx.note, icon: tx.icon, payment_method: tx.paymentMethod, fixed_id: tx.fixedId, account_id: tx.accountId, transfer_to_account_id: tx.transferToAccountId, external_payee: tx.externalPayee, receipt: tx.receipt }));
+              for (let i = 0; i < records.length; i += 500) {
+                const { error, data } = await supabase.from('transactions').insert(records.slice(i, i + 500)).select('id');
+                if (!error && data) synced += data.length;
               }
             }
             if (sc.fixedItems) {
               await supabase.from('fixed_items').delete().eq('user_id', user.id);
-              for (const f of state.fixedItems) {
-                const { error } = await supabase.from('fixed_items').insert({ id: f.id, user_id: user.id, type: f.type, category: f.category, concept: f.concept, amount: f.amount, frequency: f.frequency, active: f.active, note: f.note, start_date: f.startDate, end_date: f.endDate, priority: f.priority, pay_day: f.payDay, pay_week_day: f.payWeekDay, icon: f.icon, payment_method: f.paymentMethod, account_id: f.accountId });
-                if (!error) synced++;
+              const records = state.fixedItems.map(f => ({ id: f.id, user_id: user.id, type: f.type, category: f.category, concept: f.concept, amount: f.amount, frequency: f.frequency, active: f.active, note: f.note, start_date: f.startDate, end_date: f.endDate, priority: f.priority, pay_day: f.payDay, pay_week_day: f.payWeekDay, icon: f.icon, payment_method: f.paymentMethod, account_id: f.accountId }));
+              for (let i = 0; i < records.length; i += 500) {
+                const { error, data } = await supabase.from('fixed_items').insert(records.slice(i, i + 500)).select('id');
+                if (!error && data) synced += data.length;
               }
             }
             if (sc.goals) {
               await supabase.from('goals').delete().eq('user_id', user.id);
-              for (const g of state.goals) {
-                const { error } = await supabase.from('goals').insert({ id: g.id, user_id: user.id, name: g.name, target: g.target, saved: g.saved, emoji: g.emoji, color: g.color, icon: g.icon, deadline: g.deadline, purchase_url: g.purchaseUrl, contributions: g.contributions, pinned: g.pinned });
-                if (!error) synced++;
+              const records = state.goals.map(g => ({ id: g.id, user_id: user.id, name: g.name, target: g.target, saved: g.saved, emoji: g.emoji, color: g.color, icon: g.icon, deadline: g.deadline, purchase_url: g.purchaseUrl, contributions: g.contributions, pinned: g.pinned }));
+              for (let i = 0; i < records.length; i += 500) {
+                const { error, data } = await supabase.from('goals').insert(records.slice(i, i + 500)).select('id');
+                if (!error && data) synced += data.length;
               }
             }
             if (sc.debts) {
               // CASCADE handles debt_payments deletion
               await supabase.from('debts').delete().eq('user_id', user.id);
-              for (const debt of state.debts) {
-                const { error: debtErr } = await supabase.from('debts').insert({ id: debt.id, user_id: user.id, person: debt.person, concept: debt.concept, amount: debt.amount, date: debt.date, due_date: debt.dueDate, note: debt.note, icon: debt.icon, account_id: debt.accountId });
-                if (!debtErr) {
-                  synced++;
-                  for (const p of debt.payments) {
-                    const pay: Record<string, unknown> = { debt_id: debt.id, user_id: user.id, amount: p.amount, date: p.date, note: p.note, payment_method: p.paymentMethod };
-                    if (p.id) pay.id = p.id;
-                    if (p.accountId) pay.account_id = p.accountId;
-                    if (p.transferToAccountId) pay.transfer_to_account_id = p.transferToAccountId;
-                    if (p.externalPayee) pay.external_payee = p.externalPayee;
-                    if (p.receipt && !p.receipt.startsWith('data:')) pay.receipt_url = p.receipt;
-                    const { error: payErr } = await supabase.from('debt_payments').insert(pay);
-                    if (!payErr) synced++;
-                  }
-                }
+              const debtRecords = state.debts.map(debt => ({ id: debt.id, user_id: user.id, person: debt.person, concept: debt.concept, amount: debt.amount, date: debt.date, due_date: debt.dueDate, note: debt.note, icon: debt.icon, account_id: debt.accountId }));
+              for (let i = 0; i < debtRecords.length; i += 500) {
+                const { error, data } = await supabase.from('debts').insert(debtRecords.slice(i, i + 500)).select('id');
+                if (!error && data) synced += data.length;
+              }
+              
+              const paymentRecords: Record<string, unknown>[] = [];
+              state.debts.forEach(debt => {
+                debt.payments.forEach(p => {
+                  const pay: Record<string, unknown> = { debt_id: debt.id, user_id: user.id, amount: p.amount, date: p.date, note: p.note, payment_method: p.paymentMethod };
+                  if (p.id) pay.id = p.id;
+                  if (p.accountId) pay.account_id = p.accountId;
+                  if (p.transferToAccountId) pay.transfer_to_account_id = p.transferToAccountId;
+                  if (p.externalPayee) pay.external_payee = p.externalPayee;
+                  if (p.receipt && !p.receipt.startsWith('data:')) pay.receipt_url = p.receipt;
+                  paymentRecords.push(pay);
+                });
+              });
+              for (let i = 0; i < paymentRecords.length; i += 500) {
+                const { error, data } = await supabase.from('debt_payments').insert(paymentRecords.slice(i, i + 500)).select('id');
+                if (!error && data) synced += data.length;
               }
             }
             if (synced > 0) toast.success(`Datos reemplazados en la nube: ${synced} registros`);
@@ -383,9 +395,9 @@ export default function Ajustes() {
               <p className="text-[10px] text-muted-foreground">{fmt(monthlyAmount(i))}/mes</p>
             </div>
             <div className="flex flex-col gap-0.5">
-              <button onClick={() => openEdit(i)} className="text-muted-foreground hover:text-primary p-1"><Pencil className="size-4" /></button>
-              <button onClick={() => toggleFixed(i.id)} className="text-muted-foreground hover:text-foreground p-1"><Power className="size-4" /></button>
-              <button onClick={() => setDeleteConfirm(i)} className="text-muted-foreground hover:text-destructive p-1"><Trash2 className="size-4" /></button>
+              <button aria-label="Editar" onClick={() => openEdit(i)} className="text-muted-foreground hover:text-primary p-1"><Pencil className="size-4" /></button>
+              <button aria-label="Activar/Desactivar" onClick={() => toggleFixed(i.id)} className="text-muted-foreground hover:text-foreground p-1"><Power className="size-4" /></button>
+              <button aria-label="Eliminar" onClick={() => setDeleteConfirm(i)} className="text-muted-foreground hover:text-destructive p-1"><Trash2 className="size-4" /></button>
             </div>
           </motion.div>
         ))}
@@ -393,21 +405,7 @@ export default function Ajustes() {
 
       <section className="px-5 lg:px-10 mt-8 space-y-3">
         <h2 className="text-xs uppercase tracking-wider font-bold text-muted-foreground">Apariencia</h2>
-        <button onClick={toggleTheme} className="w-full rounded-2xl bg-card border border-border p-4 shadow-soft flex items-center gap-3 hover:bg-muted/50 transition">
-          <div className="size-9 rounded-xl bg-primary/10 text-primary flex items-center justify-center">
-            {theme === "dark" ? <Moon className="size-4" /> : <Sun className="size-4" />}
-          </div>
-          <div className="flex-1 text-left">
-            <p className="font-semibold text-sm">Tema {theme === "dark" ? "oscuro" : "claro"}</p>
-            <p className="text-xs text-muted-foreground">Toca para cambiar a {theme === "dark" ? "claro" : "oscuro"}</p>
-          </div>
-          {accentColor !== "blue" && (
-            <div className="flex items-center gap-1 text-xs text-muted-foreground">
-              <Palette className="size-3" />
-              <span className="capitalize">{accentColor}</span>
-            </div>
-          )}
-        </button>
+        <ThemeSelector />
 
         <div className="space-y-2 pt-2">
           <Label className="text-xs font-bold text-muted-foreground">Color de acento</Label>
@@ -528,7 +526,7 @@ export default function Ajustes() {
             try {
               const r = await useFinance.getState().cleanupOrphanReceipts(false); // dry-run
               setOrphanList(r?.orphans ?? []);
-            } catch (e) { setOrphanList([]); }
+            } catch { setOrphanList([]); }
             setReceiptsLoading(false);
           }} variant="ghost" className="rounded-2xl h-12 font-semibold"><Trash2 className="size-4 mr-1" />Limpiar recibos</Button>
           <input ref={fileInputRef} type="file" accept="application/json,.json" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; if (f) handleImportFile(f); e.target.value = ""; }} />
@@ -950,7 +948,8 @@ function AccountForm({ initial, onSave, accounts }: { initial: Account | null; o
         if (onlyDigits && !/^[0-9]{18}$/.test(onlyDigits)) { toast.error("CLABE inválida. Debe contener 18 dígitos."); return; }
         // Bank name and holder optional if not provided
       }
-      onSave({ name: name.trim(), type, initialBalance: bal, currency, denominations: denoms && denoms.length > 0 ? denoms : undefined, clabe: clabe.trim() || undefined, bank: bankName.trim() || undefined, holderName: holderName.trim() || undefined });
+      const finalClabe = type === "bank" && clabe ? clabe.replace(/\s+/g, "") : undefined;
+      onSave({ name: name.trim(), type, initialBalance: bal, currency, denominations: denoms && denoms.length > 0 ? denoms : undefined, clabe: finalClabe, bank: bankName.trim() || undefined, holderName: holderName.trim() || undefined });
     }} className="space-y-3">
       <div><Label className="text-xs">Nombre</Label><Input autoFocus value={name} onChange={(e) => setName(e.target.value)} className="h-11 rounded-2xl" /></div>
       <div>
@@ -1492,6 +1491,56 @@ function NotificationSettings() {
             </div>
           </>
         )}
+      </div>
+    </div>
+  );
+}
+
+function ThemeSelector() {
+  const setTheme = useFinance((s) => s.setTheme);
+  const { themePreference, resolvedTheme } = useSystemTheme();
+
+  const options: { value: ThemeMode; label: string; desc: string; icon: JSX.Element }[] = [
+    { value: "system", label: "Sistema", desc: "Sigue tu dispositivo", icon: <Monitor className="size-4" /> },
+    { value: "light", label: "Claro", desc: "Tema luminoso", icon: <Sun className="size-4" /> },
+    { value: "dark", label: "Oscuro", desc: "Tema nocturno", icon: <Moon className="size-4" /> },
+  ];
+
+  return (
+    <div className="rounded-2xl bg-card border border-border p-4 shadow-soft space-y-3">
+      <div className="flex items-center gap-2">
+        <div className="size-9 rounded-xl bg-primary/10 text-primary flex items-center justify-center">
+          {themePreference === "system" ? <Monitor className="size-4" /> : resolvedTheme === "dark" ? <Moon className="size-4" /> : <Sun className="size-4" />}
+        </div>
+        <div>
+          <p className="font-semibold text-sm">Tema de la aplicación</p>
+          <p className="text-xs text-muted-foreground">
+            {themePreference === "system"
+              ? `Automático (${resolvedTheme === "dark" ? "oscuro" : "claro"})`
+              : resolvedTheme === "dark" ? "Oscuro" : "Claro"}
+          </p>
+        </div>
+      </div>
+      <div className="grid grid-cols-3 gap-2">
+        {options.map((opt) => (
+          <button
+            key={opt.value}
+            onClick={() => setTheme(opt.value)}
+            className={`flex flex-col items-center gap-1.5 p-3 rounded-xl border transition-all text-xs font-medium ${
+              themePreference === opt.value
+                ? "bg-primary/10 border-primary text-primary ring-1 ring-primary/30"
+                : "bg-muted/30 border-border text-muted-foreground hover:bg-muted/50 hover:text-foreground"
+            }`}
+          >
+            <div className={`size-8 rounded-lg flex items-center justify-center ${
+              themePreference === opt.value ? "bg-primary/20 text-primary" : "bg-muted/50 text-muted-foreground"
+            }`}>
+              {opt.icon}
+            </div>
+            <span className="font-semibold">{opt.label}</span>
+            <span className="text-[10px] text-muted-foreground leading-tight">{opt.desc}</span>
+          </button>
+        ))}
       </div>
     </div>
   );

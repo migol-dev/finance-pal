@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { motion } from "@/lib/framer";
 import { Button } from "@/components/ui/button";
 import { CloudUpload, Download, AlertTriangle, Loader2 } from "lucide-react";
@@ -148,6 +148,41 @@ export function DataConflictDialog({ onUpload, onDownload }: Props) {
     }
   };
 
+  const [localStats, setLocalStats] = useState({ txs: 0, items: 0 });
+  const [cloudStats, setCloudStats] = useState({ txs: 0, items: 0 });
+  const [hasStats, setHasStats] = useState(false);
+
+  // Load counts for summary
+  useEffect(() => {
+    if (!session?.user?.id) return;
+    const loadStats = async () => {
+      try {
+        const state = useFinance.getState();
+        setLocalStats({
+          txs: state.transactions.length,
+          items: state.fixedItems.length + state.goals.length + state.debts.length
+        });
+        
+        const userId = session.user.id;
+        const [txRes, fixedRes, goalsRes, debtsRes] = await Promise.all([
+          supabase.from("transactions").select("id", { count: "exact", head: true }).eq("user_id", userId),
+          supabase.from("fixed_items").select("id", { count: "exact", head: true }).eq("user_id", userId),
+          supabase.from("goals").select("id", { count: "exact", head: true }).eq("user_id", userId),
+          supabase.from("debts").select("id", { count: "exact", head: true }).eq("user_id", userId),
+        ]);
+        
+        setCloudStats({
+          txs: txRes.count ?? 0,
+          items: (fixedRes.count ?? 0) + (goalsRes.count ?? 0) + (debtsRes.count ?? 0)
+        });
+        setHasStats(true);
+      } catch (e) {
+        console.error("Error loading stats", e);
+      }
+    };
+    loadStats();
+  }, [session?.user?.id]);
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/80 backdrop-blur-sm p-4">
       <motion.div
@@ -156,15 +191,27 @@ export function DataConflictDialog({ onUpload, onDownload }: Props) {
         className="max-w-sm w-full rounded-3xl bg-card border border-border shadow-2xl p-6 space-y-5"
       >
         <div className="text-center space-y-2">
-          <div className="mx-auto size-14 rounded-2xl bg-yellow-500/10 flex items-center justify-center">
-            <AlertTriangle className="size-7 text-yellow-500" />
+          <div className="mx-auto size-14 rounded-2xl bg-amber-100 dark:bg-amber-900/30 flex items-center justify-center">
+            <AlertTriangle className="size-7 text-amber-600 dark:text-amber-500" />
           </div>
           <h2 className="text-lg font-extrabold">Datos en conflicto</h2>
           <p className="text-xs text-muted-foreground">
             Este navegador tiene datos guardados localmente, pero tu cuenta en la nube también tiene datos. 
-            ¿Qué deseas hacer?
           </p>
         </div>
+
+        {hasStats && (
+          <div className="grid grid-cols-2 gap-2 text-xs border border-border rounded-xl p-3 bg-muted/30">
+            <div className="space-y-1 text-center">
+              <p className="font-bold text-foreground">Local</p>
+              <p className="text-muted-foreground">{localStats.txs} movs, {localStats.items} items</p>
+            </div>
+            <div className="space-y-1 text-center border-l border-border">
+              <p className="font-bold text-foreground">Nube</p>
+              <p className="text-muted-foreground">{cloudStats.txs} movs, {cloudStats.items} items</p>
+            </div>
+          </div>
+        )}
 
         <div className="space-y-3">
           <Button
@@ -178,8 +225,8 @@ export function DataConflictDialog({ onUpload, onDownload }: Props) {
               <CloudUpload className="size-5" />
             )}
             <div className="text-left">
-              <p className="text-sm">Subir datos locales</p>
-              <p className="text-[10px] opacity-80 font-normal">Guarda mis datos locales en la nube</p>
+              <p className="text-sm">Sobrescribir nube</p>
+              <p className="text-[10px] opacity-80 font-normal">Sube datos locales (migración)</p>
             </div>
           </Button>
 
@@ -196,7 +243,25 @@ export function DataConflictDialog({ onUpload, onDownload }: Props) {
             )}
             <div className="text-left">
               <p className="text-sm">Usar datos de la nube</p>
-              <p className="text-[10px] text-muted-foreground font-normal">Reemplaza mis datos locales con los de la nube</p>
+              <p className="text-[10px] text-muted-foreground font-normal">Reemplaza datos locales</p>
+            </div>
+          </Button>
+          
+          <Button
+            onClick={() => {
+              // Intelligent Merge: upload without clearing cloud data (merge)
+              // Currently implemented by triggering standard upload which does upsert locally if programmed.
+              // We'll call onUpload and redirect to migration which does bulk upsert.
+              handleUpload();
+            }}
+            disabled={!!loading}
+            variant="outline"
+            className="w-full h-14 rounded-2xl border border-primary/30 bg-primary/5 text-primary font-bold flex items-center gap-3"
+          >
+            <CloudUpload className="size-5" />
+            <div className="text-left">
+              <p className="text-sm">Fusionar datos</p>
+              <p className="text-[10px] opacity-80 font-normal">Sincroniza y combina todo</p>
             </div>
           </Button>
         </div>

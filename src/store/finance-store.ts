@@ -441,7 +441,7 @@ export const useFinance = create<State>()(
       debts: [],
       goalFolders: [],
       changeLog: [],
-      theme: "light",
+      theme: "system",
       profile: { name: "", currency: "MXN" },
       // whether to mirror filter state to URL query params
       syncFiltersToURL: false,
@@ -479,7 +479,7 @@ export const useFinance = create<State>()(
               try { await supabase.from('user_settings').upsert(
                 { user_id: s2.user.id, profile: { ...get().profile, ...p } },
                 { onConflict: 'user_id' }
-              ); } catch (e) { /* ignore */ }
+              ); } catch { /* ignore */ }
             }
           });
         }
@@ -493,13 +493,14 @@ export const useFinance = create<State>()(
               try { await supabase.from('user_settings').upsert(
                 { user_id: s2.user.id, theme: t },
                 { onConflict: 'user_id' }
-              ); } catch (e) { /* ignore */ }
+              ); } catch { /* ignore */ }
             }
           });
         }
       },
       toggleTheme: () => {
-        const next = get().theme === "light" ? "dark" : "light";
+        const current = get().theme;
+        const next = current === "system" ? "light" : current === "light" ? "dark" : "system";
         get().setTheme(next);
       },
 
@@ -708,7 +709,7 @@ export const useFinance = create<State>()(
             return rel;
           }
           return undefined;
-        } catch (e) {
+        } catch {
           return undefined;
         }
       },
@@ -732,7 +733,7 @@ export const useFinance = create<State>()(
             if (receipt.includes("/")) fname = receipt.split("/").pop() as string;
             await Filesystem.deleteFile({ path: `receipts/${fname}`, directory: Directory.Data });
           }
-        } catch (e) {
+        } catch {
           // ignore
         }
       },
@@ -1522,7 +1523,7 @@ addDebt: async (d) => {
           const changeLog: ChangeLogEntry[] = sc.changeLog && Array.isArray(data.changeLog)
             ? (data.changeLog as any[]).filter((e) => isObj(e) && isStr(e.id) && isStr(e.label)).slice(0, 500) as ChangeLogEntry[]
             : cur.changeLog;
-          const theme: ThemeMode = sc.theme && (data.theme === "dark" || data.theme === "light")
+          const theme: ThemeMode = sc.theme && (data.theme === "dark" || data.theme === "light" || data.theme === "system")
             ? (data.theme as ThemeMode)
             : cur.theme;
           const profile = sc.profile && data.profile != null
@@ -1531,7 +1532,7 @@ addDebt: async (d) => {
 
           set({ fixedItems, transactions, accounts, goals, goalFolders, debts, changeLog, theme, profile });
           // After importing, also migrate any in-place dataURL receipts from existing state
-          try { await get().migrateReceiptsInPlace(); } catch (e) { /* ignore */ }
+          try { await get().migrateReceiptsInPlace(); } catch { /* ignore */ }
           return { ok: true, warnings };
         } catch (e: any) {
           return { ok: false, error: e?.message ?? "JSON inválido" };
@@ -1577,7 +1578,7 @@ addDebt: async (d) => {
                   const st = await Filesystem.stat({ path: `receipts/${o}`, directory: Directory.Data });
                   const sz = typeof (st as any).size === 'number' ? (st as any).size : Number((st as any).size) || 0;
                   sizes[o] = sz;
-                } catch (_) { sizes[o] = 0; }
+                } catch { sizes[o] = 0; }
               }
               const totalBytes = Object.values(sizes).reduce((a, b) => a + b, 0);
               if (deleteFiles && orphans.length > 0) {
@@ -1585,13 +1586,13 @@ addDebt: async (d) => {
                   try {
                     await Filesystem.deleteFile({ path: `receipts/${o}`, directory: Directory.Data });
                     freed += sizes[o] || 0;
-                  } catch (e) { /* ignore */ }
+                  } catch { /* ignore */ }
                 }
                 // record changeLog entry
                 set((s2) => ({ changeLog: [logEntry("transaction", generateSecureId(), "update", `Eliminó ${orphans.length} recibos huérfanos, liberó ${(freed / 1024).toFixed(1)} KB`), ...s2.changeLog].slice(0, 500) }));
               }
               return { orphans, freedBytes: deleteFiles ? freed : totalBytes };
-            } catch (e) {
+            } catch {
               return { orphans: [], freedBytes: 0 };
             }
           },
@@ -1618,7 +1619,7 @@ addDebt: async (d) => {
           .eq('user_id', s2.user.id)
           .maybeSingle();
         if (data) {
-          if (data.theme === 'dark' || data.theme === 'light') set({ theme: data.theme });
+          if (data.theme === 'dark' || data.theme === 'light' || data.theme === 'system') set({ theme: data.theme });
           if (data.profile && typeof data.profile === 'object') {
             set({ profile: { name: '', currency: 'MXN', ...data.profile } });
           }
@@ -1741,13 +1742,13 @@ addDebt: async (d) => {
           // Always try localStorage first (most reliable)
           const item = localStorage.getItem(name);
           if (item) {
-            try { data = JSON.parse(item); } catch (e) { /* ignore */ }
+            try { data = JSON.parse(item); } catch { /* ignore */ }
           }
           // Fallback to encrypted storage
           if (!data && isEncryptionAvailable()) {
             const decrypted = await loadEncryptedState();
             if (decrypted) {
-              try { data = JSON.parse(decrypted); } catch (e) { /* ignore */ }
+              try { data = JSON.parse(decrypted); } catch { /* ignore */ }
             }
           }
           // Restore receipts from IndexedDB
@@ -1757,7 +1758,7 @@ addDebt: async (d) => {
         setItem: async (name: string, value: any) => {
           try {
             if (value?.state) await extractReceiptsToIndexedDB(value.state);
-          } catch (e) { /* ignore receipt extraction errors */ }
+          } catch { /* ignore receipt extraction errors */ }
           const serialized = JSON.stringify(value);
           // Always save to localStorage (reliable fallback)
           try {
@@ -1816,7 +1817,7 @@ addDebt: async (d) => {
           debts: [],
           goalFolders: [],
           changeLog: [],
-          theme: "light" as ThemeMode,
+          theme: "system" as ThemeMode,
           profile: { name: "", currency: "MXN" as Currency },
           appSettings: { 
             accentColor: "blue" as AccentColor, 

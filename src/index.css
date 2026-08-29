@@ -468,4 +468,86 @@
     backdrop-filter: none;
     -webkit-backdrop-filter: none;
   }
+
+  /* ─── Login Page Animations ─── */
+  @keyframes login-float-1 {
+    0%, 100% { transform: translate(0, 0) scale(1); }
+    25% { transform: translate(30px, -40px) scale(1.05); }
+    50% { transform: translate(-20px, -80px) scale(0.95); }
+    75% { transform: translate(-40px, -20px) scale(1.02); }
+  }
+  @keyframes login-float-2 {
+    0%, 100% { transform: translate(0, 0) scale(1); }
+    25% { transform: translate(-40px, 30px) scale(1.08); }
+    50% { transform: translate(30px, 60px) scale(0.92); }
+    75% { transform: translate(50px, -10px) scale(1.04); }
+  }
+  @keyframes login-float-3 {
+    0%, 100% { transform: translate(0, 0) scale(1); }
+    33% { transform: translate(50px, -50px) scale(1.1); }
+    66% { transform: translate(-30px, 40px) scale(0.9); }
+  }
+  @keyframes login-pulse-glow {
+    0%, 100% { opacity: 0.6; filter: blur(60px); }
+    50% { opacity: 1; filter: blur(80px); }
+  }
+  @keyframes login-shimmer {
+    0% { background-position: -200% center; }
+    100% { background-position: 200% center; }
+  }
+  @keyframes login-grid-fade {
+    0%, 100% { opacity: 0.03; }
+    50% { opacity: 0.06; }
+  }
+  @keyframes login-particle-float {
+    0% { transform: translateY(0) rotate(0deg); opacity: 0; }
+    10% { opacity: 1; }
+    90% { opacity: 1; }
+    100% { transform: translateY(-100vh) rotate(720deg); opacity: 0; }
+  }
+
+  .login-orb-1 {
+    animation: login-float-1 20s ease-in-out infinite, login-pulse-glow 8s ease-in-out infinite;
+  }
+  .login-orb-2 {
+    animation: login-float-2 25s ease-in-out infinite, login-pulse-glow 10s ease-in-out infinite 2s;
+  }
+  .login-orb-3 {
+    animation: login-float-3 18s ease-in-out infinite, login-pulse-glow 12s ease-in-out infinite 4s;
+  }
+  .login-text-gradient {
+    background: linear-gradient(
+      90deg,
+      hsl(var(--primary)) 0%,
+      hsl(var(--accent)) 25%,
+      hsl(var(--secondary)) 50%,
+      hsl(var(--accent)) 75%,
+      hsl(var(--primary)) 100%
+    );
+    background-size: 200% auto;
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    animation: login-shimmer 6s linear infinite;
+  }
+  .login-glass-card {
+    background: hsl(var(--card) / 0.65);
+    backdrop-filter: blur(24px) saturate(1.4);
+    -webkit-backdrop-filter: blur(24px) saturate(1.4);
+    border: 1px solid hsl(var(--border) / 0.5);
+  }
+  .dark .login-glass-card {
+    background: hsl(var(--card) / 0.45);
+    border: 1px solid hsl(var(--border) / 0.3);
+  }
+  .login-grid-bg {
+    background-image:
+      linear-gradient(hsl(var(--primary) / 0.05) 1px, transparent 1px),
+      linear-gradient(90deg, hsl(var(--primary) / 0.05) 1px, transparent 1px);
+    background-size: 40px 40px;
+    animation: login-grid-fade 8s ease-in-out infinite;
+  }
+  .login-particle {
+    animation: login-particle-float linear infinite;
+  }
 }

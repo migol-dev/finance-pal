@@ -65,13 +65,6 @@ async function withRetry<T>(
   }
 }
 
-function validatePayload(_table: string, payload: unknown): { success: boolean; data?: any; error?: string } {
-  if (!payload || typeof payload !== 'object') return { success: true, data: payload };
-  // The store already validated the domain model with validateAndThrow before building the DB payload.
-  // We sanitize and ensure payload is an object.
-  return { success: true, data: payload };
-}
-
 export async function processSyncQueue(): Promise<void> {
   if (!isSupabaseEnabled) return;
 
@@ -104,71 +97,85 @@ export async function processSyncQueue(): Promise<void> {
   setSyncing(true);
 
   try {
-    for (const mutation of syncQueue) {
-      if (controller.signal.aborted) break;
-
-      // Validate table name to prevent injection via table field
-      if (!ALLOWED_TABLES.has(mutation.table)) {
-        logger.error('Blocked sync mutation for disallowed table', ErrorCodes.DB_INSERT_FAILED, { table: mutation.table });
-        removeMutation(mutation.id);
+    // 1. Deduplicate mutations
+    const dedupedMutations = new Map<string, SyncMutation>();
+    for (const m of syncQueue) {
+      if (!ALLOWED_TABLES.has(m.table)) {
+        removeMutation(m.id);
         continue;
       }
+      const key = `${m.table}:${m.recordId}`;
+      const existing = dedupedMutations.get(key);
+      if (existing) {
+        if (m.action === 'DELETE') {
+          dedupedMutations.set(key, m); // DELETE wins
+        } else if (existing.action === 'INSERT') {
+          // Keep as INSERT but update payload
+          dedupedMutations.set(key, { ...m, action: 'INSERT' });
+        } else {
+          dedupedMutations.set(key, m); // Latest UPDATE
+        }
+      } else {
+        dedupedMutations.set(key, m);
+      }
+    }
+
+    // 2. Group by Table and Action (Upsert vs Delete)
+    const tableOps = new Map<string, { upserts: any[]; deletes: string[]; ids: string[] }>();
+    for (const m of dedupedMutations.values()) {
+      if (!tableOps.has(m.table)) tableOps.set(m.table, { upserts: [], deletes: [], ids: [] });
+      const ops = tableOps.get(m.table)!;
+      ops.ids.push(m.id);
+      
+      if (m.action === 'DELETE') {
+        ops.deletes.push(m.recordId);
+      } else {
+        const payload = { ...(m.payload ?? {}), id: m.recordId, user_id: userId };
+        ops.upserts.push(payload);
+      }
+    }
+
+    // 3. Process batches per table
+    for (const [table, ops] of tableOps.entries()) {
+      if (controller.signal.aborted) break;
 
       try {
-        await withRetry(() => applyMutation(mutation, userId));
-        removeMutation(mutation.id);
-      } catch (error) {
-        logger.error('Sync failed permanently for mutation', ErrorCodes.SYNC_MUTATION_FAILED, { mutationId: mutation.id, error });
-
-        const retryCount = (mutation.retryCount ?? 0) + 1;
-        if (retryCount >= MAX_RETRIES) {
-          logger.error('Max retries reached, removing from queue', ErrorCodes.SYNC_MUTATION_FAILED, { mutationId: mutation.id });
-          removeMutation(mutation.id);
-        } else {
-          removeMutation(mutation.id);
-          addMutation({ ...mutation, retryCount });
+        await withRetry(async () => {
+          if (ops.upserts.length > 0) {
+            const { error } = await supabase.from(table).upsert(ops.upserts, { onConflict: 'id' });
+            if (error) throw error;
+          }
+          if (ops.deletes.length > 0) {
+            const { error } = await supabase.from(table).delete().eq('user_id', userId).in('id', ops.deletes);
+            if (error) throw error;
+          }
+        });
+        
+        // Remove all successful mutations for this table from queue
+        // We remove both the deduped ones and the intermediate ones to clear the queue
+        for (const m of syncQueue) {
+          if (m.table === table) removeMutation(m.id);
         }
-        break; // Stop processing on permanent failure
+      } catch (error) {
+        logger.error(`Batch sync failed for table ${table}`, ErrorCodes.SYNC_MUTATION_FAILED, { error });
+        // Increment retry count for these mutations or handle failure
+        for (const m of syncQueue) {
+          if (m.table === table) {
+            const retryCount = (m.retryCount ?? 0) + 1;
+            if (retryCount >= MAX_RETRIES) {
+              removeMutation(m.id);
+            } else {
+              removeMutation(m.id);
+              addMutation({ ...m, retryCount });
+            }
+          }
+        }
       }
     }
   } finally {
     setSyncing(false);
     setUserLock(userId, false);
     setAbortController(userId, null);
-  }
-}
-
-async function applyMutation(mutation: SyncMutation, userId: string): Promise<void> {
-  const { table, action, recordId, payload } = mutation;
-
-  let validation: ReturnType<typeof validatePayload> | undefined;
-  // Validate payload before DB operation
-  if (payload) {
-    validation = validatePayload(table, payload);
-    if (!validation.success) {
-      logger.error('Sync payload validation failed', ErrorCodes.DB_INSERT_FAILED, { table, error: validation.error });
-      throw new Error(validation.error);
-    }
-  }
-
-  // Ensure the mutation is scoped to the authenticated user
-  switch (action) {
-    case 'INSERT': {
-      const safePayload = { ...(validation?.data ?? payload), user_id: userId };
-      const { error } = await supabase.from(table).insert(safePayload);
-      if (error) throw error;
-      break;
-    }
-    case 'UPDATE': {
-      const { error } = await supabase.from(table).update(validation?.data ?? payload).eq('id', recordId).eq('user_id', userId);
-      if (error) throw error;
-      break;
-    }
-    case 'DELETE': {
-      const { error } = await supabase.from(table).delete().eq('id', recordId).eq('user_id', userId);
-      if (error) throw error;
-      break;
-    }
   }
 }
 

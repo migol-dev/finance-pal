@@ -171,7 +171,7 @@ export default function Deudas() {
                     <p className="text-xs text-muted-foreground">{fmtDate(p.date)} • {PAYMENT_METHOD_LABEL[p.paymentMethod ?? "other"]}</p>
                     {p.note && <p className="text-xs text-muted-foreground">{p.note}</p>}
                   </div>
-                  <button onClick={() => setDeletePayment({ debtId: detail.id, paymentId: p.id, amount: p.amount })} className="text-destructive p-1"><Trash2 className="size-4" /></button>
+                  <button aria-label="Eliminar" onClick={() => setDeletePayment({ debtId: detail.id, paymentId: p.id, amount: p.amount })} className="text-destructive p-1"><Trash2 className="size-4" /></button>
                 </div>
               ))}
             </div>
@@ -181,9 +181,13 @@ export default function Deudas() {
 
       <div className="px-5 mt-4 space-y-3 lg:grid lg:grid-cols-2 lg:gap-3 lg:space-y-0">
         {debts.length === 0 && (
-          <div className="rounded-2xl bg-muted/50 border border-dashed border-border p-8 text-center">
-            <p className="text-4xl mb-2">🤝</p>
-            <p className="text-sm text-muted-foreground">Aún no hay deudas registradas</p>
+          <div className="rounded-3xl bg-card border border-dashed border-border p-8 text-center shadow-soft flex flex-col items-center mt-4">
+            <p className="text-5xl mb-4">🤝</p>
+            <p className="text-base font-bold mb-2">Sin deudas ni préstamos</p>
+            <p className="text-xs text-muted-foreground mb-5 max-w-[250px]">Lleva el control de lo que debes y te deben fácilmente.</p>
+            <Button onClick={() => { setEditing(null); setOpen(true); }} className="h-10 px-5 rounded-xl gradient-primary text-primary-foreground font-bold border-0 shadow-glow">
+              Registrar deuda
+            </Button>
           </div>
         )}
         {debts.length > 0 && visible.length === 0 && (
@@ -208,8 +212,8 @@ export default function Deudas() {
                   <p className="text-xs text-muted-foreground truncate">{d.concept}</p>
                 </div>
                 <div className="flex flex-col gap-0.5">
-                  <button onClick={() => { setEditing(d); setOpen(true); }} className="text-muted-foreground hover:text-primary p-1"><Pencil className="size-4" /></button>
-                  <button onClick={() => setDeleteDebt(d)} className="text-muted-foreground hover:text-destructive p-1"><Trash2 className="size-4" /></button>
+                  <button aria-label="Editar" onClick={() => { setEditing(d); setOpen(true); }} className="text-muted-foreground hover:text-primary p-1"><Pencil className="size-4" /></button>
+                  <button aria-label="Eliminar" onClick={() => setDeleteDebt(d)} className="text-muted-foreground hover:text-destructive p-1"><Trash2 className="size-4" /></button>
                 </div>
               </div>
               <div className="mt-3">
@@ -350,7 +354,10 @@ function PaymentForm({ debt, onSave, accounts }: { debt: Debt; onSave: (p: { amo
         if (!accountId) { toast.error("Selecciona la cuenta destino"); return; }
         payload.accountId = accountId;
         if (externalPayee?.clabe || externalPayee?.bank || externalPayee?.name) {
-          payload.externalPayee = externalPayee;
+          const c = externalPayee?.clabe ?? "";
+          const cleanedClabe = c.replace(/\s+/g, "");
+          if (cleanedClabe && !/^[0-9]{18}$/.test(cleanedClabe)) { toast.error("CLABE inválida (18 dígitos)"); return; }
+          payload.externalPayee = { ...externalPayee, clabe: cleanedClabe || undefined };
         }
         if (receiptData) {
           payload.receipt = receiptData;

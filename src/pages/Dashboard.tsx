@@ -21,7 +21,7 @@ export default function Dashboard() {
   } = useHybridData();
 
   useEffect(() => {
-    try { ensureScheduledTransactions(); } catch (e) { /* ignore */ }
+    try { ensureScheduledTransactions(); } catch { /* ignore */ }
   }, [ensureScheduledTransactions]);
   const [hide, setHide] = useState(false);
 
@@ -305,8 +305,11 @@ export default function Dashboard() {
               <Link to="/movimientos" className="text-xs font-semibold text-primary hover:text-primary/80 transition">Ver todos →</Link>
             </div>
             {recent.length === 0 ? (
-              <div className="rounded-xl bg-muted/50 border border-dashed border-border p-6 text-center">
-                <p className="text-sm text-muted-foreground">Sin movimientos en {MONTHS[activeMonth]}. Registra tu primer gasto o ingreso</p>
+              <div className="rounded-3xl bg-card border border-border p-8 text-center shadow-soft flex flex-col items-center">
+                <p className="text-5xl mb-4">💸</p>
+                <p className="text-base font-bold mb-2">Aún no hay movimientos</p>
+                <p className="text-xs text-muted-foreground mb-5 max-w-[250px]">No has registrado ningún gasto o ingreso en {MONTHS[activeMonth]}.</p>
+                <Link to="/movimientos?new=expense" className="h-10 px-4 inline-flex items-center justify-center rounded-xl gradient-primary text-primary-foreground text-sm font-bold shadow-glow hover:opacity-90 transition">Registrar movimiento</Link>
               </div>
             ) : (
               <div className="space-y-2">

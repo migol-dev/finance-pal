@@ -5,8 +5,7 @@ const config: CapacitorConfig = {
   appName: 'Finance Pal',
   webDir: 'dist',
   server: {
-    url: 'https://financepal-web.vercel.app',
-    cleartext: true,
+    cleartext: false
   },
   plugins: {
     LocalNotifications: {

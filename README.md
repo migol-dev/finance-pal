@@ -12,7 +12,7 @@
 
 <br/>
 
-[![Version](https://img.shields.io/badge/versión-1.17.8-F43F5E?style=for-the-badge&logo=semantic-release&logoColor=white)](https://github.com/migol-dev/finance-pal/releases)
+[![Version](https://img.shields.io/badge/versión-1.19.38-F43F5E?style=for-the-badge&logo=semantic-release&logoColor=white)](https://github.com/migol-dev/finance-pal/releases)
 [![Platform](https://img.shields.io/badge/Android-nativo-3DDC84?style=for-the-badge&logo=android&logoColor=white)](https://capacitorjs.com/)
 [![Web](https://img.shields.io/badge/Web-Vercel-000000?style=for-the-badge&logo=vercel&logoColor=white)](https://financepal-web.vercel.app)
 [![React](https://img.shields.io/badge/React-18-61DAFB?style=for-the-badge&logo=react&logoColor=white)](https://react.dev/)
@@ -308,6 +308,12 @@ Finance Pal implementa múltiples capas de seguridad para proteger tu informaci�
 - **Sanitización** de todos los datos importados
 - **Error Boundary** con UI de recuperación sin exponer información sensible
 - **Auditoría** completa de seguridad y optimización (`AUDITORIA-SEGURIDAD-OPTIMIZACION.md`)
+- **Política de Seguridad de Contenido (CSP)** estricta para mitigar ataques XSS
+- **Validación de fortaleza de contraseñas** requerida
+- **Vistas seguras en base de datos** (`accounts_safe`, etc.) para proteger datos relacionales en Supabase
+- **Desactivación de tráfico en texto plano (Cleartext)** a nivel de red nativa en Android
+- **Gestión segura de claves VAPID** a través de variables de entorno
+- **Manejo de fallos en el almacenamiento cifrado**, con fallback elegante y advertencias visuales
 
 <br/>
 

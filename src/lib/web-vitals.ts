@@ -6,7 +6,7 @@ function send(metric: Metric) {
     // Example: navigator.sendBeacon('/analytics/vitals', JSON.stringify(metric));
     // Keep payload small and non-blocking.
     console.info('[web-vitals]', metric.name, metric.value, metric.delta, metric.id);
-  } catch (e) {
+  } catch {
     // ignore
   }
 }

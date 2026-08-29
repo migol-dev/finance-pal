@@ -33,8 +33,12 @@ dist-ssr
 implementation_plan*.md
 ICON_GENERATION.md
 
-# Generated reports
+# Generated reports & coverage
 depcheck_report.json
+report.json
+eslint-report.*
+coverage/
+ws3_performance_report.md
 
 # Duplicate files
 SECURITY_AUDIT.md

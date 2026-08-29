@@ -13,7 +13,7 @@ async function ensureFilesystem() {
     Filesystem = fs.Filesystem;
     Directory = fs.Directory;
     Encoding = fs.Encoding;
-  } catch (e) {
+  } catch {
     // Filesystem not available (e.g., in tests)
   }
 }
@@ -107,8 +107,13 @@ async function getMasterKey(): Promise<CryptoKey> {
 function getDeviceSecret(): string {
   let secret = localStorage.getItem('finance-pal-device-secret');
   if (!secret) {
-    const entropy = crypto.getRandomValues(new Uint8Array(32));
-    secret = btoa(String.fromCharCode(...entropy));
+    const fallback = prompt('Por favor, ingresa tu frase de seguridad para desencriptar los datos locales:');
+    if (fallback) {
+      secret = fallback;
+    } else {
+      const entropy = crypto.getRandomValues(new Uint8Array(32));
+      secret = btoa(String.fromCharCode(...entropy));
+    }
     localStorage.setItem('finance-pal-device-secret', secret);
   }
   return secret;

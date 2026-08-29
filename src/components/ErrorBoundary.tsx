@@ -94,20 +94,35 @@ export class ErrorBoundary extends Component<Props, State> {
                   Recargar
                 </Button>
               </div>
-              
-              <Button
-                onClick={() => {
-                  navigator.clipboard.writeText(
-                    `Error: ${this.state.error?.name}: ${this.state.error?.message}\nStack: ${this.state.error?.stack}\nTime: ${new Date().toISOString()}\nUserAgent: ${navigator.userAgent}`
-                  );
-                  toast.success('Error copiado al portapapeles');
-                }}
-                className="w-full h-10 rounded-2xl border border-border bg-muted hover:bg-muted/80 text-xs"
-                variant="outline"
-              >
-                <Bug className="size-3.5 mr-1.5" />
-                Copiar detalles para soporte
-              </Button>
+
+              <div className="grid grid-cols-2 gap-3 mt-3">
+                <Button
+                  onClick={() => {
+                    localStorage.clear();
+                    sessionStorage.clear();
+                    window.location.reload();
+                  }}
+                  className="w-full h-10 rounded-2xl border border-destructive/20 bg-destructive/5 hover:bg-destructive/10 text-destructive text-xs"
+                  variant="outline"
+                >
+                  <AlertCircle className="size-3.5 mr-1.5" />
+                  Borrar Caché
+                </Button>
+                
+                <Button
+                  onClick={() => {
+                    navigator.clipboard.writeText(
+                      `Error: ${this.state.error?.name}: ${this.state.error?.message}\nStack: ${this.state.error?.stack}\nTime: ${new Date().toISOString()}\nUserAgent: ${navigator.userAgent}`
+                    );
+                    toast.success('Error copiado al portapapeles');
+                  }}
+                  className="w-full h-10 rounded-2xl border border-border bg-muted hover:bg-muted/80 text-xs"
+                  variant="outline"
+                >
+                  <Bug className="size-3.5 mr-1.5" />
+                  Copiar detalles
+                </Button>
+              </div>
             </CardContent>
           </Card>
         </div>

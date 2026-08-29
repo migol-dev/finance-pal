@@ -28,7 +28,7 @@ const transactionTypeSchema = z.enum(['income', 'expense', 'saving', 'transfer']
 const changeActionSchema = z.enum(['create', 'update', 'delete']) satisfies z.ZodEnum<[ChangeAction, ...ChangeAction[]]>;
 const changeEntitySchema = z.enum(['transaction', 'fixed', 'goal', 'debt']) satisfies z.ZodEnum<[ChangeEntity, ...ChangeEntity[]]>;
 const currencySchema = z.enum(['MXN', 'USD', 'EUR', 'COP', 'ARS', 'CLP', 'PEN', 'BRL']) satisfies z.ZodEnum<[Currency, ...Currency[]]>;
-const themeModeSchema = z.enum(['light', 'dark']) satisfies z.ZodEnum<[ThemeMode, ...ThemeMode[]]>;
+const themeModeSchema = z.enum(['light', 'dark', 'system']) satisfies z.ZodEnum<[ThemeMode, ...ThemeMode[]]>;
 
 export const accountSchema = z.object({
   id: z.string().uuid({ message: 'Invalid account ID format' }),

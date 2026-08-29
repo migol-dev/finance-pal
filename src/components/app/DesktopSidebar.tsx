@@ -4,17 +4,30 @@ import { cn } from "@/lib/utils";
 import { motion } from "@/lib/framer";
 import { navItems } from "./nav-items";
 import { useFinance } from "@/store/finance-store";
+import { useSystemTheme } from "@/hooks/useSystemTheme";
 import { isSupabaseEnabled } from "@/lib/supabase";
 import { SyncIndicator } from "./SyncIndicator";
-import { Sun, Moon, BarChart3, History, Wallet } from "lucide-react";
+import { Sun, Moon, Monitor, BarChart3, History, Wallet } from "lucide-react";
 
 export const DesktopSidebar = memo(function DesktopSidebar() {
-  const theme = useFinance((s) => s.theme);
+  const { themePreference, resolvedTheme } = useSystemTheme();
   const toggleTheme = useFinance((s) => s.toggleTheme);
   const profile = useFinance((s) => s.profile);
   const location = useLocation();
 
   const isActive = (to: string) => location.pathname === to || (to !== "/" && location.pathname.startsWith(to));
+
+  const themeIcon = themePreference === "system"
+    ? <Monitor className="size-4" />
+    : resolvedTheme === "dark"
+      ? <Moon className="size-4" />
+      : <Sun className="size-4" />;
+
+  const themeLabel = themePreference === "system"
+    ? "Sistema"
+    : resolvedTheme === "dark"
+      ? "Oscuro"
+      : "Claro";
 
   return (
     <aside className="hidden lg:flex lg:flex-col lg:w-[260px] lg:shrink-0 lg:h-screen lg:border-r lg:border-border lg:bg-sidebar lg:p-5">
@@ -97,10 +110,11 @@ export const DesktopSidebar = memo(function DesktopSidebar() {
         className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold text-sidebar-foreground hover:text-foreground hover:bg-sidebar-accent transition w-full"
       >
         <div className="size-8 rounded-xl bg-primary/10 text-primary flex items-center justify-center">
-          {theme === "dark" ? <Moon className="size-4" /> : <Sun className="size-4" />}
+          {themeIcon}
         </div>
-        <span>Tema {theme === "dark" ? "oscuro" : "claro"}</span>
+        <span>Tema: {themeLabel}</span>
       </button>
     </aside>
   );
 });
+

@@ -37,9 +37,9 @@ export const MonthSwitcher = memo(function MonthSwitcher({ compact = false }: { 
           <DialogHeader><DialogTitle>Selecciona un periodo</DialogTitle></DialogHeader>
           <DialogDescription className="sr-only">Selector de mes y año</DialogDescription>
           <div className="flex items-center justify-between mb-2">
-            <button onClick={() => setActive(activeYear - 1, activeMonth)} className="size-9 rounded-xl bg-muted hover:bg-primary/10 transition"><ChevronLeft className="size-4 mx-auto" /></button>
+            <button aria-label="Anterior" onClick={() => setActive(activeYear - 1, activeMonth)} className="size-9 rounded-xl bg-muted hover:bg-primary/10 transition"><ChevronLeft className="size-4 mx-auto" /></button>
             <p className="text-2xl font-extrabold">{activeYear}</p>
-            <button onClick={() => setActive(activeYear + 1, activeMonth)} className="size-9 rounded-xl bg-muted hover:bg-primary/10 transition"><ChevronRight className="size-4 mx-auto" /></button>
+            <button aria-label="Siguiente" onClick={() => setActive(activeYear + 1, activeMonth)} className="size-9 rounded-xl bg-muted hover:bg-primary/10 transition"><ChevronRight className="size-4 mx-auto" /></button>
           </div>
           <div className="grid grid-cols-3 gap-2">
             {MONTHS.map((m, i) => (

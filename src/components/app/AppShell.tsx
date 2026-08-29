@@ -4,6 +4,7 @@ import { BottomNav } from "./BottomNav";
 import { DesktopSidebar } from "./DesktopSidebar";
 import { useFinance } from "@/store/finance-store";
 import { useHybridData } from "@/hooks/useHybridData";
+import { useSystemTheme } from "@/hooks/useSystemTheme";
 import { SplashScreen } from "./SplashScreen";
 import { Capacitor } from "@capacitor/core";
 import { App as CapacitorApp } from "@capacitor/app";
@@ -45,7 +46,7 @@ const SWIPE_ROUTES = ["/", "/movimientos", "/deudas", "/metas", "/ajustes"];
 
 export function AppShell({ children }: { children: ReactNode }) {
   const setActive = useFinance((s) => s.setActive);
-  const theme = useFinance((s) => s.theme);
+  const { resolvedTheme } = useSystemTheme();
   const accentColor = useFinance((s) => s.appSettings.accentColor);
   const compactMode = useFinance((s) => s.appSettings.compactMode);
   const glassEffect = useFinance((s) => s.appSettings.glassEffect);
@@ -86,11 +87,11 @@ export function AppShell({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     const root = document.documentElement;
-    if (theme === "dark") root.classList.add("dark"); else root.classList.remove("dark");
+    if (resolvedTheme === "dark") root.classList.add("dark"); else root.classList.remove("dark");
     const meta = document.querySelector('meta[name="theme-color"]');
-    if (meta) meta.setAttribute("content", theme === "dark" ? "#0a0e1a" : "#ffffff");
+    if (meta) meta.setAttribute("content", resolvedTheme === "dark" ? "#0a0e1a" : "#ffffff");
     applyAccentVars(root, accentColor);
-  }, [theme, accentColor]);
+  }, [resolvedTheme, accentColor]);
 
   useEffect(() => {
     const root = document.documentElement;
@@ -119,7 +120,7 @@ export function AppShell({ children }: { children: ReactNode }) {
       }
       const now = Date.now();
       if (lastBackPressRef.current && now - lastBackPressRef.current < 2000) {
-        try { CapacitorApp.exitApp(); } catch (_e) { (navigator as any)['app']?.exitApp?.(); }
+        try { CapacitorApp.exitApp(); } catch { (navigator as any)['app']?.exitApp?.(); }
         return;
       }
       lastBackPressRef.current = now;

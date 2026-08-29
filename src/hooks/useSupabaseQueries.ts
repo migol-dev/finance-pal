@@ -205,7 +205,7 @@ export function useAccounts() {
   return useSupabaseQuery(['accounts'], () => {
     if (!session?.user?.id) throw new AppError(ErrorCodes.AUTH_NOT_AUTHENTICATED, 'Cannot fetch accounts without session');
     return fetchAccounts(session.user.id);
-  });
+  }, { staleTime: 1000 * 60 * 30 }); // 30 mins
 }
 
 export function useTransactions() {
@@ -213,7 +213,7 @@ export function useTransactions() {
   return useSupabaseQuery(['transactions'], () => {
     if (!session?.user?.id) throw new AppError(ErrorCodes.AUTH_NOT_AUTHENTICATED, 'Cannot fetch transactions without session');
     return fetchTransactions(session.user.id);
-  });
+  }, { staleTime: 1000 * 60 * 5 }); // 5 mins
 }
 
 export function useFixedItems() {
@@ -221,7 +221,7 @@ export function useFixedItems() {
   return useSupabaseQuery(['fixed_items'], () => {
     if (!session?.user?.id) throw new AppError(ErrorCodes.AUTH_NOT_AUTHENTICATED, 'Cannot fetch fixed items without session');
     return fetchFixedItems(session.user.id);
-  });
+  }, { staleTime: 1000 * 60 * 15 }); // 15 mins
 }
 
 export function useGoals() {
@@ -229,7 +229,7 @@ export function useGoals() {
   return useSupabaseQuery(['goals'], () => {
     if (!session?.user?.id) throw new AppError(ErrorCodes.AUTH_NOT_AUTHENTICATED, 'Cannot fetch goals without session');
     return fetchGoals(session.user.id);
-  });
+  }, { staleTime: 1000 * 60 * 15 }); // 15 mins
 }
 
 export function useGoalFolders() {
@@ -237,7 +237,7 @@ export function useGoalFolders() {
   return useSupabaseQuery(['goal_folders'], () => {
     if (!session?.user?.id) throw new AppError(ErrorCodes.AUTH_NOT_AUTHENTICATED, 'Cannot fetch goal folders without session');
     return fetchGoalFolders(session.user.id);
-  });
+  }, { staleTime: 1000 * 60 * 15 }); // 15 mins
 }
 
 export function useDebts() {
@@ -245,7 +245,7 @@ export function useDebts() {
   return useSupabaseQuery(['debts'], () => {
     if (!session?.user?.id) throw new AppError(ErrorCodes.AUTH_NOT_AUTHENTICATED, 'Cannot fetch debts without session');
     return fetchDebts(session.user.id);
-  });
+  }, { staleTime: 1000 * 60 * 15 }); // 15 mins
 }
 
 export function useInvalidateAll() {

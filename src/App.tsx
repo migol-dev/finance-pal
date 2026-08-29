@@ -92,20 +92,14 @@ function PageFade({ children }: { children: React.ReactNode }) {
   );
 }
 
+import { PageSkeleton } from '@/components/app/PageSkeleton';
+
 function AnimatedRoutes() {
   const location = useLocation();
-  const suspenseFallback = (
-    <div className="fixed inset-0 flex flex-col items-center justify-center bg-background/50 backdrop-blur-sm z-50">
-      <div className="size-16 rounded-[28px] gradient-primary shadow-glow flex items-center justify-center animate-pulse mb-4">
-        <div className="size-8 rounded-full border-4 border-white/30 border-t-white animate-spin" />
-      </div>
-      <p className="text-xs font-bold uppercase tracking-[0.2em] text-muted-foreground animate-pulse">Finance Pal</p>
-    </div>
-  );
 
   if (location.pathname === "/auth/callback") {
     return (
-      <Suspense fallback={suspenseFallback}>
+      <Suspense fallback={<PageSkeleton />}>
         <Routes location={location}>
           <Route path="/auth/callback" element={<AuthCallback />} />
         </Routes>
@@ -115,7 +109,7 @@ function AnimatedRoutes() {
 
   if (location.pathname === "/404" || !["/", "/movimientos", "/metas", "/deudas", "/anual", "/historial", "/ajustes", "/migracion"].includes(location.pathname)) {
     return (
-      <Suspense fallback={suspenseFallback}>
+      <Suspense fallback={<PageSkeleton />}>
         <Routes location={location}>
           <Route path="*" element={<NotFound />} />
         </Routes>
@@ -126,7 +120,7 @@ function AnimatedRoutes() {
   return (
     <AppShell>
       <AnimatePresence mode="wait" initial={false}>
-        <Suspense fallback={suspenseFallback}>
+        <Suspense fallback={<PageSkeleton />}>
           <Routes location={location} key={location.pathname}>
             <Route path="/" element={<PageFade><Dashboard /></PageFade>} />
             <Route path="/movimientos" element={<PageFade><Movimientos /></PageFade>} />
@@ -239,22 +233,13 @@ function AuthGuard() {
     // Both have data → dialog will show (no action needed)
   }, [session?.user?.id, cloudHasData, hasLocalData, resolved, navigate, set]);
 
-  const suspenseFallback = (
-    <div className="fixed inset-0 flex flex-col items-center justify-center bg-background/50 backdrop-blur-sm z-50">
-      <div className="size-16 rounded-[28px] gradient-primary shadow-glow flex items-center justify-center animate-pulse mb-4">
-        <div className="size-8 rounded-full border-4 border-white/30 border-t-white animate-spin" />
-      </div>
-      <p className="text-xs font-bold uppercase tracking-[0.2em] text-muted-foreground animate-pulse">Finance Pal</p>
-    </div>
-  );
-
   if (isSupabaseEnabled) {
     if (loading) {
-      return suspenseFallback;
+      return <PageSkeleton />;
     }
     if (!session || mfaRequired) {
       return (
-        <Suspense fallback={suspenseFallback}>
+        <Suspense fallback={<PageSkeleton />}>
           <Login />
         </Suspense>
       );
@@ -275,7 +260,7 @@ function AuthGuard() {
     }
     // While checking cloud data, show fallback with timeout safety
     if (cloudHasData === null && hasLocalData()) {
-      return suspenseFallback;
+      return <PageSkeleton />;
     }
   }
 

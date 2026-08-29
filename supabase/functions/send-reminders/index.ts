@@ -1,8 +1,8 @@
 // @ts-nocheck
 // Supabase Edge Function: send-reminders
 // Dispara recordatorios diarios de Metas y Pagos fijos a través de Web Push
-import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.8";
+
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import webpush from "npm:web-push@3.6.7";
 
 const corsHeaders = {
@@ -10,15 +10,40 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-serve(async (req) => {
+// Rate limiting in-memory store
+const rateLimit = new Map<string, { count: number; resetTime: number }>();
+const RATE_LIMIT_MAX = 5; // max 5 requests
+const RATE_LIMIT_WINDOW_MS = 60000; // 1 minute
+
+Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
   }
 
+  // Rate Limiting Logic
+  const ip = req.headers.get("x-forwarded-for") || "unknown-ip";
+  const now = Date.now();
+  const clientLimit = rateLimit.get(ip);
+  if (clientLimit && clientLimit.resetTime > now) {
+    if (clientLimit.count >= RATE_LIMIT_MAX) {
+      return new Response(JSON.stringify({ error: "Too many requests" }), {
+        status: 429,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+    clientLimit.count++;
+  } else {
+    rateLimit.set(ip, { count: 1, resetTime: now + RATE_LIMIT_WINDOW_MS });
+  }
+
+
   try {
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-    const vapidPublicKey = Deno.env.get("VAPID_PUBLIC_KEY") || "BMUHTb6chM9wLrlPRoNZMiWbiC7jNM49nnOq2YT8ptuuwFOgqUj3V3Wle4X7Gtah-1WaiaKzczbEE-Ygeq1iIZY";
+    const vapidPublicKey = Deno.env.get("VAPID_PUBLIC_KEY");
+    if (!vapidPublicKey) {
+      throw new Error("VAPID_PUBLIC_KEY is not set in environment secrets.");
+    }
     const vapidPrivateKey = Deno.env.get("VAPID_PRIVATE_KEY")!;
     const vapidSubject = Deno.env.get("VAPID_SUBJECT") || "mailto:soporte@financepal.com";
 
@@ -51,7 +76,7 @@ serve(async (req) => {
     }
 
     const today = new Date();
-    const todayStr = today.toISOString().split("T")[0];
+    const __todayStr = today.toISOString().split("T")[0];
     const currentDayOfMonth = today.getDate();
     const currentDayOfWeek = today.getDay(); // 0 = Domingo
 

@@ -3,8 +3,8 @@ import { supabase, isSupabaseEnabled } from '@/lib/supabase';
 import { useAuth } from '@/context/AuthContext';
 
 const DEVICE_ID_KEY = 'finance-pal-device-id';
-const POLL_INTERVAL = 5000;
-const STALE_TIMEOUT_MS = 60000;
+const POLL_INTERVAL = 30000;
+const STALE_TIMEOUT_MS = 90000;
 
 function getDeviceId(): string {
   let id = localStorage.getItem(DEVICE_ID_KEY);
@@ -82,7 +82,7 @@ export function useSessionManager() {
     };
 
     const heartbeat = async () => {
-      if (!sessionIdRef.current) return;
+      if (!sessionIdRef.current || document.visibilityState !== 'visible') return;
       try {
         await supabase
           .from('user_sessions')
@@ -94,6 +94,7 @@ export function useSessionManager() {
     };
 
     const checkOtherSessions = async () => {
+      if (document.visibilityState !== 'visible') return;
       try {
         const cutoff = new Date(Date.now() - STALE_TIMEOUT_MS).toISOString();
         const { data: sessions } = await supabase

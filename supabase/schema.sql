@@ -168,53 +168,53 @@ ALTER TABLE debts ENABLE ROW LEVEL SECURITY;
 ALTER TABLE debt_payments ENABLE ROW LEVEL SECURITY;
 
 -- Políticas para Accounts
-CREATE POLICY "Users can view their own accounts" ON accounts FOR SELECT USING (auth.uid() = user_id);
+CREATE POLICY "Users can view their own accounts" ON accounts FOR SELECT USING (auth.uid() = user_id AND deleted_at IS NULL);
 CREATE POLICY "Users can insert their own accounts" ON accounts FOR INSERT WITH CHECK (auth.uid() = user_id);
-CREATE POLICY "Users can update their own accounts" ON accounts FOR UPDATE USING (auth.uid() = user_id);
-CREATE POLICY "Users can delete their own accounts" ON accounts FOR DELETE USING (auth.uid() = user_id);
+CREATE POLICY "Users can update their own accounts" ON accounts FOR UPDATE USING (auth.uid() = user_id AND deleted_at IS NULL);
+CREATE POLICY "Users can delete their own accounts" ON accounts FOR DELETE USING (auth.uid() = user_id AND deleted_at IS NULL);
 
 -- Políticas para Fixed Items
-CREATE POLICY "Users can view their own fixed items" ON fixed_items FOR SELECT USING (auth.uid() = user_id);
+CREATE POLICY "Users can view their own fixed items" ON fixed_items FOR SELECT USING (auth.uid() = user_id AND deleted_at IS NULL);
 CREATE POLICY "Users can insert their own fixed items" ON fixed_items FOR INSERT WITH CHECK (auth.uid() = user_id);
-CREATE POLICY "Users can update their own fixed items" ON fixed_items FOR UPDATE USING (auth.uid() = user_id);
-CREATE POLICY "Users can delete their own fixed items" ON fixed_items FOR DELETE USING (auth.uid() = user_id);
+CREATE POLICY "Users can update their own fixed items" ON fixed_items FOR UPDATE USING (auth.uid() = user_id AND deleted_at IS NULL);
+CREATE POLICY "Users can delete their own fixed items" ON fixed_items FOR DELETE USING (auth.uid() = user_id AND deleted_at IS NULL);
 
 -- Políticas para Transactions
-CREATE POLICY "Users can view their own transactions" ON transactions FOR SELECT USING (auth.uid() = user_id);
+CREATE POLICY "Users can view their own transactions" ON transactions FOR SELECT USING (auth.uid() = user_id AND deleted_at IS NULL);
 CREATE POLICY "Users can insert their own transactions" ON transactions FOR INSERT WITH CHECK (auth.uid() = user_id);
-CREATE POLICY "Users can update their own transactions" ON transactions FOR UPDATE USING (auth.uid() = user_id);
-CREATE POLICY "Users can delete their own transactions" ON transactions FOR DELETE USING (auth.uid() = user_id);
+CREATE POLICY "Users can update their own transactions" ON transactions FOR UPDATE USING (auth.uid() = user_id AND deleted_at IS NULL);
+CREATE POLICY "Users can delete their own transactions" ON transactions FOR DELETE USING (auth.uid() = user_id AND deleted_at IS NULL);
 
 -- Políticas para Goals
-CREATE POLICY "Users can view their own goals" ON goals FOR SELECT USING (auth.uid() = user_id);
+CREATE POLICY "Users can view their own goals" ON goals FOR SELECT USING (auth.uid() = user_id AND deleted_at IS NULL);
 CREATE POLICY "Users can insert their own goals" ON goals FOR INSERT WITH CHECK (auth.uid() = user_id);
-CREATE POLICY "Users can update their own goals" ON goals FOR UPDATE USING (auth.uid() = user_id);
-CREATE POLICY "Users can delete their own goals" ON goals FOR DELETE USING (auth.uid() = user_id);
+CREATE POLICY "Users can update their own goals" ON goals FOR UPDATE USING (auth.uid() = user_id AND deleted_at IS NULL);
+CREATE POLICY "Users can delete their own goals" ON goals FOR DELETE USING (auth.uid() = user_id AND deleted_at IS NULL);
 
 -- Políticas para Goal Folders
-CREATE POLICY "Users can view their own goal folders" ON goal_folders FOR SELECT USING (auth.uid() = user_id);
+CREATE POLICY "Users can view their own goal folders" ON goal_folders FOR SELECT USING (auth.uid() = user_id AND deleted_at IS NULL);
 CREATE POLICY "Users can insert their own goal folders" ON goal_folders FOR INSERT WITH CHECK (auth.uid() = user_id);
-CREATE POLICY "Users can update their own goal folders" ON goal_folders FOR UPDATE USING (auth.uid() = user_id);
-CREATE POLICY "Users can delete their own goal folders" ON goal_folders FOR DELETE USING (auth.uid() = user_id);
+CREATE POLICY "Users can update their own goal folders" ON goal_folders FOR UPDATE USING (auth.uid() = user_id AND deleted_at IS NULL);
+CREATE POLICY "Users can delete their own goal folders" ON goal_folders FOR DELETE USING (auth.uid() = user_id AND deleted_at IS NULL);
 
 -- Políticas para Debts
-CREATE POLICY "Users can view their own debts" ON debts FOR SELECT USING (auth.uid() = user_id);
+CREATE POLICY "Users can view their own debts" ON debts FOR SELECT USING (auth.uid() = user_id AND deleted_at IS NULL);
 CREATE POLICY "Users can insert their own debts" ON debts FOR INSERT WITH CHECK (auth.uid() = user_id);
-CREATE POLICY "Users can update their own debts" ON debts FOR UPDATE USING (auth.uid() = user_id);
-CREATE POLICY "Users can delete their own debts" ON debts FOR DELETE USING (auth.uid() = user_id);
+CREATE POLICY "Users can update their own debts" ON debts FOR UPDATE USING (auth.uid() = user_id AND deleted_at IS NULL);
+CREATE POLICY "Users can delete their own debts" ON debts FOR DELETE USING (auth.uid() = user_id AND deleted_at IS NULL);
 
 -- Políticas para Debt Payments
-CREATE POLICY "Users can view their own debt payments" ON debt_payments FOR SELECT USING (auth.uid() = user_id);
+CREATE POLICY "Users can view their own debt payments" ON debt_payments FOR SELECT USING (auth.uid() = user_id AND deleted_at IS NULL);
 CREATE POLICY "Users can insert their own debt payments" ON debt_payments FOR INSERT WITH CHECK (auth.uid() = user_id);
-CREATE POLICY "Users can update their own debt payments" ON debt_payments FOR UPDATE USING (auth.uid() = user_id);
-CREATE POLICY "Users can delete their own debt payments" ON debt_payments FOR DELETE USING (auth.uid() = user_id);
+CREATE POLICY "Users can update their own debt payments" ON debt_payments FOR UPDATE USING (auth.uid() = user_id AND deleted_at IS NULL);
+CREATE POLICY "Users can delete their own debt payments" ON debt_payments FOR DELETE USING (auth.uid() = user_id AND deleted_at IS NULL);
 
 -- 7b. RLS para User Sessions
 ALTER TABLE user_sessions ENABLE ROW LEVEL SECURITY;
-CREATE POLICY "Users can view their own sessions" ON user_sessions FOR SELECT USING (auth.uid() = user_id);
+CREATE POLICY "Users can view their own sessions" ON user_sessions FOR SELECT USING (auth.uid() = user_id AND deleted_at IS NULL);
 CREATE POLICY "Users can insert their own sessions" ON user_sessions FOR INSERT WITH CHECK (auth.uid() = user_id);
-CREATE POLICY "Users can update their own sessions" ON user_sessions FOR UPDATE USING (auth.uid() = user_id);
-CREATE POLICY "Users can delete their own sessions" ON user_sessions FOR DELETE USING (auth.uid() = user_id);
+CREATE POLICY "Users can update their own sessions" ON user_sessions FOR UPDATE USING (auth.uid() = user_id AND deleted_at IS NULL);
+CREATE POLICY "Users can delete their own sessions" ON user_sessions FOR DELETE USING (auth.uid() = user_id AND deleted_at IS NULL);
 
 -- 8. Tabla User Settings (theme, profile, etc.)
 -- Uses IF NOT EXISTS so it's safe to run multiple times
@@ -229,9 +229,10 @@ ALTER TABLE user_settings ENABLE ROW LEVEL SECURITY;
 DO $$
 BEGIN
   IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE policyprefix = 'user_settings') THEN
-    CREATE POLICY "Users can view their own settings" ON user_settings FOR SELECT USING (auth.uid() = user_id);
+    CREATE POLICY "Users can view their own settings" ON user_settings FOR SELECT USING (auth.uid() = user_id AND deleted_at IS NULL);
     CREATE POLICY "Users can insert their own settings" ON user_settings FOR INSERT WITH CHECK (auth.uid() = user_id);
-    CREATE POLICY "Users can update their own settings" ON user_settings FOR UPDATE USING (auth.uid() = user_id);
+    CREATE POLICY "Users can update their own settings" ON user_settings FOR UPDATE USING (auth.uid() = user_id AND deleted_at IS NULL);
+    CREATE POLICY "Users can delete their own settings" ON user_settings FOR DELETE USING (auth.uid() = user_id AND deleted_at IS NULL);
   END IF;
 END $$;
 
@@ -269,13 +270,10 @@ ALTER VIEW debt_payments_safe SET (security_barrier = true);
 GRANT SELECT ON debt_payments_safe TO authenticated;
 
 -- RLS en las vistas seguras (heredan de las tablas base pero añaden capa extra)
-ALTER VIEW accounts_safe ENABLE ROW LEVEL SECURITY;
-ALTER VIEW transactions_safe ENABLE ROW LEVEL SECURITY;
-ALTER VIEW debt_payments_safe ENABLE ROW LEVEL SECURITY;
 
-CREATE POLICY "Users can view their own safe accounts" ON accounts_safe FOR SELECT USING (auth.uid() = user_id);
-CREATE POLICY "Users can view their own safe transactions" ON transactions_safe FOR SELECT USING (auth.uid() = user_id);
-CREATE POLICY "Users can view their own safe debt payments" ON debt_payments_safe FOR SELECT USING (auth.uid() = user_id);
+CREATE POLICY "Users can view their own safe accounts" ON accounts_safe FOR SELECT USING (auth.uid() = user_id AND deleted_at IS NULL);
+CREATE POLICY "Users can view their own safe transactions" ON transactions_safe FOR SELECT USING (auth.uid() = user_id AND deleted_at IS NULL);
+CREATE POLICY "Users can view their own safe debt payments" ON debt_payments_safe FOR SELECT USING (auth.uid() = user_id AND deleted_at IS NULL);
 
 -- =========================================
 -- ÍNDICES DE RENDIMIENTO (para consultas RLS)
@@ -315,3 +313,55 @@ BEGIN
   RETURN deleted_count;
 END;
 $$;
+-- =========================================
+-- WS5: SOFT DELETES
+-- =========================================
+ALTER TABLE accounts ADD COLUMN IF NOT EXISTS deleted_at timestamp with time zone;
+ALTER TABLE fixed_items ADD COLUMN IF NOT EXISTS deleted_at timestamp with time zone;
+ALTER TABLE transactions ADD COLUMN IF NOT EXISTS deleted_at timestamp with time zone;
+ALTER TABLE goals ADD COLUMN IF NOT EXISTS deleted_at timestamp with time zone;
+ALTER TABLE goal_folders ADD COLUMN IF NOT EXISTS deleted_at timestamp with time zone;
+ALTER TABLE debts ADD COLUMN IF NOT EXISTS deleted_at timestamp with time zone;
+ALTER TABLE debt_payments ADD COLUMN IF NOT EXISTS deleted_at timestamp with time zone;
+
+-- =========================================
+-- WS5: INDEXES
+-- =========================================
+CREATE INDEX IF NOT EXISTS idx_transactions_user_date ON transactions(user_id, date DESC);
+CREATE INDEX IF NOT EXISTS idx_fixed_items_user_active ON fixed_items(user_id, active);
+CREATE INDEX IF NOT EXISTS idx_goals_user_pinned ON goals(user_id, pinned);
+
+-- =========================================
+-- WS5: TRIGGERS FOR VALIDATION
+-- =========================================
+CREATE OR REPLACE FUNCTION validate_transaction_amount()
+RETURNS trigger AS $$
+BEGIN
+  IF NEW.amount <= 0 THEN
+    RAISE EXCEPTION 'Amount must be greater than 0';
+  END IF;
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+DROP TRIGGER IF EXISTS trg_validate_transactions ON transactions;
+CREATE TRIGGER trg_validate_transactions
+  BEFORE INSERT OR UPDATE ON transactions
+  FOR EACH ROW
+  EXECUTE FUNCTION validate_transaction_amount();
+
+CREATE OR REPLACE FUNCTION validate_fixed_item_amount()
+RETURNS trigger AS $$
+BEGIN
+  IF NEW.amount <= 0 THEN
+    RAISE EXCEPTION 'Amount must be greater than 0';
+  END IF;
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+DROP TRIGGER IF EXISTS trg_validate_fixed_items ON fixed_items;
+CREATE TRIGGER trg_validate_fixed_items
+  BEFORE INSERT OR UPDATE ON fixed_items
+  FOR EACH ROW
+  EXECUTE FUNCTION validate_fixed_item_amount();

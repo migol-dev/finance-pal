@@ -11,18 +11,20 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Use Node.js 18
+      - name: Use Node.js 20
         uses: actions/setup-node@v4
         with:
-          node-version: 18
+          node-version: 20
           cache: 'npm'
       - name: Install dependencies
         run: npm ci
+      - name: Security Audit
+        run: npm audit --audit-level=high || true
       - name: Typecheck
         run: node ./node_modules/typescript/bin/tsc --noEmit
       - name: Lint
         run: npm run lint --if-present
-      - name: Run tests
-        run: npx vitest run --run
+      - name: Run tests with coverage
+        run: npx vitest run --coverage
       - name: Build
         run: npm run build
