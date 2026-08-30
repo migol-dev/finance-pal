@@ -7,7 +7,7 @@ import {
 
 const iconRefSchema: z.ZodType<IconRef> = z.object({
   kind: z.enum(['emoji', 'image']),
-  value: z.string().max(5000),
+  value: z.string().max(200000),
 }).refine(
   (v) => v.kind === 'emoji' ? v.value.length <= 8 : v.value.startsWith('data:image/'),
   { message: 'Invalid icon format' }
@@ -104,7 +104,7 @@ export const goalSchema = z.object({
   color: z.string().max(50).default('gradient-primary'),
   deadline: z.string().date().optional(),
   icon: iconRefSchema.optional(),
-  purchaseUrl: z.string().url('Invalid URL').max(500).optional().or(z.literal('')),
+  purchaseUrl: z.string().url('Invalid URL').max(2000).optional().or(z.literal('')),
   contributions: z.array(z.object({
     id: z.string().uuid(),
     date: z.string().datetime({ offset: true, local: true }).or(z.string().date()),

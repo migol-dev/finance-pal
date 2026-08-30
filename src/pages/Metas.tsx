@@ -300,10 +300,14 @@ export default function Metas() {
           <DialogContent className="rounded-2xl max-h-[90vh] overflow-y-auto p-5">
             <DialogHeader><DialogTitle className="text-lg">{editing ? "Editar meta" : "Nueva meta"}</DialogTitle></DialogHeader>
             <DialogDescription className="sr-only">Formulario para crear o editar una meta</DialogDescription>
-          <GoalForm initial={editing} onSave={(g) => {
-            if (editing) { updateGoal(editing.id, g); toast.success("Actualizado"); }
-            else { addGoal({ ...g, folderId: selectedFolderId === "uncategorized" ? undefined : selectedFolderId || undefined }); toast.success("Meta creada ✨"); }
-            setOpen(false); setEditing(null);
+          <GoalForm initial={editing} onSave={async (g) => {
+            try {
+              if (editing) { await updateGoal(editing.id, g); toast.success("Actualizado"); }
+              else { await addGoal({ ...g, folderId: selectedFolderId === "uncategorized" ? undefined : selectedFolderId || undefined }); toast.success("Meta creada ✨"); }
+              setOpen(false); setEditing(null);
+            } catch (e: any) {
+              toast.error(e.message || "Ocurrió un error");
+            }
           }} />
         </DialogContent>
       </Dialog>
@@ -312,10 +316,14 @@ export default function Metas() {
         <DialogContent className="rounded-2xl max-h-[90vh] overflow-y-auto p-5">
           <DialogHeader><DialogTitle className="text-lg">{editingFolder?.id ? "Editar carpeta" : "Nueva carpeta"}</DialogTitle></DialogHeader>
           <DialogDescription className="sr-only">Formulario para crear o editar una carpeta</DialogDescription>
-          <FolderForm initial={editingFolder} onSave={(f) => {
-            if (editingFolder?.id) { updateGoalFolder(editingFolder.id, f); toast.success("Carpeta actualizada"); }
-            else { addGoalFolder(f); toast.success("Carpeta creada ✨"); }
-            setFolderOpen(false); setEditingFolder(null);
+          <FolderForm initial={editingFolder} onSave={async (f) => {
+            try {
+              if (editingFolder?.id) { await updateGoalFolder(editingFolder.id, f); toast.success("Carpeta actualizada"); }
+              else { await addGoalFolder(f); toast.success("Carpeta creada ✨"); }
+              setFolderOpen(false); setEditingFolder(null);
+            } catch (e: any) {
+              toast.error(e.message || "Ocurrió un error");
+            }
           }} />
         </DialogContent>
       </Dialog>
