@@ -1,7 +1,7 @@
 {
   "name": "finance-pal",
   "private": true,
-  "version": "1.19.38",
+  "version": "1.20.1",
   "type": "module",
   "scripts": {
     "dev": "vite",
