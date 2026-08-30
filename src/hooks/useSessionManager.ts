@@ -65,8 +65,13 @@ export function useSessionManager() {
     });
 
     // Timeout: if other device doesn't respond in 15 seconds, force takeover
-    takeoverTimeoutRef.current = setTimeout(() => {
+    takeoverTimeoutRef.current = setTimeout(async () => {
       console.warn('[SessionManager] Takeover timeout reached, forcing start.');
+      try {
+        await supabase.from('user_sessions').delete().eq('device_id', otherDevice.id);
+      } catch (e) {
+        console.error('Failed to force delete old session:', e);
+      }
       setSessionState('active');
       window.location.reload(); // Reload to start fresh
     }, 15000);
@@ -249,7 +254,6 @@ export function useSessionManager() {
       if (heartbeatTimer) clearInterval(heartbeatTimer);
       if (pollTimer) clearInterval(pollTimer);
       supabase.removeChannel(channel);
-      if (takeoverTimeoutRef.current) clearTimeout(takeoverTimeoutRef.current);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [loading, session?.user?.id, sessionState]);
