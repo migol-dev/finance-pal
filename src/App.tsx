@@ -142,7 +142,7 @@ function AuthGuard() {
   const { hasLocalData, loadSettingsFromCloud, appSettings, setConflictResolved } = useFinance();
   const [resolved, setResolved] = React.useState(appSettings.conflictResolved ?? false);
   const [cloudHasData, setCloudHasData] = React.useState<boolean | null>(null);
-  const { paused, resume } = useSessionManager();
+  const { sessionState, otherDevice, resume, requestTakeover } = useSessionManager();
   const set = useFinance.setState;
   const navigate = useNavigate();
   const checkingCloudRef = useRef(false);
@@ -266,7 +266,7 @@ function AuthGuard() {
 
   return (
     <>
-      {paused && (
+      {sessionState === 'paused' && (
         <div className="fixed inset-0 z-[100] flex flex-col items-center justify-center bg-background/90 backdrop-blur-md">
           <div className="rounded-3xl bg-card border border-border shadow-soft p-8 max-w-sm mx-4 text-center space-y-4">
             <div className="size-16 mx-auto rounded-[28px] bg-amber-100 dark:bg-amber-900/30 flex items-center justify-center">
@@ -274,23 +274,78 @@ function AuthGuard() {
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m0 0v2m0-2h2m-2 0H10m9.364-7.364A9 9 0 1112 3a9 9 0 017.364 4.636z" />
               </svg>
             </div>
-            <h2 className="text-lg font-bold text-foreground">Sesión en pausa</h2>
+            <h2 className="text-lg font-bold text-foreground">Sesión Terminada</h2>
             <p className="text-sm text-muted-foreground">
-              Tu cuenta está siendo usada en otro dispositivo o navegador.
-              La sesión actual se ha pausado para evitar conflictos de datos.
+              Tu cuenta está siendo usada en otro dispositivo. Se guardaron tus datos y esta sesión se ha cerrado.
             </p>
             <button
               onClick={resume}
               className="w-full h-12 rounded-2xl gradient-primary text-primary-foreground border-0 shadow-glow font-bold"
             >
-              Sincronizar y reanudar
+              Volver a entrar aquí
             </button>
-            <p className="text-[10px] text-muted-foreground">
-              Al reanudar se recargarán los datos más recientes desde la nube.
+          </div>
+        </div>
+      )}
+
+      {sessionState === 'pendingTakeover' && (
+        <div className="fixed inset-0 z-[100] flex flex-col items-center justify-center bg-background/90 backdrop-blur-md">
+          <div className="rounded-3xl bg-card border border-border shadow-soft p-8 max-w-sm mx-4 text-center space-y-4">
+            <div className="size-16 mx-auto rounded-[28px] bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center">
+              <svg className="size-8 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+            </div>
+            <h2 className="text-lg font-bold text-foreground">Sesión Activa</h2>
+            <p className="text-sm text-muted-foreground">
+              Tienes una sesión activa en <strong>{otherDevice?.name}</strong>. ¿Deseas iniciar sesión aquí y cerrar la otra?
+            </p>
+            <button
+              onClick={requestTakeover}
+              className="w-full h-12 rounded-2xl gradient-primary text-primary-foreground border-0 shadow-glow font-bold"
+            >
+              Sí, iniciar sesión aquí
+            </button>
+          </div>
+        </div>
+      )}
+
+      {sessionState === 'takingOver' && (
+        <div className="fixed inset-0 z-[100] flex flex-col items-center justify-center bg-background/90 backdrop-blur-md">
+          <div className="rounded-3xl bg-card border border-border shadow-soft p-8 max-w-sm mx-4 text-center space-y-4">
+            <div className="size-16 mx-auto rounded-[28px] bg-indigo-100 dark:bg-indigo-900/30 flex items-center justify-center animate-pulse">
+              <svg className="size-8 text-indigo-600 animate-spin" fill="none" viewBox="0 0 24 24">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+              </svg>
+            </div>
+            <h2 className="text-lg font-bold text-foreground">Sincronizando...</h2>
+            <p className="text-sm text-muted-foreground">
+              Esperando a que el otro dispositivo guarde sus cambios para no perder información...
             </p>
           </div>
         </div>
       )}
+
+      {sessionState === 'syncingAndClosing' && (
+        <div className="fixed inset-0 z-[100] flex flex-col items-center justify-center bg-destructive/90 backdrop-blur-md">
+          <div className="rounded-3xl bg-card border border-border shadow-soft p-8 max-w-sm mx-4 text-center space-y-4 animate-in zoom-in-95">
+            <div className="size-16 mx-auto rounded-[28px] bg-red-100 dark:bg-red-900/30 flex items-center justify-center animate-pulse">
+              <svg className="size-8 text-red-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+              </svg>
+            </div>
+            <h2 className="text-xl font-bold text-foreground">¡Aviso Importante!</h2>
+            <p className="text-base text-muted-foreground">
+              Se ha iniciado sesión en otro dispositivo. Estamos subiendo tus últimos cambios a la nube para evitar perder información.
+            </p>
+            <p className="text-sm font-semibold text-primary">
+              Por favor, no cierres esta ventana.
+            </p>
+          </div>
+        </div>
+      )}
+
       <AnimatedRoutes />
     </>
   );

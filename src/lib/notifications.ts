@@ -30,7 +30,8 @@ type NotificationType =
   | "goal_deadline_upcoming" 
   | "goal_overdue" 
   | "goal_behind_pace" 
-  | "fixed_item_due";
+  | "fixed_item_due"
+  | "new_login";
 
 interface ScheduledNotification {
   id: string;
