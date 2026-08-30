@@ -1000,6 +1000,7 @@ export const useFinance = create<State>()(
               purchase_url: nv.purchaseUrl,
               contributions: nv.contributions,
               pinned: nv.pinned,
+              folder_id: nv.folderId,
             };
             if (isOnline()) {
               const { error } = await supabase.from('goals').insert(payload);
@@ -1041,6 +1042,7 @@ export const useFinance = create<State>()(
               purchase_url: p.purchaseUrl,
               contributions: p.contributions,
               pinned: p.pinned,
+              folder_id: p.folderId,
             };
             if (isOnline()) {
               const { error } = await supabase.from('goals').update(payload).eq('id', idv);

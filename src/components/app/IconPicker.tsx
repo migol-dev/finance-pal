@@ -66,7 +66,7 @@ export function IconPicker({ value, onChange }: Props) {
         <span className="text-xs text-muted-foreground underline">Cambiar icono</span>
       </button>
 
-      <Dialog open={open} onOpenChange={setOpen}>
+      <Dialog open={open} onOpenChange={setOpen} modal={false}>
         <DialogContent className="rounded-3xl max-w-md max-h-[90vh] overflow-y-auto">
           <DialogHeader><DialogTitle>Elige un icono</DialogTitle></DialogHeader>
           <DialogDescription className="sr-only">Selecciona un emoji o sube una imagen como icono</DialogDescription>
