@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/ban-ts-comment */
 // @ts-nocheck
 // Supabase Edge Function: send-reminders
 // Dispara recordatorios diarios de Metas y Pagos fijos a través de Web Push
