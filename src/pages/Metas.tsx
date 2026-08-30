@@ -109,6 +109,7 @@ function FolderTreeNode({
   onAddChild: () => void;
   goalCount: number;
   goalFolders: GoalFolder[];
+  getFolderGoalCount: (id: string) => number;
 }) {
   const [expanded, setExpanded] = useState(true);
   const hasChildren = folder.children.length > 0;
@@ -167,8 +168,9 @@ function FolderTreeNode({
               onEdit={onEdit}
               onDelete={onDelete}
               onAddChild={() => onAddChild()}
-              goalCount={goalFolders.find(f => f.id === child.id) ? goalCount : 0}
+              goalCount={getFolderGoalCount(child.id)}
               goalFolders={goalFolders}
+              getFolderGoalCount={getFolderGoalCount}
             />
           ))}
         </div>
@@ -374,6 +376,7 @@ export default function Metas() {
                   onAddChild={() => openNewFolder(folder.id)}
                   goalCount={getFolderGoalCount(folder.id)}
                   goalFolders={goalFolders}
+                  getFolderGoalCount={getFolderGoalCount}
                 />
               ))}
             </>
@@ -382,7 +385,27 @@ export default function Metas() {
 
         {/* Goals Grid */}
         <div className="px-5 lg:px-0 space-y-4">
-          {filteredGoals.length === 0 && (
+          
+          {/* Subfolders Grid */}
+          {selectedFolderId !== "uncategorized" && goalFolders.filter(f => f.parentId === (selectedFolderId ?? undefined)).length > 0 && (
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mb-6">
+              {goalFolders.filter(f => f.parentId === (selectedFolderId ?? undefined)).sort((a,b)=>a.order - b.order).map(f => (
+                <button 
+                  key={f.id}
+                  onClick={() => setSelectedFolderId(f.id)}
+                  className="p-4 rounded-3xl bg-card border border-border flex flex-col items-start gap-3 shadow-soft text-left hover:scale-[1.02] active:scale-95 transition"
+                >
+                  <IconDisplay icon={f.icon ?? { kind: "emoji", value: "📁" }} size="md" className="bg-muted" />
+                  <div className="w-full">
+                    <p className="font-bold text-sm truncate w-full">{f.name}</p>
+                    <p className="text-xs text-muted-foreground">{getFolderGoalCount(f.id)} metas</p>
+                  </div>
+                </button>
+              ))}
+            </div>
+          )}
+
+          {filteredGoals.length === 0 && goalFolders.filter(f => f.parentId === (selectedFolderId ?? undefined)).length === 0 && (
             <div className="rounded-3xl bg-card border border-dashed border-border p-8 text-center shadow-soft flex flex-col items-center">
               <p className="text-5xl mb-4">🎯</p>
               <p className="text-base font-bold mb-2">
@@ -955,6 +978,19 @@ function GoalForm({ initial, defaultFolderId, folders, onSave }: { initial: Goal
   const [purchaseUrl, setPurchaseUrl] = useState(initial?.purchaseUrl ?? "");
   const [folderId, setFolderId] = useState<string>(initial?.folderId ?? defaultFolderId ?? "uncategorized");
 
+  const flattenedFolders = useMemo(() => {
+    const result: { id: string, name: string, level: number }[] = [];
+    const roots = folders.filter(f => !f.parentId).sort((a, b) => a.order - b.order);
+    const traverse = (f: GoalFolder, level: number) => {
+      result.push({ id: f.id, name: f.name, level });
+      folders.filter(child => child.parentId === f.id)
+             .sort((a, b) => a.order - b.order)
+             .forEach(child => traverse(child, level + 1));
+    };
+    roots.forEach(r => traverse(r, 0));
+    return result;
+  }, [folders]);
+
   return (
     <form onSubmit={(e) => {
       e.preventDefault();
@@ -981,12 +1017,17 @@ function GoalForm({ initial, defaultFolderId, folders, onSave }: { initial: Goal
         <Label className="text-xs">Carpeta</Label>
         <Select value={folderId} onValueChange={setFolderId}>
           <SelectTrigger className="h-11 rounded-2xl bg-muted/50 border-0">
-            <SelectValue placeholder="Sin carpeta" />
+            <SelectValue placeholder="Sin carpeta">
+              {folderId === "uncategorized" ? "Sin carpeta" : folders.find(f => f.id === folderId)?.name}
+            </SelectValue>
           </SelectTrigger>
-          <SelectContent className="rounded-2xl">
+          <SelectContent className="rounded-2xl max-h-[40vh]">
             <SelectItem value="uncategorized">Sin carpeta</SelectItem>
-            {folders.map(f => (
-              <SelectItem key={f.id} value={f.id}>{f.name}</SelectItem>
+            {flattenedFolders.map(f => (
+              <SelectItem key={f.id} value={f.id}>
+                <span className="opacity-50 mr-1">{Array(f.level).fill("\u00A0\u00A0\u00A0\u00A0").join("")}{f.level > 0 ? "└ " : ""}</span>
+                {f.name}
+              </SelectItem>
             ))}
           </SelectContent>
         </Select>
