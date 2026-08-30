@@ -611,23 +611,22 @@ export const useFinance = create<State>()(
         if (isSupabaseEnabled) {
           const user = (await supabase.auth.getUser()).data.user;
           if (user) {
-            const payload = {
-              type: p.type,
-              category: p.category,
-              concept: p.concept,
-              amount: p.amount,
-              frequency: p.frequency,
-              active: p.active,
-              note: p.note,
-              start_date: p.startDate,
-              end_date: p.endDate,
-              priority: p.priority,
-              pay_day: p.payDay,
-              pay_week_day: p.payWeekDay,
-              icon: p.icon,
-              payment_method: p.paymentMethod,
-              account_id: p.accountId,
-            };
+            const payload: Record<string, any> = {};
+            if ('type' in p) payload.type = p.type;
+            if ('category' in p) payload.category = p.category;
+            if ('concept' in p) payload.concept = p.concept;
+            if ('amount' in p) payload.amount = p.amount;
+            if ('frequency' in p) payload.frequency = p.frequency;
+            if ('active' in p) payload.active = p.active;
+            if ('note' in p) payload.note = p.note === undefined ? null : p.note;
+            if ('startDate' in p) payload.start_date = p.startDate;
+            if ('endDate' in p) payload.end_date = p.endDate;
+            if ('priority' in p) payload.priority = p.priority;
+            if ('payDay' in p) payload.pay_day = p.payDay === undefined ? null : p.payDay;
+            if ('payWeekDay' in p) payload.pay_week_day = p.payWeekDay === undefined ? null : p.payWeekDay;
+            if ('icon' in p) payload.icon = p.icon === undefined ? null : p.icon;
+            if ('paymentMethod' in p) payload.payment_method = p.paymentMethod;
+            if ('accountId' in p) payload.account_id = p.accountId === undefined ? null : p.accountId;
             if (isOnline()) {
               const { error } = await supabase.from('fixed_items').update(payload).eq('id', idv);
               if (error) console.error('Supabase update error (fixed_items):', sanitizeForLog(error));
@@ -837,21 +836,20 @@ export const useFinance = create<State>()(
         if (isSupabaseEnabled) {
           const user = (await supabase.auth.getUser()).data.user;
           if (user) {
-            const payload = {
-              type: patch.type,
-              category: patch.category,
-              concept: patch.concept,
-              amount: patch.amount,
-              date: patch.date,
-              note: patch.note,
-              icon: patch.icon,
-              payment_method: patch.paymentMethod,
-              fixed_id: patch.fixedId,
-              account_id: patch.accountId,
-              transfer_to_account_id: patch.transferToAccountId,
-              external_payee: patch.externalPayee,
-              receipt: patch.receipt,
-            };
+            const payload: Record<string, any> = {};
+            if ('type' in patch) payload.type = patch.type;
+            if ('category' in patch) payload.category = patch.category;
+            if ('concept' in patch) payload.concept = patch.concept;
+            if ('amount' in patch) payload.amount = patch.amount;
+            if ('date' in patch) payload.date = patch.date;
+            if ('note' in patch) payload.note = patch.note === undefined ? null : patch.note;
+            if ('icon' in patch) payload.icon = patch.icon === undefined ? null : patch.icon;
+            if ('paymentMethod' in patch) payload.payment_method = patch.paymentMethod === undefined ? null : patch.paymentMethod;
+            if ('fixedId' in patch) payload.fixed_id = patch.fixedId === undefined ? null : patch.fixedId;
+            if ('accountId' in patch) payload.account_id = patch.accountId === undefined ? null : patch.accountId;
+            if ('transferToAccountId' in patch) payload.transfer_to_account_id = patch.transferToAccountId === undefined ? null : patch.transferToAccountId;
+            if ('externalPayee' in patch) payload.external_payee = patch.externalPayee === undefined ? null : patch.externalPayee;
+            if ('receipt' in patch) payload.receipt = patch.receipt === undefined ? null : patch.receipt;
             if (isOnline()) {
               const { error } = await supabase.from('transactions').update(payload).eq('id', idv);
               if (error) console.error('Supabase update error (transactions):', sanitizeForLog(error));
@@ -932,7 +930,15 @@ export const useFinance = create<State>()(
         if (isSupabaseEnabled && prev) {
           const user = (await supabase.auth.getUser()).data.user;
           if (user) {
-            const payload = { ...prev, ...p };
+            const payload: Record<string, any> = {};
+            if ('name' in p) payload.name = p.name;
+            if ('type' in p) payload.type = p.type;
+            if ('initialBalance' in p) payload.initial_balance = p.initialBalance === undefined ? null : p.initialBalance;
+            if ('currency' in p) payload.currency = p.currency === undefined ? null : p.currency;
+            if ('clabe' in p) payload.clabe = p.clabe === undefined ? null : p.clabe;
+            if ('bank' in p) payload.bank = p.bank === undefined ? null : p.bank;
+            if ('holderName' in p) payload.holder_name = p.holderName === undefined ? null : p.holderName;
+            if ('denominations' in p) payload.denominations = p.denominations === undefined ? null : p.denominations;
             if (isOnline()) {
               const { error } = await supabase.from('accounts').update(payload).eq('id', idv);
               if (error) console.error('Supabase update error (accounts):', sanitizeForLog(error));
@@ -1032,19 +1038,18 @@ export const useFinance = create<State>()(
         if (isSupabaseEnabled) {
           const user = (await supabase.auth.getUser()).data.user;
           if (user) {
-            const payload = {
-              name: p.name,
-              target: p.target,
-              saved: p.saved,
-              emoji: p.emoji,
-              color: p.color,
-              deadline: p.deadline,
-              icon: p.icon,
-              purchase_url: p.purchaseUrl,
-              contributions: p.contributions,
-              pinned: p.pinned,
-              folder_id: p.folderId,
-            };
+            const payload: Record<string, any> = {};
+            if ('name' in p) payload.name = p.name;
+            if ('target' in p) payload.target = p.target;
+            if ('saved' in p) payload.saved = p.saved;
+            if ('emoji' in p) payload.emoji = p.emoji;
+            if ('color' in p) payload.color = p.color;
+            if ('deadline' in p) payload.deadline = p.deadline === undefined ? null : p.deadline;
+            if ('icon' in p) payload.icon = p.icon === undefined ? null : p.icon;
+            if ('purchaseUrl' in p) payload.purchase_url = p.purchaseUrl === undefined ? null : p.purchaseUrl;
+            if ('contributions' in p) payload.contributions = p.contributions === undefined ? null : p.contributions;
+            if ('pinned' in p) payload.pinned = p.pinned === undefined ? null : p.pinned;
+            if ('folderId' in p) payload.folder_id = p.folderId === undefined ? null : p.folderId;
             if (isOnline()) {
               const { error } = await supabase.from('goals').update(payload).eq('id', idv);
               if (error) console.error('Supabase update error (goals):', sanitizeForLog(error));
@@ -1125,13 +1130,12 @@ export const useFinance = create<State>()(
         if (isSupabaseEnabled) {
           const user = (await supabase.auth.getUser()).data.user;
           if (user) {
-            const payload = {
-              name: p.name,
-              color: p.color,
-              icon: p.icon,
-              parent_id: p.parentId,
-              "order": p.order,
-            };
+            const payload: Record<string, any> = {};
+            if ('name' in p) payload.name = p.name;
+            if ('color' in p) payload.color = p.color;
+            if ('icon' in p) payload.icon = p.icon === undefined ? null : p.icon;
+            if ('parentId' in p) payload.parent_id = p.parentId === undefined ? null : p.parentId;
+            if ('order' in p) payload["order"] = p.order;
             if (isOnline()) {
               const { error } = await supabase.from('goal_folders').update(payload).eq('id', idv);
               if (error) console.error('Supabase update error (goal_folders):', sanitizeForLog(error));
@@ -1237,16 +1241,15 @@ addDebt: async (d) => {
         if (isSupabaseEnabled) {
           const user = (await supabase.auth.getUser()).data.user;
           if (user) {
-            const payload: Record<string, unknown> = {
-              person: p.person,
-              concept: p.concept,
-              amount: p.amount,
-              date: p.date,
-              due_date: p.dueDate,
-              note: p.note,
-              icon: p.icon,
-            };
-            if (p.accountId && isValidUUID(p.accountId)) payload.account_id = p.accountId;
+            const payload: Record<string, any> = {};
+            if ('person' in p) payload.person = p.person;
+            if ('concept' in p) payload.concept = p.concept;
+            if ('amount' in p) payload.amount = p.amount;
+            if ('date' in p) payload.date = p.date;
+            if ('dueDate' in p) payload.due_date = p.dueDate === undefined ? null : p.dueDate;
+            if ('note' in p) payload.note = p.note === undefined ? null : p.note;
+            if ('icon' in p) payload.icon = p.icon === undefined ? null : p.icon;
+            if ('accountId' in p) payload.account_id = p.accountId === undefined ? null : (isValidUUID(p.accountId) ? p.accountId : null);
             if (isOnline()) {
               const { error } = await supabase.from('debts').update(payload).eq('id', idv);
               if (error) {
