@@ -98,7 +98,8 @@ function FolderTreeNode({
   onDelete, 
   onAddChild,
   goalCount,
-  goalFolders
+  goalFolders,
+  getFolderGoalCount
 }: { 
   folder: FolderNode;
   level: number;
