@@ -300,15 +300,20 @@ export default function Metas() {
           <DialogContent className="rounded-2xl max-h-[90vh] overflow-y-auto p-5">
             <DialogHeader><DialogTitle className="text-lg">{editing ? "Editar meta" : "Nueva meta"}</DialogTitle></DialogHeader>
             <DialogDescription className="sr-only">Formulario para crear o editar una meta</DialogDescription>
-          <GoalForm initial={editing} onSave={async (g) => {
-            try {
-              if (editing) { await updateGoal(editing.id, g); toast.success("Actualizado"); }
-              else { await addGoal({ ...g, folderId: selectedFolderId === "uncategorized" ? undefined : selectedFolderId || undefined }); toast.success("Meta creada ✨"); }
-              setOpen(false); setEditing(null);
-            } catch (e: any) {
-              toast.error(e.message || "Ocurrió un error");
-            }
-          }} />
+          <GoalForm 
+            initial={editing} 
+            folders={goalFolders}
+            defaultFolderId={selectedFolderId === "uncategorized" || !selectedFolderId ? undefined : selectedFolderId}
+            onSave={async (g) => {
+              try {
+                if (editing) { await updateGoal(editing.id, g); toast.success("Actualizado"); }
+                else { await addGoal(g); toast.success("Meta creada ✨"); }
+                setOpen(false); setEditing(null);
+              } catch (e: any) {
+                toast.error(e.message || "Ocurrió un error");
+              }
+            }} 
+          />
         </DialogContent>
       </Dialog>
 
@@ -940,7 +945,7 @@ function ContribCustom({ onAdd, negative, accounts }: { onAdd: (v: number, accou
   );
 }
 
-function GoalForm({ initial, onSave }: { initial: Goal | null; onSave: (g: Omit<Goal, "id">) => void }) {
+function GoalForm({ initial, defaultFolderId, folders, onSave }: { initial: Goal | null; defaultFolderId?: string; folders: GoalFolder[]; onSave: (g: Omit<Goal, "id">) => void }) {
   const [name, setName] = useState(initial?.name ?? "");
   const [target, setTarget] = useState(initial?.target ? String(initial.target) : "");
   const [saved, setSaved] = useState(initial?.saved ? String(initial.saved) : "0");
@@ -948,6 +953,7 @@ function GoalForm({ initial, onSave }: { initial: Goal | null; onSave: (g: Omit<
   const [color, setColor] = useState(initial?.color ?? PALETTES[0]);
   const [deadline, setDeadline] = useState(initial?.deadline ?? "");
   const [purchaseUrl, setPurchaseUrl] = useState(initial?.purchaseUrl ?? "");
+  const [folderId, setFolderId] = useState<string>(initial?.folderId ?? defaultFolderId ?? "uncategorized");
 
   return (
     <form onSubmit={(e) => {
@@ -964,12 +970,27 @@ function GoalForm({ initial, onSave }: { initial: Goal | null; onSave: (g: Omit<
         purchaseUrl: purchaseUrl.trim() || undefined,
         createdAt: initial?.createdAt,
         contributions: initial?.contributions,
+        folderId: folderId === "uncategorized" ? undefined : folderId,
       });
     }} className="space-y-3 lg:grid lg:grid-cols-2 lg:gap-x-4 lg:gap-y-3 lg:space-y-0">
       <div className="lg:col-span-2 flex justify-center"><IconPicker value={icon} onChange={setIcon} /></div>
       <div className="lg:col-span-2"><Label className="text-xs">Nombre</Label><Input autoFocus value={name} onChange={(e) => setName(e.target.value)} placeholder="Ej. Vacaciones a Cancún" className="h-11 rounded-2xl" /></div>
       <div><Label className="text-xs">Objetivo</Label><Input type="number" value={target} onChange={(e) => setTarget(e.target.value)} placeholder="0.00" className="h-12 text-lg font-bold rounded-2xl" /></div>
       <div><Label className="text-xs">Ya ahorrado</Label><Input type="number" value={saved} onChange={(e) => setSaved(e.target.value)} placeholder="0" className="h-12 text-lg font-bold rounded-2xl" /></div>
+      <div className="lg:col-span-2">
+        <Label className="text-xs">Carpeta</Label>
+        <Select value={folderId} onValueChange={setFolderId}>
+          <SelectTrigger className="h-11 rounded-2xl bg-muted/50 border-0">
+            <SelectValue placeholder="Sin carpeta" />
+          </SelectTrigger>
+          <SelectContent className="rounded-2xl">
+            <SelectItem value="uncategorized">Sin carpeta</SelectItem>
+            {folders.map(f => (
+              <SelectItem key={f.id} value={f.id}>{f.name}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
       <div><Label className="text-xs">Fecha límite (opcional)</Label><Input type="date" value={deadline} onChange={(e) => setDeadline(e.target.value)} className="h-11 rounded-2xl" /></div>
       <div>
         <Label className="text-xs flex items-center gap-1"><ExternalLink className="size-3" /> Link de compra (opcional)</Label>

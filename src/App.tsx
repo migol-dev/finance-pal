@@ -141,6 +141,11 @@ function AuthGuard() {
   const { session, loading, mfaRequired } = useAuth();
   const { hasLocalData, loadSettingsFromCloud, appSettings, setConflictResolved } = useFinance();
   const [resolved, setResolved] = React.useState(appSettings.conflictResolved ?? false);
+  React.useEffect(() => {
+    if (appSettings.conflictResolved && !resolved) {
+      setResolved(true);
+    }
+  }, [appSettings.conflictResolved, resolved]);
   const [cloudHasData, setCloudHasData] = React.useState<boolean | null>(null);
   const { sessionState, otherDevice, resume, requestTakeover } = useSessionManager();
   const set = useFinance.setState;
@@ -194,6 +199,7 @@ function AuthGuard() {
     if (!session?.user?.id || cloudHasData === null || resolved) return;
     if (hasLocalData() && !cloudHasData) {
       // Only local data exists → auto-upload
+      setConflictResolved();
       setResolved(true);
       if (localStorage.getItem('finance-pal-migration-skipped') !== 'true') {
         navigate('/migracion');
@@ -222,12 +228,14 @@ function AuthGuard() {
         } catch (e) {
           handleError(e, 'Auto-download');
         } finally {
+          setConflictResolved();
           setResolved(true);
         }
       };
       downloadCloud();
     } else if (!hasLocalData() && !cloudHasData) {
       // Neither has data → nothing to resolve
+      setConflictResolved();
       setResolved(true);
     }
     // Both have data → dialog will show (no action needed)
