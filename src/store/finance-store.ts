@@ -86,6 +86,7 @@ interface State {
 
   resetAll: () => void;
   loadSettingsFromCloud: () => Promise<void>;
+  downloadFromCloud: () => Promise<void>;
   syncAllToCloud: () => Promise<number>;
 }
 
@@ -1625,6 +1626,34 @@ addDebt: async (d) => {
           if (data.profile && typeof data.profile === 'object') {
             set({ profile: { name: '', currency: 'MXN', ...data.profile } });
           }
+        }
+      },
+
+      downloadFromCloud: async () => {
+        if (!isSupabaseEnabled) return;
+        const { data: { session: s2 } } = await supabase.auth.getSession();
+        if (!s2?.user?.id) return;
+        const userId = s2.user.id;
+        
+        try {
+          const [accountsRes, txRes, fixedRes, goalsRes, debtsRes, foldersRes] = await Promise.all([
+            supabase.from('accounts').select('id, name, type, initial_balance, currency, denominations, clabe, bank, holder_name').eq('user_id', userId).order('created_at', { ascending: true }),
+            supabase.from('transactions').select('id, type, category, concept, amount, date, note, icon, payment_method, fixed_id, account_id, transfer_to_account_id, external_payee, receipt').eq('user_id', userId).order('date', { ascending: false }),
+            supabase.from('fixed_items').select('id, type, category, concept, amount, frequency, active, note, start_date, end_date, priority, pay_day, pay_week_day, icon, payment_method, account_id').eq('user_id', userId).order('created_at', { ascending: false }),
+            supabase.from('goals').select('id, name, target, saved, emoji, color, deadline, icon, purchase_url, contributions, pinned, folder_id, created_at').eq('user_id', userId).order('created_at', { ascending: false }),
+            supabase.from('debts').select('id, person, concept, amount, date, due_date, note, icon, account_id, payments:debt_payments(id, amount, date, note, payment_method, account_id)').eq('user_id', userId).order('created_at', { ascending: false }),
+            supabase.from('goal_folders').select('*').eq('user_id', userId).order('"order"', { ascending: true }),
+          ]);
+          set({
+            accounts: (accountsRes.data ?? []).map((r: any) => ({ id: r.id, name: r.name, type: r.type, initialBalance: Number(r.initial_balance ?? 0), currency: r.currency, denominations: r.denominations ?? [], clabe: r.clabe, bank: r.bank, holderName: r.holder_name })),
+            transactions: (txRes.data ?? []).map((r: any) => ({ id: r.id, type: r.type, category: r.category, concept: r.concept, amount: Number(r.amount), date: r.date, note: r.note, icon: r.icon, paymentMethod: r.payment_method, fixedId: r.fixed_id, accountId: r.account_id, transferToAccountId: r.transfer_to_account_id, externalPayee: r.external_payee, receipt: r.receipt })),
+            fixedItems: (fixedRes.data ?? []).map((r: any) => ({ id: r.id, type: r.type, category: r.category, concept: r.concept, amount: Number(r.amount), frequency: r.frequency, active: r.active, note: r.note, startDate: r.start_date, endDate: r.end_date, priority: r.priority, payDay: r.pay_day, payWeekDay: r.pay_week_day, icon: r.icon, paymentMethod: r.payment_method, accountId: r.account_id })),
+            goals: (goalsRes.data ?? []).map((r: any) => ({ id: r.id, name: r.name, target: Number(r.target), saved: Number(r.saved ?? 0), emoji: r.emoji, color: r.color, deadline: r.deadline, icon: r.icon, purchaseUrl: r.purchase_url, contributions: r.contributions ?? [], pinned: r.pinned, folderId: r.folder_id, createdAt: r.created_at })),
+            goalFolders: (foldersRes.data ?? []).map((r: any) => ({ id: r.id, name: r.name, color: r.color, icon: r.icon, parentId: r.parent_id, order: r.order ?? 0, createdAt: r.created_at })),
+            debts: (debtsRes.data ?? []).map((r: any) => ({ id: r.id, person: r.person, concept: r.concept, amount: Number(r.amount), date: r.date, dueDate: r.due_date, note: r.note, icon: r.icon, accountId: r.account_id, payments: (r.payments ?? []).map((p: any) => ({ id: p.id, amount: Number(p.amount), date: p.date, note: p.note, paymentMethod: p.payment_method, accountId: p.account_id })) })),
+          });
+        } catch (e) {
+          console.error("Error downloading from cloud", e);
         }
       },
 
