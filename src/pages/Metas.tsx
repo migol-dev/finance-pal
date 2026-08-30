@@ -951,7 +951,7 @@ function GoalForm({ initial, defaultFolderId, folders, onSave }: { initial: Goal
   const [saved, setSaved] = useState(initial?.saved ? String(initial.saved) : "0");
   const [icon, setIcon] = useState<IconRef>(initial?.icon ?? { kind: "emoji", value: "🎯" });
   const [color, setColor] = useState(initial?.color ?? PALETTES[0]);
-  const [deadline, setDeadline] = useState(initial?.deadline ?? "");
+  const [deadline, setDeadline] = useState(initial?.deadline?.slice(0, 10) ?? "");
   const [purchaseUrl, setPurchaseUrl] = useState(initial?.purchaseUrl ?? "");
   const [folderId, setFolderId] = useState<string>(initial?.folderId ?? defaultFolderId ?? "uncategorized");
 

@@ -102,7 +102,7 @@ export const goalSchema = z.object({
   saved: z.number().nonnegative().finite().max(1e12),
   emoji: z.string().max(8).default('🎯'),
   color: z.string().max(50).default('gradient-primary'),
-  deadline: z.string().date().optional(),
+  deadline: z.string().datetime({ offset: true, local: true }).or(z.string().date()).optional(),
   icon: iconRefSchema.optional(),
   purchaseUrl: z.string().url('Invalid URL').max(2000).optional().or(z.literal('')),
   contributions: z.array(z.object({
@@ -151,7 +151,7 @@ export const debtSchema = z.object({
   concept: z.string().min(1).max(200),
   amount: z.number().positive().finite().max(1e12),
   date: z.string().datetime({ offset: true, local: true }).or(z.string().date()),
-  dueDate: z.string().date().optional(),
+  dueDate: z.string().datetime({ offset: true, local: true }).or(z.string().date()).optional(),
   note: z.string().max(1000).optional(),
   icon: iconRefSchema.optional(),
   payments: z.array(debtPaymentSchema).max(1000),
