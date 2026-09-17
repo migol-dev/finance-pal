@@ -124,36 +124,14 @@ export const useFinance = create<State>()(
           return ((s.transactions?.length ?? 0) + (s.fixedItems?.length ?? 0) + (s.goals?.length ?? 0) + (s.debts?.length ?? 0) + (s.goalFolders?.length ?? 0)) > 0;
         },
 
+        // Solo estado local. La sincronización a la nube (user_settings)
+        // se gestiona fuera del store vía settings.service + useFinanceData.
         setProfile: (p) => {
           set((s) => ({ profile: { ...s.profile, ...p } }));
-          if (isSupabaseEnabled) {
-            supabase.auth.getSession().then(async ({ data: { session: s2 } }) => {
-              if (s2?.user?.id) {
-                try {
-                  await supabase.from('user_settings').upsert(
-                    { user_id: s2.user.id, profile: { ...get().profile, ...p } },
-                    { onConflict: 'user_id' }
-                  );
-                } catch { /* ignore */ }
-              }
-            });
-          }
         },
 
         setTheme: (t) => {
           set({ theme: t });
-          if (isSupabaseEnabled) {
-            supabase.auth.getSession().then(async ({ data: { session: s2 } }) => {
-              if (s2?.user?.id) {
-                try {
-                  await supabase.from('user_settings').upsert(
-                    { user_id: s2.user.id, theme: t },
-                    { onConflict: 'user_id' }
-                  );
-                } catch { /* ignore */ }
-              }
-            });
-          }
         },
         toggleTheme: () => {
           const current = get().theme;

@@ -1,5 +1,5 @@
 import { useMemo, useState, useEffect, memo, type ReactNode } from "react";
-import { useHybridData } from "@/hooks/useHybridData";
+import { useFinanceData } from "@/hooks/useFinanceData";
 import { fmt, monthlyAmount, MONTHS, isFixedActiveInMonth, iconFor, fmtDate, parseDateLocal, computeBalances, cashTotalFromDenominations } from "@/lib/finance";
 import { Eye, EyeOff, TrendingUp, TrendingDown, PiggyBank, Plus, Bell, BarChart3, Wallet } from "lucide-react";
 import { Link } from "react-router-dom";
@@ -18,7 +18,7 @@ export default function Dashboard() {
     activeMonth,
     profile,
     ensureScheduledTransactions,
-  } = useHybridData();
+  } = useFinanceData();
 
   useEffect(() => {
     try { ensureScheduledTransactions(); } catch { /* ignore */ }

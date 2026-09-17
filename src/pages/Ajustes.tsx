@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, useMemo, useCallback } from "react";
-import { useHybridData } from "@/hooks/useHybridData";
+import { useFinanceData } from "@/hooks/useFinanceData";
 import { useFinance, ExportScopes, ALL_SCOPES, normalizeImportKeys } from "@/store/finance-store";
 import { fmt, monthlyAmount, TYPE_LABEL, FREQ_LABEL, ItemType, Frequency, Priority, iconFor, IconRef, FixedItem, CATEGORY_EMOJI, PAYMENT_METHOD_LABEL, PAYMENT_METHOD_EMOJI, Account, Denomination, cashTotalFromDenominations, Currency, computeBalances, PaymentMethod, NotificationPreferences } from "@/lib/finance";
 import DenominationsEditor from "@/components/ui/DenominationsEditor";
@@ -38,7 +38,7 @@ export default function Ajustes() {
     profile, setProfile, 
     accounts, addAccount, updateAccount, removeAccount, syncAllToCloud,
     transactions, debts,
-  } = useHybridData();
+  } = useFinanceData();
   const accentColor = useFinance((s) => s.appSettings.accentColor);
   const setAccentColor = useFinance((s) => s.setAccentColor);
   const compactMode = useFinance((s) => s.appSettings.compactMode);
@@ -1339,7 +1339,7 @@ function SyncAllButton({ syncAllToCloud, queryClient }: { syncAllToCloud: () => 
 function NotificationSettings() {
   const prefs = useFinance((s) => s.appSettings.notifications);
   const setNotificationPrefs = useFinance((s) => s.setNotificationPrefs);
-  const { goals, fixedItems } = useHybridData();
+  const { goals, fixedItems } = useFinanceData();
 
   const toggleEnabled = async (key: keyof NotificationPreferences, value: boolean) => {
     setNotificationPrefs({ [key]: value });

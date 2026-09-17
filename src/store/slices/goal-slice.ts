@@ -1,36 +1,19 @@
 import { StateCreator } from 'zustand';
 import { Goal, GoalFolder, Transaction, Account, ChangeLogEntry } from '@/lib/finance';
-import { supabase, isSupabaseEnabled } from '@/lib/supabase';
 import { validateAndThrow, generateSecureId, logEntry, diffFields } from '@/lib/sanitizers';
-import { sanitizeForLog } from '@/lib/validators';
-import { useSyncStore } from '@/store/sync-store';
-
-function isOnline(): boolean {
-    return typeof navigator !== 'undefined' ? navigator.onLine : true;
-}
-
-function queueMutation(
-    table: string,
-    action: 'INSERT' | 'UPDATE' | 'DELETE',
-    recordId: string,
-    payload?: Record<string, unknown>
-) {
-    if (!isSupabaseEnabled) return;
-    useSyncStore.getState().addMutation({ table, action, recordId, payload });
-}
 
 export interface GoalSlice {
     goals: Goal[];
     goalFolders: GoalFolder[];
 
-    addGoal: (g: Omit<Goal, 'id'>) => Promise<void>;
-    updateGoal: (id: string, p: Partial<Goal>) => Promise<void>;
-    removeGoal: (id: string) => Promise<void>;
+    addGoal: (g: Omit<Goal, 'id'>) => void;
+    updateGoal: (id: string, p: Partial<Goal>) => void;
+    removeGoal: (id: string) => void;
     contributeGoal: (id: string, amount: number, date?: string, accountId?: string) => void;
 
-    addGoalFolder: (f: Omit<GoalFolder, 'id'>) => Promise<void>;
-    updateGoalFolder: (id: string, p: Partial<GoalFolder>) => Promise<void>;
-    removeGoalFolder: (id: string) => Promise<void>;
+    addGoalFolder: (f: Omit<GoalFolder, 'id'>) => void;
+    updateGoalFolder: (id: string, p: Partial<GoalFolder>) => void;
+    removeGoalFolder: (id: string) => void;
     reorderGoalFolders: (folders: GoalFolder[]) => void;
 }
 
@@ -49,7 +32,7 @@ export const createGoalSlice: StateCreator<
     goals: [],
     goalFolders: [],
 
-    addGoal: async (g) => {
+    addGoal: (g) => {
         const s = get();
         const nv = {
             ...g,
@@ -72,36 +55,9 @@ export const createGoalSlice: StateCreator<
             goals: nextGoals,
             changeLog: [logEntry('goal', nv.id, 'create', `Creó meta "${nv.name}"`), ...s.changeLog].slice(0, 500),
         });
-
-        if (isSupabaseEnabled) {
-            const user = (await supabase.auth.getUser()).data.user;
-            if (user) {
-                const payload = {
-                    id: nv.id,
-                    user_id: user.id,
-                    name: nv.name,
-                    target: nv.target,
-                    saved: nv.saved,
-                    emoji: nv.emoji,
-                    color: nv.color,
-                    deadline: nv.deadline,
-                    icon: nv.icon,
-                    purchase_url: nv.purchaseUrl,
-                    contributions: nv.contributions,
-                    pinned: nv.pinned,
-                    folder_id: nv.folderId,
-                };
-                if (isOnline()) {
-                    const { error } = await supabase.from('goals').insert(payload);
-                    if (error) console.error('Supabase insert error (goals):', sanitizeForLog(error));
-                } else {
-                    queueMutation('goals', 'INSERT', nv.id, payload);
-                }
-            }
-        }
     },
 
-    updateGoal: async (idv, p) => {
+    updateGoal: (idv, p) => {
         const s = get();
         const prev = s.goals.find((x) => x.id === idv);
         if (!prev) return;
@@ -119,52 +75,15 @@ export const createGoalSlice: StateCreator<
             goals: nextGoals,
             changeLog: [logEntry('goal', idv, 'update', `Editó meta "${prev.name}"`, ch), ...s.changeLog].slice(0, 500),
         });
-
-        if (isSupabaseEnabled) {
-            const user = (await supabase.auth.getUser()).data.user;
-            if (user) {
-                const payload: Record<string, unknown> = {};
-                if ('name' in p) payload.name = p.name;
-                if ('target' in p) payload.target = p.target;
-                if ('saved' in p) payload.saved = p.saved;
-                if ('emoji' in p) payload.emoji = p.emoji;
-                if ('color' in p) payload.color = p.color;
-                if ('deadline' in p) payload.deadline = p.deadline === undefined ? null : p.deadline;
-                if ('icon' in p) payload.icon = p.icon === undefined ? null : p.icon;
-                if ('purchaseUrl' in p) payload.purchase_url = p.purchaseUrl === undefined ? null : p.purchaseUrl;
-                if ('contributions' in p) payload.contributions = p.contributions === undefined ? null : p.contributions;
-                if ('pinned' in p) payload.pinned = p.pinned === undefined ? null : p.pinned;
-                if ('folderId' in p) payload.folder_id = p.folderId === undefined ? null : p.folderId;
-
-                if (isOnline()) {
-                    const { error } = await supabase.from('goals').update(payload).eq('id', idv);
-                    if (error) console.error('Supabase update error (goals):', sanitizeForLog(error));
-                } else {
-                    queueMutation('goals', 'UPDATE', idv, payload);
-                }
-            }
-        }
     },
 
-    removeGoal: async (idv) => {
+    removeGoal: (idv) => {
         const s = get();
         const prev = s.goals.find((x) => x.id === idv);
         set({
             goals: s.goals.filter((x) => x.id !== idv),
             changeLog: [logEntry('goal', idv, 'delete', `Eliminó meta "${prev?.name ?? ''}"`), ...s.changeLog].slice(0, 500),
         });
-
-        if (isSupabaseEnabled) {
-            const user = (await supabase.auth.getUser()).data.user;
-            if (user) {
-                if (isOnline()) {
-                    const { error } = await supabase.from('goals').delete().eq('id', idv);
-                    if (error) console.error('Supabase delete error (goals):', sanitizeForLog(error));
-                } else {
-                    queueMutation('goals', 'DELETE', idv);
-                }
-            }
-        }
     },
 
     contributeGoal: (idv, amount, date, accountId) =>
@@ -211,7 +130,7 @@ export const createGoalSlice: StateCreator<
             };
         }),
 
-    addGoalFolder: async (f) => {
+    addGoalFolder: (f) => {
         const s = get();
         const nv = {
             ...f,
@@ -225,30 +144,9 @@ export const createGoalSlice: StateCreator<
             goalFolders: [nv, ...s.goalFolders],
             changeLog: [logEntry('goal', nv.id, 'create', `Creó carpeta "${nv.name}"`), ...s.changeLog].slice(0, 500),
         });
-
-        if (isSupabaseEnabled) {
-            const user = (await supabase.auth.getUser()).data.user;
-            if (user) {
-                const payload = {
-                    id: nv.id,
-                    user_id: user.id,
-                    name: nv.name,
-                    color: nv.color,
-                    icon: nv.icon,
-                    parent_id: nv.parentId,
-                    order: nv.order,
-                };
-                if (isOnline()) {
-                    const { error } = await supabase.from('goal_folders').insert(payload);
-                    if (error) console.error('Supabase insert error (goal_folders):', sanitizeForLog(error));
-                } else {
-                    queueMutation('goal_folders', 'INSERT', nv.id, payload);
-                }
-            }
-        }
     },
 
-    updateGoalFolder: async (idv, p) => {
+    updateGoalFolder: (idv, p) => {
         const s = get();
         const prev = s.goalFolders.find((x) => x.id === idv);
         if (!prev) return;
@@ -261,28 +159,9 @@ export const createGoalSlice: StateCreator<
             goalFolders: s.goalFolders.map((x) => (x.id === idv ? { ...x, ...p } : x)),
             changeLog: [logEntry('goal', idv, 'update', `Editó carpeta "${prev.name}"`, ch), ...s.changeLog].slice(0, 500),
         });
-
-        if (isSupabaseEnabled) {
-            const user = (await supabase.auth.getUser()).data.user;
-            if (user) {
-                const payload: Record<string, unknown> = {};
-                if ('name' in p) payload.name = p.name;
-                if ('color' in p) payload.color = p.color;
-                if ('icon' in p) payload.icon = p.icon === undefined ? null : p.icon;
-                if ('parentId' in p) payload.parent_id = p.parentId === undefined ? null : p.parentId;
-                if ('order' in p) payload.order = p.order;
-
-                if (isOnline()) {
-                    const { error } = await supabase.from('goal_folders').update(payload).eq('id', idv);
-                    if (error) console.error('Supabase update error (goal_folders):', sanitizeForLog(error));
-                } else {
-                    queueMutation('goal_folders', 'UPDATE', idv, payload);
-                }
-            }
-        }
     },
 
-    removeGoalFolder: async (idv) => {
+    removeGoalFolder: (idv) => {
         const s = get();
         const prev = s.goalFolders.find((x) => x.id === idv);
         const nextGoals = s.goals.map((g) => (g.folderId === idv ? { ...g, folderId: undefined } : g));
@@ -294,18 +173,6 @@ export const createGoalSlice: StateCreator<
             goals: nextGoals,
             changeLog: [logEntry('goal', idv, 'delete', `Eliminó carpeta "${prev?.name ?? ''}"`), ...s.changeLog].slice(0, 500),
         });
-
-        if (isSupabaseEnabled) {
-            const user = (await supabase.auth.getUser()).data.user;
-            if (user) {
-                if (isOnline()) {
-                    const { error } = await supabase.from('goal_folders').delete().eq('id', idv);
-                    if (error) console.error('Supabase delete error (goal_folders):', sanitizeForLog(error));
-                } else {
-                    queueMutation('goal_folders', 'DELETE', idv);
-                }
-            }
-        }
     },
 
     reorderGoalFolders: (folders) => set({ goalFolders: folders }),

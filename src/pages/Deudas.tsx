@@ -1,5 +1,5 @@
 import { useMemo, useState, useEffect } from "react";
-import { useHybridData } from "@/hooks/useHybridData";
+import { useFinanceData } from "@/hooks/useFinanceData";
 import { fmt, iconFor, IconRef, Debt, PaymentMethod, PAYMENT_METHOD_LABEL, PAYMENT_METHOD_EMOJI, fmtDate, Account } from "@/lib/finance";
 
 const localDateNow = () => { const d = new Date(); const pad = (n: number) => String(n).padStart(2, "0"); return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`; };
@@ -19,7 +19,7 @@ import { ElegantConfirm } from "@/components/app/ElegantConfirm";
 function totalPaid(d: Debt) { return d.payments.reduce((a, p) => a + p.amount, 0); }
 
 export default function Deudas() {
-  const { debts, accounts, addDebt, updateDebt, removeDebt, addDebtPayment, removeDebtPayment } = useHybridData();
+  const { debts, accounts, addDebt, updateDebt, removeDebt, addDebtPayment, removeDebtPayment } = useFinanceData();
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<Debt | null>(null);
   const [payOpen, setPayOpen] = useState<Debt | null>(null);

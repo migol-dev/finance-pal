@@ -1,33 +1,15 @@
 import { StateCreator } from 'zustand';
 import { Transaction, Account, FixedItem, ChangeLogEntry, parseDateLocal } from '@/lib/finance';
-import { supabase, isSupabaseEnabled } from '@/lib/supabase';
-import { uploadReceipt, deleteReceipt } from '@/lib/supabase-storage';
 import { validateAndThrow, generateSecureId, logEntry, diffFields } from '@/lib/sanitizers';
-import { sanitizeForLog } from '@/lib/validators';
-import { useSyncStore } from '@/store/sync-store';
 import { saveReceipt as saveReceiptToIndexedDB } from '@/lib/encrypted-storage';
 import { Capacitor } from '@capacitor/core';
 import { Filesystem, Directory, Encoding } from '@capacitor/filesystem';
 
-function isOnline(): boolean {
-    return typeof navigator !== 'undefined' ? navigator.onLine : true;
-}
-
-function queueMutation(
-    table: string,
-    action: 'INSERT' | 'UPDATE' | 'DELETE',
-    recordId: string,
-    payload?: Record<string, unknown>
-) {
-    if (!isSupabaseEnabled) return;
-    useSyncStore.getState().addMutation({ table, action, recordId, payload });
-}
-
 export interface TransactionSlice {
     transactions: Transaction[];
-    addTx: (t: Omit<Transaction, 'id'>) => Promise<void>;
-    updateTx: (id: string, p: Partial<Transaction>) => Promise<void>;
-    removeTx: (id: string) => Promise<void>;
+    addTx: (t: Omit<Transaction, 'id'>) => void;
+    updateTx: (id: string, p: Partial<Transaction>) => void;
+    removeTx: (id: string) => void;
     saveReceiptFile: (receiptId: string, dataUrl: string) => Promise<string | undefined>;
     deleteReceiptIfExists: (receipt?: string) => Promise<void>;
 }
@@ -69,7 +51,7 @@ export const createTransactionSlice: StateCreator<
             if (cashAcc) nv.accountId = cashAcc.id;
         }
 
-        // If receipt is a data URL, persist original to IndexedDB then upload compressed
+        // If receipt is a data URL, persist original to IndexedDB then save to local filesystem (native)
         if (typeof nv.receipt === 'string' && nv.receipt.startsWith('data:')) {
             // Save original to IndexedDB first (before compression replaces it)
             saveReceiptToIndexedDB(`tx:${nv.id}`, nv.receipt).catch(() => {});
@@ -94,36 +76,6 @@ export const createTransactionSlice: StateCreator<
                 ...s2.changeLog,
             ].slice(0, 500),
         }));
-
-        // Sync to Supabase
-        if (isSupabaseEnabled) {
-            const user = (await supabase.auth.getUser()).data.user;
-            if (user) {
-                const payload: Record<string, unknown> = {
-                    id: nv.id,
-                    user_id: user.id,
-                    type: nv.type,
-                    category: nv.category,
-                    concept: nv.concept,
-                    amount: nv.amount,
-                    date: nv.date,
-                    note: nv.note,
-                    icon: nv.icon,
-                    payment_method: nv.paymentMethod,
-                    fixed_id: nv.fixedId,
-                    account_id: nv.accountId,
-                    transfer_to_account_id: nv.transferToAccountId,
-                    external_payee: nv.externalPayee,
-                    receipt: nv.receipt,
-                };
-                if (isOnline()) {
-                    const { error } = await supabase.from('transactions').insert(payload);
-                    if (error) console.error('Supabase insert error (transactions):', sanitizeForLog(error));
-                } else {
-                    queueMutation('transactions', 'INSERT', nv.id, payload);
-                }
-            }
-        }
     },
 
     updateTx: async (idv, p) => {
@@ -138,7 +90,7 @@ export const createTransactionSlice: StateCreator<
             if (cashAcc) patch.accountId = cashAcc.id;
         }
 
-        // If new receipt is a data URL, persist it then delete old
+        // If new receipt is a data URL, persist it to local filesystem then delete old
         if (typeof p.receipt === 'string' && p.receipt.startsWith('data:') && Capacitor.isNativePlatform()) {
             const saved = await get().saveReceiptFile(idv, p.receipt as string);
             if (saved) {
@@ -155,33 +107,6 @@ export const createTransactionSlice: StateCreator<
             transactions: s2.transactions.map((x) => (x.id === idv ? { ...x, ...patch } : x)),
             changeLog: [logEntry('transaction', idv, 'update', `Editó "${prev.concept}"`, diffFields(prev, patch)), ...s2.changeLog].slice(0, 500),
         }));
-
-        // Sync to Supabase
-        if (isSupabaseEnabled) {
-            const user = (await supabase.auth.getUser()).data.user;
-            if (user) {
-                const payload: Record<string, unknown> = {};
-                if ('type' in patch) payload.type = patch.type;
-                if ('category' in patch) payload.category = patch.category;
-                if ('concept' in patch) payload.concept = patch.concept;
-                if ('amount' in patch) payload.amount = patch.amount;
-                if ('date' in patch) payload.date = patch.date;
-                if ('note' in patch) payload.note = patch.note === undefined ? null : patch.note;
-                if ('icon' in patch) payload.icon = patch.icon === undefined ? null : patch.icon;
-                if ('paymentMethod' in patch) payload.payment_method = patch.paymentMethod === undefined ? null : patch.paymentMethod;
-                if ('fixedId' in patch) payload.fixed_id = patch.fixedId === undefined ? null : patch.fixedId;
-                if ('accountId' in patch) payload.account_id = patch.accountId === undefined ? null : patch.accountId;
-                if ('transferToAccountId' in patch) payload.transfer_to_account_id = patch.transferToAccountId === undefined ? null : patch.transferToAccountId;
-                if ('externalPayee' in patch) payload.external_payee = patch.externalPayee === undefined ? null : patch.externalPayee;
-                if ('receipt' in patch) payload.receipt = patch.receipt === undefined ? null : patch.receipt;
-                if (isOnline()) {
-                    const { error } = await supabase.from('transactions').update(payload).eq('id', idv);
-                    if (error) console.error('Supabase update error (transactions):', sanitizeForLog(error));
-                } else {
-                    queueMutation('transactions', 'UPDATE', idv, payload);
-                }
-            }
-        }
     },
 
     removeTx: async (idv) => {
@@ -192,29 +117,11 @@ export const createTransactionSlice: StateCreator<
             transactions: s2.transactions.filter((x) => x.id !== idv),
             changeLog: [logEntry('transaction', idv, 'delete', `Eliminó "${prev?.concept ?? 'movimiento'}"`), ...s2.changeLog].slice(0, 500),
         }));
-
-        // Sync to Supabase
-        if (isSupabaseEnabled) {
-            const user = (await supabase.auth.getUser()).data.user;
-            if (user) {
-                if (isOnline()) {
-                    const { error } = await supabase.from('transactions').delete().eq('id', idv);
-                    if (error) console.error('Supabase delete error (transactions):', sanitizeForLog(error));
-                } else {
-                    queueMutation('transactions', 'DELETE', idv);
-                }
-            }
-        }
     },
 
+    // Local-only receipt helpers (native filesystem). La subida a la nube
+    // se gestiona fuera del store, en la capa de servicios/mutations.
     async saveReceiptFile(receiptId: string, dataUrl: string) {
-        if (isSupabaseEnabled) {
-            const user = (await supabase.auth.getUser()).data.user;
-            if (user) {
-                const url = await uploadReceipt(user.id, receiptId, dataUrl);
-                if (url) return url;
-            }
-        }
         try {
             if (typeof Filesystem?.writeFile === 'function') {
                 const m = dataUrl.match(/^data:(image\/[^;]+);base64,(.*)$/);
@@ -234,15 +141,10 @@ export const createTransactionSlice: StateCreator<
 
     async deleteReceiptIfExists(receipt?: string) {
         if (!receipt) return;
-        if (isSupabaseEnabled && receipt.startsWith('http')) {
-            const user = (await supabase.auth.getUser()).data.user;
-            if (user) {
-                const deleted = await deleteReceipt(user.id, receipt);
-                if (deleted) return;
-            }
-        }
+        // Solo archivos locales. Los recibos remotos se gestionan en la capa de servicios.
+        if (receipt.startsWith('http')) return;
         try {
-            if (typeof Filesystem?.deleteFile === 'function') {
+            if (typeof Filesystem?.deleteFile === 'function' && Capacitor.isNativePlatform()) {
                 let fname = receipt;
                 if (receipt.includes('/')) fname = receipt.split('/').pop() as string;
                 await Filesystem.deleteFile({ path: `receipts/${fname}`, directory: Directory.Data });

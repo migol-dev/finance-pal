@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { useHybridData } from "@/hooks/useHybridData";
+import { useFinanceData } from "@/hooks/useFinanceData";
 import { fmt, fmt2, monthlyAmount, MONTHS, MONTHS_SHORT, isFixedActiveInMonth, iconFor, PAYMENT_METHOD_LABEL, PAYMENT_METHOD_EMOJI, PaymentMethod, parseDateLocal } from "@/lib/finance";
 import { Header } from "@/components/app/Header";
 import { PillTabs } from "@/components/app/PillTabs";
@@ -36,7 +36,7 @@ export default function Anual() {
     activeMonth,
     setActive,
     accounts,
-  } = useHybridData();
+  } = useFinanceData();
   const navigate = useNavigate();
   const [tab, setTab] = useState<Tab>("general");
 

@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { useHybridData } from "@/hooks/useHybridData";
+import { useFinanceData } from "@/hooks/useFinanceData";
 import { fmt, fmt2, iconFor, IconRef, Goal, GoalFolder, fmtDate, parseDateLocal, Account } from "@/lib/finance";
 import { Header } from "@/components/app/Header";
 import { Plus, Trash2, Pencil, Minus, CalendarDays, ExternalLink, Sparkles, AlertTriangle, CheckCircle2, Star, ChevronRight, X, FolderOpen, FolderPlus, ChevronDown } from "lucide-react";
@@ -218,7 +218,7 @@ export default function Metas() {
     addGoalFolder,
     updateGoalFolder,
     removeGoalFolder,
-  } = useHybridData();
+  } = useFinanceData();
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<Goal | null>(null);
   const [detailId, setDetailId] = useState<string | null>(null);

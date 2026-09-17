@@ -1,29 +1,12 @@
 import { StateCreator } from 'zustand';
 import { Account, Transaction } from '@/lib/finance';
-import { supabase, isSupabaseEnabled } from '@/lib/supabase';
 import { validateAndThrow, generateSecureId } from '@/lib/sanitizers';
-import { sanitizeForLog } from '@/lib/validators';
-import { useSyncStore } from '@/store/sync-store';
-
-function isOnline(): boolean {
-  return typeof navigator !== 'undefined' ? navigator.onLine : true;
-}
-
-function queueMutation(
-  table: string,
-  action: 'INSERT' | 'UPDATE' | 'DELETE',
-  recordId: string,
-  payload?: Record<string, unknown>
-) {
-  if (!isSupabaseEnabled) return;
-  useSyncStore.getState().addMutation({ table, action, recordId, payload });
-}
 
 export interface AccountSlice {
   accounts: Account[];
-  addAccount: (a: Omit<Account, 'id'>) => Promise<void>;
-  updateAccount: (id: string, p: Partial<Account>) => Promise<void>;
-  removeAccount: (id: string) => Promise<void>;
+  addAccount: (a: Omit<Account, 'id'>) => void;
+  updateAccount: (id: string, p: Partial<Account>) => void;
+  removeAccount: (id: string) => void;
   mergeAccounts: (fromIds: string[], intoId: string) => void;
 }
 
@@ -41,7 +24,7 @@ export const createAccountSlice: StateCreator<
     { id: generateSecureId(), name: 'Cuenta 1', type: 'bank', initialBalance: 0 },
   ],
 
-  addAccount: async (a) => {
+  addAccount: (a) => {
     const s = get();
     if (a.type === 'cash' && s.accounts.some((x) => x.type === 'cash')) {
       return;
@@ -51,34 +34,9 @@ export const createAccountSlice: StateCreator<
     validateAndThrow('account', nv);
 
     set((state) => ({ accounts: [nv, ...state.accounts] }));
-
-    if (isSupabaseEnabled) {
-      const user = (await supabase.auth.getUser()).data.user;
-      if (user) {
-        const payload = {
-          id: nv.id,
-          user_id: user.id,
-          name: nv.name,
-          type: nv.type,
-          initial_balance: nv.initialBalance,
-          currency: nv.currency,
-          denominations: nv.denominations,
-          clabe: nv.clabe,
-          bank: nv.bank,
-          holder_name: nv.holderName,
-        };
-
-        if (isOnline()) {
-          const { error } = await supabase.from('accounts').insert(payload);
-          if (error) console.error('Supabase insert error (accounts):', sanitizeForLog(error));
-        } else {
-          queueMutation('accounts', 'INSERT', nv.id, payload);
-        }
-      }
-    }
   },
 
-  updateAccount: async (idv, p) => {
+  updateAccount: (idv, p) => {
     const s = get();
     const prev = s.accounts.find((x) => x.id === idv);
     if (!prev) return;
@@ -86,46 +44,12 @@ export const createAccountSlice: StateCreator<
     set((state) => ({
       accounts: state.accounts.map((x) => (x.id === idv ? { ...x, ...p } : x)),
     }));
-
-    if (isSupabaseEnabled) {
-      const user = (await supabase.auth.getUser()).data.user;
-      if (user) {
-        const payload: Record<string, unknown> = {};
-        if ('name' in p) payload.name = p.name;
-        if ('type' in p) payload.type = p.type;
-        if ('initialBalance' in p) payload.initial_balance = p.initialBalance;
-        if ('currency' in p) payload.currency = p.currency === undefined ? null : p.currency;
-        if ('denominations' in p) payload.denominations = p.denominations;
-        if ('clabe' in p) payload.clabe = p.clabe === undefined ? null : p.clabe;
-        if ('bank' in p) payload.bank = p.bank === undefined ? null : p.bank;
-        if ('holderName' in p) payload.holder_name = p.holderName === undefined ? null : p.holderName;
-
-        if (isOnline()) {
-          const { error } = await supabase.from('accounts').update(payload).eq('id', idv);
-          if (error) console.error('Supabase update error (accounts):', sanitizeForLog(error));
-        } else {
-          queueMutation('accounts', 'UPDATE', idv, payload);
-        }
-      }
-    }
   },
 
-  removeAccount: async (idv) => {
+  removeAccount: (idv) => {
     set((state) => ({
       accounts: state.accounts.filter((x) => x.id !== idv),
     }));
-
-    if (isSupabaseEnabled) {
-      const user = (await supabase.auth.getUser()).data.user;
-      if (user) {
-        if (isOnline()) {
-          const { error } = await supabase.from('accounts').delete().eq('id', idv);
-          if (error) console.error('Supabase delete error (accounts):', sanitizeForLog(error));
-        } else {
-          queueMutation('accounts', 'DELETE', idv);
-        }
-      }
-    }
   },
 
   mergeAccounts: (fromIds, intoId) => {

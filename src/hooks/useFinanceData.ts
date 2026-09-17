@@ -1,33 +1,48 @@
-import { useMemo } from 'react';
+import { useEffect, useMemo, useRef } from 'react';
 import { useShallow } from 'zustand/react/shallow';
 import { useFinance } from '@/store/finance-store';
 import type { ExportScopes } from '@/store/finance-store';
-import { useAuth } from '@/context/AuthContext';
 import { isSupabaseEnabled } from '@/lib/supabase';
-import {
-  useAccounts,
-  useTransactions,
-  useFixedItems,
-  useGoals,
-  useDebts,
-} from '@/hooks/useSupabaseQueries';
+import { useAuth } from '@/context/AuthContext';
+import { useAccountsQuery } from '@/hooks/queries/useAccountsQuery';
+import { useTransactionsQuery } from '@/hooks/queries/useTransactionsQuery';
+import { useFixedItemsQuery } from '@/hooks/queries/useFixedItemsQuery';
+import { useGoalsQuery } from '@/hooks/queries/useGoalsQuery';
+import { useGoalFoldersQuery } from '@/hooks/queries/useGoalFoldersQuery';
+import { useDebtsQuery } from '@/hooks/queries/useDebtsQuery';
+import { useAccountMutations } from '@/hooks/mutations/useAccountMutations';
+import { useTransactionMutations } from '@/hooks/mutations/useTransactionMutations';
+import { useFixedItemMutations } from '@/hooks/mutations/useFixedItemMutations';
+import { useGoalMutations } from '@/hooks/mutations/useGoalMutations';
+import { useGoalFolderMutations } from '@/hooks/mutations/useGoalFolderMutations';
+import { useDebtMutations } from '@/hooks/mutations/useDebtMutations';
+import { fetchUserSettings, upsertUserSettings } from '@/services/settings.service';
 import type {
   Account,
   Transaction,
   FixedItem,
   Goal,
+  GoalFolder,
   Debt,
   DebtPayment,
   ThemeMode,
   UserProfile,
   ChangeLogEntry,
+  AppSettings,
+  AccentColor,
 } from '@/lib/finance';
 
-type FinanceDataSelection = {
+// Hook fachada: único punto de entrada para componentes y páginas.
+// - Datos de servidor: React Query como fuente de verdad cuando Supabase está habilitado.
+// - Mutations: hooks de mutations (optimistic update en Zustand + red + invalidación).
+// - Estado UI y operaciones locales: Zustand (nunca toca la red).
+
+type UiSelection = {
   accounts: Account[];
   transactions: Transaction[];
   fixedItems: FixedItem[];
   goals: Goal[];
+  goalFolders: GoalFolder[];
   debts: Debt[];
   theme: ThemeMode;
   profile: UserProfile;
@@ -35,26 +50,7 @@ type FinanceDataSelection = {
   activeMonth: number;
   syncFiltersToURL: boolean;
   changeLog: ChangeLogEntry[];
-  addAccount: (a: Omit<Account, 'id'>) => void;
-  updateAccount: (id: string, p: Partial<Account>) => void;
-  removeAccount: (id: string) => void;
-  mergeAccounts: (fromIds: string[], intoId: string) => void;
-  addTx: (t: Omit<Transaction, 'id'>) => Promise<void>;
-  updateTx: (id: string, p: Partial<Transaction>) => Promise<void>;
-  removeTx: (id: string) => Promise<void>;
-  addFixed: (i: Omit<FixedItem, 'id'>) => void;
-  updateFixed: (id: string, p: Partial<FixedItem>) => void;
-  removeFixed: (id: string) => void;
-  toggleFixed: (id: string) => void;
-  addGoal: (g: Omit<Goal, 'id'>) => void;
-  updateGoal: (id: string, p: Partial<Goal>) => void;
-  removeGoal: (id: string) => void;
-  contributeGoal: (id: string, amount: number, date?: string, accountId?: string) => void;
-  addDebt: (d: Omit<Debt, 'id' | 'payments'>) => void;
-  updateDebt: (id: string, p: Partial<Debt>) => void;
-  removeDebt: (id: string) => void;
-  addDebtPayment: (debtId: string, p: Omit<DebtPayment, 'id'>) => void;
-  removeDebtPayment: (debtId: string, paymentId: string) => void;
+  appSettings: AppSettings;
   setTheme: (t: ThemeMode) => void;
   toggleTheme: () => void;
   setProfile: (p: Partial<UserProfile>) => void;
@@ -62,6 +58,9 @@ type FinanceDataSelection = {
   resetToToday: () => void;
   ensureScheduledTransactions: () => void;
   setSyncFiltersToURL: (v: boolean) => void;
+  setAccentColor: (color: AccentColor) => void;
+  setCompactMode: (compact: boolean) => void;
+  setGlassEffect: (glass: boolean) => void;
   clearChangeLog: () => void;
   exportData: (scopes?: ExportScopes) => string;
   importData: (
@@ -73,26 +72,38 @@ type FinanceDataSelection = {
   cleanupOrphanReceipts: (
     deleteFiles?: boolean,
   ) => Promise<{ orphans: string[]; freedBytes: number }>;
+  syncAllToCloud: () => Promise<number>;
 };
 
 export function useFinanceData() {
   const { session } = useAuth();
+  const userId = session?.user?.id;
   const isSupabase = isSupabaseEnabled && !!session;
 
-  // React Query hooks (only enabled when Supabase is on)
-  const accountsQuery = useAccounts();
-  const transactionsQuery = useTransactions();
-  const fixedItemsQuery = useFixedItems();
-  const goalsQuery = useGoals();
-  const debtsQuery = useDebts();
+  // --- Queries (solo lectura) ---
+  const accountsQuery = useAccountsQuery();
+  const transactionsQuery = useTransactionsQuery();
+  const fixedItemsQuery = useFixedItemsQuery();
+  const goalsQuery = useGoalsQuery();
+  const goalFoldersQuery = useGoalFoldersQuery();
+  const debtsQuery = useDebtsQuery();
 
-  // Zustand store (atomic subscription - only re-renders on used slices)
-  const zustand = useFinance(
-    useShallow((state): FinanceDataSelection => ({
+  // --- Mutations (escritura) ---
+  const accountM = useAccountMutations();
+  const txM = useTransactionMutations();
+  const fixedM = useFixedItemMutations();
+  const goalM = useGoalMutations();
+  const folderM = useGoalFolderMutations();
+  const debtM = useDebtMutations();
+
+  // --- Estado UI + datos locales (Zustand, sin red) ---
+  const ui = useFinance(
+    useShallow((state): UiSelection => ({
       accounts: state.accounts,
       transactions: state.transactions,
       fixedItems: state.fixedItems,
       goals: state.goals,
+      goalFolders: state.goalFolders,
       debts: state.debts,
       theme: state.theme,
       profile: state.profile,
@@ -100,26 +111,7 @@ export function useFinanceData() {
       activeMonth: state.activeMonth,
       syncFiltersToURL: state.syncFiltersToURL,
       changeLog: state.changeLog,
-      addAccount: state.addAccount,
-      updateAccount: state.updateAccount,
-      removeAccount: state.removeAccount,
-      mergeAccounts: state.mergeAccounts,
-      addTx: state.addTx,
-      updateTx: state.updateTx,
-      removeTx: state.removeTx,
-      addFixed: state.addFixed,
-      updateFixed: state.updateFixed,
-      removeFixed: state.removeFixed,
-      toggleFixed: state.toggleFixed,
-      addGoal: state.addGoal,
-      updateGoal: state.updateGoal,
-      removeGoal: state.removeGoal,
-      contributeGoal: state.contributeGoal,
-      addDebt: state.addDebt,
-      updateDebt: state.updateDebt,
-      removeDebt: state.removeDebt,
-      addDebtPayment: state.addDebtPayment,
-      removeDebtPayment: state.removeDebtPayment,
+      appSettings: state.appSettings,
       setTheme: state.setTheme,
       toggleTheme: state.toggleTheme,
       setProfile: state.setProfile,
@@ -127,48 +119,86 @@ export function useFinanceData() {
       resetToToday: state.resetToToday,
       ensureScheduledTransactions: state.ensureScheduledTransactions,
       setSyncFiltersToURL: state.setSyncFiltersToURL,
+      setAccentColor: state.setAccentColor,
+      setCompactMode: state.setCompactMode,
+      setGlassEffect: state.setGlassEffect,
       clearChangeLog: state.clearChangeLog,
       exportData: state.exportData,
       importData: state.importData,
       resetAll: state.resetAll,
       migrateReceiptsInPlace: state.migrateReceiptsInPlace,
       cleanupOrphanReceipts: state.cleanupOrphanReceipts,
+      syncAllToCloud: state.syncAllToCloud,
     })),
   );
 
-  // Merge data: Supabase takes priority when enabled and data loaded
+  // --- Sincronización de settings con la nube (Fase 8) ---
+  // Los slices ya no tocan la red: la carga inicial y el upsert reactivo viven aquí.
+  const settingsReadyFor = useRef<string | null>(null);
+
+  // Carga inicial al detectar sesión: aplica theme/profile guardados en la nube.
+  useEffect(() => {
+    if (!isSupabaseEnabled || !userId) return;
+    if (settingsReadyFor.current === userId) return;
+    fetchUserSettings(userId)
+      .then((remote) => {
+        if (!remote) return;
+        const store = useFinance.getState();
+        store.setTheme(remote.theme);
+        store.setProfile(remote.profile);
+      })
+      .catch(() => {})
+      .finally(() => {
+        settingsReadyFor.current = userId;
+      });
+  }, [userId]);
+
+  // Upsert reactivo: cuando theme/profile locales cambian, se suben a user_settings.
+  useEffect(() => {
+    if (!isSupabaseEnabled || !userId) return;
+    if (settingsReadyFor.current !== userId) return; // espera la carga inicial
+    upsertUserSettings(userId, { theme: ui.theme, profile: ui.profile }).catch(() => {});
+  }, [userId, ui.theme, ui.profile]);
+
+  // --- Datos: React Query es la fuente de verdad cuando hay sesión ---
   const accounts = useMemo((): Account[] => {
     if (isSupabase && accountsQuery.data) return accountsQuery.data;
-    return zustand.accounts;
-  }, [isSupabase, accountsQuery.data, zustand.accounts]);
+    return ui.accounts;
+  }, [isSupabase, accountsQuery.data, ui.accounts]);
 
   const transactions = useMemo((): Transaction[] => {
     if (isSupabase && transactionsQuery.data) return transactionsQuery.data;
-    return zustand.transactions;
-  }, [isSupabase, transactionsQuery.data, zustand.transactions]);
+    return ui.transactions;
+  }, [isSupabase, transactionsQuery.data, ui.transactions]);
 
   const fixedItems = useMemo((): FixedItem[] => {
     if (isSupabase && fixedItemsQuery.data) return fixedItemsQuery.data;
-    return zustand.fixedItems;
-  }, [isSupabase, fixedItemsQuery.data, zustand.fixedItems]);
+    return ui.fixedItems;
+  }, [isSupabase, fixedItemsQuery.data, ui.fixedItems]);
 
   const goals = useMemo((): Goal[] => {
     if (isSupabase && goalsQuery.data) return goalsQuery.data;
-    return zustand.goals;
-  }, [isSupabase, goalsQuery.data, zustand.goals]);
+    return ui.goals;
+  }, [isSupabase, goalsQuery.data, ui.goals]);
+
+  const goalFolders = useMemo((): GoalFolder[] => {
+    if (isSupabase && goalFoldersQuery.data) return goalFoldersQuery.data;
+    return ui.goalFolders;
+  }, [isSupabase, goalFoldersQuery.data, ui.goalFolders]);
 
   const debts = useMemo((): Debt[] => {
     if (isSupabase && debtsQuery.data) return debtsQuery.data;
-    return zustand.debts;
-  }, [isSupabase, debtsQuery.data, zustand.debts]);
+    return ui.debts;
+  }, [isSupabase, debtsQuery.data, ui.debts]);
 
-  // Loading states
+  // --- Estado de carga del servidor ---
   const isLoading =
     isSupabase &&
     (accountsQuery.isLoading ||
       transactionsQuery.isLoading ||
       fixedItemsQuery.isLoading ||
       goalsQuery.isLoading ||
+      goalFoldersQuery.isLoading ||
       debtsQuery.isLoading);
 
   const isError =
@@ -177,6 +207,7 @@ export function useFinanceData() {
       transactionsQuery.isError ||
       fixedItemsQuery.isError ||
       goalsQuery.isError ||
+      goalFoldersQuery.isError ||
       debtsQuery.isError);
 
   const error =
@@ -184,75 +215,106 @@ export function useFinanceData() {
     transactionsQuery.error ||
     fixedItemsQuery.error ||
     goalsQuery.error ||
-    debtsQuery.error;
+    goalFoldersQuery.error ||
+    debtsQuery.error ||
+    null;
+
+  const refetchAll = () => {
+    accountsQuery.refetch();
+    transactionsQuery.refetch();
+    fixedItemsQuery.refetch();
+    goalsQuery.refetch();
+    goalFoldersQuery.refetch();
+    debtsQuery.refetch();
+  };
 
   return {
-    // Data
+    // --- Datos de servidor (React Query como source of truth) ---
     accounts,
     transactions,
     fixedItems,
     goals,
+    goalFolders,
     debts,
 
-    // Zustand mutations (always work - sync to Supabase internally)
-    addAccount: zustand.addAccount,
-    updateAccount: zustand.updateAccount,
-    removeAccount: zustand.removeAccount,
-    mergeAccounts: zustand.mergeAccounts,
-
-    addTx: zustand.addTx,
-    updateTx: zustand.updateTx,
-    removeTx: zustand.removeTx,
-
-    addFixed: zustand.addFixed,
-    updateFixed: zustand.updateFixed,
-    removeFixed: zustand.removeFixed,
-    toggleFixed: zustand.toggleFixed,
-
-    addGoal: zustand.addGoal,
-    updateGoal: zustand.updateGoal,
-    removeGoal: zustand.removeGoal,
-    contributeGoal: zustand.contributeGoal,
-
-    addDebt: zustand.addDebt,
-    updateDebt: zustand.updateDebt,
-    removeDebt: zustand.removeDebt,
-    addDebtPayment: zustand.addDebtPayment,
-    removeDebtPayment: zustand.removeDebtPayment,
-
-    // Other Zustand state
-    theme: zustand.theme,
-    setTheme: zustand.setTheme,
-    toggleTheme: zustand.toggleTheme,
-    profile: zustand.profile,
-    setProfile: zustand.setProfile,
-    activeYear: zustand.activeYear,
-    activeMonth: zustand.activeMonth,
-    setActive: zustand.setActive,
-    resetToToday: zustand.resetToToday,
-    ensureScheduledTransactions: zustand.ensureScheduledTransactions,
-    syncFiltersToURL: zustand.syncFiltersToURL,
-    setSyncFiltersToURL: zustand.setSyncFiltersToURL,
-    changeLog: zustand.changeLog,
-    clearChangeLog: zustand.clearChangeLog,
-    exportData: zustand.exportData,
-    importData: zustand.importData,
-    resetAll: zustand.resetAll,
-    migrateReceiptsInPlace: zustand.migrateReceiptsInPlace,
-    cleanupOrphanReceipts: zustand.cleanupOrphanReceipts,
-
-    // Query states
+    // --- Estado de carga del servidor ---
     isLoading,
     isError,
     error,
+    refetchAll,
+    refetch: refetchAll,
 
-    // Refresh functions
-    refetch: () => {
-      accountsQuery.refetch();
-      transactionsQuery.refetch();
-      fixedItemsQuery.refetch();
-      goalsQuery.refetch();
-      debtsQuery.refetch();
-    },
+    // --- Mutations de red (optimistic update + Supabase + invalidación) ---
+    // accounts
+    addAccount: (a: Omit<Account, 'id'>) => accountM.addAccount.mutateAsync(a),
+    updateAccount: (id: string, patch: Partial<Account>) =>
+      accountM.updateAccount.mutateAsync({ id, patch }),
+    removeAccount: (id: string) => accountM.removeAccount.mutateAsync(id),
+    mergeAccounts: (fromIds: string[], intoId: string) =>
+      accountM.mergeAccounts.mutateAsync({ fromIds, intoId }),
+
+    // transactions
+    addTx: (t: Omit<Transaction, 'id'>) => txM.addTransaction.mutateAsync(t),
+    updateTx: (id: string, p: Partial<Transaction>) =>
+      txM.updateTransaction.mutateAsync({ id, patch: p }),
+    removeTx: (id: string) => txM.removeTransaction.mutateAsync(id),
+
+    // fixed items
+    addFixed: (i: Omit<FixedItem, 'id'>) => fixedM.addFixedItem.mutateAsync(i),
+    updateFixed: (id: string, p: Partial<FixedItem>) =>
+      fixedM.updateFixedItem.mutateAsync({ id, patch: p }),
+    removeFixed: (id: string) => fixedM.removeFixedItem.mutateAsync(id),
+    toggleFixed: (id: string) => fixedM.toggleFixedItem.mutateAsync(id),
+
+    // goals
+    addGoal: (g: Omit<Goal, 'id'>) => goalM.addGoal.mutateAsync(g),
+    updateGoal: (id: string, p: Partial<Goal>) => goalM.updateGoal.mutateAsync({ id, patch: p }),
+    removeGoal: (id: string) => goalM.removeGoal.mutateAsync(id),
+    contributeGoal: (id: string, amount: number, date?: string, accountId?: string) =>
+      goalM.contributeToGoal.mutateAsync({ id, amount, date, accountId }),
+
+    // goal folders
+    addGoalFolder: (f: Omit<GoalFolder, 'id'>) => folderM.addGoalFolder.mutateAsync(f),
+    updateGoalFolder: (id: string, p: Partial<GoalFolder>) =>
+      folderM.updateGoalFolder.mutateAsync({ id, patch: p }),
+    removeGoalFolder: (id: string) => folderM.removeGoalFolder.mutateAsync(id),
+    reorderGoalFolders: (folders: GoalFolder[]) => folderM.reorderGoalFolders.mutateAsync(folders),
+
+    // debts
+    addDebt: (d: Omit<Debt, 'id' | 'payments'>) => debtM.addDebt.mutateAsync(d),
+    updateDebt: (id: string, p: Partial<Debt>) => debtM.updateDebt.mutateAsync({ id, patch: p }),
+    removeDebt: (id: string) => debtM.removeDebt.mutateAsync(id),
+    addDebtPayment: (debtId: string, p: Omit<DebtPayment, 'id'>) =>
+      debtM.addDebtPayment.mutateAsync({ debtId, payment: p }),
+    removeDebtPayment: (debtId: string, paymentId: string) =>
+      debtM.removeDebtPayment.mutateAsync({ debtId, paymentId }),
+
+    // --- Estado de UI (Zustand — NO toca la red) ---
+    theme: ui.theme,
+    setTheme: ui.setTheme,
+    toggleTheme: ui.toggleTheme,
+    profile: ui.profile,
+    setProfile: ui.setProfile,
+    activeYear: ui.activeYear,
+    activeMonth: ui.activeMonth,
+    setActive: ui.setActive,
+    resetToToday: ui.resetToToday,
+    syncFiltersToURL: ui.syncFiltersToURL,
+    setSyncFiltersToURL: ui.setSyncFiltersToURL,
+    changeLog: ui.changeLog,
+    clearChangeLog: ui.clearChangeLog,
+    appSettings: ui.appSettings,
+    setAccentColor: ui.setAccentColor,
+    setCompactMode: ui.setCompactMode,
+    setGlassEffect: ui.setGlassEffect,
+
+    // --- Operaciones de datos locales (Zustand) ---
+    ensureScheduledTransactions: ui.ensureScheduledTransactions,
+    exportData: ui.exportData,
+    importData: ui.importData,
+    resetAll: ui.resetAll,
+    migrateReceiptsInPlace: ui.migrateReceiptsInPlace,
+    cleanupOrphanReceipts: ui.cleanupOrphanReceipts,
+    syncAllToCloud: ui.syncAllToCloud,
   };
 }

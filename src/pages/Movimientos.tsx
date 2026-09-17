@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { useHybridData } from "@/hooks/useHybridData";
+import { useFinanceData } from "@/hooks/useFinanceData";
 import { useFinance } from "@/store/finance-store";
 import { fmt, CATEGORY_EMOJI, MONTHS, iconFor, IconRef, Transaction, PaymentMethod, PAYMENT_METHOD_LABEL, PAYMENT_METHOD_EMOJI, fmtDate, parseDateLocal, Account } from "@/lib/finance";
 import { Header } from "@/components/app/Header";
@@ -37,7 +37,7 @@ const FILTER_TABS = [
 ] as const;
 
 export default function Movimientos() {
-  const { transactions, addTx, updateTx, removeTx, activeYear, activeMonth, debts, accounts, removeDebt, removeDebtPayment, syncFiltersToURL, setSyncFiltersToURL } = useHybridData();
+  const { transactions, addTx, updateTx, removeTx, activeYear, activeMonth, debts, accounts, removeDebt, removeDebtPayment, syncFiltersToURL, setSyncFiltersToURL } = useFinanceData();
   const navigate = useNavigate();
   const [params, setParams] = useSearchParams();
   const [open, setOpen] = useState(false);

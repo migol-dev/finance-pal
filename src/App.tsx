@@ -1,5 +1,5 @@
 import React, { Suspense, lazy, useEffect, useRef } from "react";
-import { QueryClient } from "@tanstack/react-query";
+import { queryClient } from "@/lib/queryClient";
 import { PersistQueryClientProvider } from '@tanstack/react-query-persist-client';
 import { createAsyncStoragePersister } from '@tanstack/query-async-storage-persister';
 import { BrowserRouter, Route, Routes, useLocation, useNavigate } from "react-router-dom";
@@ -34,21 +34,6 @@ import { useSyncStore } from '@/store/sync-store';
 import { useSessionManager } from '@/hooks/useSessionManager';
 import { handleError } from '@/lib/app-error';
 import { saveEncryptedState, loadEncryptedState, isEncryptionAvailable, migrateReceiptsToEncrypted } from '@/lib/encrypted-storage';
-
-const queryClient = new QueryClient({
-  defaultOptions: {
-    queries: {
-      gcTime: 1000 * 60 * 60 * 24, // 24 hours
-      staleTime: 1000 * 60 * 10, // 10 minutes
-      retry: 2,
-      retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 10000),
-      refetchOnWindowFocus: false,
-    },
-    mutations: {
-      retry: 1,
-    },
-  },
-});
 
 const QUERY_CACHE_KEY = 'finance-pal-query-cache';
 

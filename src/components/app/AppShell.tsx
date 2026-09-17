@@ -3,7 +3,7 @@ import { useLocation, useNavigate } from "react-router-dom";
 import { BottomNav } from "./BottomNav";
 import { DesktopSidebar } from "./DesktopSidebar";
 import { useFinance } from "@/store/finance-store";
-import { useHybridData } from "@/hooks/useHybridData";
+import { useFinanceData } from "@/hooks/useFinanceData";
 import { useSystemTheme } from "@/hooks/useSystemTheme";
 import { SplashScreen } from "./SplashScreen";
 import { Capacitor } from "@capacitor/core";
@@ -51,7 +51,7 @@ export function AppShell({ children }: { children: ReactNode }) {
   const compactMode = useFinance((s) => s.appSettings.compactMode);
   const glassEffect = useFinance((s) => s.appSettings.glassEffect);
   const notificationPrefs = useFinance((s) => s.appSettings.notifications);
-  const { goals, fixedItems } = useHybridData();
+  const { goals, fixedItems } = useFinanceData();
   const didInit = useRef(false);
   const [booting, setBooting] = useState(true);
   const location = useLocation();

@@ -8,7 +8,6 @@ import {
     ChangeLogEntry,
     DEFAULT_NOTIFICATION_PREFS,
 } from '@/lib/finance';
-import { supabase, isSupabaseEnabled } from '@/lib/supabase';
 
 export interface SettingsSlice {
     theme: ThemeMode;
@@ -56,22 +55,10 @@ export const createSettingsSlice: StateCreator<
     activeMonth: now.getMonth(),
     changeLog: [],
 
+    // Solo estado local. La sincronización a la nube (user_settings)
+    // se gestiona fuera del store vía settings.service + useFinanceData.
     setTheme: (t) => {
         set({ theme: t });
-        if (isSupabaseEnabled) {
-            supabase.auth.getSession().then(async ({ data: { session: s2 } }) => {
-                if (s2?.user?.id) {
-                    try {
-                        await supabase.from('user_settings').upsert(
-                            { user_id: s2.user.id, theme: t },
-                            { onConflict: 'user_id' }
-                        );
-                    } catch {
-                        /* ignore */
-                    }
-                }
-            });
-        }
     },
 
     toggleTheme: () => {
@@ -104,20 +91,6 @@ export const createSettingsSlice: StateCreator<
 
     setProfile: (p) => {
         set((s) => ({ profile: { ...s.profile, ...p } }));
-        if (isSupabaseEnabled) {
-            supabase.auth.getSession().then(async ({ data: { session: s2 } }) => {
-                if (s2?.user?.id) {
-                    try {
-                        await supabase.from('user_settings').upsert(
-                            { user_id: s2.user.id, profile: { ...get().profile, ...p } },
-                            { onConflict: 'user_id' }
-                        );
-                    } catch {
-                        /* ignore */
-                    }
-                }
-            });
-        }
     },
 
     setActive: (y, m) => set({ activeYear: y, activeMonth: m }),
