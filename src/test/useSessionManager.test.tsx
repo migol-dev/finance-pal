@@ -10,6 +10,12 @@ vi.mock("@/context/AuthContext", () => ({
 vi.mock("@/lib/supabase", () => ({
   isSupabaseEnabled: true,
   supabase: {
+    channel: vi.fn(() => ({
+      on: vi.fn().mockReturnThis(),
+      subscribe: vi.fn().mockReturnThis(),
+      unsubscribe: vi.fn().mockResolvedValue({}),
+    })),
+    removeChannel: vi.fn().mockResolvedValue('ok'),
     from: () => ({
       delete: () => ({
         eq: () => ({
@@ -48,12 +54,12 @@ describe("useSessionManager", () => {
 
   it("initializes without paused state", () => {
     const { result } = renderHook(() => useSessionManager());
-    expect(result.current.paused).toBe(false);
+    expect(result.current.sessionState).toBe('active');
   });
 
   it("can resume session", () => {
     const { result } = renderHook(() => useSessionManager());
-    
+
     // Mock window reload
     const originalReload = window.location.reload;
     Object.defineProperty(window, 'location', {
@@ -65,7 +71,7 @@ describe("useSessionManager", () => {
       result.current.resume();
     });
 
-    expect(result.current.paused).toBe(false);
+    expect(result.current.sessionState).toBe('active');
     expect(window.location.reload).toHaveBeenCalled();
 
     window.location.reload = originalReload;

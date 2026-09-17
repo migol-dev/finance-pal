@@ -4,6 +4,16 @@ import { useAuth } from '@/context/AuthContext';
 import { Account, Transaction, FixedItem, Goal, Debt, GoalFolder } from '@/lib/finance';
 import { AppError, ErrorCodes } from '@/lib/app-error';
 
+export const financeKeys = {
+  all: ['finance'] as const,
+  accounts: () => ['accounts'] as const,
+  transactions: () => ['transactions'] as const,
+  fixedItems: () => ['fixed_items'] as const,
+  goals: () => ['goals'] as const,
+  goalFolders: () => ['goal_folders'] as const,
+  debts: () => ['debts'] as const,
+};
+
 const ACCOUNT_COLS = 'id, name, type, initial_balance, currency, denominations, created_at';
 const TX_COLS = 'id, type, category, concept, amount, date, note, icon, payment_method, fixed_id, account_id, transfer_to_account_id, receipt';
 const FIXED_COLS = 'id, type, category, concept, amount, frequency, active, note, start_date, end_date, priority, pay_day, pay_week_day, icon, payment_method, account_id, created_at';
@@ -14,7 +24,7 @@ const DEBT_COLS = 'id, person, concept, amount, date, due_date, note, icon, acco
 const FIFTEEN_MIN = 1000 * 60 * 15;
 
 export function useSupabaseQuery<T>(
-  key: string[],
+  key: readonly string[],
   queryFn: () => Promise<T>,
   options?: { enabled?: boolean; staleTime?: number }
 ) {
@@ -202,7 +212,7 @@ function mapDebtFromDb(row: any): Debt {
 
 export function useAccounts() {
   const { session } = useAuth();
-  return useSupabaseQuery(['accounts'], () => {
+  return useSupabaseQuery(financeKeys.accounts(), () => {
     if (!session?.user?.id) throw new AppError(ErrorCodes.AUTH_NOT_AUTHENTICATED, 'Cannot fetch accounts without session');
     return fetchAccounts(session.user.id);
   }, { staleTime: 1000 * 60 * 30 }); // 30 mins
@@ -210,7 +220,7 @@ export function useAccounts() {
 
 export function useTransactions() {
   const { session } = useAuth();
-  return useSupabaseQuery(['transactions'], () => {
+  return useSupabaseQuery(financeKeys.transactions(), () => {
     if (!session?.user?.id) throw new AppError(ErrorCodes.AUTH_NOT_AUTHENTICATED, 'Cannot fetch transactions without session');
     return fetchTransactions(session.user.id);
   }, { staleTime: 1000 * 60 * 5 }); // 5 mins
@@ -218,7 +228,7 @@ export function useTransactions() {
 
 export function useFixedItems() {
   const { session } = useAuth();
-  return useSupabaseQuery(['fixed_items'], () => {
+  return useSupabaseQuery(financeKeys.fixedItems(), () => {
     if (!session?.user?.id) throw new AppError(ErrorCodes.AUTH_NOT_AUTHENTICATED, 'Cannot fetch fixed items without session');
     return fetchFixedItems(session.user.id);
   }, { staleTime: 1000 * 60 * 15 }); // 15 mins
@@ -226,7 +236,7 @@ export function useFixedItems() {
 
 export function useGoals() {
   const { session } = useAuth();
-  return useSupabaseQuery(['goals'], () => {
+  return useSupabaseQuery(financeKeys.goals(), () => {
     if (!session?.user?.id) throw new AppError(ErrorCodes.AUTH_NOT_AUTHENTICATED, 'Cannot fetch goals without session');
     return fetchGoals(session.user.id);
   }, { staleTime: 1000 * 60 * 15 }); // 15 mins
@@ -234,7 +244,7 @@ export function useGoals() {
 
 export function useGoalFolders() {
   const { session } = useAuth();
-  return useSupabaseQuery(['goal_folders'], () => {
+  return useSupabaseQuery(financeKeys.goalFolders(), () => {
     if (!session?.user?.id) throw new AppError(ErrorCodes.AUTH_NOT_AUTHENTICATED, 'Cannot fetch goal folders without session');
     return fetchGoalFolders(session.user.id);
   }, { staleTime: 1000 * 60 * 15 }); // 15 mins
@@ -242,7 +252,7 @@ export function useGoalFolders() {
 
 export function useDebts() {
   const { session } = useAuth();
-  return useSupabaseQuery(['debts'], () => {
+  return useSupabaseQuery(financeKeys.debts(), () => {
     if (!session?.user?.id) throw new AppError(ErrorCodes.AUTH_NOT_AUTHENTICATED, 'Cannot fetch debts without session');
     return fetchDebts(session.user.id);
   }, { staleTime: 1000 * 60 * 15 }); // 15 mins
@@ -251,11 +261,11 @@ export function useDebts() {
 export function useInvalidateAll() {
   const queryClient = useQueryClient();
   return () => {
-    queryClient.invalidateQueries({ queryKey: ['accounts'] });
-    queryClient.invalidateQueries({ queryKey: ['transactions'] });
-    queryClient.invalidateQueries({ queryKey: ['fixed_items'] });
-    queryClient.invalidateQueries({ queryKey: ['goals'] });
-    queryClient.invalidateQueries({ queryKey: ['goal_folders'] });
-    queryClient.invalidateQueries({ queryKey: ['debts'] });
+    queryClient.invalidateQueries({ queryKey: financeKeys.accounts() });
+    queryClient.invalidateQueries({ queryKey: financeKeys.transactions() });
+    queryClient.invalidateQueries({ queryKey: financeKeys.fixedItems() });
+    queryClient.invalidateQueries({ queryKey: financeKeys.goals() });
+    queryClient.invalidateQueries({ queryKey: financeKeys.goalFolders() });
+    queryClient.invalidateQueries({ queryKey: financeKeys.debts() });
   };
 }

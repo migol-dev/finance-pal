@@ -20,6 +20,7 @@ exports[`UI Snapshots > renders BottomNav snapshot 1`] = `
             class="absolute inset-0 bg-primary/10 rounded-xl"
           />
           <svg
+            aria-hidden="true"
             class="lucide lucide-house size-5 relative z-10 text-primary"
             fill="none"
             height="24"
@@ -35,7 +36,7 @@ exports[`UI Snapshots > renders BottomNav snapshot 1`] = `
               d="M15 21v-8a1 1 0 0 0-1-1h-4a1 1 0 0 0-1 1v8"
             />
             <path
-              d="M3 10a2 2 0 0 1 .709-1.528l7-5.999a2 2 0 0 1 2.582 0l7 5.999A2 2 0 0 1 21 10v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"
+              d="M3 10a2 2 0 0 1 .709-1.528l7-6a2 2 0 0 1 2.582 0l7 6A2 2 0 0 1 21 10v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"
             />
           </svg>
           <span
@@ -49,6 +50,7 @@ exports[`UI Snapshots > renders BottomNav snapshot 1`] = `
           href="/movimientos"
         >
           <svg
+            aria-hidden="true"
             class="lucide lucide-list-tree size-5 relative z-10"
             fill="none"
             height="24"
@@ -61,19 +63,19 @@ exports[`UI Snapshots > renders BottomNav snapshot 1`] = `
             xmlns="http://www.w3.org/2000/svg"
           >
             <path
-              d="M21 12h-8"
+              d="M8 5h13"
             />
             <path
-              d="M21 6H8"
+              d="M13 12h8"
             />
             <path
-              d="M21 18h-8"
+              d="M13 19h8"
             />
             <path
-              d="M3 6v4c0 1.1.9 2 2 2h3"
+              d="M3 10a2 2 0 0 0 2 2h3"
             />
             <path
-              d="M3 10v6c0 1.1.9 2 2 2h3"
+              d="M3 5v12a2 2 0 0 0 2 2h3"
             />
           </svg>
           <span
@@ -87,6 +89,7 @@ exports[`UI Snapshots > renders BottomNav snapshot 1`] = `
           href="/deudas"
         >
           <svg
+            aria-hidden="true"
             class="lucide lucide-hand-coins size-5 relative z-10"
             fill="none"
             height="24"
@@ -129,6 +132,7 @@ exports[`UI Snapshots > renders BottomNav snapshot 1`] = `
           href="/metas"
         >
           <svg
+            aria-hidden="true"
             class="lucide lucide-target size-5 relative z-10"
             fill="none"
             height="24"
@@ -167,6 +171,7 @@ exports[`UI Snapshots > renders BottomNav snapshot 1`] = `
           href="/ajustes"
         >
           <svg
+            aria-hidden="true"
             class="lucide lucide-settings size-5 relative z-10"
             fill="none"
             height="24"
@@ -179,7 +184,7 @@ exports[`UI Snapshots > renders BottomNav snapshot 1`] = `
             xmlns="http://www.w3.org/2000/svg"
           >
             <path
-              d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"
+              d="M9.671 4.136a2.34 2.34 0 0 1 4.659 0 2.34 2.34 0 0 0 3.319 1.915 2.34 2.34 0 0 1 2.33 4.033 2.34 2.34 0 0 0 0 3.831 2.34 2.34 0 0 1-2.33 4.033 2.34 2.34 0 0 0-3.319 1.915 2.34 2.34 0 0 1-4.659 0 2.34 2.34 0 0 0-3.32-1.915 2.34 2.34 0 0 1-2.33-4.033 2.34 2.34 0 0 0 0-3.831A2.34 2.34 0 0 1 6.35 6.051a2.34 2.34 0 0 0 3.319-1.915"
             />
             <circle
               cx="12"
@@ -212,6 +217,7 @@ exports[`UI Snapshots > renders Dashboard snapshot 1`] = `
           class="size-11 rounded-xl gradient-primary shadow-glow flex items-center justify-center"
         >
           <svg
+            aria-hidden="true"
             class="lucide lucide-wallet size-5 text-primary-foreground"
             fill="none"
             height="24"
@@ -253,6 +259,7 @@ exports[`UI Snapshots > renders Dashboard snapshot 1`] = `
           href="/anual"
         >
           <svg
+            aria-hidden="true"
             class="lucide lucide-chart-column size-4"
             fill="none"
             height="24"
@@ -282,6 +289,7 @@ exports[`UI Snapshots > renders Dashboard snapshot 1`] = `
           class="size-9 rounded-xl bg-muted flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted/80 transition"
         >
           <svg
+            aria-hidden="true"
             class="lucide lucide-eye size-4"
             fill="none"
             height="24"
@@ -316,6 +324,7 @@ exports[`UI Snapshots > renders Dashboard snapshot 1`] = `
           class="size-8 rounded-full hover:bg-muted flex items-center justify-center transition"
         >
           <svg
+            aria-hidden="true"
             class="lucide lucide-chevron-left size-4"
             fill="none"
             height="24"
@@ -336,6 +345,7 @@ exports[`UI Snapshots > renders Dashboard snapshot 1`] = `
           class="px-3 h-8 rounded-full hover:bg-muted text-xs font-bold flex items-center gap-1.5 transition"
         >
           <svg
+            aria-hidden="true"
             class="lucide lucide-calendar size-3.5 text-primary"
             fill="none"
             height="24"
@@ -371,6 +381,7 @@ exports[`UI Snapshots > renders Dashboard snapshot 1`] = `
           class="size-8 rounded-full hover:bg-muted flex items-center justify-center transition"
         >
           <svg
+            aria-hidden="true"
             class="lucide lucide-chevron-right size-4"
             fill="none"
             height="24"
@@ -421,6 +432,7 @@ exports[`UI Snapshots > renders Dashboard snapshot 1`] = `
               class="flex items-center gap-1 opacity-90 mb-0.5"
             >
               <svg
+                aria-hidden="true"
                 class="lucide lucide-trending-up size-3.5"
                 fill="none"
                 height="24"
@@ -432,11 +444,11 @@ exports[`UI Snapshots > renders Dashboard snapshot 1`] = `
                 width="24"
                 xmlns="http://www.w3.org/2000/svg"
               >
-                <polyline
-                  points="22 7 13.5 15.5 8.5 10.5 2 17"
+                <path
+                  d="M16 7h6v6"
                 />
-                <polyline
-                  points="16 7 22 7 22 13"
+                <path
+                  d="m22 7-8.5 8.5-5-5L2 17"
                 />
               </svg>
               <span
@@ -458,6 +470,7 @@ exports[`UI Snapshots > renders Dashboard snapshot 1`] = `
               class="flex items-center gap-1 opacity-90 mb-0.5"
             >
               <svg
+                aria-hidden="true"
                 class="lucide lucide-trending-down size-3.5"
                 fill="none"
                 height="24"
@@ -469,11 +482,11 @@ exports[`UI Snapshots > renders Dashboard snapshot 1`] = `
                 width="24"
                 xmlns="http://www.w3.org/2000/svg"
               >
-                <polyline
-                  points="22 17 13.5 8.5 8.5 13.5 2 7"
+                <path
+                  d="M16 17h6v-6"
                 />
-                <polyline
-                  points="16 17 22 17 22 11"
+                <path
+                  d="m22 17-8.5-8.5-5 5L2 7"
                 />
               </svg>
               <span
@@ -495,6 +508,7 @@ exports[`UI Snapshots > renders Dashboard snapshot 1`] = `
               class="flex items-center gap-1 opacity-90 mb-0.5"
             >
               <svg
+                aria-hidden="true"
                 class="lucide lucide-piggy-bank size-3.5"
                 fill="none"
                 height="24"
@@ -507,13 +521,13 @@ exports[`UI Snapshots > renders Dashboard snapshot 1`] = `
                 xmlns="http://www.w3.org/2000/svg"
               >
                 <path
-                  d="M19 5c-1.5 0-2.8 1.4-3 2-3.5-1.5-11-.3-11 5 0 1.8 0 3 2 4.5V20h4v-2h3v2h4v-4c1-.5 1.7-1 2-2h2v-4h-2c0-1-.5-1.5-1-2V5z"
+                  d="M11 17h3v2a1 1 0 0 0 1 1h2a1 1 0 0 0 1-1v-3a3.16 3.16 0 0 0 2-2h1a1 1 0 0 0 1-1v-2a1 1 0 0 0-1-1h-1a5 5 0 0 0-2-4V3a4 4 0 0 0-3.2 1.6l-.3.4H11a6 6 0 0 0-6 6v1a5 5 0 0 0 2 4v3a1 1 0 0 0 1 1h2a1 1 0 0 0 1-1z"
                 />
                 <path
-                  d="M2 9v1c0 1.1.9 2 2 2h1"
+                  d="M16 10h.01"
                 />
                 <path
-                  d="M16 11h.01"
+                  d="M2 8v1a2 2 0 0 0 2 2h1"
                 />
               </svg>
               <span
@@ -659,6 +673,7 @@ exports[`UI Snapshots > renders Dashboard snapshot 1`] = `
               class="size-10 rounded-xl bg-destructive/10 text-destructive flex items-center justify-center"
             >
               <svg
+                aria-hidden="true"
                 class="lucide lucide-plus size-5"
                 fill="none"
                 height="24"
@@ -699,6 +714,7 @@ exports[`UI Snapshots > renders Dashboard snapshot 1`] = `
               class="size-10 rounded-xl bg-success/10 text-success flex items-center justify-center"
             >
               <svg
+                aria-hidden="true"
                 class="lucide lucide-plus size-5"
                 fill="none"
                 height="24"
@@ -777,6 +793,7 @@ exports[`UI Snapshots > renders Dashboard snapshot 1`] = `
               class="size-9 rounded-xl bg-primary/10 text-primary flex items-center justify-center mb-2"
             >
               <svg
+                aria-hidden="true"
                 class="lucide lucide-chart-column size-4"
                 fill="none"
                 height="24"

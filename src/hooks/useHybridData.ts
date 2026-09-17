@@ -1,10 +1,11 @@
 import { useMemo, useCallback } from 'react';
+import { useShallow } from 'zustand/react/shallow';
 import { useFinance } from '@/store/finance-store';
 import { useAccounts, useTransactions, useFixedItems, useGoals, useGoalFolders, useDebts } from '@/hooks/useSupabaseQueries';
 import { isSupabaseEnabled } from '@/lib/supabase';
 import { useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '@/context/AuthContext';
-import { Debt, DebtPayment, GoalFolder } from '@/lib/finance';
+import type { Account, Transaction, FixedItem, Goal, Debt, DebtPayment, GoalFolder } from '@/lib/finance';
 
 function mergeById<T extends { id: string }>(primary: T[], secondary: T[]): T[] {
   if (secondary.length === 0) return primary;
@@ -13,18 +14,21 @@ function mergeById<T extends { id: string }>(primary: T[], secondary: T[]): T[] 
   return [...primary, ...secondary.filter(s => !primaryIds.has(s.id))];
 }
 
-function mergeGoals(primary: any[], secondary: any[]): any[] {
+function mergeGoals(primary: Goal[], secondary: Goal[]): Goal[] {
   if (secondary.length === 0) return primary;
   if (primary.length === 0) return secondary;
-  const primaryMap = new Map(primary.map(p => [p.id, p]));
-  const secondaryMap = new Map(secondary.map(s => [s.id, s]));
-  const allIds = new Set([...primaryMap.keys(), ...secondaryMap.keys()]);
-  
-  return Array.from(allIds).map(id => {
+  const primaryMap = new Map<string, Goal>(primary.map(p => [p.id, p]));
+  const secondaryMap = new Map<string, Goal>(secondary.map(s => [s.id, s]));
+  const allIds = new Set<string>([...primaryMap.keys(), ...secondaryMap.keys()]);
+
+  return Array.from(allIds).map((id): Goal => {
     const p = primaryMap.get(id); // remote
     const s = secondaryMap.get(id); // local
-    if (!p) return s;
-    if (!s) return p;
+    if (p === undefined) {
+      if (s === undefined) throw new Error(`mergeGoals: missing goal for id ${id}`);
+      return s;
+    }
+    if (s === undefined) return p;
     return {
       ...s,
       ...p,
@@ -35,8 +39,6 @@ function mergeGoals(primary: any[], secondary: any[]): any[] {
     };
   });
 }
-
-import { useShallow } from 'zustand/react/shallow';
 
 export function useHybridData() {
   const { session } = useAuth();
@@ -54,31 +56,31 @@ export function useHybridData() {
     activeYear: s.activeYear,
     activeMonth: s.activeMonth,
     changeLog: s.changeLog,
-    
+
     addAccount: s.addAccount,
     updateAccount: s.updateAccount,
     removeAccount: s.removeAccount,
     mergeAccounts: s.mergeAccounts,
-    
+
     addGoalFolder: s.addGoalFolder,
     updateGoalFolder: s.updateGoalFolder,
     removeGoalFolder: s.removeGoalFolder,
     reorderGoalFolders: s.reorderGoalFolders,
-    
+
     addGoal: s.addGoal,
     updateGoal: s.updateGoal,
     removeGoal: s.removeGoal,
     contributeGoal: s.contributeGoal,
-    
+
     addTx: s.addTx,
     updateTx: s.updateTx,
     removeTx: s.removeTx,
-    
+
     addFixed: s.addFixed,
     updateFixed: s.updateFixed,
     removeFixed: s.removeFixed,
     toggleFixed: s.toggleFixed,
-    
+
     setProfile: s.setProfile,
     setTheme: s.setTheme,
     toggleTheme: s.toggleTheme,
@@ -106,7 +108,7 @@ export function useHybridData() {
 
   const isLoading = useMemo(() =>
     accountsLoading || transactionsLoading || fixedItemsLoading || goalsLoading || goalFoldersLoading || debtsLoading,
-  [accountsLoading, transactionsLoading, fixedItemsLoading, goalsLoading, goalFoldersLoading, debtsLoading]);
+    [accountsLoading, transactionsLoading, fixedItemsLoading, goalsLoading, goalFoldersLoading, debtsLoading]);
 
   const isOnline = isSupabaseEnabled && !!session;
 
@@ -152,13 +154,15 @@ export function useHybridData() {
       : store.debts;
   }, [isOnline, remoteDebts, store.debts]);
 
-  const invalidateAll = useCallback(() => {
-    queryClient.invalidateQueries({ queryKey: ['accounts'] });
-    queryClient.invalidateQueries({ queryKey: ['transactions'] });
-    queryClient.invalidateQueries({ queryKey: ['fixed_items'] });
-    queryClient.invalidateQueries({ queryKey: ['goals'] });
-    queryClient.invalidateQueries({ queryKey: ['goal_folders'] });
-    queryClient.invalidateQueries({ queryKey: ['debts'] });
+  const invalidateAll = useCallback(async (): Promise<void> => {
+    await Promise.all([
+      queryClient.invalidateQueries({ queryKey: ['accounts'] }),
+      queryClient.invalidateQueries({ queryKey: ['transactions'] }),
+      queryClient.invalidateQueries({ queryKey: ['fixed_items'] }),
+      queryClient.invalidateQueries({ queryKey: ['goals'] }),
+      queryClient.invalidateQueries({ queryKey: ['goal_folders'] }),
+      queryClient.invalidateQueries({ queryKey: ['debts'] }),
+    ]);
   }, [queryClient]);
 
   const invalidateAccounts = useCallback(() => queryClient.invalidateQueries({ queryKey: ['accounts'] }), [queryClient]);
@@ -169,111 +173,111 @@ export function useHybridData() {
   const invalidateDebts = useCallback(() => queryClient.invalidateQueries({ queryKey: ['debts'] }), [queryClient]);
 
   // Wrapped folder mutations
-  const wrappedAddGoalFolder = useCallback(async (f: Omit<GoalFolder, 'id'>) => {
+  const wrappedAddGoalFolder = useCallback(async (f: Omit<GoalFolder, 'id'>): Promise<void> => {
     await store.addGoalFolder(f);
-    invalidateGoalFolders();
+    await invalidateGoalFolders();
   }, [store, invalidateGoalFolders]);
 
-  const wrappedUpdateGoalFolder = useCallback(async (id: string, p: Partial<GoalFolder>) => {
+  const wrappedUpdateGoalFolder = useCallback(async (id: string, p: Partial<GoalFolder>): Promise<void> => {
     await store.updateGoalFolder(id, p);
-    invalidateGoalFolders();
+    await invalidateGoalFolders();
   }, [store, invalidateGoalFolders]);
 
-  const wrappedRemoveGoalFolder = useCallback(async (id: string) => {
+  const wrappedRemoveGoalFolder = useCallback(async (id: string): Promise<void> => {
     await store.removeGoalFolder(id);
-    invalidateGoalFolders();
-    invalidateGoals();
+    await invalidateGoalFolders();
+    await invalidateGoals();
   }, [store, invalidateGoalFolders, invalidateGoals]);
 
-  const wrappedReorderGoalFolders = useCallback((folders: GoalFolder[]) => {
-    store.reorderGoalFolders(folders);
-    invalidateGoalFolders();
+  const wrappedReorderGoalFolders = useCallback(async (folders: GoalFolder[]): Promise<void> => {
+    await store.reorderGoalFolders(folders);
+    await invalidateGoalFolders();
   }, [store, invalidateGoalFolders]);
 
   // Wrapped goal mutations
-  const wrappedAddGoal = useCallback(async (g: any) => {
+  const wrappedAddGoal = useCallback(async (g: Omit<Goal, 'id'>): Promise<void> => {
     await store.addGoal(g);
-    invalidateGoals();
+    await invalidateGoals();
   }, [store, invalidateGoals]);
 
-  const wrappedUpdateGoal = useCallback(async (id: string, p: any) => {
+  const wrappedUpdateGoal = useCallback(async (id: string, p: Partial<Goal>): Promise<void> => {
     await store.updateGoal(id, p);
-    invalidateGoals();
+    await invalidateGoals();
   }, [store, invalidateGoals]);
 
-  const wrappedRemoveGoal = useCallback(async (id: string) => {
+  const wrappedRemoveGoal = useCallback(async (id: string): Promise<void> => {
     await store.removeGoal(id);
-    invalidateGoals();
+    await invalidateGoals();
   }, [store, invalidateGoals]);
 
-  const wrappedContributeGoal = useCallback((id: string, amount: number, date?: string, accountId?: string) => {
-    store.contributeGoal(id, amount, date, accountId);
-    invalidateGoals();
-    invalidateTransactions();
+  const wrappedContributeGoal = useCallback(async (id: string, amount: number, date?: string, accountId?: string): Promise<void> => {
+    await store.contributeGoal(id, amount, date, accountId);
+    await invalidateGoals();
+    await invalidateTransactions();
   }, [store, invalidateGoals, invalidateTransactions]);
 
   // Wrapped account mutations
-  const wrappedAddAccount = useCallback(async (a: any) => {
+  const wrappedAddAccount = useCallback(async (a: Omit<Account, 'id'>): Promise<void> => {
     await store.addAccount(a);
-    invalidateAccounts();
+    await invalidateAccounts();
   }, [store, invalidateAccounts]);
 
-  const wrappedUpdateAccount = useCallback(async (id: string, p: any) => {
+  const wrappedUpdateAccount = useCallback(async (id: string, p: Partial<Account>): Promise<void> => {
     await store.updateAccount(id, p);
-    invalidateAccounts();
+    await invalidateAccounts();
   }, [store, invalidateAccounts]);
 
-  const wrappedRemoveAccount = useCallback(async (id: string) => {
+  const wrappedRemoveAccount = useCallback(async (id: string): Promise<void> => {
     await store.removeAccount(id);
-    invalidateAccounts();
+    await invalidateAccounts();
   }, [store, invalidateAccounts]);
 
-  const wrappedMergeAccounts = useCallback(async (sourceId: string | string[], targetId: string) => {
+  const wrappedMergeAccounts = useCallback(async (sourceId: string | string[], targetId: string): Promise<void> => {
     const fromIds = Array.isArray(sourceId) ? sourceId : [sourceId];
     await store.mergeAccounts(fromIds, targetId);
-    invalidateAccounts();
-    invalidateTransactions();
+    await invalidateAccounts();
+    await invalidateTransactions();
   }, [store, invalidateAccounts, invalidateTransactions]);
 
   // Wrapped transaction mutations
-  const wrappedAddTx = useCallback(async (t: any) => {
+  const wrappedAddTx = useCallback(async (t: Omit<Transaction, 'id'>): Promise<void> => {
     await store.addTx(t);
-    invalidateTransactions();
+    await invalidateTransactions();
   }, [store, invalidateTransactions]);
 
-  const wrappedUpdateTx = useCallback(async (id: string, p: any) => {
+  const wrappedUpdateTx = useCallback(async (id: string, p: Partial<Transaction>): Promise<void> => {
     await store.updateTx(id, p);
-    invalidateTransactions();
+    await invalidateTransactions();
   }, [store, invalidateTransactions]);
 
-  const wrappedRemoveTx = useCallback(async (id: string) => {
+  const wrappedRemoveTx = useCallback(async (id: string): Promise<void> => {
     await store.removeTx(id);
-    invalidateTransactions();
+    await invalidateTransactions();
   }, [store, invalidateTransactions]);
 
   // Wrapped fixed item mutations
-  const wrappedAddFixed = useCallback(async (f: any) => {
+  const wrappedAddFixed = useCallback(async (f: Omit<FixedItem, 'id'>): Promise<void> => {
     await store.addFixed(f);
-    invalidateFixedItems();
+    await invalidateFixedItems();
   }, [store, invalidateFixedItems]);
 
-  const wrappedUpdateFixed = useCallback(async (id: string, p: any) => {
+  const wrappedUpdateFixed = useCallback(async (id: string, p: Partial<FixedItem>): Promise<void> => {
     await store.updateFixed(id, p);
-    invalidateFixedItems();
+    await invalidateFixedItems();
   }, [store, invalidateFixedItems]);
 
-  const wrappedRemoveFixed = useCallback(async (id: string) => {
+  const wrappedRemoveFixed = useCallback(async (id: string): Promise<void> => {
     await store.removeFixed(id);
-    invalidateFixedItems();
+    await invalidateFixedItems();
   }, [store, invalidateFixedItems]);
 
-  const wrappedToggleFixed = useCallback(async (id: string) => {
+  const wrappedToggleFixed = useCallback(async (id: string): Promise<void> => {
     await store.toggleFixed(id);
-    invalidateFixedItems();
+    await invalidateFixedItems();
   }, [store, invalidateFixedItems]);
 
   // Wrapped debt mutations
-  const wrappedAddDebtPayment = useCallback(async (debtId: string, p: Omit<DebtPayment, 'id'>) => {
+  const wrappedAddDebtPayment = useCallback(async (debtId: string, p: Omit<DebtPayment, 'id'>): Promise<void> => {
     const state = useFinance.getState();
     const storeDebts = state.debts;
     const inLocal = storeDebts.some(d => d.id === debtId);
@@ -288,25 +292,25 @@ export function useHybridData() {
       }
     }
     await state.addDebtPayment(debtId, p);
-    invalidateDebts();
+    await invalidateDebts();
   }, [debts, invalidateDebts]);
 
-  const wrappedAddDebt = useCallback(async (d: Omit<Debt, 'id' | 'payments'>) => {
+  const wrappedAddDebt = useCallback(async (d: Omit<Debt, 'id' | 'payments'>): Promise<void> => {
     await useFinance.getState().addDebt(d);
-    invalidateDebts();
+    await invalidateDebts();
   }, [invalidateDebts]);
 
-  const wrappedUpdateDebt = useCallback(async (id: string, p: Partial<Debt>) => {
+  const wrappedUpdateDebt = useCallback(async (id: string, p: Partial<Debt>): Promise<void> => {
     await useFinance.getState().updateDebt(id, p);
-    invalidateDebts();
+    await invalidateDebts();
   }, [invalidateDebts]);
 
-  const wrappedRemoveDebt = useCallback(async (id: string) => {
+  const wrappedRemoveDebt = useCallback(async (id: string): Promise<void> => {
     await useFinance.getState().removeDebt(id);
-    invalidateDebts();
+    await invalidateDebts();
   }, [invalidateDebts]);
 
-  const wrappedRemoveDebtPayment = useCallback(async (debtId: string, paymentId: string) => {
+  const wrappedRemoveDebtPayment = useCallback(async (debtId: string, paymentId: string): Promise<void> => {
     const state = useFinance.getState();
     const storeDebts = state.debts;
     const inLocal = storeDebts.some(d => d.id === debtId);
@@ -317,7 +321,7 @@ export function useHybridData() {
       }
     }
     await state.removeDebtPayment(debtId, paymentId);
-    invalidateDebts();
+    await invalidateDebts();
   }, [debts, invalidateDebts]);
 
   return {
