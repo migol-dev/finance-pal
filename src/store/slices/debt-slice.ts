@@ -33,7 +33,7 @@ export interface DebtSlice {
 type StoreState = DebtSlice & {
     accounts: Account[];
     changeLog: ChangeLogEntry[];
-    saveReceiptFile: (id: string, dataUrl: string) => Promise<string | null>;
+    saveReceiptFile: (id: string, dataUrl: string) => Promise<string | undefined>;
 };
 
 export const createDebtSlice: StateCreator<
