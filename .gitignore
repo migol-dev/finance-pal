@@ -66,4 +66,5 @@ scratchpad/
 .muse/
 .opencode/
 .env.*
+!.env.template
 __pycache__/
