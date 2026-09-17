@@ -58,3 +58,12 @@ src/test/example.test.ts
 
 # Supabase CLI temp
 supabase/.temp/
+
+# Agent & Environment files
+.antigravity/
+scratchpad/
+.scratch/
+.muse/
+.opencode/
+.env.*
+__pycache__/
