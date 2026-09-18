@@ -83,7 +83,7 @@ export async function fetchGoalFolders(userId: string): Promise<GoalFolder[]> {
 }
 
 export async function insertGoalFolder(userId: string, folder: GoalFolder): Promise<void> {
-  const { error } = await supabase.from('goal_folders').insert(toInsertPayload(userId, folder));
+  const { error } = await supabase.from('goal_folders').upsert(toInsertPayload(userId, folder));
   if (error) {
     throw new AppError(ErrorCodes.DB_INSERT_FAILED, 'Error inserting goal folder', {
       originalError: error,

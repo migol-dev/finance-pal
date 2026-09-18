@@ -122,7 +122,7 @@ export async function fetchTransactions(userId: string): Promise<Transaction[]> 
 }
 
 export async function insertTransaction(userId: string, tx: Transaction): Promise<void> {
-  const { error } = await supabase.from('transactions').insert(toInsertPayload(userId, tx));
+  const { error } = await supabase.from('transactions').upsert(toInsertPayload(userId, tx));
   if (error) {
     throw new AppError(ErrorCodes.DB_INSERT_FAILED, 'Error inserting transaction', {
       originalError: error,

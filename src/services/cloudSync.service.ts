@@ -131,7 +131,7 @@ export async function syncAllToCloud(
   // Accounts
   await supabase.from('accounts').delete().eq('user_id', userId);
   for (const a of input.accounts) {
-    const { error } = await supabase.from('accounts').insert({
+    const { error } = await supabase.from('accounts').upsert({
       id: a.id, user_id: userId, name: a.name, type: a.type,
       initial_balance: a.initialBalance, currency: a.currency,
       clabe: a.clabe, bank: a.bank, holder_name: a.holderName,
@@ -144,7 +144,7 @@ export async function syncAllToCloud(
   // Transactions
   await supabase.from('transactions').delete().eq('user_id', userId);
   for (const tx of input.transactions) {
-    const { error } = await supabase.from('transactions').insert({
+    const { error } = await supabase.from('transactions').upsert({
       id: tx.id, user_id: userId, type: tx.type, category: tx.category,
       concept: tx.concept, amount: tx.amount, date: tx.date,
       note: tx.note, icon: tx.icon, payment_method: tx.paymentMethod,
@@ -159,7 +159,7 @@ export async function syncAllToCloud(
   // Fixed Items
   await supabase.from('fixed_items').delete().eq('user_id', userId);
   for (const f of input.fixedItems) {
-    const { error } = await supabase.from('fixed_items').insert({
+    const { error } = await supabase.from('fixed_items').upsert({
       id: f.id, user_id: userId, type: f.type, category: f.category,
       concept: f.concept, amount: f.amount, frequency: f.frequency,
       active: f.active, note: f.note, start_date: f.startDate,
@@ -174,7 +174,7 @@ export async function syncAllToCloud(
   // Goals
   await supabase.from('goals').delete().eq('user_id', userId);
   for (const g of input.goals) {
-    const { error } = await supabase.from('goals').insert({
+    const { error } = await supabase.from('goals').upsert({
       id: g.id, user_id: userId, name: g.name, target: g.target,
       saved: g.saved, emoji: g.emoji, color: g.color, icon: g.icon,
       deadline: g.deadline, purchase_url: g.purchaseUrl,
@@ -188,7 +188,7 @@ export async function syncAllToCloud(
   // Goal Folders
   await supabase.from('goal_folders').delete().eq('user_id', userId);
   for (const f of input.goalFolders) {
-    const { error } = await supabase.from('goal_folders').insert({
+    const { error } = await supabase.from('goal_folders').upsert({
       id: f.id, user_id: userId, name: f.name, color: f.color,
       icon: f.icon, parent_id: f.parentId, "order": f.order,
     });
@@ -199,7 +199,7 @@ export async function syncAllToCloud(
   // Debts
   await supabase.from('debts').delete().eq('user_id', userId);
   for (const debt of input.debts) {
-    const { error: debtErr } = await supabase.from('debts').insert({
+    const { error: debtErr } = await supabase.from('debts').upsert({
       id: debt.id, user_id: userId, person: debt.person,
       concept: debt.concept, amount: debt.amount, date: debt.date,
       due_date: debt.dueDate, note: debt.note, icon: debt.icon,
@@ -220,7 +220,7 @@ export async function syncAllToCloud(
         if (p.externalPayee) pay.external_payee = p.externalPayee;
         if (p.receipt && !p.receipt.startsWith('data:')) pay.receipt_url = p.receipt;
         
-        const { error: payErr } = await supabase.from('debt_payments').insert(pay);
+        const { error: payErr } = await supabase.from('debt_payments').upsert(pay);
         if (payErr) errors.push({ entity: 'debt_payments', message: payErr.message });
         else syncedCount++;
       }

@@ -138,7 +138,7 @@ export async function fetchDebts(userId: string): Promise<Debt[]> {
 }
 
 export async function insertDebt(userId: string, debt: Debt): Promise<void> {
-  const { error } = await supabase.from('debts').insert(toInsertPayload(userId, debt));
+  const { error } = await supabase.from('debts').upsert(toInsertPayload(userId, debt));
   if (error) {
     throw new AppError(ErrorCodes.DB_INSERT_FAILED, 'Error inserting debt', {
       originalError: error,
@@ -182,7 +182,7 @@ export async function insertDebtPayment(
 
   // Safe table vs standard table mapping?
   // According to `deleteDebtPayment` it's 'debt_payments'.
-  const { error } = await supabase.from('debt_payments').insert(payload);
+  const { error } = await supabase.from('debt_payments').upsert(payload);
 
   if (error) {
     throw new AppError(ErrorCodes.DB_INSERT_FAILED, 'Error inserting debt payment', {

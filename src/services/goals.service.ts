@@ -125,7 +125,7 @@ export async function fetchGoals(userId: string): Promise<Goal[]> {
 }
 
 export async function insertGoal(userId: string, goal: Goal): Promise<void> {
-  const { error } = await supabase.from('goals').insert(toInsertPayload(userId, goal));
+  const { error } = await supabase.from('goals').upsert(toInsertPayload(userId, goal));
   if (error) {
     throw new AppError(ErrorCodes.DB_INSERT_FAILED, 'Error inserting goal', {
       originalError: error,

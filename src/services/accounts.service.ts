@@ -98,7 +98,7 @@ export async function fetchAccounts(userId: string): Promise<Account[]> {
 }
 
 export async function insertAccount(userId: string, account: Account): Promise<void> {
-  const { error } = await supabase.from('accounts').insert(toInsertPayload(userId, account));
+  const { error } = await supabase.from('accounts').upsert(toInsertPayload(userId, account));
   if (error) {
     throw new AppError(ErrorCodes.DB_INSERT_FAILED, 'Error inserting account', {
       originalError: error,

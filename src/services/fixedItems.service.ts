@@ -132,7 +132,7 @@ export async function fetchFixedItems(userId: string): Promise<FixedItem[]> {
 }
 
 export async function insertFixedItem(userId: string, item: FixedItem): Promise<void> {
-  const { error } = await supabase.from('fixed_items').insert(toInsertPayload(userId, item));
+  const { error } = await supabase.from('fixed_items').upsert(toInsertPayload(userId, item));
   if (error) {
     throw new AppError(ErrorCodes.DB_INSERT_FAILED, 'Error inserting fixed item', {
       originalError: error,
