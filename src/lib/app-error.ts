@@ -46,6 +46,10 @@ export const ErrorCodes = {
   STORAGE_INDEXED_DB_ERROR: 'STR_002',
   /** Storage: receipt file error */
   STORAGE_RECEIPT_ERROR: 'STR_003',
+  /** Storage: upload failed */
+  STORAGE_UPLOAD_FAILED: 'STR_004',
+  /** Storage: delete failed */
+  STORAGE_DELETE_FAILED: 'STR_005',
 
   /** Session: registration failed */
   SESSION_REGISTRATION_FAILED: 'SES_001',
@@ -119,6 +123,8 @@ export class AppError extends Error {
       [ErrorCodes.STORAGE_LOCAL_UNAVAILABLE]: 'El almacenamiento local no está disponible.',
       [ErrorCodes.STORAGE_INDEXED_DB_ERROR]: 'Error al acceder al almacenamiento interno.',
       [ErrorCodes.STORAGE_RECEIPT_ERROR]: 'Error al procesar el archivo del recibo.',
+      [ErrorCodes.STORAGE_UPLOAD_FAILED]: 'No se pudo subir el recibo. Intenta de nuevo.',
+      [ErrorCodes.STORAGE_DELETE_FAILED]: 'No se pudo eliminar el recibo. Intenta de nuevo.',
       [ErrorCodes.SESSION_REGISTRATION_FAILED]: 'Error al registrar la sesión del dispositivo.',
       [ErrorCodes.SESSION_HEARTBEAT_FAILED]: 'Error al mantener la sesión activa.',
       [ErrorCodes.UNKNOWN]: 'Ocurrió un error inesperado. Intenta de nuevo.',

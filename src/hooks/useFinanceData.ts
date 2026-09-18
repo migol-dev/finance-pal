@@ -16,6 +16,12 @@ import { useFixedItemMutations } from '@/hooks/mutations/useFixedItemMutations';
 import { useGoalMutations } from '@/hooks/mutations/useGoalMutations';
 import { useGoalFolderMutations } from '@/hooks/mutations/useGoalFolderMutations';
 import { useDebtMutations } from '@/hooks/mutations/useDebtMutations';
+import { useCloudSyncMutations } from '@/hooks/mutations/useCloudSyncMutations';
+import { useReceiptMutations } from '@/hooks/mutations/useReceiptMutations';
+import type {
+  UploadReceiptForTransactionInput,
+  DeleteReceiptForTransactionInput,
+} from '@/hooks/mutations/useReceiptMutations';
 import { fetchUserSettings, upsertUserSettings } from '@/services/settings.service';
 import type {
   Account,
@@ -72,7 +78,6 @@ type UiSelection = {
   cleanupOrphanReceipts: (
     deleteFiles?: boolean,
   ) => Promise<{ orphans: string[]; freedBytes: number }>;
-  syncAllToCloud: () => Promise<number>;
 };
 
 export function useFinanceData() {
@@ -95,6 +100,8 @@ export function useFinanceData() {
   const goalM = useGoalMutations();
   const folderM = useGoalFolderMutations();
   const debtM = useDebtMutations();
+  const cloudSyncM = useCloudSyncMutations();
+  const receiptM = useReceiptMutations();
 
   // --- Estado UI + datos locales (Zustand, sin red) ---
   const ui = useFinance(
@@ -128,7 +135,6 @@ export function useFinanceData() {
       resetAll: state.resetAll,
       migrateReceiptsInPlace: state.migrateReceiptsInPlace,
       cleanupOrphanReceipts: state.cleanupOrphanReceipts,
-      syncAllToCloud: state.syncAllToCloud,
     })),
   );
 
@@ -315,6 +321,18 @@ export function useFinanceData() {
     resetAll: ui.resetAll,
     migrateReceiptsInPlace: ui.migrateReceiptsInPlace,
     cleanupOrphanReceipts: ui.cleanupOrphanReceipts,
-    syncAllToCloud: ui.syncAllToCloud,
+    // --- Operaciones en lote (React Query mutations — ya no viven en Zustand) ---
+    downloadFromCloud: () => cloudSyncM.downloadFromCloud.mutateAsync(),
+    syncAllToCloud: () =>
+      cloudSyncM.syncAllToCloud.mutateAsync().then((r) => r.syncedCount),
+    loadSettingsFromCloud: () => cloudSyncM.loadSettingsFromCloud.mutateAsync(),
+    isSyncingToCloud: cloudSyncM.syncAllToCloud.isPending,
+    isDownloadingFromCloud: cloudSyncM.downloadFromCloud.isPending,
+
+    // --- Recibos fotográficos (Supabase Storage) ---
+    uploadReceipt: (input: UploadReceiptForTransactionInput) =>
+      receiptM.uploadReceiptForTransaction.mutateAsync(input),
+    deleteReceipt: (input: DeleteReceiptForTransactionInput) =>
+      receiptM.deleteReceiptForTransaction.mutateAsync(input),
   };
 }

@@ -32,6 +32,7 @@ import { setupSyncListener } from '@/lib/sync-engine';
 import { useFinance } from '@/store/finance-store';
 import { useSyncStore } from '@/store/sync-store';
 import { useSessionManager } from '@/hooks/useSessionManager';
+import { useCloudSyncMutations } from '@/hooks/mutations/useCloudSyncMutations';
 import { handleError } from '@/lib/app-error';
 import { saveEncryptedState, loadEncryptedState, isEncryptionAvailable, migrateReceiptsToEncrypted } from '@/lib/encrypted-storage';
 
@@ -125,7 +126,8 @@ function AnimatedRoutes() {
 
 function AuthGuard() {
   const { session, loading, mfaRequired } = useAuth();
-  const { hasLocalData, loadSettingsFromCloud, appSettings, setConflictResolved } = useFinance();
+  const { hasLocalData, appSettings, setConflictResolved } = useFinance();
+  const cloudSync = useCloudSyncMutations();
   const [resolved, setResolved] = React.useState(appSettings.conflictResolved ?? false);
   React.useEffect(() => {
     if (appSettings.conflictResolved && !resolved) {
@@ -155,7 +157,7 @@ function AuthGuard() {
 
   React.useEffect(() => {
     if (!session?.user?.id) return;
-    loadSettingsFromCloud().catch(() => {});
+    cloudSync.loadSettingsFromCloud.mutateAsync().catch(() => {});
     if (checkingCloudRef.current) return;
     checkingCloudRef.current = true;
     // Check if cloud has data across ALL entity types
@@ -178,7 +180,7 @@ function AuthGuard() {
         // or just let it time out and resolve.
         setCloudHasData(true);
       });
-  }, [session?.user?.id, loadSettingsFromCloud]);
+  }, [session?.user?.id]);
 
   // Auto-resolve conflict when we know cloud state
   React.useEffect(() => {
@@ -194,7 +196,7 @@ function AuthGuard() {
       // Only cloud data exists → auto-download
       const downloadCloud = async () => {
         try {
-          await useFinance.getState().downloadFromCloud();
+          await cloudSync.downloadFromCloud.mutateAsync();
         } catch (e) {
           handleError(e, 'Auto-download');
         } finally {
@@ -220,7 +222,7 @@ function AuthGuard() {
     // made by other devices while this device was closed/offline.
     const { syncQueue } = useSyncStore.getState();
     if (syncQueue.length === 0 && hasLocalData()) {
-      useFinance.getState().downloadFromCloud().then(() => {
+      cloudSync.downloadFromCloud.mutateAsync().then(() => {
         console.log('[StartupSync] Successfully fetched latest data from cloud');
       });
     }

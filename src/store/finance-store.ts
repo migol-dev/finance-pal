@@ -9,7 +9,7 @@ import { persist } from "zustand/middleware";
 import { FixedItem, Transaction, Goal, Debt, ChangeLogEntry, isFixedActiveInMonth, parseDateLocal, Account, ThemeMode, AccentColor, GoalFolder, NotificationPreferences, DEFAULT_NOTIFICATION_PREFS } from "@/lib/finance";
 import { Filesystem, Directory } from "@capacitor/filesystem";
 import { Capacitor } from "@capacitor/core";
-import { supabase, isSupabaseEnabled } from "@/lib/supabase";
+import { supabase } from "@/lib/supabase";
 import { saveEncryptedState, loadEncryptedState, clearEncryptedState, isEncryptionAvailable, extractReceiptsToIndexedDB, restoreReceiptsFromIndexedDB } from '@/lib/encrypted-storage';
 import { audit } from '@/lib/audit-logger';
 import { migrateData, sanitizeMigratedData } from '@/lib/schema-migrations';
@@ -47,9 +47,6 @@ interface State extends SettingsSlice, AccountSlice, GoalSlice, DebtSlice, Fixed
   cleanupOrphanReceipts: (deleteFiles?: boolean) => Promise<{ orphans: string[]; freedBytes: number }>;
 
   resetAll: () => void;
-  loadSettingsFromCloud: () => Promise<void>;
-  downloadFromCloud: () => Promise<void>;
-  syncAllToCloud: () => Promise<number>;
 }
 
 /** Selectable data sections for export/import. */
@@ -377,158 +374,6 @@ export const useFinance = create<State>()(
               audit.dataDeleted(userId);
             }
           }).catch(console.error);
-        },
-
-        loadSettingsFromCloud: async () => {
-          if (!isSupabaseEnabled) return;
-          const { data: { session: s2 } } = await supabase.auth.getSession();
-          if (!s2?.user?.id) return;
-          const { data } = await supabase
-            .from('user_settings')
-            .select('theme, profile')
-            .eq('user_id', s2.user.id)
-            .maybeSingle();
-          if (data) {
-            if (data.theme === 'dark' || data.theme === 'light' || data.theme === 'system') set({ theme: data.theme });
-            if (data.profile && typeof data.profile === 'object') {
-              set({ profile: { name: '', currency: 'MXN', ...data.profile } });
-            }
-          }
-        },
-
-        downloadFromCloud: async () => {
-          if (!isSupabaseEnabled) return;
-          const { data: { session: s2 } } = await supabase.auth.getSession();
-          if (!s2?.user?.id) return;
-          const userId = s2.user.id;
-
-          try {
-            const [accountsRes, txRes, fixedRes, goalsRes, debtsRes, foldersRes] = await Promise.all([
-              supabase.from('accounts').select('id, name, type, initial_balance, currency, denominations, clabe, bank, holder_name').eq('user_id', userId).order('created_at', { ascending: true }),
-              supabase.from('transactions').select('id, type, category, concept, amount, date, note, icon, payment_method, fixed_id, account_id, transfer_to_account_id, external_payee, receipt').eq('user_id', userId).order('date', { ascending: false }),
-              supabase.from('fixed_items').select('id, type, category, concept, amount, frequency, active, note, start_date, end_date, priority, pay_day, pay_week_day, icon, payment_method, account_id').eq('user_id', userId).order('created_at', { ascending: false }),
-              supabase.from('goals').select('id, name, target, saved, emoji, color, deadline, icon, purchase_url, contributions, pinned, folder_id, created_at').eq('user_id', userId).order('created_at', { ascending: false }),
-              supabase.from('debts').select('id, person, concept, amount, date, due_date, note, icon, account_id, payments:debt_payments(id, amount, date, note, payment_method, account_id)').eq('user_id', userId).order('created_at', { ascending: false }),
-              supabase.from('goal_folders').select('*').eq('user_id', userId).order('"order"', { ascending: true }),
-            ]);
-            set({
-              accounts: (accountsRes.data ?? []).map((r: any) => ({ id: r.id, name: r.name, type: r.type, initialBalance: Number(r.initial_balance ?? 0), currency: r.currency, denominations: r.denominations ?? [], clabe: r.clabe, bank: r.bank, holderName: r.holder_name })),
-              transactions: (txRes.data ?? []).map((r: any) => ({ id: r.id, type: r.type, category: r.category, concept: r.concept, amount: Number(r.amount), date: r.date, note: r.note, icon: r.icon, paymentMethod: r.payment_method, fixedId: r.fixed_id, accountId: r.account_id, transferToAccountId: r.transfer_to_account_id, externalPayee: r.external_payee, receipt: r.receipt })),
-              fixedItems: (fixedRes.data ?? []).map((r: any) => ({ id: r.id, type: r.type, category: r.category, concept: r.concept, amount: Number(r.amount), frequency: r.frequency, active: r.active, note: r.note, startDate: r.start_date, endDate: r.end_date, priority: r.priority, payDay: r.pay_day, payWeekDay: r.pay_week_day, icon: r.icon, paymentMethod: r.payment_method, accountId: r.account_id })),
-              goals: (goalsRes.data ?? []).map((r: any) => ({ id: r.id, name: r.name, target: Number(r.target), saved: Number(r.saved ?? 0), emoji: r.emoji, color: r.color, deadline: r.deadline, icon: r.icon, purchaseUrl: r.purchase_url, contributions: r.contributions ?? [], pinned: r.pinned, folderId: r.folder_id, createdAt: r.created_at })),
-              goalFolders: (foldersRes.data ?? []).map((r: any) => ({ id: r.id, name: r.name, color: r.color, icon: r.icon, parentId: r.parent_id, order: r.order ?? 0, createdAt: r.created_at })),
-              debts: (debtsRes.data ?? []).map((r: any) => ({ id: r.id, person: r.person, concept: r.concept, amount: Number(r.amount), date: r.date, dueDate: r.due_date, note: r.note, icon: r.icon, accountId: r.account_id, payments: (r.payments ?? []).map((p: any) => ({ id: p.id, amount: Number(p.amount), date: p.date, note: p.note, paymentMethod: p.payment_method, accountId: p.account_id })) })),
-            });
-          } catch (e) {
-            console.error("Error downloading from cloud", e);
-          }
-        },
-
-        syncAllToCloud: async () => {
-          if (!isSupabaseEnabled) return 0;
-          const { data: { session: s2 } } = await supabase.auth.getSession();
-          if (!s2?.user?.id) return 0;
-          const userId = s2.user.id;
-          const s = get();
-          let synced = 0;
-
-          // Accounts
-          await supabase.from('accounts').delete().eq('user_id', userId);
-          for (const a of s.accounts) {
-            const { error } = await supabase.from('accounts').insert({
-              id: a.id, user_id: userId, name: a.name, type: a.type,
-              initial_balance: a.initialBalance, currency: a.currency,
-              clabe: a.clabe, bank: a.bank, holder_name: a.holderName,
-              denominations: a.denominations,
-            });
-            if (!error) synced++;
-          }
-
-          // Transactions
-          await supabase.from('transactions').delete().eq('user_id', userId);
-          for (const tx of s.transactions) {
-            const { error } = await supabase.from('transactions').insert({
-              id: tx.id, user_id: userId, type: tx.type, category: tx.category,
-              concept: tx.concept, amount: tx.amount, date: tx.date,
-              note: tx.note, icon: tx.icon, payment_method: tx.paymentMethod,
-              fixed_id: tx.fixedId, account_id: tx.accountId,
-              transfer_to_account_id: tx.transferToAccountId,
-              external_payee: tx.externalPayee, receipt: tx.receipt,
-            });
-            if (!error) synced++;
-          }
-
-          // Fixed Items
-          await supabase.from('fixed_items').delete().eq('user_id', userId);
-          for (const f of s.fixedItems) {
-            const { error } = await supabase.from('fixed_items').insert({
-              id: f.id, user_id: userId, type: f.type, category: f.category,
-              concept: f.concept, amount: f.amount, frequency: f.frequency,
-              active: f.active, note: f.note, start_date: f.startDate,
-              end_date: f.endDate, priority: f.priority, pay_day: f.payDay,
-              pay_week_day: f.payWeekDay, icon: f.icon,
-              payment_method: f.paymentMethod, account_id: f.accountId,
-            });
-            if (!error) synced++;
-          }
-
-          // Goals
-          await supabase.from('goals').delete().eq('user_id', userId);
-          for (const g of s.goals) {
-            const { error } = await supabase.from('goals').insert({
-              id: g.id, user_id: userId, name: g.name, target: g.target,
-              saved: g.saved, emoji: g.emoji, color: g.color, icon: g.icon,
-              deadline: g.deadline, purchase_url: g.purchaseUrl,
-              contributions: g.contributions, pinned: g.pinned,
-              folder_id: g.folderId,
-            });
-            if (!error) synced++;
-          }
-
-          // Goal Folders
-          await supabase.from('goal_folders').delete().eq('user_id', userId);
-          for (const f of s.goalFolders) {
-            const { error } = await supabase.from('goal_folders').insert({
-              id: f.id, user_id: userId, name: f.name, color: f.color,
-              icon: f.icon, parent_id: f.parentId, "order": f.order,
-            });
-            if (!error) synced++;
-          }
-
-          // Debts (CASCADE deletes payments)
-          await supabase.from('debts').delete().eq('user_id', userId);
-          for (const debt of s.debts) {
-            const { error: debtErr } = await supabase.from('debts').insert({
-              id: debt.id, user_id: userId, person: debt.person,
-              concept: debt.concept, amount: debt.amount, date: debt.date,
-              due_date: debt.dueDate, note: debt.note, icon: debt.icon,
-              account_id: debt.accountId,
-            });
-            if (!debtErr) {
-              synced++;
-              for (const p of debt.payments) {
-                const pay: Record<string, unknown> = {
-                  id: p.id, debt_id: debt.id, user_id: userId,
-                  amount: p.amount, date: p.date, note: p.note,
-                  payment_method: p.paymentMethod,
-                };
-                if (p.accountId) pay.account_id = p.accountId;
-                if (p.transferToAccountId) pay.transfer_to_account_id = p.transferToAccountId;
-                if (p.externalPayee) pay.external_payee = p.externalPayee;
-                if (p.receipt && !p.receipt.startsWith('data:')) pay.receipt_url = p.receipt;
-                const { error: payErr } = await supabase.from('debt_payments').insert(pay);
-                if (!payErr) synced++;
-              }
-            }
-          }
-
-          // Settings (theme + profile)
-          await supabase.from('user_settings').upsert(
-            { user_id: userId, theme: s.theme, profile: s.profile },
-            { onConflict: 'user_id' }
-          );
-
-          return synced;
         },
       };
     },
