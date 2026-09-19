@@ -126,12 +126,12 @@ export default function Movimientos() {
     debts.forEach((d) => {
       const dd = parseDateLocal(d.date);
       if (dd.getFullYear() === activeYear && dd.getMonth() === activeMonth) {
-        rows.push({ id: `debt-${d.id}`, type: "expense", category: "Préstamo", concept: `Préstamo a ${d.person}`, amount: d.amount, date: d.date, note: d.concept, icon: d.icon, _virtual: true, _debtId: d.id });
+        rows.push({ id: `debt-${d.id}`, type: "expense", category: "Deudas", concept: `Préstamo a ${d.person}`, amount: d.amount, date: d.date, note: d.concept, icon: d.icon, accountId: d.accountId, _virtual: true, _debtId: d.id });
       }
       d.payments.forEach((p: any) => {
         const pd = parseDateLocal(p.date);
         if (pd.getFullYear() === activeYear && pd.getMonth() === activeMonth) {
-          rows.push({ id: `pay-${d.id}-${p.id}`, type: "income", category: "Abono", concept: `Abono de ${d.person}`, amount: p.amount, date: p.date, note: p.note, icon: d.icon, paymentMethod: p.paymentMethod, accountId: p.accountId, _virtual: true, _debtId: d.id });
+          rows.push({ id: `pay-${d.id}-${p.id}`, type: "income", category: "Deudas", concept: `Abono a ${d.person}`, amount: p.amount, date: p.date, note: p.note, icon: d.icon, paymentMethod: p.paymentMethod, accountId: p.accountId, _virtual: true, _debtId: d.id });
         }
       });
     });

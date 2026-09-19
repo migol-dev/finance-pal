@@ -342,7 +342,7 @@ export const CATEGORY_EMOJI: Record<string, string> = {
   Conectividad: "📱", "Apoyo familiar": "👨‍👩‍👧", Ocio: "🎉",
   Alimentación: "🛒", "Cuidado personal": "🧴", Entretenimiento: "🎵",
   Moto: "🏍️", Fondo: "🛟", Otros: "✨", Hogar: "🏠", Educación: "📚",
-  Ropa: "👕", Café: "☕", Mascotas: "🐾", Regalos: "🎁",
+  Ropa: "👕", Café: "☕", Mascotas: "🐾", Regalos: "🎁", Deudas: "🤝",
 };
 
 export const COMMON_EMOJIS = [

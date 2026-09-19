@@ -178,6 +178,12 @@ export async function insertDebtPayment(
     user_id: userId,
     amount: payment.amount,
     date: payment.date,
+    payment_method: payment.paymentMethod,
+    account_id: payment.accountId,
+    transfer_to_account_id: payment.transferToAccountId,
+    external_payee: payment.externalPayee,
+    receipt_url: payment.receipt,
+    note: payment.note,
   };
 
   // Safe table vs standard table mapping?

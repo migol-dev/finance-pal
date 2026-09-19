@@ -112,7 +112,23 @@ export function useDebtMutations(): DebtMutations {
         if (payment) {
           useSyncStore
             .getState()
-            .addMutation({ table: 'debt_payments', action: 'INSERT', recordId: payment.id, payload: { ...payment, debt_id: input.debtId } });
+            .addMutation({ 
+              table: 'debt_payments', 
+              action: 'INSERT', 
+              recordId: payment.id, 
+              payload: { 
+                id: payment.id,
+                debt_id: input.debtId,
+                amount: payment.amount,
+                date: payment.date,
+                payment_method: payment.paymentMethod,
+                account_id: payment.accountId,
+                transfer_to_account_id: payment.transferToAccountId,
+                external_payee: payment.externalPayee,
+                receipt_url: payment.receipt,
+                note: payment.note
+              } 
+            });
         }
         return;
       }
