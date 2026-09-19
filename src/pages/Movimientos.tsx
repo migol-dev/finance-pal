@@ -405,23 +405,88 @@ export default function Movimientos() {
                         </motion.div>
                       );
                     }
-                    return (
-                      <motion.div key={t.id} layout className="rounded-xl bg-card border border-border p-3 shadow-soft flex items-center gap-3">
-                        <IconDisplay icon={iconFor(t)} />
-                        <button onClick={() => openEdit(t as Transaction)} className="flex-1 min-w-0 text-left">
-                          <p className="font-semibold text-sm truncate">{t.concept}</p>
-                          <p className="text-xs text-muted-foreground truncate">
-                            {t.category}{acct && <span className="ml-1">· {acct.name}</span>}
-                          </p>
-                        </button>
-                        <div className="text-right shrink-0">
-                          <p className={`font-bold text-sm ${t.type === "income" ? "text-success" : t.type === "saving" ? "text-secondary" : t.type === "transfer" ? "text-primary" : "text-destructive"}`}>
-                            {t.type === "income" ? "+" : t.type === "transfer" ? "⇄" : "-"}{fmt(t.amount)}
-                          </p>
-                        </div>
-                        <button aria-label="Eliminar" onClick={() => setDeleteConfirm(t as Transaction)} className="text-muted-foreground hover:text-destructive p-1 shrink-0"><Trash2 className="size-3.5" /></button>
-                      </motion.div>
-                    );
+                    if (!((t as any)._virtual) && t.type === "transfer") {
+                      const originAcct = accounts.find((a) => a.id === (t as any).accountId);
+                      const destAcct = accounts.find((a) => a.id === (t as any).transferToAccountId);
+                      const ext = (t as any).externalPayee as { clabe?: string; bank?: string; name?: string } | undefined;
+                      const receipt = (t as any).receipt as string | undefined;
+                      const isExpanded = expandedId === t.id;
+                      return (
+                        <motion.div key={t.id} layout className="rounded-xl bg-card border border-border shadow-soft">
+                          <div className="p-3 flex items-center gap-3">
+                            <IconDisplay icon={iconFor(t)} />
+                            <button onClick={() => openEdit(t as Transaction)} className="flex-1 min-w-0 text-left">
+                              <p className="font-semibold text-sm truncate">{t.concept}</p>
+                              <p className="text-xs text-muted-foreground truncate">
+                                Traspaso{originAcct && <span className="ml-1">· {originAcct.name}</span>}
+                              </p>
+                            </button>
+                            <div className="text-right shrink-0">
+                              <p className="font-bold text-sm text-primary">⇄{fmt(t.amount)}</p>
+                            </div>
+                            <button aria-label="Eliminar" onClick={() => setDeleteConfirm(t as Transaction)} className="text-muted-foreground hover:text-destructive p-1 shrink-0"><Trash2 className="size-3.5" /></button>
+                            <button aria-label="Expandir" onClick={() => setExpandedId(isExpanded ? null : t.id)} className="text-muted-foreground hover:text-primary p-1 shrink-0">
+                              <ChevronDown className={`size-4 transition-transform ${isExpanded ? "rotate-180" : ""}`} />
+                            </button>
+                          </div>
+                          {isExpanded && (
+                            <div className="px-3 pb-3 space-y-1 text-xs text-muted-foreground border-t border-border pt-2">
+                              <p><span className="font-semibold text-foreground">Cuenta origen:</span> {originAcct?.name ?? "No asignada"}</p>
+                              {destAcct && <p><span className="font-semibold text-foreground">Cuenta destino:</span> {destAcct.name}</p>}
+                              {ext?.clabe && <p><span className="font-semibold text-foreground">CLABE:</span> {ext.clabe}</p>}
+                              {ext?.bank && <p><span className="font-semibold text-foreground">Banco:</span> {ext.bank}</p>}
+                              {ext?.name && <p><span className="font-semibold text-foreground">Titular:</span> {ext.name}</p>}
+                              {(t as any).note && <p><span className="font-semibold text-foreground">Nota:</span> {(t as any).note}</p>}
+                              {receipt && <img src={receipt} alt="comprobante" loading="lazy" className="rounded max-h-40 object-contain mt-1" />}
+                            </div>
+                          )}
+                        </motion.div>
+                      );
+                    }
+                    {
+                      const tx = t as Transaction;
+                      const hasExtra = tx.type === "transfer" || !!tx.receipt || !!(tx as any).externalPayee || !!(tx as any).transferToAccountId;
+                      const isExpanded = expandedId === tx.id;
+                      const originAcct = accounts.find((a) => a.id === tx.accountId);
+                      const destAcct = accounts.find((a) => a.id === (tx as any).transferToAccountId);
+                      const ext = (tx as any).externalPayee as { clabe?: string; bank?: string; name?: string } | undefined;
+                      const receipt = tx.receipt as string | undefined;
+                      return (
+                        <motion.div key={tx.id} layout className="rounded-xl bg-card border border-border shadow-soft">
+                          <div className="p-3 flex items-center gap-3">
+                            <IconDisplay icon={iconFor(tx)} />
+                            <button onClick={() => openEdit(tx)} className="flex-1 min-w-0 text-left">
+                              <p className="font-semibold text-sm truncate">{tx.concept}</p>
+                              <p className="text-xs text-muted-foreground truncate">
+                                {tx.category}{acct && <span className="ml-1">· {acct.name}</span>}
+                              </p>
+                            </button>
+                            <div className="text-right shrink-0">
+                              <p className={`font-bold text-sm ${tx.type === "income" ? "text-success" : tx.type === "saving" ? "text-secondary" : tx.type === "transfer" ? "text-primary" : "text-destructive"}`}>
+                                {tx.type === "income" ? "+" : tx.type === "transfer" ? "⇄" : "-"}{fmt(tx.amount)}
+                              </p>
+                            </div>
+                            <button aria-label="Eliminar" onClick={() => setDeleteConfirm(tx)} className="text-muted-foreground hover:text-destructive p-1 shrink-0"><Trash2 className="size-3.5" /></button>
+                            {hasExtra && (
+                              <button aria-label="Expandir" onClick={() => setExpandedId(isExpanded ? null : tx.id)} className="text-muted-foreground hover:text-primary p-1 shrink-0">
+                                <ChevronDown className={`size-4 transition-transform ${isExpanded ? "rotate-180" : ""}`} />
+                              </button>
+                            )}
+                          </div>
+                          {hasExtra && isExpanded && (
+                            <div className="px-3 pb-3 space-y-1 text-xs text-muted-foreground border-t border-border pt-2">
+                              {originAcct && <p><span className="font-semibold text-foreground">Cuenta origen:</span> {originAcct.name}</p>}
+                              {destAcct && <p><span className="font-semibold text-foreground">Cuenta destino:</span> {destAcct.name}</p>}
+                              {ext?.name && <p><span className="font-semibold text-foreground">Beneficiario:</span> {ext.name}</p>}
+                              {ext?.bank && <p><span className="font-semibold text-foreground">Banco:</span> {ext.bank}</p>}
+                              {ext?.clabe && <p><span className="font-semibold text-foreground">CLABE:</span> {ext.clabe}</p>}
+                              {tx.note && <p><span className="font-semibold text-foreground">Nota:</span> {tx.note}</p>}
+                              {receipt && <img src={receipt} alt="comprobante" loading="lazy" className="rounded max-h-48 object-contain mt-2 w-full" />}
+                            </div>
+                          )}
+                        </motion.div>
+                      );
+                    }
                   })}
                 </div>
               </motion.section>
@@ -491,22 +556,90 @@ export default function Movimientos() {
                         </React.Fragment>
                       );
                     }
-                    const acct = accounts.find((a) => a.id === (t as any).accountId);
+                    if (!((t as any)._virtual) && t.type === "transfer") {
+                      const originAcct = accounts.find((a) => a.id === (t as any).accountId);
+                      const destAcct = accounts.find((a) => a.id === (t as any).transferToAccountId);
+                      const ext = (t as any).externalPayee as { clabe?: string; bank?: string; name?: string } | undefined;
+                      const receipt = (t as any).receipt as string | undefined;
+                      const isExpanded = expandedId === t.id;
+                      return (
+                        <React.Fragment key={t.id}>
+                          <tr className="border-b border-border last:border-0 hover:bg-muted/20 transition-colors bg-primary/5">
+                            <td className="p-3 whitespace-nowrap text-muted-foreground text-xs">{day}</td>
+                            <td className="p-3">
+                              <div className="flex items-center gap-2">
+                                <IconDisplay icon={iconFor(t)} />
+                                <span className="font-semibold">{t.concept}</span>
+                                <span className="text-[9px] font-bold px-1.5 py-0.5 rounded uppercase bg-primary/20 text-primary">TRASPASO</span>
+                              </div>
+                            </td>
+                            <td className="p-3 text-xs text-muted-foreground">{t.category}</td>
+                            <td className="p-3 text-xs">{t.paymentMethod ? `${PAYMENT_METHOD_EMOJI[t.paymentMethod]} ${PAYMENT_METHOD_LABEL[t.paymentMethod]}` : "—"}</td>
+                            <td className="p-3 text-xs text-muted-foreground">{originAcct?.name ?? "—"}</td>
+                            <td className="p-3 text-right font-bold text-sm whitespace-nowrap text-primary">⇄{fmt(t.amount)}</td>
+                            <td className="p-3 text-right whitespace-nowrap">
+                              <button aria-label="Expandir" onClick={() => setExpandedId(isExpanded ? null : t.id)} className="text-muted-foreground hover:text-primary p-1"><ChevronDown className={`size-3.5 transition-transform ${isExpanded ? "rotate-180" : ""}`} /></button>
+                              <button aria-label="Editar" onClick={() => openEdit(t as Transaction)} className="text-muted-foreground hover:text-primary p-1"><Pencil className="size-3.5" /></button>
+                              <button aria-label="Eliminar" onClick={() => setDeleteConfirm(t as Transaction)} className="text-muted-foreground hover:text-destructive p-1"><Trash2 className="size-3.5" /></button>
+                            </td>
+                          </tr>
+                          {isExpanded && (
+                            <tr className="border-b border-border bg-muted/20">
+                              <td colSpan={7} className="p-3 text-xs text-muted-foreground space-y-1">
+                                <p><span className="font-semibold text-foreground">Cuenta origen:</span> {originAcct?.name ?? "No asignada"}</p>
+                                {destAcct && <p><span className="font-semibold text-foreground">Cuenta destino:</span> {destAcct.name}</p>}
+                                {ext?.clabe && <p><span className="font-semibold text-foreground">CLABE:</span> {ext.clabe}</p>}
+                                {ext?.bank && <p><span className="font-semibold text-foreground">Banco:</span> {ext.bank}</p>}
+                                {ext?.name && <p><span className="font-semibold text-foreground">Titular:</span> {ext.name}</p>}
+                                {(t as any).note && <p><span className="font-semibold text-foreground">Nota:</span> {(t as any).note}</p>}
+                                {receipt && <img src={receipt} alt="comprobante" loading="lazy" className="rounded max-h-36 object-contain mt-1" />}
+                              </td>
+                            </tr>
+                          )}
+                        </React.Fragment>
+                      );
+                    }
+                    const tx = t as Transaction;
+                    const acctDt = accounts.find((a) => a.id === tx.accountId);
+                    const hasExtra = tx.type === "transfer" || !!tx.receipt || !!(tx as any).externalPayee || !!(tx as any).transferToAccountId;
+                    const isExpanded = expandedId === tx.id;
+                    const originAcct = accounts.find((a) => a.id === tx.accountId);
+                    const destAcct = accounts.find((a) => a.id === (tx as any).transferToAccountId);
+                    const ext = (tx as any).externalPayee as { clabe?: string; bank?: string; name?: string } | undefined;
+                    const receipt = tx.receipt as string | undefined;
                     return (
-                      <tr key={t.id} className="border-b border-border last:border-0 hover:bg-muted/20 transition-colors">
-                        <td className="p-3 whitespace-nowrap text-muted-foreground text-xs">{day}</td>
-                        <td className="p-3"><div className="flex items-center gap-2"><IconDisplay icon={iconFor(t)} /><span className="font-semibold">{t.concept}</span></div></td>
-                        <td className="p-3 text-xs text-muted-foreground">{t.category}</td>
-                        <td className="p-3 text-xs">{t.paymentMethod ? `${PAYMENT_METHOD_EMOJI[t.paymentMethod]} ${PAYMENT_METHOD_LABEL[t.paymentMethod]}` : "-"}</td>
-                        <td className="p-3 text-xs text-muted-foreground">{acct?.name ?? "-"}</td>
-                        <td className={`p-3 text-right font-bold text-sm whitespace-nowrap ${t.type === "income" ? "text-success" : t.type === "saving" ? "text-secondary" : t.type === "transfer" ? "text-primary" : "text-destructive"}`}>
-                          {t.type === "income" ? "+" : t.type === "transfer" ? "⇄" : "-"}{fmt(t.amount)}
-                        </td>
-                        <td className="p-3 text-right whitespace-nowrap">
-                          <button aria-label="Editar" onClick={() => openEdit(t as Transaction)} className="text-muted-foreground hover:text-primary p-1"><Pencil className="size-3.5" /></button>
-                          <button aria-label="Eliminar" onClick={() => setDeleteConfirm(t as Transaction)} className="text-muted-foreground hover:text-destructive p-1"><Trash2 className="size-3.5" /></button>
-                        </td>
-                      </tr>
+                      <React.Fragment key={tx.id}>
+                        <tr className="border-b border-border last:border-0 hover:bg-muted/20 transition-colors">
+                          <td className="p-3 whitespace-nowrap text-muted-foreground text-xs">{day}</td>
+                          <td className="p-3"><div className="flex items-center gap-2"><IconDisplay icon={iconFor(tx)} /><span className="font-semibold">{tx.concept}</span></div></td>
+                          <td className="p-3 text-xs text-muted-foreground">{tx.category}</td>
+                          <td className="p-3 text-xs">{tx.paymentMethod ? `${PAYMENT_METHOD_EMOJI[tx.paymentMethod]} ${PAYMENT_METHOD_LABEL[tx.paymentMethod]}` : "-"}</td>
+                          <td className="p-3 text-xs text-muted-foreground">{acctDt?.name ?? "-"}</td>
+                          <td className={`p-3 text-right font-bold text-sm whitespace-nowrap ${tx.type === "income" ? "text-success" : tx.type === "saving" ? "text-secondary" : tx.type === "transfer" ? "text-primary" : "text-destructive"}`}>
+                            {tx.type === "income" ? "+" : tx.type === "transfer" ? "⇄" : "-"}{fmt(tx.amount)}
+                          </td>
+                          <td className="p-3 text-right whitespace-nowrap">
+                            {hasExtra && (
+                              <button aria-label="Expandir" onClick={() => setExpandedId(isExpanded ? null : tx.id)} className="text-muted-foreground hover:text-primary p-1"><ChevronDown className={`size-3.5 transition-transform ${isExpanded ? "rotate-180" : ""}`} /></button>
+                            )}
+                            <button aria-label="Editar" onClick={() => openEdit(tx)} className="text-muted-foreground hover:text-primary p-1"><Pencil className="size-3.5" /></button>
+                            <button aria-label="Eliminar" onClick={() => setDeleteConfirm(tx)} className="text-muted-foreground hover:text-destructive p-1"><Trash2 className="size-3.5" /></button>
+                          </td>
+                        </tr>
+                        {hasExtra && isExpanded && (
+                          <tr className="border-b border-border bg-muted/20">
+                            <td colSpan={7} className="p-3 text-xs text-muted-foreground space-y-1">
+                              {originAcct && <p><span className="font-semibold text-foreground">Cuenta origen:</span> {originAcct.name}</p>}
+                              {destAcct && <p><span className="font-semibold text-foreground">Cuenta destino:</span> {destAcct.name}</p>}
+                              {ext?.name && <p><span className="font-semibold text-foreground">Beneficiario:</span> {ext.name}</p>}
+                              {ext?.bank && <p><span className="font-semibold text-foreground">Banco:</span> {ext.bank}</p>}
+                              {ext?.clabe && <p><span className="font-semibold text-foreground">CLABE:</span> {ext.clabe}</p>}
+                              {tx.note && <p><span className="font-semibold text-foreground">Nota:</span> {tx.note}</p>}
+                              {receipt && <img src={receipt} alt="comprobante" loading="lazy" className="rounded max-h-48 object-contain mt-2" />}
+                            </td>
+                          </tr>
+                        )}
+                      </React.Fragment>
                     );
                   })
                 )}

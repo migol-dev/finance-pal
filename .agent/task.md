@@ -339,3 +339,222 @@ Componente llama addTransaction.mutate(formPayload)
 ---
 
 *Diagnóstico generado por análisis estático de código fuente. No se modificó ningún archivo de implementación.*
+
+---
+
+---
+
+# Diagnóstico: Botón expandir (ChevronDown) faltante en movimientos de tipo `transfer`
+
+> **Fecha:** 2026-09-19  
+> **Versión analizada:** Finance Pal V1.19.38  
+> **Archivo afectado:** [`Movimientos.tsx`](file:///e:/Projectos/Aplications/Finance%20Pal/Finance%20Pal%20APP/Finance%20Pal%20V1.19.38/finance-pal/src/pages/Movimientos.tsx)  
+> **Severidad:** FEATURE REGRESSION — la funcionalidad de ver detalles de transferencias nunca existió para transacciones de tipo `transfer` real; sólo existió para filas `_virtual` (deudas/abonos).
+
+---
+
+## Diagnóstico Exacto
+
+### ¿Se eliminó la feature?
+
+**No exactamente.** Tras revisar el historial de git de `Movimientos.tsx` (commits `114b9f9`, `c8b46a0`, `5315dc4`, `4ce07c6`, etc.), **el botón `ChevronDown` y el panel expandible NUNCA estuvieron implementados para las transacciones de tipo `type === "transfer"` reales**. Esa lógica siempre estuvo restringida exclusivamente a las filas `_virtual` (entradas generadas desde `Deudas`/abonos).
+
+### Estructura actual del renderizado en Movimientos.tsx
+
+El componente renderiza dos categorías de filas:
+
+**1. Filas `_virtual` (deudas/abonos) — SÍ tienen ChevronDown + panel expandible:**
+- Mobile: L363–406 — `isExpanded` + `setExpandedId` + `<ChevronDown>` + panel con cuenta, método, CLABE, banco, titular, recibo.
+- Desktop: L449–492 — mismo patrón en `<tr>` expandible con `<td colSpan={7}>`.
+
+**2. Filas regulares (todas las demás incluyendo `transfer`) — NO tienen ChevronDown ni panel:**
+- Mobile: L408–423 — el `<motion.div>` es un contenedor `flex` plano, tiene sólo: icon, botón de editar (que abre `TxForm`), monto, botón Eliminar. **Sin `<ChevronDown>`, sin `expandedId`, sin panel detalle.**
+- Desktop: L495–509 — el `<tr>` tiene: fecha, concepto, categoría, método, cuenta, monto, Pencil, Trash2. **Sin `<ChevronDown>` ni fila expandible.**
+
+### ¿Por qué el usuario recuerda haber visto la flechita?
+
+La flechita existe hoy mismo, pero **sólo en las filas de tipo "Deuda/Abono"** (`_virtual`). Las transferencias creadas directamente como `type: "transfer"` desde el formulario de Movimientos **nunca tuvieron ese expansor**. Probablemente la confusión surge porque ambas filas (`_virtual` y `transfer`) muestran el ícono `⇄`, pero tienen código de renderizado completamente separado.
+
+### Datos que tiene una transacción `transfer` y que deberían mostrarse:
+
+Según la interfaz `Transaction` ([`finance.ts` L68–84](file:///e:/Projectos/Aplications/Finance%20Pal/Finance%20Pal%20APP/Finance%20Pal%20V1.19.38/finance-pal/src/lib/finance.ts#L68-L84)):
+
+```typescript
+interface Transaction {
+  id: string;
+  type: "income" | "expense" | "saving" | "transfer";
+  accountId?: string;          // Cuenta ORIGEN
+  transferToAccountId?: string; // Cuenta DESTINO (interna)
+  externalPayee?: { clabe?: string; bank?: string; name?: string }; // Destino externo
+  receipt?: string;            // Comprobante (dataURL o path)
+  // ...
+}
+```
+
+Cuando `type === "transfer"`, el formulario `TxForm` guarda correctamente `accountId` (origen) y `transferToAccountId` (destino interno) o `externalPayee` (SPEI externo). Estos datos **ya están en el store**, pero **no hay UI para consultarlos** sin abrir el formulario de edición.
+
+---
+
+## Plan de Implementación Técnica Detallada
+
+### Objetivo
+Agregar un botón `<ChevronDown>` a cada fila de tipo `transfer` en la vista móvil y desktop de Movimientos, que al presionarse expanda un panel de detalles mostrando: cuenta origen, cuenta destino (o datos de beneficiario externo), comprobante, y nota.
+
+---
+
+### Cambios necesarios en [`Movimientos.tsx`](file:///e:/Projectos/Aplications/Finance%20Pal/Finance%20Pal%20APP/Finance%20Pal%20V1.19.38/finance-pal/src/pages/Movimientos.tsx)
+
+El estado `expandedId` (línea 55) ya existe en el componente y es compatible — se reutiliza sin cambios.
+
+---
+
+#### Paso 1 — Vista Móvil (`lg:hidden`, líneas 355–430)
+
+**Problema actual (L408–423):** El `return` del bloque de filas regulares renderiza un `<motion.div>` con `p-3 flex items-center gap-3` — es decir, sin capacidad de expander. No distingue si `t.type === "transfer"`.
+
+**Cambio requerido:** Bifurcar el render de las filas regulares en dos casos:
+
+- **Si `t.type === "transfer"`:** Renderizar el mismo contenedor expandible que usan las filas `_virtual`, pero con los datos de la transacción de transferencia (cuenta origen, cuenta destino, externalPayee, receipt, nota).
+- **Para cualquier otro tipo:** Mantener el render actual sin modificaciones.
+
+**Lógica del nuevo bloque para `transfer` (mobile):**
+
+```tsx
+if (!((t as any)._virtual) && t.type === "transfer") {
+  const originAcct = accounts.find((a) => a.id === (t as any).accountId);
+  const destAcct = accounts.find((a) => a.id === (t as any).transferToAccountId);
+  const ext = (t as any).externalPayee as { clabe?: string; bank?: string; name?: string } | undefined;
+  const receipt = (t as any).receipt as string | undefined;
+  const isExpanded = expandedId === t.id;
+
+  return (
+    <motion.div key={t.id} layout className="rounded-xl bg-card border border-border shadow-soft">
+      {/* Fila principal */}
+      <div className="p-3 flex items-center gap-3">
+        <IconDisplay icon={iconFor(t)} />
+        <button onClick={() => openEdit(t as Transaction)} className="flex-1 min-w-0 text-left">
+          <p className="font-semibold text-sm truncate">{t.concept}</p>
+          <p className="text-xs text-muted-foreground truncate">
+            Traspaso{originAcct && <span className="ml-1">· {originAcct.name}</span>}
+          </p>
+        </button>
+        <div className="text-right shrink-0">
+          <p className="font-bold text-sm text-primary">⇄{fmt(t.amount)}</p>
+        </div>
+        {/* Botón eliminar */}
+        <button aria-label="Eliminar" onClick={() => setDeleteConfirm(t as Transaction)} className="text-muted-foreground hover:text-destructive p-1 shrink-0">
+          <Trash2 className="size-3.5" />
+        </button>
+        {/* Botón expandir — EL QUE FALTABA */}
+        <button onClick={() => setExpandedId(isExpanded ? null : t.id)} className="text-muted-foreground hover:text-primary p-1 shrink-0">
+          <ChevronDown className={`size-4 transition-transform ${isExpanded ? "rotate-180" : ""}`} />
+        </button>
+      </div>
+      {/* Panel expandible */}
+      {isExpanded && (
+        <div className="px-3 pb-3 space-y-1 text-xs text-muted-foreground border-t border-border pt-2">
+          <p><span className="font-semibold text-foreground">Cuenta origen:</span> {originAcct?.name ?? "No asignada"}</p>
+          {destAcct && <p><span className="font-semibold text-foreground">Cuenta destino:</span> {destAcct.name}</p>}
+          {ext?.clabe && <p><span className="font-semibold text-foreground">CLABE:</span> {ext.clabe}</p>}
+          {ext?.bank && <p><span className="font-semibold text-foreground">Banco:</span> {ext.bank}</p>}
+          {ext?.name && <p><span className="font-semibold text-foreground">Titular:</span> {ext.name}</p>}
+          {(t as any).note && <p><span className="font-semibold text-foreground">Nota:</span> {(t as any).note}</p>}
+          {receipt && <img src={receipt} alt="comprobante" loading="lazy" className="rounded max-h-40 object-contain mt-1" />}
+        </div>
+      )}
+    </motion.div>
+  );
+}
+```
+
+**Ubicación exacta en el archivo:** Insertar este bloque entre la línea 407 (`}` que cierra el bloque `_virtual`) y la línea 408 (`return (` del bloque actual de filas regulares).
+
+---
+
+#### Paso 2 — Vista Desktop (`hidden lg:block`, líneas 432–516)
+
+**Problema actual (L495–509):** El `<tr>` de filas regulares en la tabla desktop no tiene una fila secundaria expandible. Todas las filas regulares comparten el mismo `<tr>` plano.
+
+**Cambio requerido:** Igual que en mobile — bifurcar el render para `t.type === "transfer"`:
+
+```tsx
+if (!((t as any)._virtual) && t.type === "transfer") {
+  const originAcct = accounts.find((a) => a.id === (t as any).accountId);
+  const destAcct = accounts.find((a) => a.id === (t as any).transferToAccountId);
+  const ext = (t as any).externalPayee as { clabe?: string; bank?: string; name?: string } | undefined;
+  const receipt = (t as any).receipt as string | undefined;
+  const isExpanded = expandedId === t.id;
+
+  return (
+    <React.Fragment key={t.id}>
+      <tr className="border-b border-border last:border-0 hover:bg-muted/20 transition-colors bg-primary/5">
+        <td className="p-3 whitespace-nowrap text-muted-foreground text-xs">{day}</td>
+        <td className="p-3">
+          <div className="flex items-center gap-2">
+            <IconDisplay icon={iconFor(t)} />
+            <span className="font-semibold">{t.concept}</span>
+            <span className="text-[9px] font-bold px-1.5 py-0.5 rounded uppercase bg-primary/20 text-primary">TRASPASO</span>
+          </div>
+        </td>
+        <td className="p-3 text-xs text-muted-foreground">{t.category}</td>
+        <td className="p-3 text-xs">{originAcct?.name ?? "—"}</td>
+        <td className="p-3 text-xs text-muted-foreground">{destAcct?.name ?? (ext?.name ? `Ext: ${ext.name}` : "—")}</td>
+        <td className="p-3 text-right font-bold text-sm whitespace-nowrap text-primary">⇄{fmt(t.amount)}</td>
+        <td className="p-3 text-right whitespace-nowrap">
+          {/* Botón expandir — EL QUE FALTABA */}
+          <button aria-label="Expandir" onClick={() => setExpandedId(isExpanded ? null : t.id)} className="text-muted-foreground hover:text-primary p-1">
+            <ChevronDown className={`size-3.5 transition-transform ${isExpanded ? "rotate-180" : ""}`} />
+          </button>
+          <button aria-label="Editar" onClick={() => openEdit(t as Transaction)} className="text-muted-foreground hover:text-primary p-1">
+            <Pencil className="size-3.5" />
+          </button>
+          <button aria-label="Eliminar" onClick={() => setDeleteConfirm(t as Transaction)} className="text-muted-foreground hover:text-destructive p-1">
+            <Trash2 className="size-3.5" />
+          </button>
+        </td>
+      </tr>
+      {isExpanded && (
+        <tr className="border-b border-border bg-muted/20">
+          <td colSpan={7} className="p-3 text-xs text-muted-foreground space-y-1">
+            <p><span className="font-semibold text-foreground">Cuenta origen:</span> {originAcct?.name ?? "No asignada"}</p>
+            {destAcct && <p><span className="font-semibold text-foreground">Cuenta destino:</span> {destAcct.name}</p>}
+            {ext?.clabe && <p><span className="font-semibold text-foreground">CLABE:</span> {ext.clabe}</p>}
+            {ext?.bank && <p><span className="font-semibold text-foreground">Banco:</span> {ext.bank}</p>}
+            {ext?.name && <p><span className="font-semibold text-foreground">Titular:</span> {ext.name}</p>}
+            {(t as any).note && <p><span className="font-semibold text-foreground">Nota:</span> {(t as any).note}</p>}
+            {receipt && <img src={receipt} alt="comprobante" loading="lazy" className="rounded max-h-36 object-contain mt-1" />}
+          </td>
+        </tr>
+      )}
+    </React.Fragment>
+  );
+}
+```
+
+**Ubicación exacta en el archivo:** Insertar este bloque entre la línea 493 (`}` que cierra el bloque `_virtual` en desktop) y la línea 494 (`const acct = ...` del bloque actual de filas regulares desktop).
+
+> **Nota:** La columna "Método" en desktop actualmente muestra `t.paymentMethod`, pero para `type === "transfer"` el método no es relevante de la misma forma. Se puede reusar la columna "Cuenta" como "Origen" y la columna "Método" como "Destino" reordenando la presentación como se muestra arriba, o mantener la misma estructura de columnas de la tabla y mostrar ambas cuentas en el panel expandido únicamente.
+
+---
+
+### Resumen de Localización de Cambios
+
+| Sección | Líneas actuales | Acción |
+|---|---|---|
+| Mobile — render filas regulares | L408–423 | Insertar bloque `if (t.type === "transfer")` antes del `return` existente |
+| Desktop — render filas regulares | L494–509 | Insertar bloque `if (t.type === "transfer")` antes de `const acct = ...` |
+| Imports | L6 | `ChevronDown` ya está importado ✅ |
+| Estado `expandedId` | L55 | Ya existe, compatible ✅ |
+| `setExpandedId` | L55 | Ya existe, compatible ✅ |
+
+---
+
+### Sin cambios necesarios en otros archivos
+
+- **`finance.ts`:** El tipo `Transaction` ya tiene `transferToAccountId`, `externalPayee` y `receipt`. ✅
+- **`TxForm`:** Ya guarda correctamente todos esos campos. ✅
+- **Store/hooks:** No se necesita ningún cambio. ✅
+
+---
+
+*Diagnóstico generado por análisis estático de código fuente y revisión de historial git. No se modificó ningún archivo de implementación.*
