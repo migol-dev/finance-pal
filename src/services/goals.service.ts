@@ -1,6 +1,7 @@
 import { supabase } from '@/lib/supabase';
 import { AppError, ErrorCodes } from '@/lib/app-error';
-import type { Goal } from '@/lib/finance';
+import type { Goal, Transaction } from '@/lib/finance';
+import { insertTransaction } from '@/services/transactions.service';
 
 // Capa de acceso a datos para metas. Funciones puras contra Supabase SDK.
 // NO importar React, NO importar hooks, NO importar Zustand.
@@ -50,6 +51,8 @@ export interface GoalContributionInput {
   amount: number;
   date?: string;
   accountId?: string;
+  goalName?: string;
+  txId?: string;
 }
 
 const GOAL_COLS =
@@ -195,4 +198,22 @@ export async function addGoalContribution(
       context: { userId, goalId },
     });
   }
+
+  const method: Transaction['paymentMethod'] = input.accountId
+    ? (input.amount >= 0 ? 'transfer' : 'cash')
+    : 'cash';
+
+  const tx: Transaction = {
+    id: input.txId ?? crypto.randomUUID(),
+    type: input.amount >= 0 ? 'saving' : 'income',
+    category: 'Meta',
+    concept: `${input.amount >= 0 ? 'Aporte' : 'Retiro'} ${input.goalName ?? 'Meta'}`,
+    amount: Math.abs(input.amount),
+    date: input.date ?? new Date().toISOString(),
+    accountId: input.accountId,
+    paymentMethod: method,
+  };
+
+  await insertTransaction(userId, tx);
 }
+

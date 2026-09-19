@@ -101,9 +101,11 @@ export function useGoalMutations(): GoalMutations {
 
   const contributeToGoal = useMutation<void, Error, ContributeToGoalInput>({
     mutationFn: async (input) => {
+      const state = useFinance.getState();
+      const updatedGoal = state.goals.find(g => g.id === input.id);
+      const goalName = updatedGoal?.name ?? 'Meta';
+
       if (!isSupabaseEnabled || isOffline()) {
-        const state = useFinance.getState();
-        const updatedGoal = state.goals.find(g => g.id === input.id);
         if (updatedGoal) {
            useSyncStore.getState().addMutation({ 
              table: 'goals', 
@@ -112,13 +114,32 @@ export function useGoalMutations(): GoalMutations {
              payload: { saved: updatedGoal.saved, contributions: updatedGoal.contributions } 
            });
         }
+
+        const method = input.accountId ? (input.amount >= 0 ? 'transfer' : 'cash') : 'cash';
+        useSyncStore.getState().addMutation({
+          table: 'transactions',
+          action: 'INSERT',
+          recordId: crypto.randomUUID(),
+          payload: {
+            type: input.amount >= 0 ? 'saving' : 'income',
+            category: 'Meta',
+            concept: `${input.amount >= 0 ? 'Aporte' : 'Retiro'} ${goalName}`,
+            amount: Math.abs(input.amount),
+            date: input.date ?? new Date().toISOString(),
+            account_id: input.accountId,
+            payment_method: method,
+          }
+        });
         return;
       }
 
       const { data } = await supabase.auth.getUser();
       if (!data.user) throw new Error('No user');
 
-      await addGoalContributionService(data.user.id, input.id, input);
+      await addGoalContributionService(data.user.id, input.id, {
+        ...input,
+        goalName,
+      });
     },
     onMutate: async ({ id, amount, date, accountId }) => {
       useFinance.getState().contributeGoal(id, amount, date, accountId);

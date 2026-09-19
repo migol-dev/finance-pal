@@ -1,474 +1,442 @@
-# Task: Business Rules — TxForm Account Filtering & ExternalPayee
+# Diagnóstico: Abono rápido a Meta — Transacción no se persiste en Supabase
 
-> **Archivo objetivo:** [`src/pages/Movimientos.tsx`](../src/pages/Movimientos.tsx)
-> **Función objetivo:** `TxForm` (líneas 675–827)
-> **Estado:** 🔵 PLANIFICADO — sin cambios en código fuente aún
+> **Estado:** 🔴 BUG CONFIRMADO — arquitectura incompleta identificada
+> **Archivos involucrados:**
+> - [`src/pages/Metas.tsx`](../src/pages/Metas.tsx) — UI del botón de abono
+> - [`src/hooks/useFinanceData.ts`](../src/hooks/useFinanceData.ts) — Fachada de datos
+> - [`src/hooks/mutations/useGoalMutations.ts`](../src/hooks/mutations/useGoalMutations.ts) — **Raíz del bug**
+> - [`src/store/slices/goal-slice.ts`](../src/store/slices/goal-slice.ts) — Zustand local
+> - [`src/services/goals.service.ts`](../src/services/goals.service.ts) — Capa Supabase de metas
+> - [`src/services/transactions.service.ts`](../src/services/transactions.service.ts) — Capa Supabase de transacciones
 
 ---
 
-## 1. Contexto del sistema
+## 1. Mapa del flujo actual (rastreo completo)
 
-### Tipos relevantes (`src/lib/finance.ts`)
+```
+GoalCompactCard (Metas.tsx:476)
+  └─► handleQuickAdd(amount)
+      └─► setConfirmOpen({ amount })
+          └─► ElegantConfirm.onConfirm()
+              └─► onContribute(amount, undefined, defaultAccountId)   [Metas.tsx:530]
+                  │
+                  │  onContribute viene de:
+                  │  GoalCompactCard prop ← Metas.tsx:435
+                  │  (amt, date, acc) => contributeGoal(g.id, amt, date, acc)
+                  ▼
+useFinanceData.contributeGoal (useFinanceData.ts:285-286)
+  └─► goalM.contributeToGoal.mutateAsync({ id, amount, date, accountId })
+      │
+      │  goalM = useGoalMutations()
+      ▼
+useGoalMutations.contributeToGoal (useGoalMutations.ts:102-134)
+  ├─► onMutate:  useFinance.getState().contributeGoal(...)     ← Zustand local ✅
+  └─► mutationFn: addGoalContributionService(userId, goalId, input)  ← Supabase
+      │
+      ▼
+goals.service.addGoalContribution (goals.service.ts:157-198)
+  ├─► SELECT saved, contributions FROM goals WHERE id=goalId
+  ├─► UPDATE goals SET saved=..., contributions=[...newContrib]
+  └─► ❌ NO llama a insertTransaction()
+      ❌ NO toca la tabla 'transactions'
+```
+
+---
+
+## 2. Diagnóstico preciso: ¿Qué falla exactamente?
+
+### Bug primario — `goals.service.addGoalContribution` no inserta la transacción
+
+**Archivo:** [`src/services/goals.service.ts`](../src/services/goals.service.ts) — líneas 157–198
+
+La función `addGoalContribution` en Supabase solo actualiza la tabla `goals`:
+```ts
+// SOLO actualiza goals — NUNCA toca transactions
+const { error: updateError } = await supabase
+  .from('goals')
+  .update({ saved: newSaved, contributions: [...currentContributions, newContribution] })
+  .eq('id', goalId);
+```
+
+No existe ninguna llamada a `insertTransaction()` ni a la tabla `transactions`.
+
+---
+
+### Bug secundario — `goal-slice.contributeGoal` crea la transacción solo en Zustand local
+
+**Archivo:** [`src/store/slices/goal-slice.ts`](../src/store/slices/goal-slice.ts) — líneas 89–131
+
+El slice de Zustand SÍ construye la transacción y la añade al array local:
+```ts
+contributeGoal: (idv, amount, date, accountId) =>
+  set((s) => {
+    const txId = generateSecureId();
+    return {
+      goals: [...], // actualiza meta ✅
+      transactions: [
+        {
+          id: txId,
+          type: amount >= 0 ? 'saving' : 'income',
+          category: 'Meta',
+          concept: `Aporte ${g?.name}`,
+          amount: Math.abs(amount),
+          date: when,
+          accountId,
+          paymentMethod: method,
+        },
+        ...s.transactions,
+      ],  // ← SOLO EN ZUSTAND, nunca llega a Supabase ❌
+    };
+  }),
+```
+
+Esta transacción existe en memoria durante la sesión pero:
+- ❌ No se llama a `insertTransaction()` en Supabase
+- ❌ No pasa por `useTransactionMutations` ni `txM.addTransaction`
+- ❌ No pasa por React Query → no se invalida `financeKeys.transactions()`
+- ❌ Al recargar la página, la transacción desaparece porque React Query re-fetcha desde Supabase
+
+---
+
+### Bug terciario — Invalidación de cache insuficiente en `onSuccess`
+
+**Archivo:** [`src/hooks/mutations/useGoalMutations.ts`](../src/hooks/mutations/useGoalMutations.ts) — líneas 126–128
 
 ```ts
-// Tipo de transacción
-type TxType = "income" | "expense" | "saving" | "transfer";
-
-// Métodos de pago
-type PaymentMethod = "cash" | "transfer" | "card" | "other";
-
-// Cuenta bancaria
-interface Account {
-  id: string;
-  name: string;
-  type: "bank" | "cash" | "other";
-  // ...
-}
-
-// Campos opcionales en Transaction para remitentes externos
-interface Transaction {
-  externalPayee?: { clabe?: string; bank?: string; name?: string };
-  transferToAccountId?: string;
-  // ...
-}
+onSuccess: () => {
+  queryClient.invalidateQueries({ queryKey: financeKeys.goals() });
+  queryClient.invalidateQueries({ queryKey: financeKeys.transactions() }); // ← invalidada pero vacía
+},
 ```
 
-### Estado actual de `TxForm`
+Aunque `onSuccess` invalida `financeKeys.transactions()`, esto solo provoca que React Query re-fetchee desde Supabase, lo que **sobreescribe** la transacción local (de Zustand) con los datos reales de Supabase — donde la transacción no existe. La UI parece correcta brevemente gracias al optimistic update de Zustand, pero al recargar desaparece.
 
-| Estado local | Tipo | Descripción |
+---
+
+## 3. Confirmación de la hipótesis
+
+**La hipótesis es correcta y se puede especificar con precisión:**
+
+> La arquitectura actual tiene una **brecha de sincronización de dos capas**:
+> 1. `goal-slice.contributeGoal` (Zustand) crea la transacción **en memoria** ✅
+> 2. `addGoalContributionService` (Supabase) actualiza la meta en la BD ✅  
+> 3. **FALTA:** Nadie llama a `insertTransaction(userId, tx)` en Supabase ❌
+
+El `goal-slice` fue diseñado antes de la capa React Query y asumía que el sync a Supabase lo haría el sync engine posterior. Con la arquitectura actual de mutations por entidad, esa responsabilidad debe estar en `contributeToGoal.mutationFn`.
+
+---
+
+## 4. Tabla de responsabilidades: estado actual vs esperado
+
+| Responsabilidad | Estado actual | Estado esperado |
 |---|---|---|
-| `type` | `TxType` | Tipo de movimiento seleccionado |
-| `paymentMethod` | `PaymentMethod` | Método de pago |
-| `accountId` | `string \| undefined` | Cuenta de origen o destino principal |
-| `transferToAccountId` | `string \| undefined` | Cuenta destino / `"__external"` |
-| `externalPayee` | `object \| null` | Datos del remitente externo (CLABE, banco, nombre) |
-| `cashAccount` | `Account \| undefined` | Primera cuenta con `type === "cash"` |
-| `bankAccounts` | `Account[]` | Cuentas con `type !== "cash"` |
+| Actualizar `goal.saved` en Zustand | ✅ `goal-slice.contributeGoal` | ✅ igual |
+| Añadir transacción a `ui.transactions` en Zustand | ✅ `goal-slice.contributeGoal` | ✅ igual |
+| Actualizar `goal.saved` en Supabase | ✅ `addGoalContributionService` | ✅ igual |
+| Añadir transacción en Supabase | ❌ **NO existe** | ❌ **FALTA** |
+| Invalidar caché de transacciones | ✅ `onSuccess` (pero inútil) | ✅ igual |
 
 ---
 
-## 2. Reglas de negocio a implementar
+## 5. Análisis de impacto en ambos modos (Supabase ON/OFF)
 
-### Regla 1 — Campos de remitente en Ingresos por transferencia
+### Modo offline (`isOffline() === true`)
 
-**Condición:** `type === "income"` **Y** `paymentMethod === "transfer"`
-
-**Comportamiento esperado:**
-- Mostrar la sección de campos de `externalPayee` (CLABE, banco, nombre del titular/remitente).
-- El label debe decir **"Remitente"** (no "Destinatario" como en gastos).
-- Los campos de `externalPayee` deben ser **opcionales** para `income` (a diferencia de `expense`/`saving` donde son requeridos si se selecciona `__external`).
-- El `transferToAccountId` **no** se debe requerir para `income + transfer`; en cambio, se captura solo el `externalPayee`.
-
-**Bug actual identificado (línea 802):**
-```tsx
-// ACTUAL — excluye income a menos que sea _virtual:
-{type !== "transfer" && paymentMethod === "transfer" && (type !== "income" || (initial as any)?._virtual) && (
-```
-La condición `(type !== "income" || (initial as any)?._virtual)` oculta el bloque de `externalPayee` para `income` real. Esto es incorrecto según la Regla 1.
-
----
-
-### Regla 2 — Filtrado de cuentas (OCULTAR efectivo)
-
-**Condición:** `type !== "transfer"` **Y** (`paymentMethod === "transfer"` **O** `paymentMethod === "card"`)
-
-**Comportamiento esperado:**
-- En el `<Select>` de "Cuenta" (origen): mostrar **solo cuentas no-efectivo** (`a.type !== "cash"`).
-- El efectivo (`cashAccount`) NO debe aparecer en la lista.
-
-**Código actual con el problema (línea 785):**
-```tsx
-{(paymentMethod === "card" || paymentMethod === "transfer" || type === "transfer") &&
-  accounts.map((a: Account) => (
-    <SelectItem key={a.id} value={a.id}>
-      {a.name} {a.type === "cash" ? "· Efectivo" : "· Banco"}
-    </SelectItem>
-  ))
-}
-```
-`accounts.map(...)` sin filtrar incluye la cuenta de efectivo cuando `paymentMethod` es `"transfer"` o `"card"`.
-
----
-
-### Regla 3 — Filtrado de cuentas (MOSTRAR SOLO efectivo)
-
-**Condición:** `type !== "transfer"` **Y** `paymentMethod === "cash"`
-
-**Comportamiento esperado:**
-- En el `<Select>` de "Cuenta": mostrar **únicamente** la cuenta de efectivo (`cashAccount`).
-- Las cuentas bancarias NO deben aparecer.
-
-**Código actual con el problema (línea 784):**
-```tsx
-{paymentMethod === "cash" && cashAccount && (
-  <SelectItem value={cashAccount.id}>{cashAccount.name} · Efectivo</SelectItem>
-)}
-{(paymentMethod === "card" || paymentMethod === "transfer" || type === "transfer") &&
-  accounts.map((a: Account) => ( ... ))
-}
-```
-Esto ya es correcto estructuralmente para `cash` (solo muestra `cashAccount`), pero la segunda condición podría incluir efectivo si el usuario cambia métodos. Hay que asegurar el filtro en la segunda condición.
-
----
-
-## 3. Análisis detallado del código afectado
-
-### 3.1 Bloque de "Cuenta origen" / "Cuenta" (líneas 779–788)
-
-```tsx
-// ACTUAL (línea 779)
-{((type === "transfer") || (type !== "income" && paymentMethod !== "cash")) && (
-  <div>
-    <Label className="text-xs">{type === "transfer" ? "Cuenta origen" : "Cuenta"}</Label>
-    <Select value={accountId} onValueChange={(v) => setAccountId(v)}>
-      <SelectTrigger className="h-10 rounded-xl"><SelectValue /></SelectTrigger>
-      <SelectContent>
-        {/* PROBLEMA: incluye efectivo cuando method=transfer/card */}
-        {paymentMethod === "cash" && cashAccount && (
-          <SelectItem value={cashAccount.id}>{cashAccount.name} · Efectivo</SelectItem>
-        )}
-        {(paymentMethod === "card" || paymentMethod === "transfer" || type === "transfer") &&
-          accounts.map((a: Account) => (           // ← sin filtrar efectivo
-            <SelectItem key={a.id} value={a.id}>
-              {a.name} {a.type === "cash" ? "· Efectivo" : "· Banco"}
-            </SelectItem>
-          ))
-        }
-      </SelectContent>
-    </Select>
-  </div>
-)}
-```
-
-**Corrección requerida:** Reemplazar `accounts.map(...)` por `accounts.filter(a => a.type !== "cash").map(...)` para los casos `"card"` y `"transfer"`.
-
----
-
-### 3.2 Bloque de "Cuenta de destino" para income (líneas 790–800)
-
-```tsx
-// ACTUAL (línea 790)
-{(type === "income" || type === "transfer") && (
-  <div>
-    <Label className="text-xs">
-      {type === "transfer" ? "Cuenta destino" : "Cuenta de destino"}
-    </Label>
-    <Select ...>
-      <SelectContent>
-        {/* Solo muestra efectivo si income+cash */}
-        {type === "income" && paymentMethod === "cash" && cashAccount && (
-          <SelectItem value={cashAccount.id}>{cashAccount.name} · Efectivo</SelectItem>
-        )}
-        {/* Solo muestra no-efectivo si transfer o income+no-cash */}
-        {(type === "transfer" || (type === "income" && paymentMethod !== "cash")) &&
-          accounts.map((a: Account) => ( ... ))   // ← también sin filtrar para income
-        }
-      </SelectContent>
-    </Select>
-  </div>
-)}
-```
-
-**Corrección requerida para Regla 2:** Para `income + transfer/card`, el select de destino debe mostrar solo cuentas no-efectivo: `accounts.filter(a => a.type !== "cash").map(...)`.
-
----
-
-### 3.3 Bloque de "Destinatario" / externalPayee (líneas 802–822)
-
-```tsx
-// ACTUAL (línea 802) — EXCLUYE income real
-{type !== "transfer" && paymentMethod === "transfer" && (type !== "income" || (initial as any)?._virtual) && (
-  <div className="lg:col-span-2">
-    <Label className="text-xs">Destinatario</Label>
-    <Select value={transferToAccountId} onValueChange={...}>
-      <SelectContent>
-        {accounts.filter((a: Account) => a.id !== accountId).map(...)}
-        <SelectItem value="__external">Cuenta externa (otra persona)</SelectItem>
-      </SelectContent>
-    </Select>
-    {transferToAccountId === "__external" && (
-      <div className="space-y-2 mt-2">
-        <Input placeholder="CLABE (18 dígitos)" ... />
-        <Input placeholder="Banco" ... />
-        <Input placeholder="Nombre del titular" ... />
-        {/* comprobante */}
-      </div>
-    )}
-  </div>
-)}
-```
-
-**Corrección para Regla 1:** El bloque debe dividirse en dos sub-bloques:
-
-1. **Para `income + transfer`:** Mostrar directamente los campos de `externalPayee` (CLABE, banco, nombre del remitente) con label "Remitente", SIN el select de `transferToAccountId`. Los campos son opcionales.
-2. **Para `expense/saving + transfer`:** Mantener el bloque actual (select de destinatario + campos de `__external`).
-
----
-
-## 4. Derivados de lógica de guardado (`onSubmit`)
-
-En el `onSubmit` (líneas 709–750), también hay que ajustar:
-
-```tsx
-// ACTUAL — línea 721: para income+transfer requiere transferToAccountId
-if (type !== "income" && !transferToAccountId) {
-  toast.error("Selecciona la cuenta destino");
-  return;
-}
-```
-
-**Para Regla 1:** Cuando `type === "income" && paymentMethod === "transfer"`:
-- No requirir `transferToAccountId`.
-- Guardar `externalPayee` si se llenó (opcional).
-- `payload.accountId` = cuenta de destino (donde llega el ingreso).
-- `payload.externalPayee` = datos del remitente (si se completaron).
-
----
-
-## 5. Interfaces afectadas
-
-| Interfaz/Componente | Tipo de cambio | Descripción |
-|---|---|---|
-| `TxForm` (líneas 675–827) | **Lógica de render** | Tres bloques de render JSX condicional |
-| `TxForm.onSubmit` (líneas 709–750) | **Lógica de negocio** | Ajustar serialización para `income+transfer` |
-| `Transaction.externalPayee` | Sin cambios | Ya soporta la estructura necesaria |
-| `computeBalances` en `finance.ts` | Sin cambios | Ya maneja `income` con `accountId` |
-| `transaction-slice.ts` | Sin cambios | Ya persiste `externalPayee` sin validación estricta |
-
----
-
-## 6. Pasos de implementación (ordenados)
-
-### Paso 1 — Derivar listas de cuentas filtradas con `useMemo`
-
-**Ubicación:** Dentro de `TxForm`, después de la línea 698 (donde se define `bankAccounts`).
-
-Agregar las listas derivadas:
-```tsx
-// Cuentas visibles en el select de "Cuenta" según método
-const visibleAccounts = useMemo(() => {
-  if (paymentMethod === "cash") return cashAccount ? [cashAccount] : [];
-  if (paymentMethod === "transfer" || paymentMethod === "card") {
-    return accounts.filter((a: Account) => a.type !== "cash");
+```ts
+// useGoalMutations.ts línea 104-115
+if (!isSupabaseEnabled || isOffline()) {
+  const state = useFinance.getState();
+  const updatedGoal = state.goals.find(g => g.id === input.id);
+  if (updatedGoal) {
+    useSyncStore.getState().addMutation({
+      table: 'goals',
+      action: 'UPDATE',
+      recordId: updatedGoal.id,
+      payload: { saved: updatedGoal.saved, contributions: updatedGoal.contributions }
+    });
   }
-  return accounts;
-}, [paymentMethod, accounts, cashAccount]);
-```
-
-> **Nota:** Usar `useMemo` con `[paymentMethod, accounts, cashAccount]` como dependencias.
-
----
-
-### Paso 2 — Corregir el `<SelectContent>` de "Cuenta origen" (línea 783–786)
-
-**Reemplazar** el bloque actual:
-```tsx
-// ANTES
-{paymentMethod === "cash" && cashAccount && <SelectItem .../>}
-{(paymentMethod === "card" || paymentMethod === "transfer" || type === "transfer") &&
-  accounts.map((a: Account) => <SelectItem .../>)
-}
-
-// DESPUÉS — usar visibleAccounts
-{visibleAccounts.map((a: Account) => (
-  <SelectItem key={a.id} value={a.id}>
-    {a.name} {a.type === "cash" ? "· Efectivo" : "· Banco"}
-  </SelectItem>
-))}
-```
-
----
-
-### Paso 3 — Corregir el `<SelectContent>` de "Cuenta de destino" para income (línea 794–796)
-
-Para `income + transfer/card`, filtrar efectivo:
-```tsx
-// ANTES
-{(type === "transfer" || (type === "income" && paymentMethod !== "cash")) &&
-  accounts.map((a: Account) => <SelectItem .../>)
-}
-
-// DESPUÉS
-{type === "income" && paymentMethod === "cash" && cashAccount && (
-  <SelectItem value={cashAccount.id}>{cashAccount.name} · Efectivo</SelectItem>
-)}
-{(type === "transfer" || (type === "income" && paymentMethod !== "cash")) &&
-  accounts
-    .filter((a: Account) => type === "income" && paymentMethod !== "cash"
-      ? a.type !== "cash"
-      : true)
-    .map((a: Account) => (
-      <SelectItem key={a.id} value={a.id}>
-        {a.name} {a.type === "cash" ? "· Efectivo" : "· Banco"}
-      </SelectItem>
-    ))
+  return; // ← No encola la transacción tampoco ❌
 }
 ```
 
+En modo offline TAMBIÉN falta encolar la mutación de transacción en el `useSyncStore`.
+
+### Modo online con Supabase activado
+
+Como se describió: `addGoalContributionService` no llama a `insertTransaction`.
+
 ---
 
-### Paso 4 — Refactorizar el bloque de externalPayee / Remitente (línea 802–822)
+## 6. Plan de solución exacto (5 pasos)
 
-**Reemplazar** el bloque completo con dos ramas:
+### Paso 1 — Añadir `insertTransaction` al servicio de metas
 
-```tsx
-{/* Regla 1: income + transfer → campos de remitente (opcionales) */}
-{type === "income" && paymentMethod === "transfer" && (
-  <div className="lg:col-span-2 space-y-2">
-    <Label className="text-xs">Remitente (opcional)</Label>
-    <Input
-      placeholder="Nombre del remitente"
-      value={externalPayee?.name ?? ""}
-      onChange={(e) => setExternalPayee({ ...(externalPayee ?? {}), name: e.target.value })}
-      className="h-10 rounded-xl"
-    />
-    <Input
-      placeholder="Banco"
-      value={externalPayee?.bank ?? ""}
-      onChange={(e) => setExternalPayee({ ...(externalPayee ?? {}), bank: e.target.value })}
-      className="h-10 rounded-xl"
-    />
-    <Input
-      placeholder="CLABE (18 dígitos)"
-      value={externalPayee?.clabe ?? ""}
-      onChange={(e) => setExternalPayee({ ...(externalPayee ?? {}), clabe: e.target.value })}
-      className="h-10 rounded-xl"
-    />
-  </div>
-)}
+**Archivo:** `src/services/goals.service.ts`
 
-{/* Regla existente: expense/saving + transfer → select de destinatario */}
-{type !== "transfer" && type !== "income" && paymentMethod === "transfer" && (
-  <div className="lg:col-span-2">
-    <Label className="text-xs">Destinatario</Label>
-    <Select value={transferToAccountId} onValueChange={(v) => setTransferToAccountId(v || undefined)}>
-      <SelectTrigger className="h-10 rounded-xl"><SelectValue placeholder="Seleccione destinatario" /></SelectTrigger>
-      <SelectContent>
-        {accounts.filter((a: Account) => a.id !== accountId).map((a: Account) => (
-          <SelectItem key={a.id} value={a.id}>Cuenta propia: {a.name}</SelectItem>
-        ))}
-        <SelectItem value="__external">Cuenta externa (otra persona)</SelectItem>
-      </SelectContent>
-    </Select>
-    {transferToAccountId === "__external" && (
-      <div className="space-y-2 mt-2">
-        <Input placeholder="CLABE (18 dígitos)" value={externalPayee?.clabe ?? ""} onChange={(e) => setExternalPayee({ ...(externalPayee ?? {}), clabe: e.target.value })} className="h-10 rounded-xl" />
-        <Input placeholder="Banco" value={externalPayee?.bank ?? ""} onChange={(e) => setExternalPayee({ ...(externalPayee ?? {}), bank: e.target.value })} className="h-10 rounded-xl" />
-        <Input placeholder="Nombre del titular" value={externalPayee?.name ?? ""} onChange={(e) => setExternalPayee({ ...(externalPayee ?? {}), name: e.target.value })} className="h-10 rounded-xl" />
-        <div>
-          <Label className="text-xs">Comprobante</Label>
-          <input type="file" accept="image/*" onChange={(e) => { const f = e.target.files?.[0]; if (!f) return; const reader = new FileReader(); reader.onload = () => setReceiptData(typeof reader.result === "string" ? reader.result : undefined); reader.readAsDataURL(f); }} />
-        </div>
-        {receiptData && <img src={receiptData} alt="comprobante" className="mt-1 rounded max-h-32 object-contain" />}
-      </div>
-    )}
-  </div>
-)}
+Importar `insertTransaction` al principio:
+```ts
+import { insertTransaction } from '@/services/transactions.service';
+import type { Transaction } from '@/lib/finance';
+import { generateSecureId } from '@/lib/sanitizers';
 ```
 
----
-
-### Paso 5 — Ajustar `onSubmit` para `income + transfer`
-
-**Reemplazar** el bloque `else if (paymentMethod === "transfer")` (líneas 719–742):
-
-```tsx
-} else if (paymentMethod === "transfer") {
-  if (!accountId) {
-    toast.error(type === "income" ? "Selecciona la cuenta de destino" : "Selecciona la cuenta origen");
-    return;
-  }
-  payload.accountId = accountId;
-
-  if (type === "income") {
-    // Regla 1: externalPayee es opcional; limpiar clabe si hay
-    if (externalPayee?.clabe) {
-      const cleanedClabe = externalPayee.clabe.replace(/\s+/g, "");
-      if (cleanedClabe && !/^[0-9]{18}$/.test(cleanedClabe)) {
-        toast.error("CLABE inválida (18 dígitos)");
-        return;
-      }
-      payload.externalPayee = { ...externalPayee, clabe: cleanedClabe || undefined };
-    } else if (externalPayee?.name || externalPayee?.bank) {
-      payload.externalPayee = externalPayee;
-    }
-  } else {
-    // Expense / saving: mantener lógica actual (destinatario requerido)
-    if (!transferToAccountId) { toast.error("Selecciona la cuenta destino"); return; }
-    if (transferToAccountId === "__external") {
-      const c = externalPayee?.clabe ?? "";
-      const cleanedClabe = c.replace(/\s+/g, "");
-      if (!/^[0-9]{18}$/.test(cleanedClabe)) { toast.error("CLABE inválida (18 dígitos)"); return; }
-      if (!externalPayee?.bank || !externalPayee?.name) { toast.error("Completa los datos del beneficiario externo"); return; }
-      payload.externalPayee = { ...externalPayee, clabe: cleanedClabe };
-    } else if (transferToAccountId) {
-      payload.transferToAccountId = transferToAccountId;
-    }
-    // receipt handling (mantener igual)
-    if (receiptData) {
-      if (Capacitor.isNativePlatform()) {
-        try {
-          const m = receiptData.match(/^data:(image\/[^;]+);base64,(.*)$/);
-          const base64 = m ? m[2] : receiptData.split(",")[1];
-          const mime = m ? m[1] : "image/png";
-          const ext = mime.split("/")[1] || "png";
-          const fname = `receipt-${Date.now()}.${ext}`;
-          const res = await Filesystem.writeFile({ path: `receipts/${fname}`, data: base64, directory: Directory.Data, encoding: Encoding.UTF8 });
-          payload.receipt = res.uri ?? `receipts/${fname}`;
-        } catch { payload.receipt = receiptData; }
-      } else { payload.receipt = receiptData; }
-    }
-  }
+Extender la interfaz de input para recibir el `userId` que necesita `insertTransaction`:
+```ts
+export interface GoalContributionInput {
+  amount: number;
+  date?: string;
+  accountId?: string;
+  // Añadir para construir la transacción:
+  goalName?: string;  // para el campo "concept"
 }
 ```
 
----
+Al final de `addGoalContribution`, después del `UPDATE` exitoso, insertar la transacción:
+```ts
+// --- Después del UPDATE de goal exitoso ---
+const method: Transaction['paymentMethod'] =
+  input.accountId
+    ? (input.amount >= 0 ? 'transfer' : 'cash') // simplificado; el slice tiene la lógica
+    : 'cash';
 
-## 7. Matriz de combinaciones type × method
+const tx: Transaction = {
+  id: crypto.randomUUID(),
+  type: input.amount >= 0 ? 'saving' : 'income',
+  category: 'Meta',
+  concept: `${input.amount >= 0 ? 'Aporte' : 'Retiro'} ${input.goalName ?? 'Meta'}`,
+  amount: Math.abs(input.amount),
+  date: input.date ?? new Date().toISOString(),
+  accountId: input.accountId,
+  paymentMethod: method,
+};
 
-| `type` | `method` | Cuenta visible | Muestra externalPayee |
-|---|---|---|---|
-| `income` | `cash` | Solo efectivo | ❌ |
-| `income` | `transfer` | Solo banco/other | ✅ Remitente (opcional) |
-| `income` | `card` | Solo banco/other | ❌ |
-| `expense` | `cash` | Solo efectivo | ❌ |
-| `expense` | `transfer` | Solo banco/other | ✅ Destinatario (requerido si __external) |
-| `expense` | `card` | Solo banco/other | ❌ |
-| `saving` | `cash` | Solo efectivo | ❌ |
-| `saving` | `transfer` | Solo banco/other | ✅ Destinatario (requerido si __external) |
-| `transfer` | *(N/A)* | Todas | ❌ (usa accounts internos) |
-
----
-
-## 8. Precauciones y efectos secundarios
-
-> [!WARNING]
-> Al cambiar el método de pago en el form, el `accountId` puede quedar stale apuntando a una cuenta que ya no aparece en la lista filtrada. Hay que asegurarse de que el `useEffect` existente (línea 700–704) también resetee `accountId` cuando `visibleAccounts` no contenga el `accountId` actual.
+await insertTransaction(userId, tx);
+```
 
 > [!IMPORTANT]
-> La función `computeBalances` en `finance.ts` ya soporta `income` con `accountId` explícito. Si `income + transfer` guarda `accountId` (cuenta de destino donde llega el dinero), el balance se calculará correctamente como crédito a esa cuenta.
-
-> [!NOTE]
-> El campo `externalPayee` en `income + transfer` es **solo informativo** (¿de dónde vino el dinero?). No afecta la lógica de balances; solo sirve para visualización en el historial.
+> `addGoalContribution` ya recibe `userId` como primer parámetro, por lo que `insertTransaction(userId, tx)` funciona sin cambios adicionales.
 
 ---
 
-## 9. Archivos que **NO** se deben tocar
+### Paso 2 — Sincronizar el `txId` entre Zustand y Supabase
 
-- `src/lib/finance.ts` — Los tipos ya soportan `externalPayee` en `Transaction`.
-- `src/store/slices/transaction-slice.ts` — No requiere cambios; ya persiste el `payload` tal como viene.
-- `src/services/transactions.service.ts` — Sin cambios.
-- Cualquier archivo de test existente — Se actualizarán por separado si es necesario.
+**Problema de coherencia:** El `goal-slice` genera su propio `txId = generateSecureId()` en `contributeGoal`, y el servicio generaría otro UUID diferente con `crypto.randomUUID()`. Esto crea dos registros con IDs distintos, uno en Zustand y otro en Supabase.
+
+**Solución:** Propagar el `txId` desde `useGoalMutations.onMutate` al `mutationFn`:
+
+**Archivo:** `src/hooks/mutations/useGoalMutations.ts`
+
+Modificar `ContributeToGoalInput` para incluir el `txId`:
+```ts
+export interface ContributeToGoalInput {
+  id: string;
+  amount: number;
+  date?: string;
+  accountId?: string;
+  goalName?: string; // Añadir para pasar al servicio
+}
+```
+
+En `onMutate`, capturar el `txId` generado por Zustand antes de que se ejecute:
+
+```ts
+onMutate: async ({ id, amount, date, accountId }) => {
+  // Zustand genera txId internamente en contributeGoal
+  // Para sincronizar IDs necesitamos extraer el tx recién creado
+  useFinance.getState().contributeGoal(id, amount, date, accountId);
+  // Alternativa más limpia: ver Paso 3
+},
+```
+
+> [!TIP]
+> La solución más limpia es que `goal-slice.contributeGoal` **devuelva el txId** generado, o que el `txId` se genere **en `useGoalMutations`** y se pase como parámetro tanto a Zustand como a Supabase. Ver Paso 3.
+
+---
+
+### Paso 3 — Refactorizar la generación de `txId` a `useGoalMutations`
+
+**Archivo:** `src/hooks/mutations/useGoalMutations.ts`
+
+La solución correcta es generar el `txId` en el hook de mutación (que tiene visibilidad de toda la operación) y pasarlo a ambas capas:
+
+```ts
+// Añadir txId al input
+export interface ContributeToGoalInput {
+  id: string;
+  amount: number;
+  date?: string;
+  accountId?: string;
+  goalName?: string;
+  txId?: string; // ID predeterminado para sincronizar ambas capas
+}
+
+const contributeToGoal = useMutation<void, Error, ContributeToGoalInput>({
+  mutationFn: async (input) => {
+    const { id, amount, date, accountId, goalName, txId } = input;
+
+    if (!isSupabaseEnabled || isOffline()) {
+      // Offline: encolar AMBAS mutations
+      const state = useFinance.getState();
+      const updatedGoal = state.goals.find(g => g.id === id);
+      if (updatedGoal) {
+        useSyncStore.getState().addMutation({
+          table: 'goals',
+          action: 'UPDATE',
+          recordId: updatedGoal.id,
+          payload: { saved: updatedGoal.saved, contributions: updatedGoal.contributions }
+        });
+      }
+      // Encolar también la transacción offline
+      const method = accountId ? 'transfer' : 'cash';
+      useSyncStore.getState().addMutation({
+        table: 'transactions',
+        action: 'INSERT',
+        recordId: txId ?? crypto.randomUUID(),
+        payload: {
+          type: amount >= 0 ? 'saving' : 'income',
+          category: 'Meta',
+          concept: `${amount >= 0 ? 'Aporte' : 'Retiro'} ${goalName ?? 'Meta'}`,
+          amount: Math.abs(amount),
+          date: date ?? new Date().toISOString(),
+          accountId,
+          paymentMethod: method,
+        }
+      });
+      return;
+    }
+
+    const { data } = await supabase.auth.getUser();
+    if (!data.user) throw new Error('No user');
+
+    // Online: ambas operaciones en Supabase
+    await addGoalContributionService(data.user.id, id, { amount, date, accountId, goalName });
+    // La transacción se inserta dentro de addGoalContributionService (Paso 1)
+    // O se puede hacer aquí para más control:
+    // await insertTransactionService(data.user.id, buildTx(txId, input, goalName));
+  },
+
+  onMutate: async ({ id, amount, date, accountId }) => {
+    // Zustand actualiza optimistamente meta + transacción local
+    useFinance.getState().contributeGoal(id, amount, date, accountId);
+  },
+
+  onSuccess: () => {
+    queryClient.invalidateQueries({ queryKey: financeKeys.goals() });
+    queryClient.invalidateQueries({ queryKey: financeKeys.transactions() });
+  },
+  onError: () => {
+    queryClient.invalidateQueries({ queryKey: financeKeys.goals() });
+    queryClient.invalidateQueries({ queryKey: financeKeys.transactions() });
+  },
+});
+```
+
+---
+
+### Paso 4 — Pasar `goalName` desde el sitio de llamada
+
+**Archivo:** `src/hooks/useFinanceData.ts`
+
+La firma actual de `contributeGoal` en la fachada es:
+```ts
+// ACTUAL (línea 285-286)
+contributeGoal: (id: string, amount: number, date?: string, accountId?: string) =>
+  goalM.contributeToGoal.mutateAsync({ id, amount, date, accountId }),
+```
+
+Para que el servicio pueda construir el concepto de la transacción necesita el nombre de la meta. La solución más simple es que el hook de mutación lo resuelva internamente desde Zustand:
+
+```ts
+// En useGoalMutations.ts — dentro de mutationFn, antes de llamar al servicio
+const state = useFinance.getState();
+const goal = state.goals.find(g => g.id === input.id);
+const goalName = goal?.name ?? 'Meta';
+```
+
+Esto evita cambiar la firma pública de `contributeGoal` en `useFinanceData`.
+
+---
+
+### Paso 5 — Verificar el `onSuccess` e invalidación
+
+El `onSuccess` actual ya invalida correctamente ambas queries:
+```ts
+onSuccess: () => {
+  queryClient.invalidateQueries({ queryKey: financeKeys.goals() });
+  queryClient.invalidateQueries({ queryKey: financeKeys.transactions() }); // ✅ ya existe
+},
+```
+
+Después de los Pasos 1–4, esta invalidación forzará el re-fetch desde Supabase, que ahora SÍ tendrá la transacción, y la UI quedará consistente.
+
+---
+
+## 7. Diagrama del flujo corregido
+
+```
+GoalCompactCard.onContribute(amount, date, accountId)
+  └─► useFinanceData.contributeGoal(id, amount, date, accountId)
+      └─► goalM.contributeToGoal.mutateAsync({ id, amount, date, accountId })
+          │
+          ├─► onMutate (optimistic):
+          │     useFinance.getState().contributeGoal(...)
+          │     → Zustand: goals updated ✅
+          │     → Zustand: transactions[] updated (local) ✅
+          │
+          └─► mutationFn (red):
+              ├─► isOffline?
+              │     useSyncStore.addMutation('goals', UPDATE) ✅
+              │     useSyncStore.addMutation('transactions', INSERT) ✅ [NUEVO]
+              └─► online:
+                    addGoalContributionService(userId, goalId, input)
+                      ├─► UPDATE goals SET saved, contributions ✅
+                      └─► insertTransaction(userId, tx) ✅ [NUEVO]
+          │
+          └─► onSuccess:
+                invalidateQueries(goals) ✅
+                invalidateQueries(transactions) ✅
+                → React Query re-fetcha desde Supabase
+                → UI muestra datos reales de BD ✅
+```
+
+---
+
+## 8. Riesgos y consideraciones
+
+> [!WARNING]
+> **Transaccionalidad parcial:** Si `addGoalContribution` actualiza la meta en Supabase pero falla al insertar la transacción, la meta queda actualizada pero sin transacción. Supabase no tiene transacciones distribuidas en el SDK de JS. Para mitigarlo, insertar la transacción **primero** y luego actualizar la meta; si la meta falla, eliminar la transacción.
+
+> [!WARNING]
+> **Modo offline — Zustand sobreescrito por React Query:** Cuando el usuario vuelve online y `onSuccess` invalida el cache, React Query re-fetcha desde Supabase y sobreescribe el Zustand optimista. En modo offline esto está bien porque el sync posterior subirá los datos. Pero si el usuario navega a Movimientos en modo offline y luego vuelve online, la transacción local puede desaparecer brevemente hasta que el sync engine la suba.
+
+> [!NOTE]
+> **`goal-slice.contributeGoal` sigue siendo necesario** para el optimistic update local. No eliminarlo; solo asegurar que `mutationFn` también haga la persistencia a Supabase.
+
+> [!IMPORTANT]
+> **`generateSecureId` vs `crypto.randomUUID()`:** En `goal-slice.ts` se usa `generateSecureId()` de sanitizers, mientras que `goals.service.ts` usa `crypto.randomUUID()`. Para que Zustand y Supabase tengan el mismo `txId`, generar el ID en `useGoalMutations` y pasarlo como parámetro a ambas capas. La función `generateSecureId` en sanitizers debe ser importada en el hook de mutación.
+
+---
+
+## 9. Archivos a modificar (resumen)
+
+| Archivo | Tipo de cambio | Descripción |
+|---|---|---|
+| `src/services/goals.service.ts` | **Crítico** | Añadir llamada a `insertTransaction` al final de `addGoalContribution` |
+| `src/hooks/mutations/useGoalMutations.ts` | **Crítico** | Encolar transacción en modo offline + pasar `goalName` |
+| `src/store/slices/goal-slice.ts` | **Opcional** | No requiere cambios de comportamiento, pero se podría limpiar para no generar `txId` interno |
+| `src/hooks/useFinanceData.ts` | **Sin cambios** | La firma pública no necesita cambiar |
+| `src/pages/Metas.tsx` | **Sin cambios** | La UI ya pasa los parámetros correctos |
+| `src/services/transactions.service.ts` | **Sin cambios** | `insertTransaction` ya existe y funciona |
 
 ---
 
 ## 10. Checklist de implementación
 
-- [ ] Paso 1: Agregar `useMemo` `visibleAccounts` en `TxForm`
-- [ ] Paso 2: Corregir `<SelectContent>` en bloque "Cuenta origen"
-- [ ] Paso 3: Corregir `<SelectContent>` en bloque "Cuenta de destino" para `income`
-- [ ] Paso 4: Refactorizar bloque `externalPayee` en dos ramas (`income` vs `expense/saving`)
-- [ ] Paso 5: Ajustar `onSubmit` para serialización de `income + transfer`
-- [ ] Verificar: cambio de método resetea `accountId` si queda fuera de `visibleAccounts`
-- [ ] Verificar: UX — label "Remitente" vs "Destinatario" según contexto
-- [ ] Verificar: que `saving + transfer` sigue funcionando igual que `expense + transfer`
+- [ ] **Paso 1:** En `goals.service.ts`, añadir `await insertTransaction(userId, tx)` al final de `addGoalContribution`
+- [ ] **Paso 1b:** Resolver `goalName` en el servicio desde el parámetro de input
+- [ ] **Paso 3:** En `useGoalMutations.ts`, en el bloque `isOffline`, encolar también la transacción en `useSyncStore`
+- [ ] **Paso 4:** Resolver `goalName` internamente en `mutationFn` desde `useFinance.getState().goals`
+- [ ] Verificar que el orden de operaciones en `addGoalContribution` es: INSERT transaction → UPDATE goal (para rollback más limpio si falla)
+- [ ] Probar flujo online: meta se actualiza + transacción aparece en Movimientos + persiste tras recarga
+- [ ] Probar flujo offline: transacción aparece localmente + sync cuando vuelve online
+- [ ] Verificar que invalidaciones de React Query reflejan los datos reales de Supabase tras `onSuccess`

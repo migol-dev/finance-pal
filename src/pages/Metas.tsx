@@ -119,10 +119,13 @@ function FolderTreeNode({
 
   return (
     <div className="group">
-      <button
+      <div
+        role="button"
+        tabIndex={0}
         onClick={() => onSelect(folder.id)}
+        onKeyDown={(e) => e.key === 'Enter' && onSelect(folder.id)}
         className={cn(
-          "w-full flex items-center gap-2 px-2 py-1.5 rounded-xl text-sm font-medium transition",
+          "w-full flex items-center gap-2 px-2 py-1.5 rounded-xl text-sm font-medium transition cursor-pointer",
           isSelected ? "bg-primary text-primary-foreground shadow-glow" : "hover:bg-accent text-accent-foreground"
         )}
         style={{ paddingLeft: 8 + indent }}
@@ -155,7 +158,7 @@ function FolderTreeNode({
             <Trash2 className="size-3.5" />
           </button>
         </div>
-      </button>
+      </div>
       
       {expanded && hasChildren && (
         <div className="mt-0.5">
@@ -612,7 +615,7 @@ function GoalDetailContent({ goal, onEdit, onDelete, onContribute, onTogglePin, 
         open={!!confirmOpen}
         onOpenChange={(v) => !v && setConfirmOpen(null)}
         title="¿Confirmar aporte?"
-        description={<p className="text-sm text-muted-foreground">Vas a añadir <span className="font-bold text-foreground">{fmt(confirmOpen?.amount ?? 0)}</span> a tu meta <span className="font-bold text-foreground">"{goal.name}"</span>.</p>}
+        description={<span className="text-sm text-muted-foreground block">Vas a añadir <span className="font-bold text-foreground">{fmt(confirmOpen?.amount ?? 0)}</span> a tu meta <span className="font-bold text-foreground">"{goal.name}"</span>.</span>}
         onConfirm={() => {
           if (confirmOpen) {
             const defaultAccountId = accounts[0]?.id;
