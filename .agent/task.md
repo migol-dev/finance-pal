@@ -1,560 +1,474 @@
-# Diagnóstico Arquitectónico: Fallos Críticos en la Capa Offline-First
+# Task: Business Rules — TxForm Account Filtering & ExternalPayee
 
-> **Fecha de diagnóstico:** 2026-09-19  
-> **Versión analizada:** Finance Pal V1.19.38  
-> **Severidad:** CRÍTICA — los tres errores son síntomas de un único defecto de diseño raíz
-
----
-
-## Resumen Ejecutivo
-
-Los tres errores reportados no son independientes. Son síntomas de una **violación sistemática del contrato optimistic-update** en la arquitectura offline-first: `onMutate` escribe al store local *antes* de que la cuenta exista en Supabase, `mutationFn` lee el store local ya-actualizado y asume que Supabase ya conoce ese registro, y las queries de React Query se activan con `session` todavía ausente durante el arranque. El patrón erróneo se replica tanto en `useTransactionMutations` como en `useAccountMutations`.
+> **Archivo objetivo:** [`src/pages/Movimientos.tsx`](../src/pages/Movimientos.tsx)
+> **Función objetivo:** `TxForm` (líneas 675–827)
+> **Estado:** 🔵 PLANIFICADO — sin cambios en código fuente aún
 
 ---
 
-## Error 1 — Postgres Error 23503: Foreign Key `transactions_account_id_fkey`
+## 1. Contexto del sistema
 
-### Causa Raíz
+### Tipos relevantes (`src/lib/finance.ts`)
 
-**Race condition en el orden de ejecución de `onMutate` vs `mutationFn` dentro de `useTransactionMutations.addTransaction`.**
+```ts
+// Tipo de transacción
+type TxType = "income" | "expense" | "saving" | "transfer";
 
-```
-Flujo actual (INCORRECTO):
-┌─────────────────────────────────────────────────────────────┐
-│ 1. mutationFn se ejecuta                                    │
-│    └─ Lee state.transactions[0] del store                   │
-│       ✗ PROBLEMA: transactions[0] es la transacción ANTIGUA │
-│         porque onMutate todavía NO ha corrido               │
-│                                                             │
-│ 2. onMutate se ejecuta                                      │
-│    └─ Llama a addTx(payload) → la nueva tx entra al store   │
-│       como transactions[0]                                  │
-│                                                             │
-│ 3. mutationFn ya terminó con el registro INCORRECTO         │
-└─────────────────────────────────────────────────────────────┘
-```
+// Métodos de pago
+type PaymentMethod = "cash" | "transfer" | "card" | "other";
 
-**Evidencia en el código** ([`useTransactionMutations.ts` L27–42](file:///E:/Projectos/Aplications/Finance%20Pal/Finance%20Pal%20APP/Finance%20Pal%20V1.19.38/finance-pal/src/hooks/mutations/useTransactionMutations.ts#L27-L42)):
-
-```typescript
-mutationFn: async (payload) => {
-  const state = useFinance.getState();
-  const transaction = state.transactions[0]; // ← LEE EL STORE EN ESTE MOMENTO
+// Cuenta bancaria
+interface Account {
+  id: string;
+  name: string;
+  type: "bank" | "cash" | "other";
   // ...
-  await insertTransaction(data.user.id, transaction); // ← Usa datos incorrectos
-},
-onMutate: async (payload) => {
-  await useFinance.getState().addTx(payload); // ← ESTO OCURRE DESPUÉS de mutationFn
-},
-```
+}
 
-**Comportamiento de React Query TanStack v5:** `onMutate` se ejecuta sincrónicamente antes del `await` de `mutationFn` según la documentación, pero en la implementación actual `mutationFn` inicia y llama a `getState()` antes de que `addTx` en `onMutate` haya completado su ciclo async (la función `addTx` en `transaction-slice.ts` es `async`). 
-
-**El problema secundario del Foreign Key 23503** se produce porque la `account_id` que lleva la transacción enviada a Supabase corresponde a una cuenta que **solo existe localmente en Zustand** (fue creada offline o en una sesión previa sin haberse sincronizado nunca a Postgres). La tabla `transactions` tiene una FK `account_id → accounts.id`. Cuando la cuenta padre no existe en Supabase al momento del upsert de la transacción, Postgres rechaza con violación de FK 23503.
-
-**La arquitectura no implementa ningún mecanismo de garantía de orden de inserción** ("accounts before transactions"). Ambos recursos se sincronizan de forma independiente y no coordinada.
-
-**Flujo que causa el FK 23503:**
-```
-Usuario (online, primera sesión):
-  1. Crea cuenta "Efectivo" → addAccount() → solo en Zustand local
-     (La cuenta existe localmente pero nunca llega a Supabase porque
-      isOffline() es false pero insertAccount() nunca fue llamado)
-
-  2. Crea gasto vinculado a esa cuenta
-     → insertTransaction(userId, tx) donde tx.account_id = id_local_no_existente
-     → Supabase: FK violation 23503 porque accounts.id no existe
-```
-
-**Problema adicional en `useAccountMutations.addAccount`** ([`useAccountMutations.ts` L28–43](file:///E:/Projectos/Aplications/Finance%20Pal/Finance%20Pal%20APP/Finance%20Pal%20V1.19.38/finance-pal/src/hooks/mutations/useAccountMutations.ts#L28-L43)):
-
-```typescript
-mutationFn: async (payload) => {
-  const state = useFinance.getState();
-  const account = state.accounts[0]; // ← MISMO DEFECTO: lee [0], no el registro nuevo
+// Campos opcionales en Transaction para remitentes externos
+interface Transaction {
+  externalPayee?: { clabe?: string; bank?: string; name?: string };
+  transferToAccountId?: string;
   // ...
-  await insertAccount(data.user.id, account);
-},
-onMutate: async (payload) => {
-  await useFinance.getState().addAccount(payload); // ← se ejecuta DESPUÉS
-},
-```
-
-Idéntico anti-patrón: `mutationFn` accede a `accounts[0]` esperando que sea la cuenta recién añadida, pero en el momento de esa lectura, `onMutate` todavía no ha corrido `addAccount`. Resultado: **se sincroniza una cuenta equivocada a Supabase**, y la cuenta real nunca llega a Postgres. Luego, cuando se intenta insertar una transacción que referencia el ID correcto (el que sí está en Zustand), la FK falla.
-
----
-
-## Error 2 — PostgREST 409 Conflict en `transactions`
-
-### Causa Raíz
-
-**Upsert enviado con un `id` que ya existe en Supabase, pero con datos inconsistentes que violan constraints secundarios.**
-
-La función [`insertTransaction`](file:///E:/Projectos/Aplications/Finance%20Pal/Finance%20Pal%20APP/Finance%20Pal%20V1.19.38/finance-pal/src/services/transactions.service.ts#L124-L132) usa `.upsert()`:
-
-```typescript
-export async function insertTransaction(userId: string, tx: Transaction): Promise<void> {
-  const { error } = await supabase.from('transactions').upsert(toInsertPayload(userId, tx));
 }
 ```
 
-El `.upsert()` de PostgREST/Supabase resuelve el conflicto por PK (`id`), pero **si además hay una constraint violada** (como la FK 23503 en el momento del UPSERT, o una UNIQUE constraint en alguna columna combinada), PostgREST devuelve **409 Conflict** en lugar del 23503 de Postgres, dependiendo de la versión del driver y el modo del conflict hint.
+### Estado actual de `TxForm`
 
-El 409 se produce específicamente cuando:
-
-1. El `mutationFn` (por el bug del Error 1) envía la **transacción incorrecta** (la que estaba en `transactions[0]` antes del update) — un registro que YA existe en Supabase.
-2. Al mismo tiempo, React Query tiene configurado `retry: 2` en el `queryClient` ([`queryClient.ts` L12-L13](file:///E:/Projectos/Aplications/Finance%20Pal/Finance%20Pal%20APP/Finance%20Pal%20V1.19.38/finance-pal/src/lib/queryClient.ts#L12-L13)), lo que provoca que el upsert se reintente automáticamente sobre el mismo ID ya existente con datos diferentes, generando el conflicto a nivel de PostgREST.
-3. Las mutations también tienen `retry: 1` definido en `mutations.retry`, lo que exacerba el problema repitiendo el envío del payload incorrecto.
-
-El 409 es la manifestación del intento de upsert de una transacción duplicada (ID ya existente) cuya constraint secundaria (FK de `account_id`) falla, resultando en conflicto no resuelto.
-
----
-
-## Error 3 — HTTP 401 Unauthorized en GET a `goals`
-
-### Causa Raíz
-
-**`useGoalsQuery` se ejecuta antes de que la sesión de Supabase esté completamente establecida, enviando el request sin token JWT en el header `Authorization`.**
-
-**Análisis de la condición `enabled`** en [`useGoalsQuery.ts` L22](file:///E:/Projectos/Aplications/Finance%20Pal/Finance%20Pal%20APP/Finance%20Pal%20V1.19.38/finance-pal/src/hooks/queries/useGoalsQuery.ts#L22):
-
-```typescript
-enabled: isSupabaseEnabled && !loading && !!session,
-```
-
-**El problema:** `isSupabaseEnabled` es una variable `let` inicializada en tiempo de módulo ([`supabase.ts` L19](file:///E:/Projectos/Aplications/Finance%20Pal/Finance%20Pal%20APP/Finance%20Pal%20V1.19.38/finance-pal/src/lib/supabase.ts#L19)):
-
-```typescript
-export let isSupabaseEnabled = getSyncEnabled();
-```
-
-Esta variable se evalúa **una sola vez** al importar el módulo. Si en algún ciclo de render la query se activa cuando `loading` acaba de pasar a `false` pero `session` todavía no se ha populado (hay un render intermedio entre el `setLoading(false)` y el posterior `setSession(session)` del callback de `getSession`), la query se dispara con `session` nulo.
-
-**La secuencia problemática** en [`AuthContext.tsx` L170-L182](file:///E:/Projectos/Aplications/Finance%20Pal/Finance%20Pal%20APP/Finance%20Pal%20V1.19.38/finance-pal/src/context/AuthContext.tsx#L170-L182):
-
-```typescript
-supabase.auth.getSession().then(async ({ data: { session } }) => {
-  setSession(session);     // render #1 — session puede ser null si aún no hay JWT
-  setUser(session?.user ?? null);
-  if (session) {
-    await checkMfaStatus();
-    // ...
-  }
-  setLoading(false);  // render #2 — loading pasa a false
-```
-
-Entre `setSession(null)` (si la sesión expira durante el await de `checkMfaStatus`) y `setLoading(false)`, hay un instante donde `loading = false` y `session = null`. En ese momento, `useGoalsQuery` ve `enabled = true` (porque `!false && !null` = `true`... **espera: `!!null` = `false`**).
-
-**El verdadero vector de 401:** La tabla `goals` en Supabase usa RLS (Row Level Security) con `auth.uid()`. Cuando `fetchGoals` se ejecuta via `goals.service.ts` sin una sesión activa en el cliente Supabase (porque el token JWT del cliente `supabase` ya caducó o nunca fue refrescado en el singleton), la request llega a PostgREST con el header `Authorization: Bearer <expired_token>` o sin él, retornando 401.
-
-**La causa concreta:** El cliente Supabase es un singleton creado en el módulo ([`supabase.ts` L33](file:///E:/Projectos/Aplications/Finance%20Pal/Finance%20Pal%20APP/Finance%20Pal%20V1.19.38/finance-pal/src/lib/supabase.ts#L33)):
-
-```typescript
-export const supabase = createClient(supabaseUrl, supabaseAnonKey);
-```
-
-El `AuthContext` usa `supabase.auth.refreshSession()` para refrescar el token, pero hay una condición de guardia:
-
-```typescript
-const refreshSession = useCallback(async () => {
-  if (isRefreshing.current || !isSupabaseEnabled) return; // ← sale si ya está refrescando
-```
-
-Si el `onAuthStateChange` dispara un evento `TOKEN_REFRESHED` mientras `isRefreshing.current = true`, el nuevo token nunca se persiste en el estado, y la query de `goals` usa el token viejo que ya está expirado. Supabase devuelve 401.
-
-**Factor agravante:** La tabla `goals` (a diferencia de `transactions` y `accounts` que usan vistas `*_safe`) **no tiene una vista intermedia con RLS separado**. `fetchGoals` accede directamente a la tabla `goals` sin ningún fallback, haciendo la query 100% dependiente de un JWT válido en cada request.
-
----
-
-## Mapa de Defectos por Archivo
-
-| Archivo | Línea(s) | Defecto |
+| Estado local | Tipo | Descripción |
 |---|---|---|
-| [`useTransactionMutations.ts`](file:///E:/Projectos/Aplications/Finance%20Pal/Finance%20Pal%20APP/Finance%20Pal%20V1.19.38/finance-pal/src/hooks/mutations/useTransactionMutations.ts) | 28-41 | `mutationFn` lee `state.transactions[0]` en lugar del `payload` recibido. El ID de la transacción nueva nunca se calcula en `mutationFn`; espera que `onMutate` ya lo haya creado. |
-| [`useAccountMutations.ts`](file:///E:/Projectos/Aplications/Finance%20Pal/Finance%20Pal%20APP/Finance%20Pal%20V1.19.38/finance-pal/src/hooks/mutations/useAccountMutations.ts) | 29-42 | Mismo defecto: `state.accounts[0]` no es el registro nuevo cuando `mutationFn` corre. La cuenta nueva nunca se sincroniza a Supabase. |
-| [`useTransactionMutations.ts`](file:///E:/Projectos/Aplications/Finance%20Pal/Finance%20Pal%20APP/Finance%20Pal%20V1.19.38/finance-pal/src/hooks/mutations/useTransactionMutations.ts) | 31-35 | La lógica offline encola `transaction` (dato del store), no `payload` (el input de la mutation). Si el store ya mutó vía `onMutate`, el dato encolado puede corresponder al registro pre-actualización. |
-| [`transactions.service.ts`](file:///E:/Projectos/Aplications/Finance%20Pal/Finance%20Pal%20APP/Finance%20Pal%20V1.19.38/finance-pal/src/services/transactions.service.ts) | 125 | `upsert` sin `ignoreDuplicates` ni conflict resolution hint explícito. Permite que el retry automático de React Query reenvíe el mismo payload, amplificando el 409. |
-| [`goals.service.ts`](file:///E:/Projectos/Aplications/Finance%20Pal/Finance%20Pal%20APP/Finance%20Pal%20V1.19.38/finance-pal/src/services/goals.service.ts) | 112-125 | `fetchGoals` accede a tabla `goals` directamente (no una vista `goals_safe`), sin manejo de JWT expirado ni retry con refresh previo. |
-| [`supabase.ts`](file:///E:/Projectos/Aplications/Finance%20Pal/Finance%20Pal%20APP/Finance%20Pal%20V1.19.38/finance-pal/src/lib/supabase.ts) | 19 | `isSupabaseEnabled` es evaluado en tiempo de módulo como `let`. No reacciona a cambios de sesión durante el ciclo de vida de la app. |
-| [`queryClient.ts`](file:///E:/Projectos/Aplications/Finance%20Pal/Finance%20Pal%20APP/Finance%20Pal%20V1.19.38/finance-pal/src/lib/queryClient.ts) | 12-17 | `retry: 2` para queries y `retry: 1` para mutations sin filtrado de errores 401/409. Reintentos ciegos agravan la propagación de errores de auth y FK. |
+| `type` | `TxType` | Tipo de movimiento seleccionado |
+| `paymentMethod` | `PaymentMethod` | Método de pago |
+| `accountId` | `string \| undefined` | Cuenta de origen o destino principal |
+| `transferToAccountId` | `string \| undefined` | Cuenta destino / `"__external"` |
+| `externalPayee` | `object \| null` | Datos del remitente externo (CLABE, banco, nombre) |
+| `cashAccount` | `Account \| undefined` | Primera cuenta con `type === "cash"` |
+| `bankAccounts` | `Account[]` | Cuentas con `type !== "cash"` |
 
 ---
 
-## Plan de Solución Exacto
+## 2. Reglas de negocio a implementar
 
-> **RESTRICCIÓN:** Este plan NO modifica código. Es un plano de implementación para el equipo de desarrollo.
+### Regla 1 — Campos de remitente en Ingresos por transferencia
 
-### Fix 1 — Corrección del Anti-patrón `mutationFn` + `onMutate` (CRÍTICO)
+**Condición:** `type === "income"` **Y** `paymentMethod === "transfer"`
 
-**Problema:** `mutationFn` lee el store para obtener el objeto completo en lugar de construirlo desde el `payload` recibido, y confía en que `onMutate` ya haya corrido.
+**Comportamiento esperado:**
+- Mostrar la sección de campos de `externalPayee` (CLABE, banco, nombre del titular/remitente).
+- El label debe decir **"Remitente"** (no "Destinatario" como en gastos).
+- Los campos de `externalPayee` deben ser **opcionales** para `income` (a diferencia de `expense`/`saving` donde son requeridos si se selecciona `__external`).
+- El `transferToAccountId` **no** se debe requerir para `income + transfer`; en cambio, se captura solo el `externalPayee`.
 
-**Solución de diseño:**
-
-El contrato correcto de la arquitectura optimistic-update es:
-
+**Bug actual identificado (línea 802):**
+```tsx
+// ACTUAL — excluye income a menos que sea _virtual:
+{type !== "transfer" && paymentMethod === "transfer" && (type !== "income" || (initial as any)?._virtual) && (
 ```
-onMutate  → actualiza el estado local (Zustand) de forma optimistic
-mutationFn → construye el payload de red a partir del argumento recibido directamente,
-             NO del store (el store puede estar en estado transitorio)
-```
+La condición `(type !== "income" || (initial as any)?._virtual)` oculta el bloque de `externalPayee` para `income` real. Esto es incorrecto según la Regla 1.
 
-Para `addTransaction`:
-- `mutationFn` debe recibir el `payload: Omit<Transaction, 'id'>` y construir el `TransactionInsertPayload` directamente desde ese `payload`, generando el `id` dentro de `mutationFn` o recibiéndolo como parte del tipo de input.
-- El `id` generado debe ser el mismo que usa `onMutate`/`addTx` para evitar inconsistencias. La solución canónica es cambiar el tipo de input de la mutation a `Transaction` completa (con `id` pre-generado por el componente llamante), o generar el `id` antes de llamar a `.mutate()` y pasarlo como parte del payload.
+---
 
-**Flujo corregido:**
+### Regla 2 — Filtrado de cuentas (OCULTAR efectivo)
 
-```
-Componente:
-  const id = generateSecureId();
-  addTransaction.mutate({ id, ...formData });
-                         ↑
-mutationFn recibe { id, ...formData } directamente
-  → construye InsertPayload desde el argumento
-  → NO lee el store
+**Condición:** `type !== "transfer"` **Y** (`paymentMethod === "transfer"` **O** `paymentMethod === "card"`)
 
-onMutate recibe { id, ...formData } directamente
-  → llama addTx con el mismo id
-  → escribe al store local
-```
+**Comportamiento esperado:**
+- En el `<Select>` de "Cuenta" (origen): mostrar **solo cuentas no-efectivo** (`a.type !== "cash"`).
+- El efectivo (`cashAccount`) NO debe aparecer en la lista.
 
-Esto además requiere cambiar la firma de `addTx` en `TransactionSlice` para aceptar `Transaction` (con `id`) en lugar de `Omit<Transaction, 'id'>`, ya que el ID debe ser el mismo en ambas capas.
-
-Aplica idénticamente para `addAccount` en `useAccountMutations`.
-
-### Fix 2 — Garantía de Orden de Sincronización: Accounts → Transactions (CRÍTICO)
-
-**Problema:** No hay garantía de que la cuenta padre exista en Supabase antes de insertar la transacción hija.
-
-**Solución de diseño:**
-
-Implementar una función `ensureAccountSynced(accountId, userId)` que, antes de `insertTransaction`, verifique si la cuenta existe en Supabase y si no, la inserte primero:
-
-```
-mutationFn de addTransaction:
-  1. Obtener userId de supabase.auth.getUser()
-  2. Si tx.accountId existe:
-     a. Verificar existencia en Supabase: SELECT id FROM accounts WHERE id = tx.accountId
-     b. Si no existe: obtener la account del store local y llamar insertAccount(userId, account)
-     c. Await a que insertAccount complete antes de continuar
-  3. Llamar insertTransaction(userId, tx)
-```
-
-Alternativa arquitectónica preferida: Implementar un servicio de sincronización transaccional que maneje cuentas y transacciones en una misma operación coordinada, usando la cola de `useSyncStore` como mecanismo de ordering para el procesador de sincronización offline.
-
-### Fix 3 — Manejo de JWT Expirado en Queries (CRÍTICO)
-
-**Problema:** Las queries de React Query no manejan el 401 de forma inteligente; no intentan refrescar el token antes de reintentar.
-
-**Solución de diseño:**
-
-Configurar el `QueryClient` con una función `retry` que:
-1. No reintente errores 401 ni 409 con los datos actuales.
-2. Para 401: ejecute `supabase.auth.refreshSession()` y luego reintente una sola vez.
-3. Para 409 y 23503: no reintente (son errores de lógica de negocio, no transitorios).
-
-```typescript
-// En queryClient.ts
-queries: {
-  retry: (failureCount, error) => {
-    if (error?.status === 401 || error?.code === '23503' || error?.status === 409) return false;
-    return failureCount < 2;
-  },
-  retryDelay: ...
-}
-mutations: {
-  retry: (failureCount, error) => {
-    if (error?.status === 409 || error?.code === '23503' || error?.status === 401) return false;
-    return failureCount < 1;
-  }
+**Código actual con el problema (línea 785):**
+```tsx
+{(paymentMethod === "card" || paymentMethod === "transfer" || type === "transfer") &&
+  accounts.map((a: Account) => (
+    <SelectItem key={a.id} value={a.id}>
+      {a.name} {a.type === "cash" ? "· Efectivo" : "· Banco"}
+    </SelectItem>
+  ))
 }
 ```
+`accounts.map(...)` sin filtrar incluye la cuenta de efectivo cuando `paymentMethod` es `"transfer"` o `"card"`.
 
-Para el 401 en `goals` específicamente: añadir manejo en `fetchGoals` que detecte el error 401, llame a `supabase.auth.refreshSession()`, y si tiene éxito, reintente la query. Esto puede implementarse como un wrapper `withAuthRetry(fn)` reutilizable en todos los servicios.
+---
 
-### Fix 4 — Normalizar Acceso a Tablas via Vistas Seguras (MODERADO)
+### Regla 3 — Filtrado de cuentas (MOSTRAR SOLO efectivo)
 
-**Problema:** `fetchGoals` accede directamente a la tabla `goals`, mientras `fetchAccounts` y `fetchTransactions` usan vistas `accounts_safe` y `transactions_safe` respectivamente.
+**Condición:** `type !== "transfer"` **Y** `paymentMethod === "cash"`
 
-**Solución de diseño:**
+**Comportamiento esperado:**
+- En el `<Select>` de "Cuenta": mostrar **únicamente** la cuenta de efectivo (`cashAccount`).
+- Las cuentas bancarias NO deben aparecer.
 
-Crear la vista `goals_safe` en Supabase con las mismas políticas RLS que las otras vistas seguras, y actualizar `goals.service.ts` para consultar `goals_safe`. Esto aísla las policies de lectura y permite mayor control sin afectar la tabla base.
+**Código actual con el problema (línea 784):**
+```tsx
+{paymentMethod === "cash" && cashAccount && (
+  <SelectItem value={cashAccount.id}>{cashAccount.name} · Efectivo</SelectItem>
+)}
+{(paymentMethod === "card" || paymentMethod === "transfer" || type === "transfer") &&
+  accounts.map((a: Account) => ( ... ))
+}
+```
+Esto ya es correcto estructuralmente para `cash` (solo muestra `cashAccount`), pero la segunda condición podría incluir efectivo si el usuario cambia métodos. Hay que asegurar el filtro en la segunda condición.
 
-### Fix 5 — Corrección del Encolado Offline (MODERADO)
+---
 
-**Problema:** El código offline en `mutationFn` encola `transaction` (leído del store) en lugar de `payload` (el argumento de la mutation), que puede ser un objeto incompleto si `onMutate` aún no corrió.
+## 3. Análisis detallado del código afectado
 
-**Solución de diseño:**
+### 3.1 Bloque de "Cuenta origen" / "Cuenta" (líneas 779–788)
 
-Una vez aplicado el Fix 1 (payload completo con `id` pre-generado), el encolado offline debe usar el `payload` directamente:
+```tsx
+// ACTUAL (línea 779)
+{((type === "transfer") || (type !== "income" && paymentMethod !== "cash")) && (
+  <div>
+    <Label className="text-xs">{type === "transfer" ? "Cuenta origen" : "Cuenta"}</Label>
+    <Select value={accountId} onValueChange={(v) => setAccountId(v)}>
+      <SelectTrigger className="h-10 rounded-xl"><SelectValue /></SelectTrigger>
+      <SelectContent>
+        {/* PROBLEMA: incluye efectivo cuando method=transfer/card */}
+        {paymentMethod === "cash" && cashAccount && (
+          <SelectItem value={cashAccount.id}>{cashAccount.name} · Efectivo</SelectItem>
+        )}
+        {(paymentMethod === "card" || paymentMethod === "transfer" || type === "transfer") &&
+          accounts.map((a: Account) => (           // ← sin filtrar efectivo
+            <SelectItem key={a.id} value={a.id}>
+              {a.name} {a.type === "cash" ? "· Efectivo" : "· Banco"}
+            </SelectItem>
+          ))
+        }
+      </SelectContent>
+    </Select>
+  </div>
+)}
+```
 
-```typescript
-// CORRECTO:
-if (!isSupabaseEnabled || isOffline()) {
-  useSyncStore.getState().addMutation({
-    table: 'transactions',
-    action: 'INSERT',
-    recordId: payload.id,
-    payload: payload  // ← el argumento de mutate(), no el store
-  });
+**Corrección requerida:** Reemplazar `accounts.map(...)` por `accounts.filter(a => a.type !== "cash").map(...)` para los casos `"card"` y `"transfer"`.
+
+---
+
+### 3.2 Bloque de "Cuenta de destino" para income (líneas 790–800)
+
+```tsx
+// ACTUAL (línea 790)
+{(type === "income" || type === "transfer") && (
+  <div>
+    <Label className="text-xs">
+      {type === "transfer" ? "Cuenta destino" : "Cuenta de destino"}
+    </Label>
+    <Select ...>
+      <SelectContent>
+        {/* Solo muestra efectivo si income+cash */}
+        {type === "income" && paymentMethod === "cash" && cashAccount && (
+          <SelectItem value={cashAccount.id}>{cashAccount.name} · Efectivo</SelectItem>
+        )}
+        {/* Solo muestra no-efectivo si transfer o income+no-cash */}
+        {(type === "transfer" || (type === "income" && paymentMethod !== "cash")) &&
+          accounts.map((a: Account) => ( ... ))   // ← también sin filtrar para income
+        }
+      </SelectContent>
+    </Select>
+  </div>
+)}
+```
+
+**Corrección requerida para Regla 2:** Para `income + transfer/card`, el select de destino debe mostrar solo cuentas no-efectivo: `accounts.filter(a => a.type !== "cash").map(...)`.
+
+---
+
+### 3.3 Bloque de "Destinatario" / externalPayee (líneas 802–822)
+
+```tsx
+// ACTUAL (línea 802) — EXCLUYE income real
+{type !== "transfer" && paymentMethod === "transfer" && (type !== "income" || (initial as any)?._virtual) && (
+  <div className="lg:col-span-2">
+    <Label className="text-xs">Destinatario</Label>
+    <Select value={transferToAccountId} onValueChange={...}>
+      <SelectContent>
+        {accounts.filter((a: Account) => a.id !== accountId).map(...)}
+        <SelectItem value="__external">Cuenta externa (otra persona)</SelectItem>
+      </SelectContent>
+    </Select>
+    {transferToAccountId === "__external" && (
+      <div className="space-y-2 mt-2">
+        <Input placeholder="CLABE (18 dígitos)" ... />
+        <Input placeholder="Banco" ... />
+        <Input placeholder="Nombre del titular" ... />
+        {/* comprobante */}
+      </div>
+    )}
+  </div>
+)}
+```
+
+**Corrección para Regla 1:** El bloque debe dividirse en dos sub-bloques:
+
+1. **Para `income + transfer`:** Mostrar directamente los campos de `externalPayee` (CLABE, banco, nombre del remitente) con label "Remitente", SIN el select de `transferToAccountId`. Los campos son opcionales.
+2. **Para `expense/saving + transfer`:** Mantener el bloque actual (select de destinatario + campos de `__external`).
+
+---
+
+## 4. Derivados de lógica de guardado (`onSubmit`)
+
+En el `onSubmit` (líneas 709–750), también hay que ajustar:
+
+```tsx
+// ACTUAL — línea 721: para income+transfer requiere transferToAccountId
+if (type !== "income" && !transferToAccountId) {
+  toast.error("Selecciona la cuenta destino");
   return;
 }
 ```
 
----
-
-## Diagrama de Flujo del Bug Principal
-
-```
-Componente llama addTransaction.mutate(formPayload)
-           │
-           ├──── mutationFn(formPayload) inicia inmediatamente
-           │          └─ Lee useFinance.getState().transactions[0]
-           │             [estado ANTERIOR, sin la nueva tx]
-           │             ← usa ID de transacción INCORRECTA
-           │
-           └──── onMutate(formPayload) → addTx(formPayload)
-                     └─ [ASYNC] genera nuevo id, inserta en store
-                        transactions[0] ahora = nueva tx
-                        ← pero mutationFn ya terminó de leer
-                        
-    Resultado: Supabase recibe tx con account_id = ID de una cuenta
-               que existe en Zustand pero NO en Postgres
-               → FK 23503
-               → retry automático → 409 Conflict
-```
+**Para Regla 1:** Cuando `type === "income" && paymentMethod === "transfer"`:
+- No requirir `transferToAccountId`.
+- Guardar `externalPayee` si se llenó (opcional).
+- `payload.accountId` = cuenta de destino (donde llega el ingreso).
+- `payload.externalPayee` = datos del remitente (si se completaron).
 
 ---
 
-## Clasificación de Prioridad de Fixes
+## 5. Interfaces afectadas
 
-| Prioridad | Fix | Impacto | Complejidad |
-|---|---|---|---|
-| P0 — Bloqueante | Fix 1: Refactorizar `mutationFn` para no leer del store | Elimina causa raíz de Error 1 y 2 | Media |
-| P0 — Bloqueante | Fix 2: Garantía de orden Accounts → Transactions | Elimina FK 23503 definitivamente | Media-Alta |
-| P1 — Urgente | Fix 3: Retry inteligente por tipo de error en QueryClient | Elimina Error 3 y previene cascada de errores | Baja |
-| P2 — Importante | Fix 5: Corrección del encolado offline | Consistencia en modo offline | Baja |
-| P3 — Mejora | Fix 4: Vista `goals_safe` en Supabase | Consistencia arquitectónica | Baja |
-
----
-
-*Diagnóstico generado por análisis estático de código fuente. No se modificó ningún archivo de implementación.*
-
----
-
----
-
-# Diagnóstico: Botón expandir (ChevronDown) faltante en movimientos de tipo `transfer`
-
-> **Fecha:** 2026-09-19  
-> **Versión analizada:** Finance Pal V1.19.38  
-> **Archivo afectado:** [`Movimientos.tsx`](file:///e:/Projectos/Aplications/Finance%20Pal/Finance%20Pal%20APP/Finance%20Pal%20V1.19.38/finance-pal/src/pages/Movimientos.tsx)  
-> **Severidad:** FEATURE REGRESSION — la funcionalidad de ver detalles de transferencias nunca existió para transacciones de tipo `transfer` real; sólo existió para filas `_virtual` (deudas/abonos).
-
----
-
-## Diagnóstico Exacto
-
-### ¿Se eliminó la feature?
-
-**No exactamente.** Tras revisar el historial de git de `Movimientos.tsx` (commits `114b9f9`, `c8b46a0`, `5315dc4`, `4ce07c6`, etc.), **el botón `ChevronDown` y el panel expandible NUNCA estuvieron implementados para las transacciones de tipo `type === "transfer"` reales**. Esa lógica siempre estuvo restringida exclusivamente a las filas `_virtual` (entradas generadas desde `Deudas`/abonos).
-
-### Estructura actual del renderizado en Movimientos.tsx
-
-El componente renderiza dos categorías de filas:
-
-**1. Filas `_virtual` (deudas/abonos) — SÍ tienen ChevronDown + panel expandible:**
-- Mobile: L363–406 — `isExpanded` + `setExpandedId` + `<ChevronDown>` + panel con cuenta, método, CLABE, banco, titular, recibo.
-- Desktop: L449–492 — mismo patrón en `<tr>` expandible con `<td colSpan={7}>`.
-
-**2. Filas regulares (todas las demás incluyendo `transfer`) — NO tienen ChevronDown ni panel:**
-- Mobile: L408–423 — el `<motion.div>` es un contenedor `flex` plano, tiene sólo: icon, botón de editar (que abre `TxForm`), monto, botón Eliminar. **Sin `<ChevronDown>`, sin `expandedId`, sin panel detalle.**
-- Desktop: L495–509 — el `<tr>` tiene: fecha, concepto, categoría, método, cuenta, monto, Pencil, Trash2. **Sin `<ChevronDown>` ni fila expandible.**
-
-### ¿Por qué el usuario recuerda haber visto la flechita?
-
-La flechita existe hoy mismo, pero **sólo en las filas de tipo "Deuda/Abono"** (`_virtual`). Las transferencias creadas directamente como `type: "transfer"` desde el formulario de Movimientos **nunca tuvieron ese expansor**. Probablemente la confusión surge porque ambas filas (`_virtual` y `transfer`) muestran el ícono `⇄`, pero tienen código de renderizado completamente separado.
-
-### Datos que tiene una transacción `transfer` y que deberían mostrarse:
-
-Según la interfaz `Transaction` ([`finance.ts` L68–84](file:///e:/Projectos/Aplications/Finance%20Pal/Finance%20Pal%20APP/Finance%20Pal%20V1.19.38/finance-pal/src/lib/finance.ts#L68-L84)):
-
-```typescript
-interface Transaction {
-  id: string;
-  type: "income" | "expense" | "saving" | "transfer";
-  accountId?: string;          // Cuenta ORIGEN
-  transferToAccountId?: string; // Cuenta DESTINO (interna)
-  externalPayee?: { clabe?: string; bank?: string; name?: string }; // Destino externo
-  receipt?: string;            // Comprobante (dataURL o path)
-  // ...
-}
-```
-
-Cuando `type === "transfer"`, el formulario `TxForm` guarda correctamente `accountId` (origen) y `transferToAccountId` (destino interno) o `externalPayee` (SPEI externo). Estos datos **ya están en el store**, pero **no hay UI para consultarlos** sin abrir el formulario de edición.
-
----
-
-## Plan de Implementación Técnica Detallada
-
-### Objetivo
-Agregar un botón `<ChevronDown>` a cada fila de tipo `transfer` en la vista móvil y desktop de Movimientos, que al presionarse expanda un panel de detalles mostrando: cuenta origen, cuenta destino (o datos de beneficiario externo), comprobante, y nota.
-
----
-
-### Cambios necesarios en [`Movimientos.tsx`](file:///e:/Projectos/Aplications/Finance%20Pal/Finance%20Pal%20APP/Finance%20Pal%20V1.19.38/finance-pal/src/pages/Movimientos.tsx)
-
-El estado `expandedId` (línea 55) ya existe en el componente y es compatible — se reutiliza sin cambios.
-
----
-
-#### Paso 1 — Vista Móvil (`lg:hidden`, líneas 355–430)
-
-**Problema actual (L408–423):** El `return` del bloque de filas regulares renderiza un `<motion.div>` con `p-3 flex items-center gap-3` — es decir, sin capacidad de expander. No distingue si `t.type === "transfer"`.
-
-**Cambio requerido:** Bifurcar el render de las filas regulares en dos casos:
-
-- **Si `t.type === "transfer"`:** Renderizar el mismo contenedor expandible que usan las filas `_virtual`, pero con los datos de la transacción de transferencia (cuenta origen, cuenta destino, externalPayee, receipt, nota).
-- **Para cualquier otro tipo:** Mantener el render actual sin modificaciones.
-
-**Lógica del nuevo bloque para `transfer` (mobile):**
-
-```tsx
-if (!((t as any)._virtual) && t.type === "transfer") {
-  const originAcct = accounts.find((a) => a.id === (t as any).accountId);
-  const destAcct = accounts.find((a) => a.id === (t as any).transferToAccountId);
-  const ext = (t as any).externalPayee as { clabe?: string; bank?: string; name?: string } | undefined;
-  const receipt = (t as any).receipt as string | undefined;
-  const isExpanded = expandedId === t.id;
-
-  return (
-    <motion.div key={t.id} layout className="rounded-xl bg-card border border-border shadow-soft">
-      {/* Fila principal */}
-      <div className="p-3 flex items-center gap-3">
-        <IconDisplay icon={iconFor(t)} />
-        <button onClick={() => openEdit(t as Transaction)} className="flex-1 min-w-0 text-left">
-          <p className="font-semibold text-sm truncate">{t.concept}</p>
-          <p className="text-xs text-muted-foreground truncate">
-            Traspaso{originAcct && <span className="ml-1">· {originAcct.name}</span>}
-          </p>
-        </button>
-        <div className="text-right shrink-0">
-          <p className="font-bold text-sm text-primary">⇄{fmt(t.amount)}</p>
-        </div>
-        {/* Botón eliminar */}
-        <button aria-label="Eliminar" onClick={() => setDeleteConfirm(t as Transaction)} className="text-muted-foreground hover:text-destructive p-1 shrink-0">
-          <Trash2 className="size-3.5" />
-        </button>
-        {/* Botón expandir — EL QUE FALTABA */}
-        <button onClick={() => setExpandedId(isExpanded ? null : t.id)} className="text-muted-foreground hover:text-primary p-1 shrink-0">
-          <ChevronDown className={`size-4 transition-transform ${isExpanded ? "rotate-180" : ""}`} />
-        </button>
-      </div>
-      {/* Panel expandible */}
-      {isExpanded && (
-        <div className="px-3 pb-3 space-y-1 text-xs text-muted-foreground border-t border-border pt-2">
-          <p><span className="font-semibold text-foreground">Cuenta origen:</span> {originAcct?.name ?? "No asignada"}</p>
-          {destAcct && <p><span className="font-semibold text-foreground">Cuenta destino:</span> {destAcct.name}</p>}
-          {ext?.clabe && <p><span className="font-semibold text-foreground">CLABE:</span> {ext.clabe}</p>}
-          {ext?.bank && <p><span className="font-semibold text-foreground">Banco:</span> {ext.bank}</p>}
-          {ext?.name && <p><span className="font-semibold text-foreground">Titular:</span> {ext.name}</p>}
-          {(t as any).note && <p><span className="font-semibold text-foreground">Nota:</span> {(t as any).note}</p>}
-          {receipt && <img src={receipt} alt="comprobante" loading="lazy" className="rounded max-h-40 object-contain mt-1" />}
-        </div>
-      )}
-    </motion.div>
-  );
-}
-```
-
-**Ubicación exacta en el archivo:** Insertar este bloque entre la línea 407 (`}` que cierra el bloque `_virtual`) y la línea 408 (`return (` del bloque actual de filas regulares).
-
----
-
-#### Paso 2 — Vista Desktop (`hidden lg:block`, líneas 432–516)
-
-**Problema actual (L495–509):** El `<tr>` de filas regulares en la tabla desktop no tiene una fila secundaria expandible. Todas las filas regulares comparten el mismo `<tr>` plano.
-
-**Cambio requerido:** Igual que en mobile — bifurcar el render para `t.type === "transfer"`:
-
-```tsx
-if (!((t as any)._virtual) && t.type === "transfer") {
-  const originAcct = accounts.find((a) => a.id === (t as any).accountId);
-  const destAcct = accounts.find((a) => a.id === (t as any).transferToAccountId);
-  const ext = (t as any).externalPayee as { clabe?: string; bank?: string; name?: string } | undefined;
-  const receipt = (t as any).receipt as string | undefined;
-  const isExpanded = expandedId === t.id;
-
-  return (
-    <React.Fragment key={t.id}>
-      <tr className="border-b border-border last:border-0 hover:bg-muted/20 transition-colors bg-primary/5">
-        <td className="p-3 whitespace-nowrap text-muted-foreground text-xs">{day}</td>
-        <td className="p-3">
-          <div className="flex items-center gap-2">
-            <IconDisplay icon={iconFor(t)} />
-            <span className="font-semibold">{t.concept}</span>
-            <span className="text-[9px] font-bold px-1.5 py-0.5 rounded uppercase bg-primary/20 text-primary">TRASPASO</span>
-          </div>
-        </td>
-        <td className="p-3 text-xs text-muted-foreground">{t.category}</td>
-        <td className="p-3 text-xs">{originAcct?.name ?? "—"}</td>
-        <td className="p-3 text-xs text-muted-foreground">{destAcct?.name ?? (ext?.name ? `Ext: ${ext.name}` : "—")}</td>
-        <td className="p-3 text-right font-bold text-sm whitespace-nowrap text-primary">⇄{fmt(t.amount)}</td>
-        <td className="p-3 text-right whitespace-nowrap">
-          {/* Botón expandir — EL QUE FALTABA */}
-          <button aria-label="Expandir" onClick={() => setExpandedId(isExpanded ? null : t.id)} className="text-muted-foreground hover:text-primary p-1">
-            <ChevronDown className={`size-3.5 transition-transform ${isExpanded ? "rotate-180" : ""}`} />
-          </button>
-          <button aria-label="Editar" onClick={() => openEdit(t as Transaction)} className="text-muted-foreground hover:text-primary p-1">
-            <Pencil className="size-3.5" />
-          </button>
-          <button aria-label="Eliminar" onClick={() => setDeleteConfirm(t as Transaction)} className="text-muted-foreground hover:text-destructive p-1">
-            <Trash2 className="size-3.5" />
-          </button>
-        </td>
-      </tr>
-      {isExpanded && (
-        <tr className="border-b border-border bg-muted/20">
-          <td colSpan={7} className="p-3 text-xs text-muted-foreground space-y-1">
-            <p><span className="font-semibold text-foreground">Cuenta origen:</span> {originAcct?.name ?? "No asignada"}</p>
-            {destAcct && <p><span className="font-semibold text-foreground">Cuenta destino:</span> {destAcct.name}</p>}
-            {ext?.clabe && <p><span className="font-semibold text-foreground">CLABE:</span> {ext.clabe}</p>}
-            {ext?.bank && <p><span className="font-semibold text-foreground">Banco:</span> {ext.bank}</p>}
-            {ext?.name && <p><span className="font-semibold text-foreground">Titular:</span> {ext.name}</p>}
-            {(t as any).note && <p><span className="font-semibold text-foreground">Nota:</span> {(t as any).note}</p>}
-            {receipt && <img src={receipt} alt="comprobante" loading="lazy" className="rounded max-h-36 object-contain mt-1" />}
-          </td>
-        </tr>
-      )}
-    </React.Fragment>
-  );
-}
-```
-
-**Ubicación exacta en el archivo:** Insertar este bloque entre la línea 493 (`}` que cierra el bloque `_virtual` en desktop) y la línea 494 (`const acct = ...` del bloque actual de filas regulares desktop).
-
-> **Nota:** La columna "Método" en desktop actualmente muestra `t.paymentMethod`, pero para `type === "transfer"` el método no es relevante de la misma forma. Se puede reusar la columna "Cuenta" como "Origen" y la columna "Método" como "Destino" reordenando la presentación como se muestra arriba, o mantener la misma estructura de columnas de la tabla y mostrar ambas cuentas en el panel expandido únicamente.
-
----
-
-### Resumen de Localización de Cambios
-
-| Sección | Líneas actuales | Acción |
+| Interfaz/Componente | Tipo de cambio | Descripción |
 |---|---|---|
-| Mobile — render filas regulares | L408–423 | Insertar bloque `if (t.type === "transfer")` antes del `return` existente |
-| Desktop — render filas regulares | L494–509 | Insertar bloque `if (t.type === "transfer")` antes de `const acct = ...` |
-| Imports | L6 | `ChevronDown` ya está importado ✅ |
-| Estado `expandedId` | L55 | Ya existe, compatible ✅ |
-| `setExpandedId` | L55 | Ya existe, compatible ✅ |
+| `TxForm` (líneas 675–827) | **Lógica de render** | Tres bloques de render JSX condicional |
+| `TxForm.onSubmit` (líneas 709–750) | **Lógica de negocio** | Ajustar serialización para `income+transfer` |
+| `Transaction.externalPayee` | Sin cambios | Ya soporta la estructura necesaria |
+| `computeBalances` en `finance.ts` | Sin cambios | Ya maneja `income` con `accountId` |
+| `transaction-slice.ts` | Sin cambios | Ya persiste `externalPayee` sin validación estricta |
 
 ---
 
-### Sin cambios necesarios en otros archivos
+## 6. Pasos de implementación (ordenados)
 
-- **`finance.ts`:** El tipo `Transaction` ya tiene `transferToAccountId`, `externalPayee` y `receipt`. ✅
-- **`TxForm`:** Ya guarda correctamente todos esos campos. ✅
-- **Store/hooks:** No se necesita ningún cambio. ✅
+### Paso 1 — Derivar listas de cuentas filtradas con `useMemo`
+
+**Ubicación:** Dentro de `TxForm`, después de la línea 698 (donde se define `bankAccounts`).
+
+Agregar las listas derivadas:
+```tsx
+// Cuentas visibles en el select de "Cuenta" según método
+const visibleAccounts = useMemo(() => {
+  if (paymentMethod === "cash") return cashAccount ? [cashAccount] : [];
+  if (paymentMethod === "transfer" || paymentMethod === "card") {
+    return accounts.filter((a: Account) => a.type !== "cash");
+  }
+  return accounts;
+}, [paymentMethod, accounts, cashAccount]);
+```
+
+> **Nota:** Usar `useMemo` con `[paymentMethod, accounts, cashAccount]` como dependencias.
 
 ---
 
-*Diagnóstico generado por análisis estático de código fuente y revisión de historial git. No se modificó ningún archivo de implementación.*
+### Paso 2 — Corregir el `<SelectContent>` de "Cuenta origen" (línea 783–786)
+
+**Reemplazar** el bloque actual:
+```tsx
+// ANTES
+{paymentMethod === "cash" && cashAccount && <SelectItem .../>}
+{(paymentMethod === "card" || paymentMethod === "transfer" || type === "transfer") &&
+  accounts.map((a: Account) => <SelectItem .../>)
+}
+
+// DESPUÉS — usar visibleAccounts
+{visibleAccounts.map((a: Account) => (
+  <SelectItem key={a.id} value={a.id}>
+    {a.name} {a.type === "cash" ? "· Efectivo" : "· Banco"}
+  </SelectItem>
+))}
+```
+
+---
+
+### Paso 3 — Corregir el `<SelectContent>` de "Cuenta de destino" para income (línea 794–796)
+
+Para `income + transfer/card`, filtrar efectivo:
+```tsx
+// ANTES
+{(type === "transfer" || (type === "income" && paymentMethod !== "cash")) &&
+  accounts.map((a: Account) => <SelectItem .../>)
+}
+
+// DESPUÉS
+{type === "income" && paymentMethod === "cash" && cashAccount && (
+  <SelectItem value={cashAccount.id}>{cashAccount.name} · Efectivo</SelectItem>
+)}
+{(type === "transfer" || (type === "income" && paymentMethod !== "cash")) &&
+  accounts
+    .filter((a: Account) => type === "income" && paymentMethod !== "cash"
+      ? a.type !== "cash"
+      : true)
+    .map((a: Account) => (
+      <SelectItem key={a.id} value={a.id}>
+        {a.name} {a.type === "cash" ? "· Efectivo" : "· Banco"}
+      </SelectItem>
+    ))
+}
+```
+
+---
+
+### Paso 4 — Refactorizar el bloque de externalPayee / Remitente (línea 802–822)
+
+**Reemplazar** el bloque completo con dos ramas:
+
+```tsx
+{/* Regla 1: income + transfer → campos de remitente (opcionales) */}
+{type === "income" && paymentMethod === "transfer" && (
+  <div className="lg:col-span-2 space-y-2">
+    <Label className="text-xs">Remitente (opcional)</Label>
+    <Input
+      placeholder="Nombre del remitente"
+      value={externalPayee?.name ?? ""}
+      onChange={(e) => setExternalPayee({ ...(externalPayee ?? {}), name: e.target.value })}
+      className="h-10 rounded-xl"
+    />
+    <Input
+      placeholder="Banco"
+      value={externalPayee?.bank ?? ""}
+      onChange={(e) => setExternalPayee({ ...(externalPayee ?? {}), bank: e.target.value })}
+      className="h-10 rounded-xl"
+    />
+    <Input
+      placeholder="CLABE (18 dígitos)"
+      value={externalPayee?.clabe ?? ""}
+      onChange={(e) => setExternalPayee({ ...(externalPayee ?? {}), clabe: e.target.value })}
+      className="h-10 rounded-xl"
+    />
+  </div>
+)}
+
+{/* Regla existente: expense/saving + transfer → select de destinatario */}
+{type !== "transfer" && type !== "income" && paymentMethod === "transfer" && (
+  <div className="lg:col-span-2">
+    <Label className="text-xs">Destinatario</Label>
+    <Select value={transferToAccountId} onValueChange={(v) => setTransferToAccountId(v || undefined)}>
+      <SelectTrigger className="h-10 rounded-xl"><SelectValue placeholder="Seleccione destinatario" /></SelectTrigger>
+      <SelectContent>
+        {accounts.filter((a: Account) => a.id !== accountId).map((a: Account) => (
+          <SelectItem key={a.id} value={a.id}>Cuenta propia: {a.name}</SelectItem>
+        ))}
+        <SelectItem value="__external">Cuenta externa (otra persona)</SelectItem>
+      </SelectContent>
+    </Select>
+    {transferToAccountId === "__external" && (
+      <div className="space-y-2 mt-2">
+        <Input placeholder="CLABE (18 dígitos)" value={externalPayee?.clabe ?? ""} onChange={(e) => setExternalPayee({ ...(externalPayee ?? {}), clabe: e.target.value })} className="h-10 rounded-xl" />
+        <Input placeholder="Banco" value={externalPayee?.bank ?? ""} onChange={(e) => setExternalPayee({ ...(externalPayee ?? {}), bank: e.target.value })} className="h-10 rounded-xl" />
+        <Input placeholder="Nombre del titular" value={externalPayee?.name ?? ""} onChange={(e) => setExternalPayee({ ...(externalPayee ?? {}), name: e.target.value })} className="h-10 rounded-xl" />
+        <div>
+          <Label className="text-xs">Comprobante</Label>
+          <input type="file" accept="image/*" onChange={(e) => { const f = e.target.files?.[0]; if (!f) return; const reader = new FileReader(); reader.onload = () => setReceiptData(typeof reader.result === "string" ? reader.result : undefined); reader.readAsDataURL(f); }} />
+        </div>
+        {receiptData && <img src={receiptData} alt="comprobante" className="mt-1 rounded max-h-32 object-contain" />}
+      </div>
+    )}
+  </div>
+)}
+```
+
+---
+
+### Paso 5 — Ajustar `onSubmit` para `income + transfer`
+
+**Reemplazar** el bloque `else if (paymentMethod === "transfer")` (líneas 719–742):
+
+```tsx
+} else if (paymentMethod === "transfer") {
+  if (!accountId) {
+    toast.error(type === "income" ? "Selecciona la cuenta de destino" : "Selecciona la cuenta origen");
+    return;
+  }
+  payload.accountId = accountId;
+
+  if (type === "income") {
+    // Regla 1: externalPayee es opcional; limpiar clabe si hay
+    if (externalPayee?.clabe) {
+      const cleanedClabe = externalPayee.clabe.replace(/\s+/g, "");
+      if (cleanedClabe && !/^[0-9]{18}$/.test(cleanedClabe)) {
+        toast.error("CLABE inválida (18 dígitos)");
+        return;
+      }
+      payload.externalPayee = { ...externalPayee, clabe: cleanedClabe || undefined };
+    } else if (externalPayee?.name || externalPayee?.bank) {
+      payload.externalPayee = externalPayee;
+    }
+  } else {
+    // Expense / saving: mantener lógica actual (destinatario requerido)
+    if (!transferToAccountId) { toast.error("Selecciona la cuenta destino"); return; }
+    if (transferToAccountId === "__external") {
+      const c = externalPayee?.clabe ?? "";
+      const cleanedClabe = c.replace(/\s+/g, "");
+      if (!/^[0-9]{18}$/.test(cleanedClabe)) { toast.error("CLABE inválida (18 dígitos)"); return; }
+      if (!externalPayee?.bank || !externalPayee?.name) { toast.error("Completa los datos del beneficiario externo"); return; }
+      payload.externalPayee = { ...externalPayee, clabe: cleanedClabe };
+    } else if (transferToAccountId) {
+      payload.transferToAccountId = transferToAccountId;
+    }
+    // receipt handling (mantener igual)
+    if (receiptData) {
+      if (Capacitor.isNativePlatform()) {
+        try {
+          const m = receiptData.match(/^data:(image\/[^;]+);base64,(.*)$/);
+          const base64 = m ? m[2] : receiptData.split(",")[1];
+          const mime = m ? m[1] : "image/png";
+          const ext = mime.split("/")[1] || "png";
+          const fname = `receipt-${Date.now()}.${ext}`;
+          const res = await Filesystem.writeFile({ path: `receipts/${fname}`, data: base64, directory: Directory.Data, encoding: Encoding.UTF8 });
+          payload.receipt = res.uri ?? `receipts/${fname}`;
+        } catch { payload.receipt = receiptData; }
+      } else { payload.receipt = receiptData; }
+    }
+  }
+}
+```
+
+---
+
+## 7. Matriz de combinaciones type × method
+
+| `type` | `method` | Cuenta visible | Muestra externalPayee |
+|---|---|---|---|
+| `income` | `cash` | Solo efectivo | ❌ |
+| `income` | `transfer` | Solo banco/other | ✅ Remitente (opcional) |
+| `income` | `card` | Solo banco/other | ❌ |
+| `expense` | `cash` | Solo efectivo | ❌ |
+| `expense` | `transfer` | Solo banco/other | ✅ Destinatario (requerido si __external) |
+| `expense` | `card` | Solo banco/other | ❌ |
+| `saving` | `cash` | Solo efectivo | ❌ |
+| `saving` | `transfer` | Solo banco/other | ✅ Destinatario (requerido si __external) |
+| `transfer` | *(N/A)* | Todas | ❌ (usa accounts internos) |
+
+---
+
+## 8. Precauciones y efectos secundarios
+
+> [!WARNING]
+> Al cambiar el método de pago en el form, el `accountId` puede quedar stale apuntando a una cuenta que ya no aparece en la lista filtrada. Hay que asegurarse de que el `useEffect` existente (línea 700–704) también resetee `accountId` cuando `visibleAccounts` no contenga el `accountId` actual.
+
+> [!IMPORTANT]
+> La función `computeBalances` en `finance.ts` ya soporta `income` con `accountId` explícito. Si `income + transfer` guarda `accountId` (cuenta de destino donde llega el dinero), el balance se calculará correctamente como crédito a esa cuenta.
+
+> [!NOTE]
+> El campo `externalPayee` en `income + transfer` es **solo informativo** (¿de dónde vino el dinero?). No afecta la lógica de balances; solo sirve para visualización en el historial.
+
+---
+
+## 9. Archivos que **NO** se deben tocar
+
+- `src/lib/finance.ts` — Los tipos ya soportan `externalPayee` en `Transaction`.
+- `src/store/slices/transaction-slice.ts` — No requiere cambios; ya persiste el `payload` tal como viene.
+- `src/services/transactions.service.ts` — Sin cambios.
+- Cualquier archivo de test existente — Se actualizarán por separado si es necesario.
+
+---
+
+## 10. Checklist de implementación
+
+- [ ] Paso 1: Agregar `useMemo` `visibleAccounts` en `TxForm`
+- [ ] Paso 2: Corregir `<SelectContent>` en bloque "Cuenta origen"
+- [ ] Paso 3: Corregir `<SelectContent>` en bloque "Cuenta de destino" para `income`
+- [ ] Paso 4: Refactorizar bloque `externalPayee` en dos ramas (`income` vs `expense/saving`)
+- [ ] Paso 5: Ajustar `onSubmit` para serialización de `income + transfer`
+- [ ] Verificar: cambio de método resetea `accountId` si queda fuera de `visibleAccounts`
+- [ ] Verificar: UX — label "Remitente" vs "Destinatario" según contexto
+- [ ] Verificar: que `saving + transfer` sigue funcionando igual que `expense + transfer`

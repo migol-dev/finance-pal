@@ -697,11 +697,25 @@ function TxForm({ initial, onSave, accounts }: { initial: Partial<Transaction> &
   const cashAccount = accounts.find((a: Account) => a.type === "cash");
   const bankAccounts = accounts.filter((a: Account) => a.type !== "cash");
 
+  // Cuentas visibles en el select de "Cuenta" según type y método
+  const visibleAccounts = useMemo(() => {
+    if (type === "transfer") return accounts;
+    if (paymentMethod === "cash") return cashAccount ? [cashAccount] : [];
+    if (paymentMethod === "transfer" || paymentMethod === "card") {
+      return accounts.filter((a: Account) => a.type !== "cash");
+    }
+    return accounts;
+  }, [type, paymentMethod, accounts, cashAccount]);
+
   useEffect(() => {
+    if (accountId && visibleAccounts.length > 0 && !visibleAccounts.some((a) => a.id === accountId)) {
+      setAccountId(visibleAccounts[0].id);
+      return;
+    }
     if (accountId) return;
     if (paymentMethod === "cash") { if (cashAccount) setAccountId(cashAccount.id); }
     else { const bank = bankAccounts[0] ?? accounts[0]; if (bank) setAccountId(bank.id); }
-  }, [accounts, paymentMethod, accountId, cashAccount, bankAccounts]);
+  }, [accounts, paymentMethod, accountId, cashAccount, bankAccounts, visibleAccounts]);
 
   useEffect(() => { if (type === "transfer" && !concept) setConcept("Traspaso entre cuentas"); }, [type, concept]);
 
@@ -717,28 +731,49 @@ function TxForm({ initial, onSave, accounts }: { initial: Partial<Transaction> &
         if (accountId === transferToAccountId) { toast.error("La cuenta origen y destino no pueden ser la misma"); return; }
         payload.accountId = accountId; payload.transferToAccountId = transferToAccountId;
       } else if (paymentMethod === "transfer") {
-        if (!accountId) { toast.error(type === "income" ? "Selecciona la cuenta de destino" : "Selecciona la cuenta origen"); return; }
-        if (type !== "income" && !transferToAccountId) { toast.error("Selecciona la cuenta destino"); return; }
+        if (!accountId) {
+          toast.error(type === "income" ? "Selecciona la cuenta de destino" : "Selecciona la cuenta origen");
+          return;
+        }
         payload.accountId = accountId;
-        if (transferToAccountId === "__external") {
-          const c = externalPayee?.clabe ?? "";
-          const cleanedClabe = c.replace(/\s+/g, "");
-          if (!/^[0-9]{18}$/.test(cleanedClabe)) { toast.error("CLABE inválida (18 dígitos)"); return; }
-          if (!externalPayee?.bank || !externalPayee?.name) { toast.error("Completa los datos del beneficiario externo"); return; }
-          payload.externalPayee = { ...externalPayee, clabe: cleanedClabe };
-        } else if (transferToAccountId) { payload.transferToAccountId = transferToAccountId; }
-        if (receiptData) {
-          if (Capacitor.isNativePlatform()) {
-            try {
-              const m = receiptData.match(/^data:(image\/[^;]+);base64,(.*)$/);
-              const base64 = m ? m[2] : receiptData.split(",")[1];
-              const mime = m ? m[1] : "image/png";
-              const ext = mime.split("/")[1] || "png";
-              const fname = `receipt-${Date.now()}.${ext}`;
-              const res = await Filesystem.writeFile({ path: `receipts/${fname}`, data: base64, directory: Directory.Data, encoding: Encoding.UTF8 });
-              payload.receipt = res.uri ?? `receipts/${fname}`;
-            } catch { payload.receipt = receiptData; }
-          } else { payload.receipt = receiptData; }
+
+        if (type === "income") {
+          // Regla 1: externalPayee es opcional; limpiar clabe si hay
+          if (externalPayee?.clabe) {
+            const cleanedClabe = externalPayee.clabe.replace(/\s+/g, "");
+            if (cleanedClabe && !/^[0-9]{18}$/.test(cleanedClabe)) {
+              toast.error("CLABE inválida (18 dígitos)");
+              return;
+            }
+            payload.externalPayee = { ...externalPayee, clabe: cleanedClabe || undefined };
+          } else if (externalPayee?.name || externalPayee?.bank) {
+            payload.externalPayee = externalPayee;
+          }
+        } else {
+          // Expense / saving: mantener lógica actual (destinatario requerido)
+          if (!transferToAccountId) { toast.error("Selecciona la cuenta destino"); return; }
+          if (transferToAccountId === "__external") {
+            const c = externalPayee?.clabe ?? "";
+            const cleanedClabe = c.replace(/\s+/g, "");
+            if (!/^[0-9]{18}$/.test(cleanedClabe)) { toast.error("CLABE inválida (18 dígitos)"); return; }
+            if (!externalPayee?.bank || !externalPayee?.name) { toast.error("Completa los datos del beneficiario externo"); return; }
+            payload.externalPayee = { ...externalPayee, clabe: cleanedClabe };
+          } else if (transferToAccountId) {
+            payload.transferToAccountId = transferToAccountId;
+          }
+          if (receiptData) {
+            if (Capacitor.isNativePlatform()) {
+              try {
+                const m = receiptData.match(/^data:(image\/[^;]+);base64,(.*)$/);
+                const base64 = m ? m[2] : receiptData.split(",")[1];
+                const mime = m ? m[1] : "image/png";
+                const ext = mime.split("/")[1] || "png";
+                const fname = `receipt-${Date.now()}.${ext}`;
+                const res = await Filesystem.writeFile({ path: `receipts/${fname}`, data: base64, directory: Directory.Data, encoding: Encoding.UTF8 });
+                payload.receipt = res.uri ?? `receipts/${fname}`;
+              } catch { payload.receipt = receiptData; }
+            } else { payload.receipt = receiptData; }
+          }
         }
       } else if (paymentMethod === "card") {
         if (!accountId) { toast.error("Selecciona la cuenta asociada a la tarjeta"); return; }
@@ -781,8 +816,7 @@ function TxForm({ initial, onSave, accounts }: { initial: Partial<Transaction> &
             <Select value={accountId} onValueChange={(v) => setAccountId(v)}>
               <SelectTrigger className="h-10 rounded-xl"><SelectValue /></SelectTrigger>
               <SelectContent>
-                {paymentMethod === "cash" && cashAccount && <SelectItem value={cashAccount.id}>{cashAccount.name} · Efectivo</SelectItem>}
-                {(paymentMethod === "card" || paymentMethod === "transfer" || type === "transfer") && accounts.map((a: Account) => (<SelectItem key={a.id} value={a.id}>{a.name} {a.type === "cash" ? "· Efectivo" : "· Banco"}</SelectItem>))}
+                {visibleAccounts.map((a: Account) => (<SelectItem key={a.id} value={a.id}>{a.name} {a.type === "cash" ? "· Efectivo" : "· Banco"}</SelectItem>))}
               </SelectContent>
             </Select>
           </div>
@@ -793,13 +827,46 @@ function TxForm({ initial, onSave, accounts }: { initial: Partial<Transaction> &
               <SelectTrigger className="h-10 rounded-xl"><SelectValue placeholder={type === "transfer" ? "Seleccione destino" : "Seleccione cuenta"} /></SelectTrigger>
               <SelectContent>
                 {type === "income" && paymentMethod === "cash" && cashAccount && <SelectItem value={cashAccount.id}>{cashAccount.name} · Efectivo</SelectItem>}
-                {(type === "transfer" || (type === "income" && paymentMethod !== "cash")) && accounts.map((a: Account) => (<SelectItem key={a.id} value={a.id}>{a.name} {a.type === "cash" ? "· Efectivo" : "· Banco"}</SelectItem>))}
+                {(type === "transfer" || (type === "income" && paymentMethod !== "cash")) &&
+                  accounts
+                    .filter((a: Account) => type === "income" && paymentMethod !== "cash"
+                      ? a.type !== "cash"
+                      : true)
+                    .map((a: Account) => (
+                      <SelectItem key={a.id} value={a.id}>{a.name} {a.type === "cash" ? "· Efectivo" : "· Banco"}</SelectItem>
+                    ))
+                }
               </SelectContent>
             </Select>
           </div>
         )}
       </div>
-      {type !== "transfer" && paymentMethod === "transfer" && (type !== "income" || (initial as any)?._virtual) && (
+      {/* Regla 1: income + transfer → campos de remitente (opcionales) */}
+      {type === "income" && paymentMethod === "transfer" && (
+        <div className="lg:col-span-2 space-y-2">
+          <Label className="text-xs">Remitente (opcional)</Label>
+          <Input
+            placeholder="Nombre del remitente"
+            value={externalPayee?.name ?? ""}
+            onChange={(e) => setExternalPayee({ ...(externalPayee ?? {}), name: e.target.value })}
+            className="h-10 rounded-xl"
+          />
+          <Input
+            placeholder="Banco"
+            value={externalPayee?.bank ?? ""}
+            onChange={(e) => setExternalPayee({ ...(externalPayee ?? {}), bank: e.target.value })}
+            className="h-10 rounded-xl"
+          />
+          <Input
+            placeholder="CLABE (18 dígitos)"
+            value={externalPayee?.clabe ?? ""}
+            onChange={(e) => setExternalPayee({ ...(externalPayee ?? {}), clabe: e.target.value })}
+            className="h-10 rounded-xl"
+          />
+        </div>
+      )}
+      {/* Regla existente: expense/saving + transfer → select de destinatario */}
+      {type !== "transfer" && type !== "income" && paymentMethod === "transfer" && (
         <div className="lg:col-span-2">
           <Label className="text-xs">Destinatario</Label>
           <Select value={transferToAccountId} onValueChange={(v) => setTransferToAccountId(v || undefined)}>
