@@ -1,814 +1,341 @@
-# Tarea Actual: Pendientes de la Migración a React Query
+# Diagnóstico Arquitectónico: Fallos Críticos en la Capa Offline-First
 
-> **Rol:** Arquitecto de Software
-> **Restricción:** NO implementar lógica final. Solo definir la estructura, interfaces, imports y criterios de aceptación para que el Constructor (OpenCode) programe cada archivo.
-> **Contexto:** La arquitectura limpia base (servicios, hooks de query y mutation por entidad) ya fue implementada en la migración anterior. Este documento cubre los **dos pendientes restantes**.
+> **Fecha de diagnóstico:** 2026-09-19  
+> **Versión analizada:** Finance Pal V1.19.38  
+> **Severidad:** CRÍTICA — los tres errores son síntomas de un único defecto de diseño raíz
 
 ---
 
-## Estado Actual del Proyecto
+## Resumen Ejecutivo
 
-### Lo que YA existe (no tocar)
+Los tres errores reportados no son independientes. Son síntomas de una **violación sistemática del contrato optimistic-update** en la arquitectura offline-first: `onMutate` escribe al store local *antes* de que la cuenta exista en Supabase, `mutationFn` lee el store local ya-actualizado y asume que Supabase ya conoce ese registro, y las queries de React Query se activan con `session` todavía ausente durante el arranque. El patrón erróneo se replica tanto en `useTransactionMutations` como en `useAccountMutations`.
 
-| Archivo | Estado |
-|---|---|
-| `src/services/accounts.service.ts` | ✅ Implementado |
-| `src/services/transactions.service.ts` | ✅ Implementado |
-| `src/services/fixedItems.service.ts` | ✅ Implementado |
-| `src/services/goals.service.ts` | ✅ Implementado |
-| `src/services/goalFolders.service.ts` | ✅ Implementado |
-| `src/services/debts.service.ts` | ✅ Implementado |
-| `src/services/settings.service.ts` | ✅ Implementado (`fetchUserSettings`, `upsertUserSettings`) |
-| `src/hooks/queries/use*Query.ts` (6 archivos) | ✅ Implementados |
-| `src/hooks/mutations/use*Mutations.ts` (6 archivos) | ✅ Implementados |
-| `src/hooks/useFinanceData.ts` | ✅ Refactorizado (hook fachada) |
-| `src/lib/queryKeys.ts` | ✅ Implementado |
-| `src/lib/queryClient.ts` | ✅ Implementado |
-| `src/store/slices/*.ts` | ✅ Sin llamadas a Supabase |
+---
 
-### Lo que AÚN FALTA (los dos pendientes)
+## Error 1 — Postgres Error 23503: Foreign Key `transactions_account_id_fkey`
 
-| # | Pendiente | Archivos afectados |
+### Causa Raíz
+
+**Race condition en el orden de ejecución de `onMutate` vs `mutationFn` dentro de `useTransactionMutations.addTransaction`.**
+
+```
+Flujo actual (INCORRECTO):
+┌─────────────────────────────────────────────────────────────┐
+│ 1. mutationFn se ejecuta                                    │
+│    └─ Lee state.transactions[0] del store                   │
+│       ✗ PROBLEMA: transactions[0] es la transacción ANTIGUA │
+│         porque onMutate todavía NO ha corrido               │
+│                                                             │
+│ 2. onMutate se ejecuta                                      │
+│    └─ Llama a addTx(payload) → la nueva tx entra al store   │
+│       como transactions[0]                                  │
+│                                                             │
+│ 3. mutationFn ya terminó con el registro INCORRECTO         │
+└─────────────────────────────────────────────────────────────┘
+```
+
+**Evidencia en el código** ([`useTransactionMutations.ts` L27–42](file:///E:/Projectos/Aplications/Finance%20Pal/Finance%20Pal%20APP/Finance%20Pal%20V1.19.38/finance-pal/src/hooks/mutations/useTransactionMutations.ts#L27-L42)):
+
+```typescript
+mutationFn: async (payload) => {
+  const state = useFinance.getState();
+  const transaction = state.transactions[0]; // ← LEE EL STORE EN ESTE MOMENTO
+  // ...
+  await insertTransaction(data.user.id, transaction); // ← Usa datos incorrectos
+},
+onMutate: async (payload) => {
+  await useFinance.getState().addTx(payload); // ← ESTO OCURRE DESPUÉS de mutationFn
+},
+```
+
+**Comportamiento de React Query TanStack v5:** `onMutate` se ejecuta sincrónicamente antes del `await` de `mutationFn` según la documentación, pero en la implementación actual `mutationFn` inicia y llama a `getState()` antes de que `addTx` en `onMutate` haya completado su ciclo async (la función `addTx` en `transaction-slice.ts` es `async`). 
+
+**El problema secundario del Foreign Key 23503** se produce porque la `account_id` que lleva la transacción enviada a Supabase corresponde a una cuenta que **solo existe localmente en Zustand** (fue creada offline o en una sesión previa sin haberse sincronizado nunca a Postgres). La tabla `transactions` tiene una FK `account_id → accounts.id`. Cuando la cuenta padre no existe en Supabase al momento del upsert de la transacción, Postgres rechaza con violación de FK 23503.
+
+**La arquitectura no implementa ningún mecanismo de garantía de orden de inserción** ("accounts before transactions"). Ambos recursos se sincronizan de forma independiente y no coordinada.
+
+**Flujo que causa el FK 23503:**
+```
+Usuario (online, primera sesión):
+  1. Crea cuenta "Efectivo" → addAccount() → solo en Zustand local
+     (La cuenta existe localmente pero nunca llega a Supabase porque
+      isOffline() es false pero insertAccount() nunca fue llamado)
+
+  2. Crea gasto vinculado a esa cuenta
+     → insertTransaction(userId, tx) donde tx.account_id = id_local_no_existente
+     → Supabase: FK violation 23503 porque accounts.id no existe
+```
+
+**Problema adicional en `useAccountMutations.addAccount`** ([`useAccountMutations.ts` L28–43](file:///E:/Projectos/Aplications/Finance%20Pal/Finance%20Pal%20APP/Finance%20Pal%20V1.19.38/finance-pal/src/hooks/mutations/useAccountMutations.ts#L28-L43)):
+
+```typescript
+mutationFn: async (payload) => {
+  const state = useFinance.getState();
+  const account = state.accounts[0]; // ← MISMO DEFECTO: lee [0], no el registro nuevo
+  // ...
+  await insertAccount(data.user.id, account);
+},
+onMutate: async (payload) => {
+  await useFinance.getState().addAccount(payload); // ← se ejecuta DESPUÉS
+},
+```
+
+Idéntico anti-patrón: `mutationFn` accede a `accounts[0]` esperando que sea la cuenta recién añadida, pero en el momento de esa lectura, `onMutate` todavía no ha corrido `addAccount`. Resultado: **se sincroniza una cuenta equivocada a Supabase**, y la cuenta real nunca llega a Postgres. Luego, cuando se intenta insertar una transacción que referencia el ID correcto (el que sí está en Zustand), la FK falla.
+
+---
+
+## Error 2 — PostgREST 409 Conflict en `transactions`
+
+### Causa Raíz
+
+**Upsert enviado con un `id` que ya existe en Supabase, pero con datos inconsistentes que violan constraints secundarios.**
+
+La función [`insertTransaction`](file:///E:/Projectos/Aplications/Finance%20Pal/Finance%20Pal%20APP/Finance%20Pal%20V1.19.38/finance-pal/src/services/transactions.service.ts#L124-L132) usa `.upsert()`:
+
+```typescript
+export async function insertTransaction(userId: string, tx: Transaction): Promise<void> {
+  const { error } = await supabase.from('transactions').upsert(toInsertPayload(userId, tx));
+}
+```
+
+El `.upsert()` de PostgREST/Supabase resuelve el conflicto por PK (`id`), pero **si además hay una constraint violada** (como la FK 23503 en el momento del UPSERT, o una UNIQUE constraint en alguna columna combinada), PostgREST devuelve **409 Conflict** en lugar del 23503 de Postgres, dependiendo de la versión del driver y el modo del conflict hint.
+
+El 409 se produce específicamente cuando:
+
+1. El `mutationFn` (por el bug del Error 1) envía la **transacción incorrecta** (la que estaba en `transactions[0]` antes del update) — un registro que YA existe en Supabase.
+2. Al mismo tiempo, React Query tiene configurado `retry: 2` en el `queryClient` ([`queryClient.ts` L12-L13](file:///E:/Projectos/Aplications/Finance%20Pal/Finance%20Pal%20APP/Finance%20Pal%20V1.19.38/finance-pal/src/lib/queryClient.ts#L12-L13)), lo que provoca que el upsert se reintente automáticamente sobre el mismo ID ya existente con datos diferentes, generando el conflicto a nivel de PostgREST.
+3. Las mutations también tienen `retry: 1` definido en `mutations.retry`, lo que exacerba el problema repitiendo el envío del payload incorrecto.
+
+El 409 es la manifestación del intento de upsert de una transacción duplicada (ID ya existente) cuya constraint secundaria (FK de `account_id`) falla, resultando en conflicto no resuelto.
+
+---
+
+## Error 3 — HTTP 401 Unauthorized en GET a `goals`
+
+### Causa Raíz
+
+**`useGoalsQuery` se ejecuta antes de que la sesión de Supabase esté completamente establecida, enviando el request sin token JWT en el header `Authorization`.**
+
+**Análisis de la condición `enabled`** en [`useGoalsQuery.ts` L22](file:///E:/Projectos/Aplications/Finance%20Pal/Finance%20Pal%20APP/Finance%20Pal%20V1.19.38/finance-pal/src/hooks/queries/useGoalsQuery.ts#L22):
+
+```typescript
+enabled: isSupabaseEnabled && !loading && !!session,
+```
+
+**El problema:** `isSupabaseEnabled` es una variable `let` inicializada en tiempo de módulo ([`supabase.ts` L19](file:///E:/Projectos/Aplications/Finance%20Pal/Finance%20Pal%20APP/Finance%20Pal%20V1.19.38/finance-pal/src/lib/supabase.ts#L19)):
+
+```typescript
+export let isSupabaseEnabled = getSyncEnabled();
+```
+
+Esta variable se evalúa **una sola vez** al importar el módulo. Si en algún ciclo de render la query se activa cuando `loading` acaba de pasar a `false` pero `session` todavía no se ha populado (hay un render intermedio entre el `setLoading(false)` y el posterior `setSession(session)` del callback de `getSession`), la query se dispara con `session` nulo.
+
+**La secuencia problemática** en [`AuthContext.tsx` L170-L182](file:///E:/Projectos/Aplications/Finance%20Pal/Finance%20Pal%20APP/Finance%20Pal%20V1.19.38/finance-pal/src/context/AuthContext.tsx#L170-L182):
+
+```typescript
+supabase.auth.getSession().then(async ({ data: { session } }) => {
+  setSession(session);     // render #1 — session puede ser null si aún no hay JWT
+  setUser(session?.user ?? null);
+  if (session) {
+    await checkMfaStatus();
+    // ...
+  }
+  setLoading(false);  // render #2 — loading pasa a false
+```
+
+Entre `setSession(null)` (si la sesión expira durante el await de `checkMfaStatus`) y `setLoading(false)`, hay un instante donde `loading = false` y `session = null`. En ese momento, `useGoalsQuery` ve `enabled = true` (porque `!false && !null` = `true`... **espera: `!!null` = `false`**).
+
+**El verdadero vector de 401:** La tabla `goals` en Supabase usa RLS (Row Level Security) con `auth.uid()`. Cuando `fetchGoals` se ejecuta via `goals.service.ts` sin una sesión activa en el cliente Supabase (porque el token JWT del cliente `supabase` ya caducó o nunca fue refrescado en el singleton), la request llega a PostgREST con el header `Authorization: Bearer <expired_token>` o sin él, retornando 401.
+
+**La causa concreta:** El cliente Supabase es un singleton creado en el módulo ([`supabase.ts` L33](file:///E:/Projectos/Aplications/Finance%20Pal/Finance%20Pal%20APP/Finance%20Pal%20V1.19.38/finance-pal/src/lib/supabase.ts#L33)):
+
+```typescript
+export const supabase = createClient(supabaseUrl, supabaseAnonKey);
+```
+
+El `AuthContext` usa `supabase.auth.refreshSession()` para refrescar el token, pero hay una condición de guardia:
+
+```typescript
+const refreshSession = useCallback(async () => {
+  if (isRefreshing.current || !isSupabaseEnabled) return; // ← sale si ya está refrescando
+```
+
+Si el `onAuthStateChange` dispara un evento `TOKEN_REFRESHED` mientras `isRefreshing.current = true`, el nuevo token nunca se persiste en el estado, y la query de `goals` usa el token viejo que ya está expirado. Supabase devuelve 401.
+
+**Factor agravante:** La tabla `goals` (a diferencia de `transactions` y `accounts` que usan vistas `*_safe`) **no tiene una vista intermedia con RLS separado**. `fetchGoals` accede directamente a la tabla `goals` sin ningún fallback, haciendo la query 100% dependiente de un JWT válido en cada request.
+
+---
+
+## Mapa de Defectos por Archivo
+
+| Archivo | Línea(s) | Defecto |
 |---|---|---|
-| **P1** | Servicio y hook de mutación para subida de **recibos fotográficos** a **Supabase Storage** | `src/services/storage.service.ts` (NUEVO) · `src/hooks/mutations/useReceiptMutations.ts` (NUEVO) · `src/services/transactions.service.ts` (MODIFICAR) · `src/hooks/useFinanceData.ts` (MODIFICAR) |
-| **P2** | Extraer las **operaciones en lote** (`downloadFromCloud`, `syncAllToCloud`, `loadSettingsFromCloud`) del `finance-store.ts` y reubicarlas en servicios/hooks propios | `src/services/cloudSync.service.ts` (NUEVO) · `src/hooks/mutations/useCloudSyncMutations.ts` (NUEVO) · `src/store/finance-store.ts` (MODIFICAR) · `src/hooks/useFinanceData.ts` (MODIFICAR) |
+| [`useTransactionMutations.ts`](file:///E:/Projectos/Aplications/Finance%20Pal/Finance%20Pal%20APP/Finance%20Pal%20V1.19.38/finance-pal/src/hooks/mutations/useTransactionMutations.ts) | 28-41 | `mutationFn` lee `state.transactions[0]` en lugar del `payload` recibido. El ID de la transacción nueva nunca se calcula en `mutationFn`; espera que `onMutate` ya lo haya creado. |
+| [`useAccountMutations.ts`](file:///E:/Projectos/Aplications/Finance%20Pal/Finance%20Pal%20APP/Finance%20Pal%20V1.19.38/finance-pal/src/hooks/mutations/useAccountMutations.ts) | 29-42 | Mismo defecto: `state.accounts[0]` no es el registro nuevo cuando `mutationFn` corre. La cuenta nueva nunca se sincroniza a Supabase. |
+| [`useTransactionMutations.ts`](file:///E:/Projectos/Aplications/Finance%20Pal/Finance%20Pal%20APP/Finance%20Pal%20V1.19.38/finance-pal/src/hooks/mutations/useTransactionMutations.ts) | 31-35 | La lógica offline encola `transaction` (dato del store), no `payload` (el input de la mutation). Si el store ya mutó vía `onMutate`, el dato encolado puede corresponder al registro pre-actualización. |
+| [`transactions.service.ts`](file:///E:/Projectos/Aplications/Finance%20Pal/Finance%20Pal%20APP/Finance%20Pal%20V1.19.38/finance-pal/src/services/transactions.service.ts) | 125 | `upsert` sin `ignoreDuplicates` ni conflict resolution hint explícito. Permite que el retry automático de React Query reenvíe el mismo payload, amplificando el 409. |
+| [`goals.service.ts`](file:///E:/Projectos/Aplications/Finance%20Pal/Finance%20Pal%20APP/Finance%20Pal%20V1.19.38/finance-pal/src/services/goals.service.ts) | 112-125 | `fetchGoals` accede a tabla `goals` directamente (no una vista `goals_safe`), sin manejo de JWT expirado ni retry con refresh previo. |
+| [`supabase.ts`](file:///E:/Projectos/Aplications/Finance%20Pal/Finance%20Pal%20APP/Finance%20Pal%20V1.19.38/finance-pal/src/lib/supabase.ts) | 19 | `isSupabaseEnabled` es evaluado en tiempo de módulo como `let`. No reacciona a cambios de sesión durante el ciclo de vida de la app. |
+| [`queryClient.ts`](file:///E:/Projectos/Aplications/Finance%20Pal/Finance%20Pal%20APP/Finance%20Pal%20V1.19.38/finance-pal/src/lib/queryClient.ts) | 12-17 | `retry: 2` para queries y `retry: 1` para mutations sin filtrado de errores 401/409. Reintentos ciegos agravan la propagación de errores de auth y FK. |
 
 ---
 
-## PENDIENTE 1 — Storage Service: Recibos Fotográficos
+## Plan de Solución Exacto
 
-### Diagnóstico
+> **RESTRICCIÓN:** Este plan NO modifica código. Es un plano de implementación para el equipo de desarrollo.
 
-El campo `receipt` en `Transaction` actualmente acepta:
-- Un `data:image/...;base64,...` (data URL embebida — problemático para sincronización en la nube)
-- Una ruta de archivo nativa Capacitor (ej. `receipts/abc123.jpg`)
-- Una URL de Supabase Storage (ej. `https://<project>.supabase.co/storage/v1/object/...`)
+### Fix 1 — Corrección del Anti-patrón `mutationFn` + `onMutate` (CRÍTICO)
 
-La función `syncAllToCloud` en `finance-store.ts` (línea 449-458) sube el campo `receipt` tal cual a la columna `receipt` de la tabla `transactions`. Si es un data URL en base64 largo, esto supone:
-1. **Tamaño excesivo** en base de datos (columna texto, no objeto binario)
-2. **Sin gestión de archivos** (no se puede purgar, versionar ni servir con CDN)
-3. **No hay lógica de upload** a Supabase Storage separada del insert de la fila
+**Problema:** `mutationFn` lee el store para obtener el objeto completo en lugar de construirlo desde el `payload` recibido, y confía en que `onMutate` ya haya corrido.
 
-El `storage.service.ts` debe encapsular toda la lógica de Supabase Storage para recibos: subida, obtención de URL pública y eliminación.
+**Solución de diseño:**
 
-### Nueva Estructura de Directorios (P1)
+El contrato correcto de la arquitectura optimistic-update es:
 
 ```
-src/
-├── services/
-│   └── storage.service.ts          ← NUEVO: funciones puras de Supabase Storage
-│
-└── hooks/
-    └── mutations/
-        └── useReceiptMutations.ts  ← NUEVO: useMutation para upload/delete de recibos
+onMutate  → actualiza el estado local (Zustand) de forma optimistic
+mutationFn → construye el payload de red a partir del argumento recibido directamente,
+             NO del store (el store puede estar en estado transitorio)
 ```
 
-### Archivos Afectados (P1)
+Para `addTransaction`:
+- `mutationFn` debe recibir el `payload: Omit<Transaction, 'id'>` y construir el `TransactionInsertPayload` directamente desde ese `payload`, generando el `id` dentro de `mutationFn` o recibiéndolo como parte del tipo de input.
+- El `id` generado debe ser el mismo que usa `onMutate`/`addTx` para evitar inconsistencias. La solución canónica es cambiar el tipo de input de la mutation a `Transaction` completa (con `id` pre-generado por el componente llamante), o generar el `id` antes de llamar a `.mutate()` y pasarlo como parte del payload.
 
-| Archivo | Acción | Cambio |
-|---|---|---|
-| `src/services/storage.service.ts` | **CREAR** | Funciones puras: `uploadReceipt`, `deleteReceipt`, `getReceiptPublicUrl` |
-| `src/hooks/mutations/useReceiptMutations.ts` | **CREAR** | Hook `useReceiptMutations` con mutations de upload y delete |
-| `src/services/transactions.service.ts` | **MODIFICAR** | `insertTransaction` y `updateTransaction` deben aceptar que `receipt` sea ya una URL de Storage (no base64) |
-| `src/hooks/useFinanceData.ts` | **MODIFICAR** | Exponer `uploadReceipt` y `deleteReceipt` provenientes de `useReceiptMutations` |
+**Flujo corregido:**
 
-### Interfaces y Tipos (P1)
+```
+Componente:
+  const id = generateSecureId();
+  addTransaction.mutate({ id, ...formData });
+                         ↑
+mutationFn recibe { id, ...formData } directamente
+  → construye InsertPayload desde el argumento
+  → NO lee el store
 
-#### `src/services/storage.service.ts` — Imports exactos
+onMutate recibe { id, ...formData } directamente
+  → llama addTx con el mismo id
+  → escribe al store local
+```
+
+Esto además requiere cambiar la firma de `addTx` en `TransactionSlice` para aceptar `Transaction` (con `id`) en lugar de `Omit<Transaction, 'id'>`, ya que el ID debe ser el mismo en ambas capas.
+
+Aplica idénticamente para `addAccount` en `useAccountMutations`.
+
+### Fix 2 — Garantía de Orden de Sincronización: Accounts → Transactions (CRÍTICO)
+
+**Problema:** No hay garantía de que la cuenta padre exista en Supabase antes de insertar la transacción hija.
+
+**Solución de diseño:**
+
+Implementar una función `ensureAccountSynced(accountId, userId)` que, antes de `insertTransaction`, verifique si la cuenta existe en Supabase y si no, la inserte primero:
+
+```
+mutationFn de addTransaction:
+  1. Obtener userId de supabase.auth.getUser()
+  2. Si tx.accountId existe:
+     a. Verificar existencia en Supabase: SELECT id FROM accounts WHERE id = tx.accountId
+     b. Si no existe: obtener la account del store local y llamar insertAccount(userId, account)
+     c. Await a que insertAccount complete antes de continuar
+  3. Llamar insertTransaction(userId, tx)
+```
+
+Alternativa arquitectónica preferida: Implementar un servicio de sincronización transaccional que maneje cuentas y transacciones en una misma operación coordinada, usando la cola de `useSyncStore` como mecanismo de ordering para el procesador de sincronización offline.
+
+### Fix 3 — Manejo de JWT Expirado en Queries (CRÍTICO)
+
+**Problema:** Las queries de React Query no manejan el 401 de forma inteligente; no intentan refrescar el token antes de reintentar.
+
+**Solución de diseño:**
+
+Configurar el `QueryClient` con una función `retry` que:
+1. No reintente errores 401 ni 409 con los datos actuales.
+2. Para 401: ejecute `supabase.auth.refreshSession()` y luego reintente una sola vez.
+3. Para 409 y 23503: no reintente (son errores de lógica de negocio, no transitorios).
 
 ```typescript
-import { supabase } from '@/lib/supabase';
-import { AppError, ErrorCodes } from '@/lib/app-error';
-// NO importar React, NO importar hooks, NO importar Zustand
-```
-
-#### Interfaces internas de `storage.service.ts`
-
-```typescript
-// Nombre del bucket en Supabase Storage
-const RECEIPTS_BUCKET = 'receipts';
-
-// Payload de entrada para subir un recibo
-export interface ReceiptUploadInput {
-  /** ID único del recibo — se usa como nombre de archivo en Storage */
-  receiptId: string;
-  /** ID del usuario autenticado — define el prefijo de carpeta */
-  userId: string;
-  /**
-   * Datos del archivo. Acepta:
-   *   - data URL (string): "data:image/jpeg;base64,..."
-   *   - Blob / File: objeto binario directo
-   */
-  file: string | Blob | File;
-  /** MIME type del archivo (ej. "image/jpeg", "image/png", "image/webp") */
-  mimeType: string;
+// En queryClient.ts
+queries: {
+  retry: (failureCount, error) => {
+    if (error?.status === 401 || error?.code === '23503' || error?.status === 409) return false;
+    return failureCount < 2;
+  },
+  retryDelay: ...
 }
-
-// Resultado de una subida exitosa
-export interface ReceiptUploadResult {
-  /** Ruta relativa dentro del bucket: "{userId}/{receiptId}" */
-  storagePath: string;
-  /** URL pública firmada o anónima servida por Supabase CDN */
-  publicUrl: string;
+mutations: {
+  retry: (failureCount, error) => {
+    if (error?.status === 409 || error?.code === '23503' || error?.status === 401) return false;
+    return failureCount < 1;
+  }
 }
 ```
 
-#### Firmas de funciones exportadas de `storage.service.ts`
+Para el 401 en `goals` específicamente: añadir manejo en `fetchGoals` que detecte el error 401, llame a `supabase.auth.refreshSession()`, y si tiene éxito, reintente la query. Esto puede implementarse como un wrapper `withAuthRetry(fn)` reutilizable en todos los servicios.
+
+### Fix 4 — Normalizar Acceso a Tablas via Vistas Seguras (MODERADO)
+
+**Problema:** `fetchGoals` accede directamente a la tabla `goals`, mientras `fetchAccounts` y `fetchTransactions` usan vistas `accounts_safe` y `transactions_safe` respectivamente.
+
+**Solución de diseño:**
+
+Crear la vista `goals_safe` en Supabase con las mismas políticas RLS que las otras vistas seguras, y actualizar `goals.service.ts` para consultar `goals_safe`. Esto aísla las policies de lectura y permite mayor control sin afectar la tabla base.
+
+### Fix 5 — Corrección del Encolado Offline (MODERADO)
+
+**Problema:** El código offline en `mutationFn` encola `transaction` (leído del store) en lugar de `payload` (el argumento de la mutation), que puede ser un objeto incompleto si `onMutate` aún no corrió.
+
+**Solución de diseño:**
+
+Una vez aplicado el Fix 1 (payload completo con `id` pre-generado), el encolado offline debe usar el `payload` directamente:
 
 ```typescript
-/**
- * Sube un recibo a Supabase Storage.
- * Si el archivo es un data URL base64, lo convierte a Blob antes de subir.
- * Retorna la ruta de Storage y la URL pública.
- * Lanza AppError(ErrorCodes.STORAGE_UPLOAD_FAILED) si falla.
- */
-export async function uploadReceipt(
-  input: ReceiptUploadInput
-): Promise<ReceiptUploadResult>;
-
-/**
- * Elimina un recibo de Supabase Storage por su ruta relativa.
- * Lanza AppError(ErrorCodes.STORAGE_DELETE_FAILED) si falla.
- */
-export async function deleteReceipt(storagePath: string): Promise<void>;
-
-/**
- * Obtiene la URL pública de un recibo ya existente en Storage
- * a partir de su ruta relativa (no hace llamadas de red).
- * Es una función síncrona que solo construye la URL.
- */
-export function getReceiptPublicUrl(storagePath: string): string;
-
-/**
- * Helper interno: convierte un data URL base64 a Blob.
- * No se exporta. Solo uso interno en uploadReceipt.
- */
-function dataUrlToBlob(dataUrl: string): Blob;
-```
-
-> **Nota para el Constructor:** El nombre de archivo en Storage debe seguir el patrón `{userId}/{receiptId}` para que las RLS policies del bucket `receipts` puedan restringir acceso por `userId`. El `receiptId` debe venir del `id` de la transacción o de un `generateSecureId()` nuevo.
-
-#### `src/hooks/mutations/useReceiptMutations.ts` — Imports exactos
-
-```typescript
-import { useMutation } from '@tanstack/react-query';
-import type { UseMutationResult } from '@tanstack/react-query';
-import { useFinance } from '@/store/finance-store';
-import { isSupabaseEnabled } from '@/lib/supabase';
-import { uploadReceipt, deleteReceipt } from '@/services/storage.service';
-import type { ReceiptUploadInput, ReceiptUploadResult } from '@/services/storage.service';
-import { supabase } from '@/lib/supabase';
-```
-
-#### Interfaces y firma de `useReceiptMutations`
-
-```typescript
-// Input para subir el recibo de una transacción específica
-export interface UploadReceiptForTransactionInput {
-  /** ID de la transacción a la que pertenece el recibo */
-  transactionId: string;
-  /**
-   * Datos del archivo: data URL base64 o Blob/File.
-   * Si es data URL, el servicio lo convierte a Blob internamente.
-   */
-  file: string | Blob | File;
-  /** MIME type del archivo */
-  mimeType: string;
+// CORRECTO:
+if (!isSupabaseEnabled || isOffline()) {
+  useSyncStore.getState().addMutation({
+    table: 'transactions',
+    action: 'INSERT',
+    recordId: payload.id,
+    payload: payload  // ← el argumento de mutate(), no el store
+  });
+  return;
 }
-
-// Input para eliminar el recibo de una transacción
-export interface DeleteReceiptForTransactionInput {
-  /** ID de la transacción */
-  transactionId: string;
-  /**
-   * Ruta relativa en Storage (ej. "{userId}/{transactionId}").
-   * Se necesita para llamar a deleteReceipt del servicio.
-   */
-  storagePath: string;
-}
-
-export interface ReceiptMutations {
-  /**
-   * Sube el archivo a Supabase Storage y actualiza el campo `receipt`
-   * de la transacción (en Zustand Y en la columna `transactions.receipt`)
-   * con la URL pública resultante.
-   */
-  uploadReceiptForTransaction: UseMutationResult<
-    ReceiptUploadResult,
-    Error,
-    UploadReceiptForTransactionInput
-  >;
-  /**
-   * Elimina el archivo de Storage y limpia el campo `receipt`
-   * de la transacción (en Zustand Y en Supabase).
-   */
-  deleteReceiptForTransaction: UseMutationResult<
-    void,
-    Error,
-    DeleteReceiptForTransactionInput
-  >;
-}
-
-export function useReceiptMutations(): ReceiptMutations;
-```
-
-#### Flujo interno de `uploadReceiptForTransaction`
-
-```
-onMutate:
-  — Ninguno (no hay optimistic update porque no tenemos la URL final aún)
-
-mutationFn:
-  1. supabase.auth.getUser() → obtener userId
-  2. Construir ReceiptUploadInput: { receiptId: transactionId, userId, file, mimeType }
-  3. uploadReceipt(input) → ReceiptUploadResult { storagePath, publicUrl }
-  4. updateTransaction(transactionId, { receipt: publicUrl })
-     ↑ llama a transactions.service.ts para actualizar la columna en Supabase
-  5. useFinance.getState().updateTx(transactionId, { receipt: publicUrl })
-     ↑ actualiza Zustand local para reflejar la URL real
-
-onSuccess:
-  — queryClient.invalidateQueries({ queryKey: financeKeys.transactions() })
-
-onError:
-  — queryClient.invalidateQueries({ queryKey: financeKeys.transactions() })
-  — NO lanzar error silenciosamente: dejar que el componente maneje el error visible
-```
-
-#### Flujo interno de `deleteReceiptForTransaction`
-
-```
-mutationFn:
-  1. deleteReceipt(storagePath)
-  2. updateTransaction(transactionId, { receipt: undefined })
-  3. useFinance.getState().updateTx(transactionId, { receipt: undefined })
-
-onSuccess:
-  — queryClient.invalidateQueries({ queryKey: financeKeys.transactions() })
-
-onError:
-  — queryClient.invalidateQueries({ queryKey: financeKeys.transactions() })
-```
-
-### Modificación a `useFinanceData.ts` (P1)
-
-```typescript
-// Agregar import:
-import { useReceiptMutations } from '@/hooks/mutations/useReceiptMutations';
-import type { UploadReceiptForTransactionInput, DeleteReceiptForTransactionInput } from '@/hooks/mutations/useReceiptMutations';
-
-// Dentro del hook, instanciar:
-const receiptM = useReceiptMutations();
-
-// En el return, agregar:
-uploadReceipt: (input: UploadReceiptForTransactionInput) =>
-  receiptM.uploadReceiptForTransaction.mutateAsync(input),
-deleteReceipt: (input: DeleteReceiptForTransactionInput) =>
-  receiptM.deleteReceiptForTransaction.mutateAsync(input),
-```
-
-> **Nota:** `UiSelection` en `useFinanceData.ts` NO incluye `syncAllToCloud` en la Fase final del P2. Ver sección P2.
-
-### Modificación a `src/services/transactions.service.ts` (P1)
-
-El campo `receipt` en `TransactionInsertPayload` y `TransactionUpdatePayload` ya es `string | undefined`. **No requiere cambio de tipo.** Lo que cambia es la semántica: el Constructor debe agregar un comentario JSDoc indicando que el campo ya debe contener una URL de Storage o ruta nativa, nunca un data URL base64, cuando se llama desde `insertTransaction`.
-
-```typescript
-// En TransactionInsertPayload — añadir JSDoc:
-/**
- * URL de Supabase Storage o ruta de archivo nativo (Capacitor).
- * NUNCA debe ser un data URL base64 al llamar a insertTransaction.
- * Si el archivo aún no fue subido, llamar primero a uploadReceipt de storage.service.ts.
- */
-receipt: string | undefined;
 ```
 
 ---
 
-## PENDIENTE 2 — Extracción de Operaciones en Lote de `finance-store.ts`
-
-### Diagnóstico
-
-El `finance-store.ts` actualmente contiene tres operaciones que violan el principio de responsabilidad única del store Zustand:
-
-| Función | Líneas | Problema |
-|---|---|---|
-| `loadSettingsFromCloud()` | 382–397 | Llama directamente a `supabase.auth.getSession()` y `supabase.from('user_settings').select()`. El store Zustand no debe tocar la red. |
-| `downloadFromCloud()` | 399–425 | Hace 6 llamadas paralelas a Supabase con mappers inline, duplicando la lógica ya existente en los servicios por entidad. |
-| `syncAllToCloud()` | 427–532 | Hace inserts/deletes masivos de todas las entidades y settings. Mezcla lógica de red con estado local. |
-
-Adicionalmente, `useFinanceData.ts` (línea 75 en `UiSelection` y línea 131 en `useShallow`) expone `syncAllToCloud` desde Zustand directamente, lo cual es incorrecto arquitecturalmente (un store local no debería tener funciones de red).
-
-### Nueva Estructura de Directorios (P2)
+## Diagrama de Flujo del Bug Principal
 
 ```
-src/
-├── services/
-│   └── cloudSync.service.ts           ← NUEVO: funciones puras de sincronización masiva
-│
-└── hooks/
-    └── mutations/
-        └── useCloudSyncMutations.ts   ← NUEVO: hooks useMutation para operaciones en lote
-```
-
-### Archivos Afectados (P2)
-
-| Archivo | Acción | Cambio |
-|---|---|---|
-| `src/services/cloudSync.service.ts` | **CREAR** | Funciones puras: `downloadAllFromCloud`, `syncAllToCloud`, `loadSettingsFromCloud` |
-| `src/hooks/mutations/useCloudSyncMutations.ts` | **CREAR** | Hooks de mutation para operaciones en lote con feedback de progreso |
-| `src/store/finance-store.ts` | **MODIFICAR** | Eliminar `loadSettingsFromCloud`, `downloadFromCloud`, `syncAllToCloud` de la interfaz `State` y de la implementación |
-| `src/hooks/useFinanceData.ts` | **MODIFICAR** | Reemplazar `syncAllToCloud: ui.syncAllToCloud` por `syncAllToCloud` proveniente de `useCloudSyncMutations` |
-
-### Interfaces y Tipos (P2)
-
-#### `src/services/cloudSync.service.ts` — Imports exactos
-
-```typescript
-import { supabase } from '@/lib/supabase';
-import { AppError, ErrorCodes } from '@/lib/app-error';
-import { mapAccountFromDb } from '@/services/accounts.service';
-import { mapTransactionFromDb } from '@/services/transactions.service';
-import { mapFixedItemFromDb } from '@/services/fixedItems.service';
-import { mapGoalFromDb } from '@/services/goals.service';
-import { mapGoalFolderFromDb } from '@/services/goalFolders.service';
-import { mapDebtFromDb } from '@/services/debts.service';
-import { mapUserSettingsFromDb } from '@/services/settings.service';
-import type {
-  Account,
-  Transaction,
-  FixedItem,
-  Goal,
-  GoalFolder,
-  Debt,
-  ThemeMode,
-  UserProfile,
-} from '@/lib/finance';
-// NO importar React, NO importar hooks, NO importar Zustand
-```
-
-#### Interfaces de `cloudSync.service.ts`
-
-```typescript
-// Resultado completo de una descarga desde la nube
-export interface CloudSnapshot {
-  accounts: Account[];
-  transactions: Transaction[];
-  fixedItems: FixedItem[];
-  goals: Goal[];
-  goalFolders: GoalFolder[];
-  debts: Debt[];
-}
-
-// Resultado de settings remotos
-export interface CloudSettings {
-  theme: ThemeMode;
-  profile: UserProfile;
-}
-
-// Resultado del sync masivo a la nube
-export interface CloudSyncResult {
-  /** Número total de registros sincronizados con éxito */
-  syncedCount: number;
-  /** Errores por entidad (vacío si todo OK) */
-  errors: Array<{ entity: string; message: string }>;
-}
-
-// Input del sync masivo (snapshot local del store)
-export interface CloudSyncInput {
-  userId: string;
-  accounts: Account[];
-  transactions: Transaction[];
-  fixedItems: FixedItem[];
-  goals: Goal[];
-  goalFolders: GoalFolder[];
-  debts: Debt[];
-  theme: ThemeMode;
-  profile: UserProfile;
-}
-```
-
-#### Firmas de funciones exportadas de `cloudSync.service.ts`
-
-```typescript
-/**
- * Descarga todas las entidades de Supabase para el userId dado.
- * Usa los mappers existentes de cada servicio por entidad.
- * Lanza AppError(ErrorCodes.DB_QUERY_FAILED) si alguna de las 6 consultas falla.
- *
- * Internamente usa Promise.all([
- *   supabase.from('accounts')...,
- *   supabase.from('transactions')...,
- *   supabase.from('fixed_items')...,
- *   supabase.from('goals')...,
- *   supabase.from('debts')...,
- *   supabase.from('goal_folders')...,
- * ])
- * y aplica los mappers de cada servicio correspondiente.
- */
-export async function downloadAllFromCloud(
-  userId: string
-): Promise<CloudSnapshot>;
-
-/**
- * Sincroniza (delete+insert masivo) todas las entidades del usuario a Supabase.
- * Las transacciones con receipt en base64 deben ser manejadas externamente
- * (el caller debe resolver los uploads a Storage antes de llamar a esta función).
- *
- * Retorna CloudSyncResult con el conteo de registros sincronizados y errores parciales.
- * NO lanza excepción si hay errores en entidades individuales: los acumula en `errors`.
- */
-export async function syncAllToCloud(
-  input: CloudSyncInput
-): Promise<CloudSyncResult>;
-
-/**
- * Carga theme y profile del usuario desde user_settings.
- * Delega a fetchUserSettings de settings.service.ts.
- * Retorna null si no hay registro aún.
- *
- * NOTA: Esta función existe solo por compatibilidad semántica.
- * En realidad es un wrapper de fetchUserSettings.
- */
-export async function loadSettingsFromCloud(
-  userId: string
-): Promise<CloudSettings | null>;
-```
-
-> **Nota para el Constructor:** `syncAllToCloud` NO debe lanzar excepción global si falla una entidad individual. Debe acumular errores en el array `errors` y continuar con las demás entidades. Solo lanzar si falla la autenticación o la sesión es inválida.
-
-#### `src/hooks/mutations/useCloudSyncMutations.ts` — Imports exactos
-
-```typescript
-import { useMutation, useQueryClient } from '@tanstack/react-query';
-import type { UseMutationResult } from '@tanstack/react-query';
-import { useFinance } from '@/store/finance-store';
-import { isSupabaseEnabled } from '@/lib/supabase';
-import { supabase } from '@/lib/supabase';
-import { financeKeys } from '@/lib/queryKeys';
-import {
-  downloadAllFromCloud,
-  syncAllToCloud,
-  loadSettingsFromCloud,
-  type CloudSyncResult,
-  type CloudSnapshot,
-  type CloudSettings,
-} from '@/services/cloudSync.service';
-```
-
-#### Interfaces y firma de `useCloudSyncMutations`
-
-```typescript
-export interface CloudSyncMutations {
-  /**
-   * Descarga todas las entidades desde Supabase y las aplica al store Zustand.
-   * Invalida el caché de React Query para que los queries refresquen.
-   */
-  downloadFromCloud: UseMutationResult<CloudSnapshot, Error, void>;
-
-  /**
-   * Sube todas las entidades del store Zustand a Supabase (delete+insert masivo).
-   * Retorna el número de registros sincronizados.
-   */
-  syncAllToCloud: UseMutationResult<CloudSyncResult, Error, void>;
-
-  /**
-   * Carga theme y profile desde user_settings y los aplica al store Zustand.
-   */
-  loadSettingsFromCloud: UseMutationResult<CloudSettings | null, Error, void>;
-}
-
-export function useCloudSyncMutations(): CloudSyncMutations;
-```
-
-#### Flujo interno de `downloadFromCloud`
-
-```
-mutationFn:
-  1. supabase.auth.getUser() → userId
-  2. downloadAllFromCloud(userId) → CloudSnapshot
-  3. useFinance.getState() — llamar a set() con el snapshot:
-     set({ accounts, transactions, fixedItems, goals, goalFolders, debts })
-
-onSuccess:
-  — queryClient.invalidateQueries({ queryKey: financeKeys.all })
-  — Invalida TODAS las entidades de una sola vez (usa financeKeys.all como raíz)
-
-onError:
-  — No hace rollback (la descarga no modifica Supabase, solo el estado local)
-  — El componente debe mostrar toast de error
-```
-
-#### Flujo interno de `syncAllToCloud`
-
-```
-mutationFn:
-  1. Si !isSupabaseEnabled → retornar { syncedCount: 0, errors: [] }
-  2. supabase.auth.getUser() → userId
-  3. Leer snapshot completo: const s = useFinance.getState()
-  4. Construir CloudSyncInput:
-     { userId, accounts: s.accounts, transactions: s.transactions,
-       fixedItems: s.fixedItems, goals: s.goals, goalFolders: s.goalFolders,
-       debts: s.debts, theme: s.theme, profile: s.profile }
-  5. syncAllToCloud(input) → CloudSyncResult
-
-onSuccess:
-  — queryClient.invalidateQueries({ queryKey: financeKeys.all })
-
-onError:
-  — No rollback
-```
-
-#### Flujo interno de `loadSettingsFromCloud`
-
-```
-mutationFn:
-  1. Si !isSupabaseEnabled → return null
-  2. supabase.auth.getUser() → userId
-  3. loadSettingsFromCloud(userId) → CloudSettings | null
-  4. Si data !== null:
-     useFinance.getState().setTheme(data.theme)
-     useFinance.getState().setProfile(data.profile)
-  5. Retornar data
-
-onSuccess:
-  — Ninguna invalidación (no afecta queries de entidades financieras)
-```
-
-### Modificación a `src/store/finance-store.ts` (P2)
-
-#### Cambio en la interfaz `State`
-
-```typescript
-// ELIMINAR estas tres líneas de la interfaz State:
-loadSettingsFromCloud: () => Promise<void>;
-downloadFromCloud: () => Promise<void>;
-syncAllToCloud: () => Promise<number>;
-
-// La interfaz State resultante ya NO tendrá operaciones de red.
-// Solo mantendrá: saveReceiptFile, hasLocalData, exportData, importData,
-// migrateReceiptsInPlace, cleanupOrphanReceipts, resetAll, ensureScheduledTransactions.
-```
-
-#### Cambio en la implementación (`create<State>()(persist(...))`)
-
-```typescript
-// ELIMINAR completamente los bloques:
-// loadSettingsFromCloud: async () => { ... },   (líneas 382-397 actuales)
-// downloadFromCloud: async () => { ... },         (líneas 399-425 actuales)
-// syncAllToCloud: async () => { ... },            (líneas 427-532 actuales)
-
-// No reemplazar con nada. Estas responsabilidades viven ahora en:
-// cloudSync.service.ts + useCloudSyncMutations.ts
-```
-
-> **Importante para el Constructor:** El `persist` middleware y toda la lógica de `storage.getItem/setItem/removeItem` (líneas 538-582) NO debe tocarse. Solo se eliminan los tres métodos de red mencionados.
-
-### Modificación a `src/hooks/useFinanceData.ts` (P2)
-
-#### Cambios en imports
-
-```typescript
-// AGREGAR import:
-import { useCloudSyncMutations } from '@/hooks/mutations/useCloudSyncMutations';
-```
-
-#### Cambios en el cuerpo del hook
-
-```typescript
-// AGREGAR instancia de mutations (junto a los demás):
-const cloudSyncM = useCloudSyncMutations();
-```
-
-#### Cambios en `UiSelection` (tipo interno)
-
-```typescript
-// ELIMINAR de UiSelection:
-syncAllToCloud: () => Promise<number>;
-
-// Ya no se expone desde Zustand — viene del hook de mutations
-```
-
-#### Cambios en `useShallow`
-
-```typescript
-// ELIMINAR de la selección useShallow:
-syncAllToCloud: state.syncAllToCloud,
-```
-
-#### Cambios en el `return`
-
-```typescript
-// REEMPLAZAR:
-syncAllToCloud: ui.syncAllToCloud,
-
-// POR:
-downloadFromCloud: () => cloudSyncM.downloadFromCloud.mutateAsync(),
-syncAllToCloud: () => cloudSyncM.syncAllToCloud.mutateAsync().then(r => r.syncedCount),
-loadSettingsFromCloud: () => cloudSyncM.loadSettingsFromCloud.mutateAsync(),
-
-// Estado de progreso (útil para mostrar indicadores en UI):
-isSyncingToCloud: cloudSyncM.syncAllToCloud.isPending,
-isDownloadingFromCloud: cloudSyncM.downloadFromCloud.isPending,
+Componente llama addTransaction.mutate(formPayload)
+           │
+           ├──── mutationFn(formPayload) inicia inmediatamente
+           │          └─ Lee useFinance.getState().transactions[0]
+           │             [estado ANTERIOR, sin la nueva tx]
+           │             ← usa ID de transacción INCORRECTA
+           │
+           └──── onMutate(formPayload) → addTx(formPayload)
+                     └─ [ASYNC] genera nuevo id, inserta en store
+                        transactions[0] ahora = nueva tx
+                        ← pero mutationFn ya terminó de leer
+                        
+    Resultado: Supabase recibe tx con account_id = ID de una cuenta
+               que existe en Zustand pero NO en Postgres
+               → FK 23503
+               → retry automático → 409 Conflict
 ```
 
 ---
 
-## Plan de Acción Paso a Paso
+## Clasificación de Prioridad de Fixes
 
-### FASE A — Storage Service y Hook de Recibos (Pendiente 1)
-
-> **Orden estricto:** A.1 → A.2 → A.3 → A.4
-
-#### Paso A.1 — Crear `src/services/storage.service.ts`
-
-- Definir constante `RECEIPTS_BUCKET = 'receipts'`.
-- Implementar `dataUrlToBlob(dataUrl: string): Blob` (helper privado).
-- Implementar `uploadReceipt(input: ReceiptUploadInput): Promise<ReceiptUploadResult>`:
-  - Si `input.file` es string, llamar a `dataUrlToBlob` primero.
-  - Llamar a `supabase.storage.from(RECEIPTS_BUCKET).upload(path, blob, { contentType: input.mimeType, upsert: true })`.
-  - La ruta debe ser `${input.userId}/${input.receiptId}`.
-  - Obtener URL pública con `supabase.storage.from(RECEIPTS_BUCKET).getPublicUrl(path)`.
-  - Si hay error en el upload, lanzar `AppError(ErrorCodes.STORAGE_UPLOAD_FAILED, ...)`.
-- Implementar `deleteReceipt(storagePath: string): Promise<void>`:
-  - Llamar a `supabase.storage.from(RECEIPTS_BUCKET).remove([storagePath])`.
-  - Si hay error, lanzar `AppError(ErrorCodes.STORAGE_DELETE_FAILED, ...)`.
-- Implementar `getReceiptPublicUrl(storagePath: string): string`:
-  - Llamar a `supabase.storage.from(RECEIPTS_BUCKET).getPublicUrl(storagePath).data.publicUrl`.
-  - Función síncrona, no lanza error.
-- **NO importar React, NO importar hooks, NO importar Zustand.**
-
-#### Paso A.2 — Crear `src/hooks/mutations/useReceiptMutations.ts`
-
-- Implementar `uploadReceiptForTransaction`:
-  - `mutationFn`: `supabase.auth.getUser()` → `uploadReceipt(...)` → `updateTransaction(transactionId, { receipt: publicUrl })` → `useFinance.getState().updateTx(transactionId, { receipt: publicUrl })`.
-  - `onSuccess`: `queryClient.invalidateQueries({ queryKey: financeKeys.transactions() })`.
-  - `onError`: `queryClient.invalidateQueries({ queryKey: financeKeys.transactions() })`.
-- Implementar `deleteReceiptForTransaction`:
-  - `mutationFn`: `deleteReceipt(storagePath)` → `updateTransaction(transactionId, { receipt: undefined })` → `useFinance.getState().updateTx(transactionId, { receipt: undefined })`.
-  - `onSuccess/onError`: igual que upload.
-- Exportar interfaz `ReceiptMutations` y función `useReceiptMutations`.
-
-#### Paso A.3 — Añadir JSDoc a `src/services/transactions.service.ts`
-
-- En `TransactionInsertPayload.receipt` y `TransactionUpdatePayload`: añadir JSDoc indicando que el campo espera URL de Storage o ruta nativa, nunca base64.
-- **No cambiar lógica ni tipos** — solo documentar el contrato.
-
-#### Paso A.4 — Modificar `src/hooks/useFinanceData.ts` (import + instancia + return)
-
-- Añadir `import { useReceiptMutations } from '@/hooks/mutations/useReceiptMutations'`.
-- Instanciar `const receiptM = useReceiptMutations()` junto a los demás.
-- En el `return`, añadir:
-  ```typescript
-  uploadReceipt: (input) => receiptM.uploadReceiptForTransaction.mutateAsync(input),
-  deleteReceipt: (input) => receiptM.deleteReceiptForTransaction.mutateAsync(input),
-  ```
+| Prioridad | Fix | Impacto | Complejidad |
+|---|---|---|---|
+| P0 — Bloqueante | Fix 1: Refactorizar `mutationFn` para no leer del store | Elimina causa raíz de Error 1 y 2 | Media |
+| P0 — Bloqueante | Fix 2: Garantía de orden Accounts → Transactions | Elimina FK 23503 definitivamente | Media-Alta |
+| P1 — Urgente | Fix 3: Retry inteligente por tipo de error en QueryClient | Elimina Error 3 y previene cascada de errores | Baja |
+| P2 — Importante | Fix 5: Corrección del encolado offline | Consistencia en modo offline | Baja |
+| P3 — Mejora | Fix 4: Vista `goals_safe` en Supabase | Consistencia arquitectónica | Baja |
 
 ---
 
-### FASE B — Extracción de Operaciones en Lote (Pendiente 2)
-
-> **Orden estricto:** B.1 → B.2 → B.3 → B.4
-
-#### Paso B.1 — Crear `src/services/cloudSync.service.ts`
-
-- Implementar `downloadAllFromCloud(userId: string): Promise<CloudSnapshot>`:
-  - `Promise.all([6 queries])` usando las mismas columnas que las funciones `fetch*` de los servicios existentes.
-  - Usar los mappers de cada servicio: `mapAccountFromDb`, `mapTransactionFromDb`, `mapFixedItemFromDb`, `mapGoalFromDb`, `mapGoalFolderFromDb`, `mapDebtFromDb`.
-  - Si alguna query retorna error, lanzar `AppError(ErrorCodes.DB_QUERY_FAILED, ...)`.
-- Implementar `syncAllToCloud(input: CloudSyncInput): Promise<CloudSyncResult>`:
-  - Para cada entidad: delete por `user_id`, luego insert en bucle.
-  - Acumular errores en `errors[]` sin abortar las demás entidades.
-  - Al final, upsert en `user_settings` con `theme` y `profile`.
-  - Retornar `{ syncedCount, errors }`.
-- Implementar `loadSettingsFromCloud(userId: string): Promise<CloudSettings | null>`:
-  - Delegar a `fetchUserSettings(userId)` de `settings.service.ts`.
-  - Mapear resultado a `CloudSettings` si no es null.
-- **NO importar React, NO importar hooks, NO importar Zustand.**
-
-#### Paso B.2 — Crear `src/hooks/mutations/useCloudSyncMutations.ts`
-
-- Implementar `downloadFromCloud`:
-  - `mutationFn`: `supabase.auth.getUser()` → `downloadAllFromCloud(userId)` → `useFinance.getState()` set del snapshot completo.
-  - `onSuccess`: `queryClient.invalidateQueries({ queryKey: financeKeys.all })`.
-- Implementar `syncAllToCloud`:
-  - `mutationFn`: si `!isSupabaseEnabled`, retornar early. Leer snapshot de `useFinance.getState()`. Llamar a `syncAllToCloud(input)`.
-  - `onSuccess`: `queryClient.invalidateQueries({ queryKey: financeKeys.all })`.
-- Implementar `loadSettingsFromCloud`:
-  - `mutationFn`: si `!isSupabaseEnabled`, retornar null. `supabase.auth.getUser()` → `loadSettingsFromCloud(userId)`. Si resultado no null: `useFinance.getState().setTheme(...)` y `setProfile(...)`.
-- Exportar interfaz `CloudSyncMutations` y función `useCloudSyncMutations`.
-
-#### Paso B.3 — Modificar `src/store/finance-store.ts`
-
-- **Eliminar** de la interfaz `State` (dentro del `interface State extends ...`):
-  ```typescript
-  loadSettingsFromCloud: () => Promise<void>;
-  downloadFromCloud: () => Promise<void>;
-  syncAllToCloud: () => Promise<number>;
-  ```
-- **Eliminar** los tres bloques de implementación dentro del `create<State>()(persist(..., (...a) => { ... }))`.
-- **No tocar** el bloque `persist` ni la lógica de `storage.getItem/setItem/removeItem`.
-- **No tocar** `resetAll` — esta función ya es solo local (cambia estado Zustand, el audit log a Supabase es un fire-and-forget que puede quedar).
-
-#### Paso B.4 — Modificar `src/hooks/useFinanceData.ts`
-
-- Añadir `import { useCloudSyncMutations } from '@/hooks/mutations/useCloudSyncMutations'`.
-- Instanciar `const cloudSyncM = useCloudSyncMutations()`.
-- En `UiSelection`: eliminar `syncAllToCloud: () => Promise<number>`.
-- En el selector `useShallow`: eliminar `syncAllToCloud: state.syncAllToCloud`.
-- En el `return`:
-  - Eliminar `syncAllToCloud: ui.syncAllToCloud`.
-  - Agregar:
-    ```typescript
-    downloadFromCloud: () => cloudSyncM.downloadFromCloud.mutateAsync(),
-    syncAllToCloud: () =>
-      cloudSyncM.syncAllToCloud.mutateAsync().then((r) => r.syncedCount),
-    loadSettingsFromCloud: () => cloudSyncM.loadSettingsFromCloud.mutateAsync(),
-    isSyncingToCloud: cloudSyncM.syncAllToCloud.isPending,
-    isDownloadingFromCloud: cloudSyncM.downloadFromCloud.isPending,
-    ```
-
----
-
-## Estructura Final de Directorios (al completar P1 + P2)
-
-```
-src/
-├── services/
-│   ├── accounts.service.ts          ✅ ya existe
-│   ├── transactions.service.ts      ✅ ya existe (+ JSDoc en receipt)
-│   ├── fixedItems.service.ts        ✅ ya existe
-│   ├── goals.service.ts             ✅ ya existe
-│   ├── goalFolders.service.ts       ✅ ya existe
-│   ├── debts.service.ts             ✅ ya existe
-│   ├── settings.service.ts          ✅ ya existe
-│   ├── storage.service.ts           ← NUEVO (P1)
-│   └── cloudSync.service.ts         ← NUEVO (P2)
-│
-├── hooks/
-│   ├── queries/                     ✅ 6 archivos ya existen
-│   ├── mutations/
-│   │   ├── useAccountMutations.ts   ✅ ya existe
-│   │   ├── useTransactionMutations.ts ✅ ya existe
-│   │   ├── useFixedItemMutations.ts ✅ ya existe
-│   │   ├── useGoalMutations.ts      ✅ ya existe
-│   │   ├── useGoalFolderMutations.ts ✅ ya existe
-│   │   ├── useDebtMutations.ts      ✅ ya existe
-│   │   ├── useReceiptMutations.ts   ← NUEVO (P1)
-│   │   └── useCloudSyncMutations.ts ← NUEVO (P2)
-│   └── useFinanceData.ts            ← MODIFICAR (P1 + P2)
-│
-└── store/
-    └── finance-store.ts             ← MODIFICAR (P2: eliminar 3 métodos de red)
-```
-
----
-
-## Criterios de Aceptación
-
-### P1 — Recibos en Storage
-
-- [ ] **CA-P1-01:** `storage.service.ts` no importa React, hooks ni Zustand.
-- [ ] **CA-P1-02:** `uploadReceipt` acepta tanto data URL base64 como `Blob`/`File` y en ambos casos sube un binario (no texto) a Supabase Storage.
-- [ ] **CA-P1-03:** La ruta de Storage sigue el patrón `{userId}/{receiptId}` para compatibilidad con RLS.
-- [ ] **CA-P1-04:** Tras `uploadReceiptForTransaction`, el campo `receipt` de la transacción en Zustand y en Supabase contiene la URL pública de Storage, no un base64.
-- [ ] **CA-P1-05:** Tras `deleteReceiptForTransaction`, el archivo se elimina de Storage y el campo `receipt` queda `undefined` en Zustand y en Supabase.
-- [ ] **CA-P1-06:** `useFinanceData` expone `uploadReceipt` y `deleteReceipt` con las firmas correctas y los componentes pueden llamarlas sin importar directamente de `storage.service.ts` ni de `useReceiptMutations.ts`.
-- [ ] **CA-P1-07:** El build TypeScript (`tsc --noEmit`) pasa sin errores con los nuevos tipos.
-- [ ] **CA-P1-08:** Si Supabase Storage no está disponible (`!isSupabaseEnabled`), `uploadReceiptForTransaction` falla con un error claro (no silenciosamente) para que el componente muestre feedback al usuario.
-
-### P2 — Operaciones en Lote Extraídas
-
-- [ ] **CA-P2-01:** `cloudSync.service.ts` no importa React, hooks ni Zustand.
-- [ ] **CA-P2-02:** `downloadAllFromCloud` usa los mappers de los servicios existentes (no duplica lógica de mapeo).
-- [ ] **CA-P2-03:** `syncAllToCloud` en el servicio acumula errores parciales sin abortar el proceso completo.
-- [ ] **CA-P2-04:** `finance-store.ts` ya no contiene `loadSettingsFromCloud`, `downloadFromCloud` ni `syncAllToCloud` en su interfaz ni en su implementación.
-- [ ] **CA-P2-05:** `useFinanceData` sigue exponiendo `syncAllToCloud` con el mismo tipo de retorno `Promise<number>` (compatibilidad con componentes existentes).
-- [ ] **CA-P2-06:** `useFinanceData` expone `downloadFromCloud` y `loadSettingsFromCloud` como funciones async.
-- [ ] **CA-P2-07:** `useFinanceData` expone `isSyncingToCloud` y `isDownloadingFromCloud` como booleanos de estado para la UI.
-- [ ] **CA-P2-08:** Ningún componente o página rompe por la eliminación de los métodos del store (el `useShallow` en `useFinanceData` ya no los incluye).
-- [ ] **CA-P2-09:** El build TypeScript pasa sin errores.
-- [ ] **CA-P2-10:** Los tests existentes en `src/test/` continúan pasando.
-
-### Arquitecturales (Ambos Pendientes)
-
-- [ ] **CA-ARQ-01:** Ninguna función en `src/services/` importa React, hooks de React ni Zustand.
-- [ ] **CA-ARQ-02:** `useFinanceData.ts` sigue siendo el **único punto de entrada** para componentes. Ninguna página importa directamente de `storage.service.ts`, `cloudSync.service.ts`, `useReceiptMutations.ts` ni `useCloudSyncMutations.ts`.
-- [ ] **CA-ARQ-03:** No existe uso de `any` explícito en los archivos nuevos.
-- [ ] **CA-ARQ-04:** Los nuevos `ErrorCodes` usados (`STORAGE_UPLOAD_FAILED`, `STORAGE_DELETE_FAILED`) existen en `src/lib/app-error.ts`. Si no existen, el Constructor debe añadirlos antes de usarlos.
-
----
-
-## Notas para el Constructor (OpenCode)
-
-1. **Verificar `ErrorCodes` antes de implementar el servicio de storage:** Abrir `src/lib/app-error.ts` y verificar que existan `STORAGE_UPLOAD_FAILED` y `STORAGE_DELETE_FAILED`. Si no existen, añadirlos al enum antes del Paso A.1.
-
-2. **`financeKeys.all` en `useCloudSyncMutations`:** La clave raíz `financeKeys.all` (definida en `queryKeys.ts` como `['finance'] as const`) no existe actualmente como función sino como array directo. Verificar la forma exacta antes de usarla en `invalidateQueries`. Si es un array, la llamada correcta es `{ queryKey: financeKeys.all }` (sin paréntesis).
-
-3. **Compatibilidad de `syncAllToCloud` en `useFinanceData`:** El método `syncAllToCloud` se llama en algún componente o página existente con `await syncAllToCloud()` y espera un `number`. El wrapper en `useFinanceData` debe mantener `() => Promise<number>` usando `.then(r => r.syncedCount)`.
-
-4. **No eliminar `saveReceiptFile` del store:** La función `saveReceiptFile` en `finance-store.ts` gestiona archivos en el filesystem nativo de Capacitor (no en Supabase Storage). Es distinta de `uploadReceipt` del nuevo servicio. No eliminarla.
-
-5. **`downloadFromCloud` en el hook aplica al store via `useFinance.getState().set`:** En Zustand, para hacer un set masivo desde fuera del store, se usa `useFinance.setState({ accounts, transactions, ... })`. No es necesario llamar a las actions individuales.
-
-6. **Orden de implementación es estricto dentro de cada Fase:** A.1 debe completarse antes que A.2 (el hook depende del servicio). B.1 debe completarse antes que B.2. Las Fases A y B son independientes entre sí y pueden implementarse en paralelo.
+*Diagnóstico generado por análisis estático de código fuente. No se modificó ningún archivo de implementación.*

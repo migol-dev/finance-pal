@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef } from 'react';
 import { useShallow } from 'zustand/react/shallow';
+import { generateSecureId } from '@/lib/sanitizers';
 import { useFinance } from '@/store/finance-store';
 import type { ExportScopes } from '@/store/finance-store';
 import { isSupabaseEnabled } from '@/lib/supabase';
@@ -251,8 +252,10 @@ export function useFinanceData() {
     refetch: refetchAll,
 
     // --- Mutations de red (optimistic update + Supabase + invalidación) ---
-    // accounts
-    addAccount: (a: Omit<Account, 'id'>) => accountM.addAccount.mutateAsync(a),
+    addAccount: (a: Omit<Account, 'id'>) => {
+      const payload = { ...a, id: generateSecureId() } as Account;
+      return accountM.addAccount.mutateAsync(payload);
+    },
     updateAccount: (id: string, patch: Partial<Account>) =>
       accountM.updateAccount.mutateAsync({ id, patch }),
     removeAccount: (id: string) => accountM.removeAccount.mutateAsync(id),
@@ -260,7 +263,10 @@ export function useFinanceData() {
       accountM.mergeAccounts.mutateAsync({ fromIds, intoId }),
 
     // transactions
-    addTx: (t: Omit<Transaction, 'id'>) => txM.addTransaction.mutateAsync(t),
+    addTx: (t: Omit<Transaction, 'id'>) => {
+      const payload = { ...t, id: generateSecureId() } as Transaction;
+      return txM.addTransaction.mutateAsync(payload);
+    },
     updateTx: (id: string, p: Partial<Transaction>) =>
       txM.updateTransaction.mutateAsync({ id, patch: p }),
     removeTx: (id: string) => txM.removeTransaction.mutateAsync(id),

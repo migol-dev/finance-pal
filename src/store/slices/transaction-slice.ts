@@ -7,7 +7,7 @@ import { Filesystem, Directory, Encoding } from '@capacitor/filesystem';
 
 export interface TransactionSlice {
     transactions: Transaction[];
-    addTx: (t: Omit<Transaction, 'id'>) => void;
+    addTx: (t: Transaction) => void;
     updateTx: (id: string, p: Partial<Transaction>) => void;
     removeTx: (id: string) => void;
     saveReceiptFile: (receiptId: string, dataUrl: string) => Promise<string | undefined>;
@@ -43,7 +43,7 @@ export const createTransactionSlice: StateCreator<
             });
             if (exists) return;
         }
-        const nv = { ...t, id: generateSecureId() } as Transaction;
+        const nv = { ...t } as Transaction;
 
         // Enforce cash account if paymentMethod is cash
         if (nv.paymentMethod === 'cash') {

@@ -192,7 +192,7 @@ export const useFinance = create<State>()(
             if (f.type === "income_fixed") txType = "income";
             else if (f.type === "saving_fixed") txType = "saving";
 
-            get().addTx({ type: txType, category: f.category, concept: f.concept, amount: f.amount, date: occDate.toISOString(), note: undefined, icon: f.icon, paymentMethod: f.paymentMethod, fixedId: f.id });
+            get().addTx({ id: generateSecureId(), type: txType, category: f.category, concept: f.concept, amount: f.amount, date: occDate.toISOString(), note: undefined, icon: f.icon, paymentMethod: f.paymentMethod, fixedId: f.id });
           }
         },
 

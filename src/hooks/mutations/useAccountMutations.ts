@@ -15,7 +15,7 @@ function isOffline(): boolean {
 }
 
 export interface AccountMutations {
-  addAccount: UseMutationResult<void, Error, Omit<Account, 'id'>>;
+  addAccount: UseMutationResult<void, Error, Account>;
   updateAccount: UseMutationResult<void, Error, { id: string; patch: Partial<Account> }>;
   removeAccount: UseMutationResult<void, Error, string>;
   mergeAccounts: UseMutationResult<void, Error, { fromIds: string[]; intoId: string }>;
@@ -24,22 +24,19 @@ export interface AccountMutations {
 export function useAccountMutations(): AccountMutations {
   const queryClient = useQueryClient();
 
-  const addAccount = useMutation<void, Error, Omit<Account, 'id'>>({
+  const addAccount = useMutation<void, Error, Account>({
     mutationFn: async (payload) => {
-      const state = useFinance.getState();
-      const account = state.accounts[0];
-      
       if (!isSupabaseEnabled || isOffline()) {
         useSyncStore
           .getState()
-          .addMutation({ table: 'accounts', action: 'INSERT', recordId: account.id, payload: account });
+          .addMutation({ table: 'accounts', action: 'INSERT', recordId: payload.id, payload: payload });
         return;
       }
       
       const { data } = await supabase.auth.getUser();
       if (!data.user) throw new Error('No user');
       
-      await insertAccount(data.user.id, account);
+      await insertAccount(data.user.id, payload);
     },
     onMutate: async (payload) => {
       await useFinance.getState().addAccount(payload);

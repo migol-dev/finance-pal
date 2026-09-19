@@ -15,7 +15,7 @@ function isOffline(): boolean {
 }
 
 export interface TransactionMutations {
-  addTransaction: UseMutationResult<void, Error, Omit<Transaction, 'id'>>;
+  addTransaction: UseMutationResult<void, Error, Transaction>;
   updateTransaction: UseMutationResult<void, Error, { id: string; patch: Partial<Transaction> }>;
   removeTransaction: UseMutationResult<void, Error, string>;
 }
@@ -23,22 +23,19 @@ export interface TransactionMutations {
 export function useTransactionMutations(): TransactionMutations {
   const queryClient = useQueryClient();
 
-  const addTransaction = useMutation<void, Error, Omit<Transaction, 'id'>>({
+  const addTransaction = useMutation<void, Error, Transaction>({
     mutationFn: async (payload) => {
-      const state = useFinance.getState();
-      const transaction = state.transactions[0];
-      
       if (!isSupabaseEnabled || isOffline()) {
         useSyncStore
           .getState()
-          .addMutation({ table: 'transactions', action: 'INSERT', recordId: transaction.id, payload: transaction });
+          .addMutation({ table: 'transactions', action: 'INSERT', recordId: payload.id, payload: payload });
         return;
       }
       
       const { data } = await supabase.auth.getUser();
       if (!data.user) throw new Error('No user');
       
-      await insertTransaction(data.user.id, transaction);
+      await insertTransaction(data.user.id, payload);
     },
     onMutate: async (payload) => {
       await useFinance.getState().addTx(payload);

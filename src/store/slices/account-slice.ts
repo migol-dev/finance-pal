@@ -4,7 +4,7 @@ import { validateAndThrow, generateSecureId } from '@/lib/sanitizers';
 
 export interface AccountSlice {
   accounts: Account[];
-  addAccount: (a: Omit<Account, 'id'>) => void;
+  addAccount: (a: Account) => void;
   updateAccount: (id: string, p: Partial<Account>) => void;
   removeAccount: (id: string) => void;
   mergeAccounts: (fromIds: string[], intoId: string) => void;
@@ -29,7 +29,7 @@ export const createAccountSlice: StateCreator<
     if (a.type === 'cash' && s.accounts.some((x) => x.type === 'cash')) {
       return;
     }
-    const nv = { ...a, id: generateSecureId() } as Account;
+    const nv = { ...a } as Account;
 
     validateAndThrow('account', nv);
 
