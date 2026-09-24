@@ -67,7 +67,9 @@ export function useGoalMutations(): GoalMutations {
           .addMutation({ table: 'goals', action: 'UPDATE', recordId: id, payload: patch });
         return;
       }
-      await updateGoal(id, patch);
+      const { data } = await supabase.auth.getUser();
+      if (!data.user) throw new Error("No user");
+      await updateGoal(data.user.id, id, patch);
     },
     onMutate: async ({ id, patch }) => {
       await useFinance.getState().updateGoal(id, patch);
@@ -86,7 +88,9 @@ export function useGoalMutations(): GoalMutations {
         useSyncStore.getState().addMutation({ table: 'goals', action: 'DELETE', recordId: id });
         return;
       }
-      await deleteGoal(id);
+      const { data } = await supabase.auth.getUser();
+      if (!data.user) throw new Error("No user");
+      await deleteGoal(data.user.id, id);
     },
     onMutate: async (id) => {
       await useFinance.getState().removeGoal(id);

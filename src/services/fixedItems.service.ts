@@ -141,8 +141,8 @@ export async function insertFixedItem(userId: string, item: FixedItem): Promise<
   }
 }
 
-export async function updateFixedItem(id: string, patch: Partial<FixedItem>): Promise<void> {
-  const { error } = await supabase.from('fixed_items').update(toUpdatePayload(patch)).eq('id', id);
+export async function updateFixedItem(userId: string, id: string, patch: Partial<FixedItem>): Promise<void> {
+  const { error } = await supabase.from('fixed_items').update(toUpdatePayload(patch)).eq("id", id).eq("user_id", userId);
   if (error) {
     throw new AppError(ErrorCodes.DB_UPDATE_FAILED, 'Error updating fixed item', {
       originalError: error,
@@ -151,8 +151,8 @@ export async function updateFixedItem(id: string, patch: Partial<FixedItem>): Pr
   }
 }
 
-export async function deleteFixedItem(id: string): Promise<void> {
-  const { error } = await supabase.from('fixed_items').delete().eq('id', id);
+export async function deleteFixedItem(userId: string, id: string): Promise<void> {
+  const { error } = await supabase.from('fixed_items').delete().eq("id", id).eq("user_id", userId);
   if (error) {
     throw new AppError(ErrorCodes.DB_DELETE_FAILED, 'Error deleting fixed item', {
       originalError: error,
@@ -162,7 +162,7 @@ export async function deleteFixedItem(id: string): Promise<void> {
 }
 
 export async function toggleFixedItemActive(id: string, active: boolean): Promise<void> {
-  const { error } = await supabase.from('fixed_items').update({ active }).eq('id', id);
+  const { error } = await supabase.from('fixed_items').update({ active }).eq("id", id).eq("user_id", userId);
   if (error) {
     throw new AppError(ErrorCodes.DB_UPDATE_FAILED, 'Error toggling fixed item', {
       originalError: error,

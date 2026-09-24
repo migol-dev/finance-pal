@@ -29,14 +29,22 @@ const ENCRYPTED_STORAGE_KEY = 'finance-pal-sync-queue-encrypted';
 const encryptedStorage: StateStorage = {
   getItem: async (name: string): Promise<string | null> => {
     if (name !== STORAGE_KEY) return null;
-    if (!isEncryptionAvailable()) return localStorage.getItem(name);
-    const encrypted = await loadEncryptedState(ENCRYPTED_STORAGE_KEY);
-    if (encrypted) return encrypted;
-    return localStorage.getItem(name);
+    let data = null;
+    if (isEncryptionAvailable()) {
+      data = await loadEncryptedState(ENCRYPTED_STORAGE_KEY);
+    }
+    // Migration: fallback if encrypted data not found
+    if (!data) {
+      data = localStorage.getItem(name);
+      if (data) {
+        localStorage.removeItem(name); // migrate
+      }
+    }
+    return data;
   },
   setItem: async (name: string, value: string): Promise<void> => {
     if (name !== STORAGE_KEY) return;
-    localStorage.setItem(name, value);
+    localStorage.removeItem(name); // ensure no plaintext fallback
     if (isEncryptionAvailable()) {
       try {
         await saveEncryptedState(value, ENCRYPTED_STORAGE_KEY);

@@ -64,7 +64,9 @@ export function useGoalFolderMutations(): GoalFolderMutations {
           .addMutation({ table: 'goal_folders', action: 'UPDATE', recordId: id, payload: patch });
         return;
       }
-      await updateGoalFolder(id, patch);
+      const { data } = await supabase.auth.getUser();
+      if (!data.user) throw new Error("No user");
+      await updateGoalFolder(data.user.id, id, patch);
     },
     onMutate: async ({ id, patch }) => {
       await useFinance.getState().updateGoalFolder(id, patch);
@@ -85,7 +87,9 @@ export function useGoalFolderMutations(): GoalFolderMutations {
           .addMutation({ table: 'goal_folders', action: 'DELETE', recordId: id });
         return;
       }
-      await deleteGoalFolder(id);
+      const { data } = await supabase.auth.getUser();
+      if (!data.user) throw new Error("No user");
+      await deleteGoalFolder(data.user.id, id);
     },
     onMutate: async (id) => {
       await useFinance.getState().removeGoalFolder(id);

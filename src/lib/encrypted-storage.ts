@@ -38,6 +38,18 @@ interface SaltData {
 
 const LEGACY_ITERATIONS = 100000;
 
+import { supabase } from '@/lib/supabase';
+
+async function getDeviceSecret(): Promise<string> {
+  const { data: { session } } = await supabase.auth.getSession();
+  if (session?.user?.id) {
+    return session.user.id;
+  }
+  
+  // Fallback if no session (e.g. during signout or errors)
+  throw new Error('No active session to derive encryption key');
+}
+
 async function getMasterKey(): Promise<CryptoKey> {
   if (cryptoKey) return cryptoKey;
   if (keyPromise) return keyPromise;
@@ -66,9 +78,10 @@ async function getMasterKey(): Promise<CryptoKey> {
       localStorage.setItem(`${STORAGE_KEY}-salt`, JSON.stringify(saltData));
     }
 
+    const secret = await getDeviceSecret();
     const keyMaterial = await crypto.subtle.importKey(
       'raw',
-      new TextEncoder().encode(getDeviceSecret()),
+      new TextEncoder().encode(secret),
       { name: 'PBKDF2' },
       false,
       ['deriveKey']
@@ -94,29 +107,12 @@ async function getMasterKey(): Promise<CryptoKey> {
         iterations: KEY_DERIVATION_ITERATIONS,
       };
       localStorage.setItem(`${STORAGE_KEY}-salt`, JSON.stringify(saltData));
-      // Note: existing encrypted data will need re-encryption on next save
-      // This happens automatically when saveEncryptedState is called
     }
 
     return cryptoKey!;
   })();
 
   return keyPromise;
-}
-
-function getDeviceSecret(): string {
-  let secret = localStorage.getItem('finance-pal-device-secret');
-  if (!secret) {
-    const fallback = prompt('Por favor, ingresa tu frase de seguridad para desencriptar los datos locales:');
-    if (fallback) {
-      secret = fallback;
-    } else {
-      const entropy = crypto.getRandomValues(new Uint8Array(32));
-      secret = btoa(String.fromCharCode(...entropy));
-    }
-    localStorage.setItem('finance-pal-device-secret', secret);
-  }
-  return secret;
 }
 
 export async function encryptData(data: string): Promise<string> {

@@ -57,7 +57,9 @@ export function useAccountMutations(): AccountMutations {
           .addMutation({ table: 'accounts', action: 'UPDATE', recordId: id, payload: patch });
         return;
       }
-      await updateAccount(id, patch);
+      const { data } = await supabase.auth.getUser();
+      if (!data.user) throw new Error("No user");
+      await updateAccount(data.user.id, id, patch);
     },
     onMutate: async ({ id, patch }) => {
       await useFinance.getState().updateAccount(id, patch);
@@ -76,7 +78,9 @@ export function useAccountMutations(): AccountMutations {
         useSyncStore.getState().addMutation({ table: 'accounts', action: 'DELETE', recordId: id });
         return;
       }
-      await deleteAccount(id);
+      const { data } = await supabase.auth.getUser();
+      if (!data.user) throw new Error("No user");
+      await deleteAccount(data.user.id, id);
     },
     onMutate: async (id) => {
       await useFinance.getState().removeAccount(id);

@@ -71,7 +71,9 @@ export function useDebtMutations(): DebtMutations {
           .addMutation({ table: 'debts', action: 'UPDATE', recordId: id, payload: patch });
         return;
       }
-      await updateDebt(id, patch);
+      const { data } = await supabase.auth.getUser();
+      if (!data.user) throw new Error("No user");
+      await updateDebt(data.user.id, id, patch);
     },
     onMutate: async ({ id, patch }) => {
       await useFinance.getState().updateDebt(id, patch);
@@ -90,7 +92,9 @@ export function useDebtMutations(): DebtMutations {
         useSyncStore.getState().addMutation({ table: 'debts', action: 'DELETE', recordId: id });
         return;
       }
-      await deleteDebt(id);
+      const { data } = await supabase.auth.getUser();
+      if (!data.user) throw new Error("No user");
+      await deleteDebt(data.user.id, id);
     },
     onMutate: async (id) => {
       await useFinance.getState().removeDebt(id);
@@ -163,7 +167,9 @@ export function useDebtMutations(): DebtMutations {
           .addMutation({ table: 'debt_payments', action: 'DELETE', recordId: paymentId });
         return;
       }
-      await deleteDebtPayment(paymentId);
+      const { data } = await supabase.auth.getUser();
+      if (!data.user) throw new Error('No user');
+      await deleteDebtPayment(data.user.id, paymentId);
     },
     onMutate: async ({ debtId, paymentId }) => {
       await useFinance.getState().removeDebtPayment(debtId, paymentId);

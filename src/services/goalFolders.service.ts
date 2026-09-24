@@ -92,8 +92,8 @@ export async function insertGoalFolder(userId: string, folder: GoalFolder): Prom
   }
 }
 
-export async function updateGoalFolder(id: string, patch: Partial<GoalFolder>): Promise<void> {
-  const { error } = await supabase.from('goal_folders').update(toUpdatePayload(patch)).eq('id', id);
+export async function updateGoalFolder(userId: string, id: string, patch: Partial<GoalFolder>): Promise<void> {
+  const { error } = await supabase.from('goal_folders').update(toUpdatePayload(patch)).eq("id", id).eq("user_id", userId);
   if (error) {
     throw new AppError(ErrorCodes.DB_UPDATE_FAILED, 'Error updating goal folder', {
       originalError: error,
@@ -102,8 +102,8 @@ export async function updateGoalFolder(id: string, patch: Partial<GoalFolder>): 
   }
 }
 
-export async function deleteGoalFolder(id: string): Promise<void> {
-  const { error } = await supabase.from('goal_folders').delete().eq('id', id);
+export async function deleteGoalFolder(userId: string, id: string): Promise<void> {
+  const { error } = await supabase.from('goal_folders').delete().eq("id", id).eq("user_id", userId);
   if (error) {
     throw new AppError(ErrorCodes.DB_DELETE_FAILED, 'Error deleting goal folder', {
       originalError: error,

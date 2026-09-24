@@ -137,8 +137,8 @@ export async function insertGoal(userId: string, goal: Goal): Promise<void> {
   }
 }
 
-export async function updateGoal(id: string, patch: Partial<Goal>): Promise<void> {
-  const { error } = await supabase.from('goals').update(toUpdatePayload(patch)).eq('id', id);
+export async function updateGoal(userId: string, id: string, patch: Partial<Goal>): Promise<void> {
+  const { error } = await supabase.from('goals').update(toUpdatePayload(patch)).eq("id", id).eq("user_id", userId);
   if (error) {
     throw new AppError(ErrorCodes.DB_UPDATE_FAILED, 'Error updating goal', {
       originalError: error,
@@ -147,8 +147,8 @@ export async function updateGoal(id: string, patch: Partial<Goal>): Promise<void
   }
 }
 
-export async function deleteGoal(id: string): Promise<void> {
-  const { error } = await supabase.from('goals').delete().eq('id', id);
+export async function deleteGoal(userId: string, id: string): Promise<void> {
+  const { error } = await supabase.from('goals').delete().eq("id", id).eq("user_id", userId);
   if (error) {
     throw new AppError(ErrorCodes.DB_DELETE_FAILED, 'Error deleting goal', {
       originalError: error,

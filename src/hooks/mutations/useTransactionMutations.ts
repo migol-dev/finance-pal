@@ -60,7 +60,9 @@ export function useTransactionMutations(): TransactionMutations {
           .addMutation({ table: 'transactions', action: 'UPDATE', recordId: id, payload: patch });
         return;
       }
-      await updateTransaction(id, patch);
+      const { data } = await supabase.auth.getUser();
+      if (!data.user) throw new Error("No user");
+      await updateTransaction(data.user.id, id, patch);
     },
     onMutate: async ({ id, patch }) => {
       await useFinance.getState().updateTx(id, patch);
@@ -81,7 +83,9 @@ export function useTransactionMutations(): TransactionMutations {
           .addMutation({ table: 'transactions', action: 'DELETE', recordId: id });
         return;
       }
-      await deleteTransaction(id);
+      const { data } = await supabase.auth.getUser();
+      if (!data.user) throw new Error("No user");
+      await deleteTransaction(data.user.id, id);
     },
     onMutate: async (id) => {
       await useFinance.getState().removeTx(id);

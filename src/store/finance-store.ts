@@ -383,18 +383,30 @@ export const useFinance = create<State>()(
       storage: {
         getItem: async (name: string) => {
           let data: any = null;
-          // Always try localStorage first (most reliable)
-          const item = localStorage.getItem(name);
-          if (item) {
-            try { data = JSON.parse(item); } catch { /* ignore */ }
-          }
-          // Fallback to encrypted storage
-          if (!data && isEncryptionAvailable()) {
-            const decrypted = await loadEncryptedState();
-            if (decrypted) {
-              try { data = JSON.parse(decrypted); } catch { /* ignore */ }
+          
+          if (isEncryptionAvailable()) {
+            try {
+              const decrypted = await loadEncryptedState(name);
+              if (decrypted) {
+                data = JSON.parse(decrypted);
+              }
+            } catch (e) {
+              console.error('Failed to load encrypted state:', e);
             }
           }
+          
+          // Migration: if no encrypted data, check if there's legacy plaintext
+          if (!data) {
+            const item = localStorage.getItem(name);
+            if (item) {
+              try { 
+                data = JSON.parse(item);
+                // Clear the plaintext immediately after reading to migrate to encrypted-only
+                localStorage.removeItem(name);
+              } catch { /* ignore */ }
+            }
+          }
+
           // Restore receipts from IndexedDB
           if (data?.state) await restoreReceiptsFromIndexedDB(data.state);
           return data;
@@ -403,26 +415,27 @@ export const useFinance = create<State>()(
           try {
             if (value?.state) await extractReceiptsToIndexedDB(value.state);
           } catch { /* ignore receipt extraction errors */ }
+          
           const serialized = JSON.stringify(value);
-          // Always save to localStorage (reliable fallback)
-          try {
-            localStorage.setItem(name, serialized);
-          } catch (e) {
-            console.error('localStorage setItem failed:', e);
-          }
-          // Also save encrypted (if available) — best-effort
+          
+          // Ensure we don't leave plaintext lying around
+          localStorage.removeItem(name);
+          
           if (isEncryptionAvailable()) {
             try {
-              await saveEncryptedState(serialized);
+              await saveEncryptedState(serialized, name);
             } catch (e) {
-              console.warn('Encrypted save failed, localStorage copy exists:', e);
+              console.error('Encrypted save failed:', e);
             }
+          } else {
+            console.error('Encryption not available, state cannot be saved securely');
+            // We intentionally do not fallback to plaintext to ensure data at rest is protected
           }
         },
         removeItem: async (name: string) => {
           localStorage.removeItem(name);
           if (isEncryptionAvailable()) {
-            await clearEncryptedState();
+            await clearEncryptedState(name);
           }
         },
       } as any,

@@ -107,8 +107,8 @@ export async function insertAccount(userId: string, account: Account): Promise<v
   }
 }
 
-export async function updateAccount(id: string, patch: Partial<Account>): Promise<void> {
-  const { error } = await supabase.from('accounts').update(toUpdatePayload(patch)).eq('id', id);
+export async function updateAccount(userId: string, id: string, patch: Partial<Account>): Promise<void> {
+  const { error } = await supabase.from('accounts').update(toUpdatePayload(patch)).eq("id", id).eq("user_id", userId);
   if (error) {
     throw new AppError(ErrorCodes.DB_UPDATE_FAILED, 'Error updating account', {
       originalError: error,
@@ -117,8 +117,8 @@ export async function updateAccount(id: string, patch: Partial<Account>): Promis
   }
 }
 
-export async function deleteAccount(id: string): Promise<void> {
-  const { error } = await supabase.from('accounts').delete().eq('id', id);
+export async function deleteAccount(userId: string, id: string): Promise<void> {
+  const { error } = await supabase.from('accounts').delete().eq("id", id).eq("user_id", userId);
   if (error) {
     throw new AppError(ErrorCodes.DB_DELETE_FAILED, 'Error deleting account', {
       originalError: error,

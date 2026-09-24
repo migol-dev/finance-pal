@@ -131,8 +131,8 @@ export async function insertTransaction(userId: string, tx: Transaction): Promis
   }
 }
 
-export async function updateTransaction(id: string, patch: Partial<Transaction>): Promise<void> {
-  const { error } = await supabase.from('transactions').update(toUpdatePayload(patch)).eq('id', id);
+export async function updateTransaction(userId: string, id: string, patch: Partial<Transaction>): Promise<void> {
+  const { error } = await supabase.from('transactions').update(toUpdatePayload(patch)).eq("id", id).eq("user_id", userId);
   if (error) {
     throw new AppError(ErrorCodes.DB_UPDATE_FAILED, 'Error updating transaction', {
       originalError: error,
@@ -141,8 +141,8 @@ export async function updateTransaction(id: string, patch: Partial<Transaction>)
   }
 }
 
-export async function deleteTransaction(id: string): Promise<void> {
-  const { error } = await supabase.from('transactions').delete().eq('id', id);
+export async function deleteTransaction(userId: string, id: string): Promise<void> {
+  const { error } = await supabase.from('transactions').delete().eq("id", id).eq("user_id", userId);
   if (error) {
     throw new AppError(ErrorCodes.DB_DELETE_FAILED, 'Error deleting transaction', {
       originalError: error,

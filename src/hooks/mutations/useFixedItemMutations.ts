@@ -65,7 +65,9 @@ export function useFixedItemMutations(): FixedItemMutations {
           .addMutation({ table: 'fixed_items', action: 'UPDATE', recordId: id, payload: patch });
         return;
       }
-      await updateFixedItem(id, patch);
+      const { data } = await supabase.auth.getUser();
+      if (!data.user) throw new Error("No user");
+      await updateFixedItem(data.user.id, id, patch);
     },
     onMutate: async ({ id, patch }) => {
       await useFinance.getState().updateFixed(id, patch);
@@ -86,7 +88,9 @@ export function useFixedItemMutations(): FixedItemMutations {
           .addMutation({ table: 'fixed_items', action: 'DELETE', recordId: id });
         return;
       }
-      await deleteFixedItem(id);
+      const { data } = await supabase.auth.getUser();
+      if (!data.user) throw new Error("No user");
+      await deleteFixedItem(data.user.id, id);
     },
     onMutate: async (id) => {
       await useFinance.getState().removeFixed(id);

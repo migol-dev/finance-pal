@@ -147,8 +147,8 @@ export async function insertDebt(userId: string, debt: Debt): Promise<void> {
   }
 }
 
-export async function updateDebt(id: string, patch: Partial<Debt>): Promise<void> {
-  const { error } = await supabase.from('debts').update(toUpdatePayload(patch)).eq('id', id);
+export async function updateDebt(userId: string, id: string, patch: Partial<Debt>): Promise<void> {
+  const { error } = await supabase.from('debts').update(toUpdatePayload(patch)).eq("id", id).eq("user_id", userId);
   if (error) {
     throw new AppError(ErrorCodes.DB_UPDATE_FAILED, 'Error updating debt', {
       originalError: error,
@@ -157,8 +157,8 @@ export async function updateDebt(id: string, patch: Partial<Debt>): Promise<void
   }
 }
 
-export async function deleteDebt(id: string): Promise<void> {
-  const { error } = await supabase.from('debts').delete().eq('id', id);
+export async function deleteDebt(userId: string, id: string): Promise<void> {
+  const { error } = await supabase.from('debts').delete().eq("id", id).eq("user_id", userId);
   if (error) {
     throw new AppError(ErrorCodes.DB_DELETE_FAILED, 'Error deleting debt', {
       originalError: error,
@@ -198,8 +198,8 @@ export async function insertDebtPayment(
   }
 }
 
-export async function deleteDebtPayment(paymentId: string): Promise<void> {
-  const { error } = await supabase.from('debt_payments').delete().eq('id', paymentId);
+export async function deleteDebtPayment(userId: string, paymentId: string): Promise<void> {
+  const { error } = await supabase.from('debt_payments').delete().eq('id', paymentId).eq('user_id', userId);
   if (error) {
     throw new AppError(ErrorCodes.DB_DELETE_FAILED, 'Error deleting debt payment', {
       originalError: error,
