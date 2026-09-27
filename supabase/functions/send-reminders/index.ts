@@ -39,6 +39,16 @@ Deno.serve(async (req) => {
 
 
   try {
+    const FUNCTION_SECRET = Deno.env.get("FUNCTION_SECRET");
+    const authHeader = req.headers.get("x-function-secret") || req.headers.get("authorization")?.replace("Bearer ", "");
+
+    if (!FUNCTION_SECRET || authHeader !== FUNCTION_SECRET) {
+      return new Response(JSON.stringify({ error: "Unauthorized" }), {
+        status: 401,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const vapidPublicKey = Deno.env.get("VAPID_PUBLIC_KEY");
