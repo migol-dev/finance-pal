@@ -54,7 +54,7 @@ export async function uploadReceipt(
     });
   }
 
-  const publicUrl = getReceiptPublicUrl(storagePath);
+  const publicUrl = await getReceiptSignedUrl(storagePath);
   return { storagePath, publicUrl };
 }
 
@@ -74,15 +74,20 @@ export async function deleteReceipt(storagePath: string): Promise<void> {
 }
 
 /**
- * Obtiene la URL pública de un recibo ya existente en Storage
- * a partir de su ruta relativa (no hace llamadas de red).
- * Es una función síncrona que solo construye la URL.
+ * Genera una URL firmada de un recibo en Storage.
+ * Lanza AppError(ErrorCodes.STORAGE_UPLOAD_FAILED) si falla.
  */
-export function getReceiptPublicUrl(storagePath: string): string {
-  const { data } = supabase.storage.from(RECEIPTS_BUCKET).getPublicUrl(storagePath);
-  return data.publicUrl;
+export async function getReceiptSignedUrl(
+  storagePath: string, 
+  expiresInSeconds = 300
+): Promise<string> {
+  const { data, error } = await supabase.storage
+    .from(RECEIPTS_BUCKET)
+    .createSignedUrl(storagePath, expiresInSeconds);
+  
+  if (error || !data) throw new AppError(ErrorCodes.STORAGE_UPLOAD_FAILED, 'Error al generar URL firmada', { originalError: error });
+  return data.signedUrl;
 }
-
 /**
  * Helper interno: convierte un data URL base64 a Blob.
  * No se exporta. Solo uso interno en uploadReceipt.

@@ -86,7 +86,7 @@ async function getLastEntryHash(): Promise<string> {
   });
 }
 
-function computeHash(entry: Omit<AuditEntry, 'hash'>): string {
+async function computeHash(entry: Omit<AuditEntry, 'hash'>): Promise<string> {
   const data = JSON.stringify({
     id: entry.id,
     timestamp: entry.timestamp,
@@ -97,14 +97,11 @@ function computeHash(entry: Omit<AuditEntry, 'hash'>): string {
     details: entry.details,
     prevHash: entry.prevHash,
   });
-  // Simple tamper-evident hash chaining
-  let hash = 0;
-  for (let i = 0; i < data.length; i++) {
-    const char = data.charCodeAt(i);
-    hash = ((hash << 5) - hash) + char;
-    hash = hash & hash;
-  }
-  return btoa(JSON.stringify({ hash: hash.toString(16), prevHash: entry.prevHash }));
+  
+  const encoded = new TextEncoder().encode(data);
+  const hashBuffer = await crypto.subtle.digest('SHA-256', encoded);
+  const hashArray = Array.from(new Uint8Array(hashBuffer));
+  return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
 }
 
 /**
@@ -124,7 +121,7 @@ export async function logAudit(entry: Omit<AuditEntry, 'id' | 'timestamp' | 'pre
       hash: '', // Will be computed below
     };
     
-    fullEntry.hash = computeHash(fullEntry);
+    fullEntry.hash = await computeHash(fullEntry);
     
     const db = await openAuditDB();
     return new Promise((resolve, reject) => {
@@ -196,17 +193,18 @@ export async function verifyAuditIntegrity(): Promise<{ valid: boolean; brokenAt
     const tx = db.transaction(AUDIT_STORE, 'readonly');
     const store = tx.objectStore(AUDIT_STORE);
     const index = store.index('timestamp');
-    const req = index.openCursor();
+    const req = index.getAll();
     
-    let prevHash = GENESIS_HASH;
-    let valid = true;
-    let brokenAt: string | undefined;
-    
-    req.onsuccess = () => {
-      const cursor = req.result;
-      if (cursor && valid) {
-        const entry = cursor.value;
-        const computedHash = computeHash({
+    req.onsuccess = async () => {
+      const entries = req.result as AuditEntry[];
+      let prevHash = GENESIS_HASH;
+      let valid = true;
+      let brokenAt: string | undefined;
+      
+      for (const entry of entries) {
+        if (!valid) break;
+        
+        const computedHash = await computeHash({
           id: entry.id,
           timestamp: entry.timestamp,
           userId: entry.userId,
@@ -226,10 +224,9 @@ export async function verifyAuditIntegrity(): Promise<{ valid: boolean; brokenAt
         }
         
         prevHash = entry.hash;
-        cursor.continue();
-      } else {
-        resolve({ valid, brokenAt, details: valid ? 'Audit log integrity verified' : `Hash chain broken at entry ${brokenAt}` });
       }
+      
+      resolve({ valid, brokenAt, details: valid ? 'Audit log integrity verified' : `Hash chain broken at entry ${brokenAt}` });
     };
     req.onerror = () => reject(req.error);
   });
