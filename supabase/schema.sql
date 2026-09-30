@@ -211,10 +211,10 @@ CREATE POLICY "Users can delete their own debt payments" ON debt_payments FOR DE
 
 -- 7b. RLS para User Sessions
 ALTER TABLE user_sessions ENABLE ROW LEVEL SECURITY;
-CREATE POLICY "Users can view their own sessions" ON user_sessions FOR SELECT USING (auth.uid() = user_id AND deleted_at IS NULL);
+CREATE POLICY "Users can view their own sessions" ON user_sessions FOR SELECT USING (auth.uid() = user_id);
 CREATE POLICY "Users can insert their own sessions" ON user_sessions FOR INSERT WITH CHECK (auth.uid() = user_id);
-CREATE POLICY "Users can update their own sessions" ON user_sessions FOR UPDATE USING (auth.uid() = user_id AND deleted_at IS NULL);
-CREATE POLICY "Users can delete their own sessions" ON user_sessions FOR DELETE USING (auth.uid() = user_id AND deleted_at IS NULL);
+CREATE POLICY "Users can update their own sessions" ON user_sessions FOR UPDATE USING (auth.uid() = user_id);
+CREATE POLICY "Users can delete their own sessions" ON user_sessions FOR DELETE USING (auth.uid() = user_id);
 
 -- 8. Tabla User Settings (theme, profile, etc.)
 -- Uses IF NOT EXISTS so it's safe to run multiple times
@@ -228,11 +228,11 @@ CREATE TABLE IF NOT EXISTS user_settings (
 ALTER TABLE user_settings ENABLE ROW LEVEL SECURITY;
 DO $$
 BEGIN
-  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE policyprefix = 'user_settings') THEN
-    CREATE POLICY "Users can view their own settings" ON user_settings FOR SELECT USING (auth.uid() = user_id AND deleted_at IS NULL);
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE policyname = 'Users can view their own settings' AND tablename = 'user_settings') THEN
+    CREATE POLICY "Users can view their own settings" ON user_settings FOR SELECT USING (auth.uid() = user_id);
     CREATE POLICY "Users can insert their own settings" ON user_settings FOR INSERT WITH CHECK (auth.uid() = user_id);
-    CREATE POLICY "Users can update their own settings" ON user_settings FOR UPDATE USING (auth.uid() = user_id AND deleted_at IS NULL);
-    CREATE POLICY "Users can delete their own settings" ON user_settings FOR DELETE USING (auth.uid() = user_id AND deleted_at IS NULL);
+    CREATE POLICY "Users can update their own settings" ON user_settings FOR UPDATE USING (auth.uid() = user_id);
+    CREATE POLICY "Users can delete their own settings" ON user_settings FOR DELETE USING (auth.uid() = user_id);
   END IF;
 END $$;
 

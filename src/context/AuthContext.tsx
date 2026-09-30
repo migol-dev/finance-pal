@@ -6,6 +6,8 @@ import { ErrorCodes, logger } from '@/lib/app-error';
 import { audit } from '@/lib/audit-logger';
 import { useFinance } from '@/store/finance-store';
 import { useSyncStore } from '@/store/sync-store';
+import { clearEncryptedState } from '@/lib/encrypted-storage';
+import { queryClient } from '@/lib/queryClient';
 
 interface AuthContextType {
   session: Session | null;
@@ -89,6 +91,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       accounts: [],
     });
     useSyncStore.getState().clearQueue();
+    await clearEncryptedState();
+    queryClient.clear();
     
     setSession(null);
     setUser(null);
