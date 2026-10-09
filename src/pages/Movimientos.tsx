@@ -194,7 +194,7 @@ export default function Movimientos() {
       <div className="px-5 mb-3 flex justify-center"><MonthSwitcher /></div>
 
       <Dialog open={open} onOpenChange={(v) => { setOpen(v); if (!v) setEditing(null); }}>
-        <DialogContent className="rounded-2xl max-h-[90vh] overflow-y-auto p-5">
+        <DialogContent className="rounded-2xl max-h-[90dvh] overflow-y-auto p-5">
           <DialogHeader><DialogTitle className="text-lg">{editing ? "Editar movimiento" : "Nuevo movimiento"}</DialogTitle></DialogHeader>
           <DialogDescription className="sr-only">Formulario para crear o editar un movimiento</DialogDescription>
           <TxForm
@@ -383,8 +383,8 @@ export default function Movimientos() {
                                 {t.category}{vacct && <span className="ml-1">· {vacct.name}</span>}
                               </p>
                             </div>
-                            <div className="text-right">
-                              <p className={`font-bold text-sm ${t.type === "income" ? "text-success" : "text-destructive"}`}>
+                            <div className="text-right shrink-0">
+                              <p className={`font-bold text-sm whitespace-nowrap tabular-nums ${t.type === "income" ? "text-success" : "text-destructive"}`}>
                                 {t.type === "income" ? "+" : "-"}{fmt(t.amount)}
                               </p>
                             </div>
@@ -426,7 +426,7 @@ export default function Movimientos() {
                               </p>
                             </button>
                             <div className="text-right shrink-0">
-                              <p className="font-bold text-sm text-primary">⇄{fmt(t.amount)}</p>
+                              <p className="font-bold text-sm text-primary whitespace-nowrap tabular-nums">⇄{fmt(t.amount)}</p>
                             </div>
                             <button
                               aria-label="Eliminar traspaso"
@@ -476,7 +476,7 @@ export default function Movimientos() {
                               </p>
                             </button>
                             <div className="text-right shrink-0">
-                              <p className={`font-bold text-sm ${tx.type === "income" ? "text-success" : tx.type === "saving" ? "text-secondary" : tx.type === "transfer" ? "text-primary" : "text-destructive"}`}>
+                              <p className={`font-bold text-sm whitespace-nowrap tabular-nums ${tx.type === "income" ? "text-success" : tx.type === "saving" ? "text-secondary" : tx.type === "transfer" ? "text-primary" : "text-destructive"}`}>
                                 {tx.type === "income" ? "+" : tx.type === "transfer" ? "⇄" : "-"}{fmt(tx.amount)}
                               </p>
                             </div>
@@ -972,8 +972,10 @@ function TxForm({ initial, onSave, accounts }: { initial: Partial<Transaction> &
           )}
         </div>
       )}
-      <div><Label className="text-xs">Nota</Label><Input value={note} onChange={(e) => setNote(e.target.value)} placeholder="Detalles..." className="h-10 rounded-xl" /></div>
-      <Button type="submit" className="w-full h-11 rounded-xl gradient-primary text-primary-foreground border-0 shadow-glow font-bold lg:col-span-2">Guardar</Button>
+      <div><Label className="text-xs">Nota</Label><Input value={note} onChange={(e) => setNote(e.target.value)} placeholder="Detalles..." className="h-10 rounded-xl text-base md:text-sm" /></div>
+      <div className="sticky bottom-0 bg-background/95 backdrop-blur-sm pt-2 pb-1 lg:col-span-2">
+        <Button type="submit" className="w-full h-11 rounded-xl gradient-primary text-primary-foreground border-0 shadow-glow font-bold">Guardar</Button>
+      </div>
     </form>
   );
 }

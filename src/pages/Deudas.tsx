@@ -69,7 +69,7 @@ export default function Deudas() {
         <Button onClick={() => { setEditing(null); setOpen(true); }} className="rounded-xl gradient-primary text-primary-foreground border-0 shadow-glow h-10 text-sm"><Plus className="size-4 mr-1.5" />Nueva</Button>
       } />
 
-      <div className="px-5 grid grid-cols-3 gap-2">
+      <div className="px-5 grid grid-cols-1 min-[380px]:grid-cols-3 gap-2">
         <SumCard label="Total" value={fmt(totals.owed)} tone="primary" />
         <SumCard label="Cobrado" value={fmt(totals.paid)} tone="success" />
         <SumCard label="Pendiente" value={fmt(totals.pending)} tone="warning" />
@@ -136,7 +136,7 @@ export default function Deudas() {
       </div>
 
       <Dialog open={open} onOpenChange={(v) => { setOpen(v); if (!v) setEditing(null); }}>
-          <DialogContent className="rounded-3xl max-h-[90vh] overflow-y-auto">
+          <DialogContent className="rounded-3xl max-h-[90dvh] overflow-y-auto">
             <DialogHeader><DialogTitle>{editing ? "Editar deuda" : "Nueva deuda"}</DialogTitle></DialogHeader>
             <DialogDescription className="sr-only">Formulario para registrar o editar una deuda</DialogDescription>
           <DebtForm initial={editing} onSave={(d) => {
@@ -148,7 +148,7 @@ export default function Deudas() {
       </Dialog>
 
       <Dialog open={!!payOpen} onOpenChange={(v) => { if (!v) setPayOpen(null); }}>
-        <DialogContent className="rounded-3xl">
+        <DialogContent className="rounded-3xl max-h-[90dvh] overflow-y-auto">
           <DialogHeader><DialogTitle>Registrar abono</DialogTitle></DialogHeader>
           <DialogDescription className="sr-only">Formulario para registrar un abono a la deuda</DialogDescription>
           {payOpen && <PaymentForm debt={payOpen} onSave={(p) => { addDebtPayment(payOpen.id, p); toast.success("Abono registrado"); setPayOpen(null); }} accounts={accounts} />}
@@ -156,7 +156,7 @@ export default function Deudas() {
       </Dialog>
 
       <Dialog open={!!detail} onOpenChange={(v) => { if (!v) setDetail(null); }}>
-        <DialogContent className="rounded-3xl max-h-[85vh] overflow-y-auto">
+        <DialogContent className="rounded-3xl max-h-[90dvh] overflow-y-auto">
           <DialogHeader><DialogTitle>Historial de abonos</DialogTitle></DialogHeader>
           <DialogDescription className="sr-only">Listado de abonos registrados para esta deuda</DialogDescription>
           {detail && (
@@ -217,18 +217,18 @@ export default function Deudas() {
                   </div>
                   <p className="text-xs text-muted-foreground truncate">{d.concept}</p>
                 </div>
-                <div className="flex items-center gap-0.5">
+                <div className="flex items-center gap-1.5 shrink-0">
                   <button
                     aria-label="Editar deuda"
                     onClick={() => { setEditing(d); setOpen(true); }}
-                    className="size-8 rounded-lg flex items-center justify-center text-muted-foreground hover:text-primary hover:bg-muted/50 transition"
+                    className="size-10 rounded-xl flex items-center justify-center text-muted-foreground hover:text-primary hover:bg-muted/50 transition active:scale-95"
                   >
                     <Pencil className="size-4" />
                   </button>
                   <button
                     aria-label="Eliminar deuda"
                     onClick={() => setDeleteDebt(d)}
-                    className="size-8 rounded-lg flex items-center justify-center text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition"
+                    className="size-10 rounded-xl flex items-center justify-center text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition active:scale-95"
                   >
                     <Trash2 className="size-4" />
                   </button>
