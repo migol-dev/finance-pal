@@ -550,4 +550,88 @@
   .login-particle {
     animation: login-particle-float linear infinite;
   }
+
+  /* ─── Accessibility (a11y) Engine ─── */
+  html.a11y-scale-compact {
+    --font-size-sm: 0.75rem;
+    --font-size-base: 0.8125rem;
+    --font-size-lg: 0.9375rem;
+  }
+  html.a11y-scale-large {
+    --font-size-sm: 0.9375rem;
+    --font-size-base: 1.0625rem;
+    --font-size-lg: 1.25rem;
+  }
+  html.a11y-scale-xlarge {
+    --font-size-sm: 1.0625rem;
+    --font-size-base: 1.1875rem;
+    --font-size-lg: 1.375rem;
+  }
+
+  html.a11y-high-contrast {
+    --border: 240 10% 20%;
+    --muted-foreground: 250 15% 25%;
+    --input: 240 10% 30%;
+  }
+  html.dark.a11y-high-contrast {
+    --border: 220 20% 75%;
+    --muted-foreground: 210 25% 92%;
+    --input: 220 20% 65%;
+  }
+  html.a11y-high-contrast .border {
+    border-width: 1.5px !important;
+  }
+
+  html.a11y-reduce-motion,
+  html.a11y-reduce-motion * {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+  }
+
+  html.a11y-dyslexic-font {
+    font-family: 'Atkinson Hyperlegible', system-ui, sans-serif !important;
+    letter-spacing: 0.03em !important;
+    word-spacing: 0.05em !important;
+  }
+
+  html.a11y-underline-links a,
+  html.a11y-underline-links button:not([class*="gradient"]):not([class*="bg-"]) {
+    text-decoration-line: underline;
+    text-underline-offset: 3px;
+  }
+
+  html.a11y-large-targets button,
+  html.a11y-large-targets a,
+  html.a11y-large-targets input,
+  html.a11y-large-targets select {
+    min-height: 48px;
+    min-width: 48px;
+  }
+
+  html.a11y-enhanced-focus :focus-visible {
+    outline: 3px solid hsl(var(--primary)) !important;
+    outline-offset: 3px !important;
+    box-shadow: 0 0 0 4px hsl(var(--background)) !important;
+  }
+
+  /* Color-blind safe palette overrides */
+  html.a11y-cb-protanopia,
+  html.a11y-cb-deuteranopia {
+    --success: 205 90% 45%;
+    --success-foreground: 0 0% 100%;
+    --destructive: 25 95% 50%;
+    --destructive-foreground: 0 0% 100%;
+  }
+  html.dark.a11y-cb-protanopia,
+  html.dark.a11y-cb-deuteranopia {
+    --success: 205 90% 55%;
+    --success-foreground: 0 0% 100%;
+    --destructive: 25 95% 55%;
+    --destructive-foreground: 0 0% 100%;
+  }
+  html.a11y-cb-tritanopia {
+    --success: 165 80% 40%;
+    --destructive: 340 90% 55%;
+  }
 }

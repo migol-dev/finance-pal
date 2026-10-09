@@ -45,7 +45,7 @@ export interface GoalInsertPayload {
   folder_id: string | undefined;
 }
 
-export interface GoalUpdatePayload extends Partial<Omit<GoalInsertPayload, 'id' | 'user_id'>> {}
+export type GoalUpdatePayload = Partial<Omit<GoalInsertPayload, 'id' | 'user_id'>>;
 
 export interface GoalContributionInput {
   amount: number;

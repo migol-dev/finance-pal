@@ -50,6 +50,7 @@ export function AppShell({ children }: { children: ReactNode }) {
   const accentColor = useFinance((s) => s.appSettings.accentColor);
   const compactMode = useFinance((s) => s.appSettings.compactMode);
   const glassEffect = useFinance((s) => s.appSettings.glassEffect);
+  const a11y = useFinance((s) => s.appSettings.accessibility);
   const notificationPrefs = useFinance((s) => s.appSettings.notifications);
   const { goals, fixedItems } = useFinanceData();
   const didInit = useRef(false);
@@ -109,6 +110,42 @@ export function AppShell({ children }: { children: ReactNode }) {
     const root = document.documentElement;
     if (!glassEffect) root.classList.add("disable-glass"); else root.classList.remove("disable-glass");
   }, [glassEffect]);
+
+  useEffect(() => {
+    const root = document.documentElement;
+    if (!a11y) return;
+
+    // Scale
+    root.classList.remove("a11y-scale-compact", "a11y-scale-large", "a11y-scale-xlarge");
+    if (a11y.textScale === "compact") root.classList.add("a11y-scale-compact");
+    else if (a11y.textScale === "large") root.classList.add("a11y-scale-large");
+    else if (a11y.textScale === "xlarge") root.classList.add("a11y-scale-xlarge");
+
+    // Toggles
+    if (a11y.highContrast) root.classList.add("a11y-high-contrast");
+    else root.classList.remove("a11y-high-contrast");
+
+    if (a11y.reduceMotion) root.classList.add("a11y-reduce-motion");
+    else root.classList.remove("a11y-reduce-motion");
+
+    if (a11y.dyslexicFont) root.classList.add("a11y-dyslexic-font");
+    else root.classList.remove("a11y-dyslexic-font");
+
+    if (a11y.underlineLinks) root.classList.add("a11y-underline-links");
+    else root.classList.remove("a11y-underline-links");
+
+    if (a11y.largeTouchTargets) root.classList.add("a11y-large-targets");
+    else root.classList.remove("a11y-large-targets");
+
+    if (a11y.enhancedFocusRing) root.classList.add("a11y-enhanced-focus");
+    else root.classList.remove("a11y-enhanced-focus");
+
+    // Colorblind
+    root.classList.remove("a11y-cb-protanopia", "a11y-cb-deuteranopia", "a11y-cb-tritanopia");
+    if (a11y.colorBlindMode && a11y.colorBlindMode !== "none") {
+      root.classList.add(`a11y-cb-${a11y.colorBlindMode}`);
+    }
+  }, [a11y]);
 
   useEffect(() => {
     if (!Capacitor.isNativePlatform()) return;

@@ -43,7 +43,7 @@ export const createTransactionSlice: StateCreator<
             });
             if (exists) return;
         }
-        const nv = { ...t } as Transaction;
+        const nv = { ...t, id: t.id || generateSecureId() } as Transaction;
 
         // Enforce cash account if paymentMethod is cash
         if (nv.paymentMethod === 'cash') {

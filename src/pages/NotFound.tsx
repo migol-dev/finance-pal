@@ -1,7 +1,8 @@
 import { useLocation } from "react-router-dom";
 import { useEffect } from "react";
 import { Link } from "react-router-dom";
-import { ArrowLeft, Wallet } from "lucide-react";
+import { ArrowLeft } from "lucide-react";
+import { BrandLogo } from "@/components/app/BrandLogo";
 
 const NotFound = () => {
   const location = useLocation();
@@ -13,8 +14,8 @@ const NotFound = () => {
   return (
     <div className="flex min-h-screen items-center justify-center bg-background p-4">
       <div className="text-center max-w-sm">
-        <div className="size-16 rounded-2xl gradient-primary shadow-glow flex items-center justify-center mx-auto mb-4">
-          <Wallet className="size-8 text-primary-foreground" />
+        <div className="flex justify-center mb-4">
+          <BrandLogo size="xl" />
         </div>
         <h1 className="text-6xl font-black tracking-tight mb-2">404</h1>
         <p className="text-base text-muted-foreground mb-6">Oops! Esta página no existe</p>

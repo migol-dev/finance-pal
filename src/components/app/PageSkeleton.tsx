@@ -16,7 +16,7 @@ export function PageSkeleton() {
 
   if (path === '/' || path === '/dashboard') {
     return (
-      <div className="min-h-screen">
+      <div className="min-h-screen" role="status" aria-label="Cargando contenido">
         {renderHeader()}
         <div className="px-5 space-y-4">
           <div className="h-32 w-full bg-muted rounded-3xl animate-pulse" />
@@ -43,7 +43,7 @@ export function PageSkeleton() {
 
   if (path === '/movimientos') {
     return (
-      <div className="min-h-screen">
+      <div className="min-h-screen" role="status" aria-label="Cargando movimientos">
         {renderHeader()}
         <div className="px-5 flex justify-center mb-6">
           <div className="h-10 w-48 bg-muted rounded-xl animate-pulse" />
@@ -63,7 +63,7 @@ export function PageSkeleton() {
 
   if (path === '/metas') {
     return (
-      <div className="min-h-screen">
+      <div className="min-h-screen" role="status" aria-label="Cargando metas">
         {renderHeader()}
         <div className="px-5 space-y-4">
           <div className="grid grid-cols-2 gap-4 mb-6">
@@ -80,7 +80,7 @@ export function PageSkeleton() {
 
   // Fallback default skeleton
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center">
+    <div className="min-h-screen flex flex-col items-center justify-center" role="status" aria-label="Cargando">
       <div className="size-16 rounded-[28px] bg-muted flex items-center justify-center animate-pulse mb-4">
         <div className="size-8 rounded-full border-4 border-muted-foreground/30 border-t-muted-foreground animate-spin" />
       </div>

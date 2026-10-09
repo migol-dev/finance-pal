@@ -4,6 +4,7 @@ import { useFinance, ExportScopes, ALL_SCOPES, normalizeImportKeys } from "@/sto
 import { fmt, monthlyAmount, TYPE_LABEL, FREQ_LABEL, ItemType, Frequency, Priority, iconFor, IconRef, FixedItem, CATEGORY_EMOJI, PAYMENT_METHOD_LABEL, PAYMENT_METHOD_EMOJI, Account, Denomination, cashTotalFromDenominations, Currency, computeBalances, PaymentMethod, NotificationPreferences } from "@/lib/finance";
 import DenominationsEditor from "@/components/ui/DenominationsEditor";
 import { Header } from "@/components/app/Header";
+import { AccessibilitySettings } from "@/components/app/AccessibilitySettings";
 import { Plus, Trash2, Power, Database, RotateCcw, Pencil, Download, Upload, Sun, Moon, Monitor, Target, History, HandCoins, User, LogOut, Cloud, CloudOff, Loader2, Bell, Shield, ShieldCheck, ShieldOff, Smartphone } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -346,6 +347,79 @@ export default function Ajustes() {
         </button>
       </section>
 
+      {/* Cuentas y Desglose */}
+      <section className="px-5 mb-6 space-y-3">
+        <div className="flex items-center justify-between">
+          <h2 className="text-xs uppercase tracking-wider font-bold text-muted-foreground">Cuentas</h2>
+          <div className="flex gap-2">
+            <Button size="sm" onClick={() => { setEditingAccount(null); setAccountsOpen(true); }} className="rounded-xl h-8 text-xs font-semibold">
+              <Plus className="size-3.5 mr-1" />Añadir cuenta
+            </Button>
+            <Button size="sm" variant="secondary" onClick={() => setAccountsOpen(true)} className="rounded-xl h-8 text-xs font-semibold">Gestionar</Button>
+          </div>
+        </div>
+
+        <div className="space-y-2">
+          {accounts.map((a) => {
+            const denomTotal = a.denominations && a.denominations.length > 0 ? cashTotalFromDenominations(a.denominations) : null;
+            const computed = balances[a.id] ?? a.initialBalance ?? 0;
+            return (
+              <div key={a.id} className="rounded-2xl bg-card border border-border p-3 shadow-soft flex items-center gap-3">
+                <div className="size-9 rounded-xl bg-primary/10 text-primary flex items-center justify-center shrink-0">
+                  {a.type === "cash" ? <HandCoins className="size-5" /> : <Database className="size-5" />}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="font-semibold text-sm truncate">{a.name}</p>
+                  <p className="text-xs text-muted-foreground truncate">
+                    {a.type === "cash" ? "Efectivo" : "Cuenta bancaria"} • {a.currency ?? "MXN"} • Saldo: {fmt(computed)}
+                    {denomTotal != null && <span className="ml-1">· Desglose: {fmt(denomTotal)}</span>}
+                  </p>
+                </div>
+                <div className="flex gap-1 shrink-0">
+                  <Button size="sm" onClick={() => { setEditingAccount(a); setAccountsOpen(true); }} className="h-8 rounded-lg text-xs">Editar</Button>
+                  <Button size="sm" onClick={() => { if (confirm(`Eliminar cuenta "${a.name}"? Se desasignarán sus movimientos.`)) { removeAccount(a.id); } }} className="h-8 rounded-lg text-xs" variant="ghost">Eliminar</Button>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+
+        {/* Desglose de efectivo */}
+        <div className="pt-2">
+          <h3 className="text-xs uppercase tracking-wider font-bold text-muted-foreground mb-2">Desglose de efectivo</h3>
+          {accounts.find((a) => a.type === "cash") ? (
+            (() => {
+              const cash = accounts.find((a) => a.type === "cash")!;
+              const denomTotal = (cashDenomsState && cashDenomsState.length > 0) ? cashTotalFromDenominations(cashDenomsState) : (cash.denominations ? cashTotalFromDenominations(cash.denominations) : 0);
+              return (
+                <div className="rounded-2xl bg-card border border-border p-3 shadow-soft">
+                  <p className="text-sm font-semibold">Cuenta: {cash.name} • {cash.currency ?? "MXN"}</p>
+                  <p className="text-xs text-muted-foreground mb-2">Saldo registrado: {fmt(cash.initialBalance ?? 0)} • Total desglose: {fmt(denomTotal)}</p>
+                  <div>
+                    <DenominationsEditor value={cashDenomsState ?? cash.denominations} onChange={(d) => setCashDenomsState(d)} />
+                  </div>
+                  <div className="flex gap-2 justify-end mt-3">
+                    <Button onClick={() => { setEditingAccount(cash); setAccountsOpen(true); }} className="rounded-2xl">Editar cuenta</Button>
+                    <Button onClick={async () => {
+                      const total = cashDenomsState && cashDenomsState.length > 0 ? cashTotalFromDenominations(cashDenomsState) : (cash.denominations ? cashTotalFromDenominations(cash.denominations) : 0);
+                      const bal = Number(cash.initialBalance ?? 0);
+                      if (total !== bal) { toast.error("El total del desglose no coincide con el saldo registrado. No se puede guardar."); return; }
+                      updateAccount(cash.id, { denominations: cashDenomsState && cashDenomsState.length > 0 ? cashDenomsState : undefined });
+                      toast.success("Desglose guardado");
+                    }} className="rounded-2xl gradient-primary text-primary-foreground border-0 shadow-glow font-bold">Guardar desglose</Button>
+                  </div>
+                </div>
+              );
+            })()
+          ) : (
+            <div className="rounded-2xl bg-card border border-border p-3 shadow-soft">
+              <p className="text-sm">No hay cuenta de efectivo. Crea una cuenta de tipo <span className="font-bold">Efectivo</span> para usar el desglose.</p>
+              <div className="mt-2"><Button onClick={() => { setEditingAccount(null); setAccountsOpen(true); }} className="rounded-2xl">Crear cuenta de efectivo</Button></div>
+            </div>
+          )}
+        </div>
+      </section>
+
       <Dialog open={open} onOpenChange={(v) => { setOpen(v); if (!v) setEditing(null); }}>
         <DialogContent className="rounded-3xl max-h-[90vh] overflow-y-auto">
           <DialogHeader><DialogTitle>{editing ? "Editar concepto fijo" : "Nuevo concepto fijo"}</DialogTitle></DialogHeader>
@@ -357,6 +431,10 @@ export default function Ajustes() {
           }} />
         </DialogContent>
       </Dialog>
+
+      <div className="px-5 mb-2">
+        <h2 className="text-xs uppercase tracking-wider font-bold text-muted-foreground">Conceptos fijos</h2>
+      </div>
 
       <div className="px-5 flex gap-2 overflow-x-auto no-scrollbar lg:flex-wrap">
         {([
@@ -437,21 +515,11 @@ export default function Ajustes() {
           </div>
         </div>
 
+        {/* Accesibilidad */}
+        <AccessibilitySettings />
+
         <h2 className="text-xs uppercase tracking-wider font-bold text-muted-foreground pt-4">Notificaciones</h2>
         <NotificationSettings />
-
-        <h2 className="text-xs uppercase tracking-wider font-bold text-muted-foreground pt-4">Más</h2>
-        <div className="grid grid-cols-3 lg:flex lg:gap-3 gap-2">
-          <Link to="/metas" className="rounded-2xl bg-card border border-border p-3 shadow-soft flex flex-col items-center gap-1.5 hover:bg-muted/50 transition">
-            <Target className="size-5 text-primary" /><span className="text-[11px] font-semibold">Metas</span>
-          </Link>
-          <Link to="/deudas" className="rounded-2xl bg-card border border-border p-3 shadow-soft flex flex-col items-center gap-1.5 hover:bg-muted/50 transition">
-            <HandCoins className="size-5 text-primary" /><span className="text-[11px] font-semibold">Deudas</span>
-          </Link>
-          <Link to="/historial" className="rounded-2xl bg-card border border-border p-3 shadow-soft flex flex-col items-center gap-1.5 hover:bg-muted/50 transition">
-            <History className="size-5 text-primary" /><span className="text-[11px] font-semibold">Historial</span>
-          </Link>
-        </div>
 
         <div className="mt-3">
           <Label className="text-xs">Sincronización</Label>
@@ -592,69 +660,7 @@ export default function Ajustes() {
           className="w-full rounded-2xl bg-destructive/10 text-destructive p-4 flex items-center gap-3 font-semibold text-sm hover:bg-destructive/15 transition">
           <RotateCcw className="size-4" /> Restablecer todo
         </button>
-        <p className="text-[10px] text-center text-muted-foreground pt-4">Finance Pal v1.17.8</p>
-
-        <div className="pt-4">
-          <h2 className="text-xs uppercase tracking-wider font-bold text-foreground">Desglose de efectivo</h2>
-          <div className="mt-2">
-            {accounts.find((a) => a.type === "cash") ? (
-              (() => {
-                const cash = accounts.find((a) => a.type === "cash")!;
-                const denomTotal = (cashDenomsState && cashDenomsState.length > 0) ? cashTotalFromDenominations(cashDenomsState) : (cash.denominations ? cashTotalFromDenominations(cash.denominations) : 0);
-                return (
-                  <div className="rounded-2xl bg-card border border-border p-3 shadow-soft">
-                    <p className="text-sm font-semibold">Cuenta: {cash.name} • {cash.currency ?? "MXN"}</p>
-                    <p className="text-xs text-foreground mb-2">Saldo registrado: {fmt(cash.initialBalance ?? 0)} • Total desglose: {fmt(denomTotal)}</p>
-                    <div>
-                      <DenominationsEditor value={cashDenomsState ?? cash.denominations} onChange={(d) => setCashDenomsState(d)} />
-                    </div>
-                    <div className="flex gap-2 justify-end mt-3">
-                      <Button onClick={() => { setEditingAccount(cash); setAccountsOpen(true); }} className="rounded-2xl">Editar cuenta</Button>
-                      <Button onClick={async () => {
-                        const total = cashDenomsState && cashDenomsState.length > 0 ? cashTotalFromDenominations(cashDenomsState) : (cash.denominations ? cashTotalFromDenominations(cash.denominations) : 0);
-                        const bal = Number(cash.initialBalance ?? 0);
-                        if (total !== bal) { toast.error("El total del desglose no coincide con el saldo registrado. No se puede guardar."); return; }
-                        // Save denominations
-                        updateAccount(cash.id, { denominations: cashDenomsState && cashDenomsState.length > 0 ? cashDenomsState : undefined });
-                        toast.success("Desglose guardado");
-                      }} className="rounded-2xl gradient-primary text-primary-foreground border-0 shadow-glow font-bold">Guardar desglose</Button>
-                    </div>
-                  </div>
-                );
-              })()
-            ) : (
-              <div className="rounded-2xl bg-card border border-border p-3 shadow-soft">
-                <p className="text-sm">No hay cuenta de efectivo. Crea una cuenta de tipo <span className="font-bold">Efectivo</span> para usar el desglose.</p>
-                <div className="mt-2"><Button onClick={() => { setEditingAccount(null); setAccountsOpen(true); }} className="rounded-2xl">Crear cuenta de efectivo</Button></div>
-              </div>
-            )}
-          </div>
-
-          <h2 className="text-xs uppercase tracking-wider font-bold text-foreground pt-4">Cuentas</h2>
-          <div className="mt-2 space-y-2">
-            <div className="flex gap-2">
-              <Button onClick={() => { setEditingAccount(null); setAccountsOpen(true); }} className="flex-1 rounded-2xl">Añadir cuenta</Button>
-              <Button variant="secondary" onClick={() => setAccountsOpen(true)} className="rounded-2xl">Gestionar</Button>
-            </div>
-            {accounts.map((a) => {
-              const denomTotal = a.denominations && a.denominations.length > 0 ? cashTotalFromDenominations(a.denominations) : null;
-              const computed = balances[a.id] ?? a.initialBalance ?? 0;
-              return (
-                <div key={a.id} className="rounded-2xl bg-card border border-border p-3 shadow-soft flex items-center gap-3">
-                  <div className="size-9 rounded-xl bg-primary/10 text-primary flex items-center justify-center">{a.type === "cash" ? <HandCoins className="size-5" /> : <Database className="size-5" />}</div>
-                  <div className="flex-1 min-w-0">
-                    <p className="font-semibold text-sm truncate">{a.name}</p>
-                    <p className="text-xs text-foreground">{a.type === "cash" ? "Efectivo" : "Cuenta bancaria"} • {a.currency ?? "MXN"} • Saldo: {fmt(computed)} {denomTotal != null && <span className="ml-1">· Desglose: {fmt(denomTotal)}</span>}</p>
-                  </div>
-                  <div className="flex gap-1">
-                    <Button onClick={() => { setEditingAccount(a); setAccountsOpen(true); }} className="h-9">Editar</Button>
-                    <Button onClick={() => { if (confirm(`Eliminar cuenta "${a.name}"? Se desasignarán sus movimientos.`)) { removeAccount(a.id); } }} className="h-9" variant="ghost">Eliminar</Button>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </div>
+        <p className="text-xs text-center text-muted-foreground pt-6 pb-12">Finance Pal v1.19.38</p>
 
         <ElegantConfirm
           open={!!deleteConfirm}

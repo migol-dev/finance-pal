@@ -226,7 +226,7 @@ export function DataConflictDialog({ onUpload, onDownload }: Props) {
             )}
             <div className="text-left">
               <p className="text-sm">Sobrescribir nube</p>
-              <p className="text-[10px] opacity-80 font-normal">Sube datos locales (migración)</p>
+              <p className="text-micro opacity-80 font-normal">Sube datos locales (migración)</p>
             </div>
           </Button>
 
@@ -243,15 +243,13 @@ export function DataConflictDialog({ onUpload, onDownload }: Props) {
             )}
             <div className="text-left">
               <p className="text-sm">Usar datos de la nube</p>
-              <p className="text-[10px] text-muted-foreground font-normal">Reemplaza datos locales</p>
+              <p className="text-micro text-muted-foreground font-normal">Reemplaza datos locales</p>
             </div>
           </Button>
           
           <Button
             onClick={() => {
               // Intelligent Merge: upload without clearing cloud data (merge)
-              // Currently implemented by triggering standard upload which does upsert locally if programmed.
-              // We'll call onUpload and redirect to migration which does bulk upsert.
               handleUpload();
             }}
             disabled={!!loading}
@@ -261,7 +259,7 @@ export function DataConflictDialog({ onUpload, onDownload }: Props) {
             <CloudUpload className="size-5" />
             <div className="text-left">
               <p className="text-sm">Fusionar datos</p>
-              <p className="text-[10px] opacity-80 font-normal">Sincroniza y combina todo</p>
+              <p className="text-micro opacity-80 font-normal">Sincroniza y combina todo</p>
             </div>
           </Button>
         </div>

@@ -15,9 +15,9 @@ function SyncIcon({ state, queueLen }: { state: SyncState; queueLen: number }) {
         {state === "offline" && (
           <motion.div key="offline" initial={{ scale: 0 }} animate={{ scale: 1 }} exit={{ scale: 0 }} transition={{ duration: 0.25 }}>
             <div className="relative">
-              <Cloud className="size-4 text-gray-400" />
+              <Cloud className="size-4 text-muted-foreground" />
               <div className="absolute inset-0 flex items-center justify-center">
-                <div className="w-5 h-0.5 bg-gray-400 rotate-[-45deg] origin-center" />
+                <div className="w-5 h-0.5 bg-muted-foreground rotate-[-45deg] origin-center" />
               </div>
             </div>
           </motion.div>
@@ -35,15 +35,15 @@ function SyncIcon({ state, queueLen }: { state: SyncState; queueLen: number }) {
               transition={{ duration: 3, repeat: Infinity, ease: "linear" }}
               style={{ transformOrigin: "center center" }}
             >
-              <Cloud className="size-4 text-yellow-500" />
+              <Cloud className="size-4 text-primary" />
             </motion.div>
           </motion.div>
         )}
         {state === "pending" && (
           <motion.div key="pending" initial={{ scale: 0 }} animate={{ scale: 1 }} exit={{ scale: 0 }} transition={{ duration: 0.25 }} className="relative">
-            <Cloud className="size-4 text-yellow-500" />
+            <Cloud className="size-4 text-warning" />
             <motion.div
-              className="absolute -top-1.5 -right-1.5 bg-red-500 text-white text-[7px] rounded-full w-3 h-3 flex items-center justify-center font-bold"
+              className="absolute -top-1.5 -right-2 bg-destructive text-destructive-foreground text-[10px] rounded-full min-w-4 h-4 px-0.5 flex items-center justify-center font-bold shadow-sm"
               initial={{ scale: 0 }} animate={{ scale: 1 }}
               transition={{ type: "spring", stiffness: 500, damping: 15 }}
             >
@@ -53,7 +53,7 @@ function SyncIcon({ state, queueLen }: { state: SyncState; queueLen: number }) {
         )}
         {state === "synced" && (
           <motion.div key="synced" initial={{ scale: 0 }} animate={{ scale: 1 }} exit={{ scale: 0 }} transition={{ duration: 0.25 }}>
-            <Cloud className="size-4 text-gray-400" />
+            <Cloud className="size-4 text-muted-foreground" />
           </motion.div>
         )}
       </AnimatePresence>
@@ -85,7 +85,7 @@ function DesktopSyncIcon({ state, color, queueLen }: { state: SyncState; color: 
           <motion.div key="pending" initial={{ scale: 0, rotate: -90 }} animate={{ scale: 1, rotate: 0 }} exit={{ scale: 0, rotate: 90 }} transition={{ duration: 0.25 }} className="relative">
             <Cloud className={`size-3.5 ${color}`} />
             <motion.div
-              className="absolute -top-1.5 -right-1.5 bg-red-500 text-white text-[8px] rounded-full w-3 h-3 flex items-center justify-center font-bold"
+              className="absolute -top-1.5 -right-2 bg-destructive text-destructive-foreground text-[10px] rounded-full min-w-4 h-4 px-0.5 flex items-center justify-center font-bold shadow-sm"
               initial={{ scale: 0 }} animate={{ scale: 1 }}
               transition={{ type: "spring", stiffness: 500, damping: 15 }}
             >
@@ -126,23 +126,23 @@ export function SyncIndicator({ showLabel = true, compact = false, className = "
 
   const state: SyncState = !isOnline ? "offline" : isSyncing ? "syncing" : syncQueue.length > 0 ? "pending" : "synced";
 
-  // Mobile/compact: icon only, no background, no label
+  // Desktop/mobile: with semantic tokens
+  const stateMeta: Record<SyncState, { icon: "cloud" | "offline" | "spinner"; color: string; bg: string; label: string }> = {
+    synced: { icon: "cloud", color: "text-success", bg: "bg-success/10", label: "Sincronizado" },
+    syncing: { icon: "spinner", color: "text-primary", bg: "bg-primary/10", label: `Sincronizando (${syncQueue.length})` },
+    pending: { icon: "cloud", color: "text-warning", bg: "bg-warning/10", label: `Pendiente (${syncQueue.length}) - Clic para reintentar` },
+    offline: { icon: "offline", color: "text-muted-foreground", bg: "bg-muted", label: "Sin conexión" },
+  };
+  const meta = stateMeta[state];
+
+  // Mobile/compact: icon only, accessible tooltip title
   if (compact || isNative) {
     return (
-      <div className={`flex items-center ${className}`}>
+      <div className={`flex items-center ${className}`} title={meta.label} aria-label={meta.label}>
         <SyncIcon state={state} queueLen={syncQueue.length} />
       </div>
     );
   }
-
-  // Desktop: with label and colored background
-  const stateMeta: Record<SyncState, { icon: "cloud" | "offline" | "spinner"; color: string; bg: string; label: string }> = {
-    synced: { icon: "cloud", color: "text-green-500", bg: "bg-green-500/10", label: "Sincronizado" },
-    syncing: { icon: "spinner", color: "text-blue-500", bg: "bg-blue-500/10", label: `Sincronizando (${syncQueue.length})` },
-    pending: { icon: "cloud", color: "text-yellow-500", bg: "bg-yellow-500/10", label: `Pendiente (${syncQueue.length}) - Clic para reintentar` },
-    offline: { icon: "offline", color: "text-yellow-500", bg: "bg-yellow-500/10", label: "Sin conexión" },
-  };
-  const meta = stateMeta[state];
 
   const handleRetry = () => {
     if (state === "pending") {
@@ -157,6 +157,7 @@ export function SyncIndicator({ showLabel = true, compact = false, className = "
       layout
       onClick={handleRetry}
       disabled={state !== "pending"}
+      aria-label={meta.label}
       className={`rounded-2xl flex items-center gap-2 text-xs border-0 outline-none ${showLabel ? "p-2" : "p-1.5"} ${meta.bg} ${meta.color} ${className} ${state === "pending" ? "cursor-pointer hover:opacity-80 transition-opacity" : "cursor-default"}`}
     >
       <DesktopSyncIcon state={state} color={meta.color} queueLen={syncQueue.length} />

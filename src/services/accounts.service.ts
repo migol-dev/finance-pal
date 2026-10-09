@@ -34,7 +34,7 @@ export interface AccountInsertPayload {
   holder_name: string | undefined;
 }
 
-export interface AccountUpdatePayload extends Partial<Omit<AccountInsertPayload, 'id' | 'user_id'>> {}
+export type AccountUpdatePayload = Partial<Omit<AccountInsertPayload, 'id' | 'user_id'>>;
 
 const ACCOUNT_COLS =
   'id, name, type, initial_balance, currency, denominations, clabe, bank, holder_name, created_at';

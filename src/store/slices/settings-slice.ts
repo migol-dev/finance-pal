@@ -5,8 +5,10 @@ import {
     AppSettings,
     AccentColor,
     NotificationPreferences,
+    AccessibilitySettings,
     ChangeLogEntry,
     DEFAULT_NOTIFICATION_PREFS,
+    DEFAULT_ACCESSIBILITY_SETTINGS,
 } from '@/lib/finance';
 
 export interface SettingsSlice {
@@ -26,6 +28,7 @@ export interface SettingsSlice {
     setCompactMode: (compact: boolean) => void;
     setGlassEffect: (glass: boolean) => void;
     setNotificationPrefs: (prefs: Partial<NotificationPreferences>) => void;
+    setAccessibilitySettings: (prefs: Partial<AccessibilitySettings>) => void;
     setConflictResolved: () => void;
     setActive: (year: number, month: number) => void;
     resetToToday: () => void;
@@ -49,6 +52,7 @@ export const createSettingsSlice: StateCreator<
         glassEffect: true,
         conflictResolved: false,
         notifications: DEFAULT_NOTIFICATION_PREFS,
+        accessibility: DEFAULT_ACCESSIBILITY_SETTINGS,
     },
     syncFiltersToURL: false,
     activeYear: now.getFullYear(),
@@ -83,6 +87,17 @@ export const createSettingsSlice: StateCreator<
             appSettings: {
                 ...s.appSettings,
                 notifications: { ...s.appSettings.notifications, ...prefs },
+            },
+        })),
+
+    setAccessibilitySettings: (prefs) =>
+        set((s) => ({
+            appSettings: {
+                ...s.appSettings,
+                accessibility: {
+                    ...(s.appSettings.accessibility ?? DEFAULT_ACCESSIBILITY_SETTINGS),
+                    ...prefs,
+                },
             },
         })),
 

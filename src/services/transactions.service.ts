@@ -42,8 +42,7 @@ export interface TransactionInsertPayload {
   receipt: string | undefined;
 }
 
-export interface TransactionUpdatePayload
-  extends Partial<Omit<TransactionInsertPayload, 'id' | 'user_id'>> {}
+export type TransactionUpdatePayload = Partial<Omit<TransactionInsertPayload, 'id' | 'user_id'>>;
 
 const TX_COLS =
   'id, type, category, concept, amount, date, note, icon, payment_method, fixed_id, account_id, transfer_to_account_id, external_payee, receipt';

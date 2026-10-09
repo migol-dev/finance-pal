@@ -26,8 +26,7 @@ export interface GoalFolderInsertPayload {
   order: number;
 }
 
-export interface GoalFolderUpdatePayload
-  extends Partial<Omit<GoalFolderInsertPayload, 'id' | 'user_id'>> {}
+export type GoalFolderUpdatePayload = Partial<Omit<GoalFolderInsertPayload, 'id' | 'user_id'>>;
 
 // Nota: "order" es palabra reservada en Postgres; se cita con comillas dobles.
 const FOLDER_COLS = 'id, name, color, icon, parent_id, "order", created_at';

@@ -367,12 +367,38 @@ export interface UserProfile {
   avatar?: IconRef;
 }
 
+export type TextScale = "compact" | "normal" | "large" | "xlarge";
+export type ColorBlindMode = "none" | "protanopia" | "deuteranopia" | "tritanopia";
+
+export interface AccessibilitySettings {
+  textScale: TextScale;
+  highContrast: boolean;
+  reduceMotion: boolean;
+  dyslexicFont: boolean;
+  underlineLinks: boolean;
+  largeTouchTargets: boolean;
+  colorBlindMode: ColorBlindMode;
+  enhancedFocusRing: boolean;
+}
+
+export const DEFAULT_ACCESSIBILITY_SETTINGS: AccessibilitySettings = {
+  textScale: "normal",
+  highContrast: false,
+  reduceMotion: false,
+  dyslexicFont: false,
+  underlineLinks: false,
+  largeTouchTargets: false,
+  colorBlindMode: "none",
+  enhancedFocusRing: true,
+};
+
 export interface AppSettings {
   accentColor: AccentColor;
   compactMode: boolean;
   glassEffect: boolean;
   conflictResolved?: boolean;
   notifications: NotificationPreferences;
+  accessibility: AccessibilitySettings;
 }
 
 export interface NotificationPreferences {

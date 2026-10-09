@@ -6,6 +6,7 @@ import { Link } from "react-router-dom";
 import { motion } from "@/lib/framer";
 import { MonthSwitcher } from "@/components/app/MonthSwitcher";
 import { IconDisplay } from "@/components/app/IconDisplay";
+import { BrandLogo } from "@/components/app/BrandLogo";
 
 export default function Dashboard() {
   const {
@@ -226,9 +227,7 @@ export default function Dashboard() {
     <div>
       <header className="px-5 lg:px-6 pt-5 pb-2 flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <div className="size-11 rounded-xl gradient-primary shadow-glow flex items-center justify-center">
-            <Wallet className="size-5 text-primary-foreground" />
-          </div>
+          <BrandLogo size="sm" showText={false} />
           <div>
             <p className="text-sm font-semibold text-foreground">{greet}</p>
             <p className="text-xs text-muted-foreground">{MONTHS[activeMonth]} {activeYear}</p>
@@ -238,7 +237,11 @@ export default function Dashboard() {
           <Link to="/anual" aria-label="Resumen anual" className="size-9 rounded-xl bg-muted flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted/80 transition">
             <BarChart3 className="size-4" />
           </Link>
-          <button onClick={() => setHide((h) => !h)} className="size-9 rounded-xl bg-muted flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted/80 transition">
+          <button
+            onClick={() => setHide((h) => !h)}
+            aria-label={hide ? "Mostrar saldos" : "Ocultar saldos"}
+            className="size-9 rounded-xl bg-muted flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted/80 transition"
+          >
             {hide ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
           </button>
         </div>
@@ -255,7 +258,7 @@ export default function Dashboard() {
         <div className="absolute -top-8 -right-8 size-32 rounded-full bg-white/10 blur-2xl" />
         <div className="absolute -bottom-8 -left-6 size-24 rounded-full bg-white/10 blur-2xl" />
         <div className="relative">
-          <p className="text-[11px] uppercase tracking-wider font-semibold opacity-80">Neto acumulado</p>
+          <p className="text-xs uppercase tracking-wider font-semibold opacity-80">Neto acumulado</p>
           <p className="text-4xl font-extrabold tracking-tight mt-1 truncate">{mask(fmt(monthStats.cumulativeNet))}</p>
           <div className="grid grid-cols-3 gap-2 mt-5">
             <MiniStat icon={<TrendingUp className="size-3.5" />} label="Ingresos" value={mask(fmt(monthStats.income))} />
@@ -264,11 +267,11 @@ export default function Dashboard() {
           </div>
           <div className="mt-3 grid grid-cols-2 gap-2">
             <div className="rounded-xl bg-white/10 p-2.5 text-center">
-              <div className="text-[10px] uppercase tracking-wider font-semibold opacity-70">Efectivo</div>
+              <div className="text-micro uppercase tracking-wider font-semibold opacity-70">Efectivo</div>
               <div className="font-bold mt-0.5 text-sm">{mask(fmt(cashBankBreakdown.cash))}</div>
             </div>
             <div className="rounded-xl bg-white/10 p-2.5 text-center">
-              <div className="text-[10px] uppercase tracking-wider font-semibold opacity-70">Cuentas</div>
+              <div className="text-micro uppercase tracking-wider font-semibold opacity-70">Cuentas</div>
               <div className="font-bold mt-0.5 text-sm">{mask(fmt(cashBankBreakdown.bank))}</div>
             </div>
           </div>
@@ -298,7 +301,7 @@ export default function Dashboard() {
             initial={{ opacity: 0, y: 15 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.35 }}
-            className="px-5 lg:px-0 mt-6 mb-24 lg:mb-0"
+            className="px-5 lg:px-0 mt-6 mb-6 lg:mb-0"
           >
             <div className="flex items-center justify-between mb-3">
               <h2 className="text-sm font-extrabold">Movimientos recientes</h2>
@@ -306,7 +309,7 @@ export default function Dashboard() {
             </div>
             {recent.length === 0 ? (
               <div className="rounded-3xl bg-card border border-border p-8 text-center shadow-soft flex flex-col items-center">
-                <p className="text-5xl mb-4">💸</p>
+                <p className="text-5xl mb-4" aria-hidden="true">💸</p>
                 <p className="text-base font-bold mb-2">Aún no hay movimientos</p>
                 <p className="text-xs text-muted-foreground mb-5 max-w-[250px]">No has registrado ningún gasto o ingreso en {MONTHS[activeMonth]}.</p>
                 <Link to="/movimientos?new=expense" className="h-10 px-4 inline-flex items-center justify-center rounded-xl gradient-primary text-primary-foreground text-sm font-bold shadow-glow hover:opacity-90 transition">Registrar movimiento</Link>
@@ -337,13 +340,13 @@ export default function Dashboard() {
             transition={{ delay: 0.1 }}
             className="px-5 lg:px-0 mt-5 lg:mt-0 grid grid-cols-2 gap-3"
           >
-            <Link to="/movimientos?new=expense" className="rounded-xl bg-card border border-border p-4 shadow-soft active:scale-[0.98] transition flex items-center gap-3 hover:border-destructive/30">
+            <Link to="/movimientos?new=expense" aria-label="Registrar gasto" className="rounded-xl bg-card border border-border p-4 shadow-soft active:scale-[0.98] transition flex items-center gap-3 hover:border-destructive/30">
               <div className="size-10 rounded-xl bg-destructive/10 text-destructive flex items-center justify-center"><Plus className="size-5" /></div>
-              <div><p className="text-sm font-bold">Gasto</p><p className="text-[11px] text-muted-foreground">Registrar</p></div>
+              <div><p className="text-sm font-bold">Gasto</p><p className="text-xs text-muted-foreground">Registrar</p></div>
             </Link>
-            <Link to="/movimientos?new=income" className="rounded-xl bg-card border border-border p-4 shadow-soft active:scale-[0.98] transition flex items-center gap-3 hover:border-success/30">
+            <Link to="/movimientos?new=income" aria-label="Registrar ingreso" className="rounded-xl bg-card border border-border p-4 shadow-soft active:scale-[0.98] transition flex items-center gap-3 hover:border-success/30">
               <div className="size-10 rounded-xl bg-success/10 text-success flex items-center justify-center"><Plus className="size-5" /></div>
-              <div><p className="text-sm font-bold">Ingreso</p><p className="text-[11px] text-muted-foreground">Registrar</p></div>
+              <div><p className="text-sm font-bold">Ingreso</p><p className="text-xs text-muted-foreground">Registrar</p></div>
             </Link>
           </motion.section>
 
@@ -355,7 +358,7 @@ export default function Dashboard() {
               className="px-5 lg:px-0 mt-6"
             >
               <div className="rounded-xl gradient-mesh border border-border p-6 text-center">
-                <p className="text-4xl mb-2">🎉</p>
+                <p className="text-4xl mb-2" aria-hidden="true">🎉</p>
                 <p className="font-bold text-base">Bienvenido a Finance Pal</p>
                 <p className="text-sm text-muted-foreground mt-1">Empieza creando tus ingresos, gastos fijos y metas en <Link to="/ajustes" className="text-primary font-semibold hover:underline">Ajustes</Link>, o registra un movimiento ahora.</p>
               </div>
@@ -384,7 +387,7 @@ export default function Dashboard() {
                     </div>
                     <div className="text-right">
                       <p className="text-2xl font-extrabold">{progressPercent}%</p>
-                      <p className="text-[10px] opacity-70 uppercase tracking-wider">completado</p>
+                      <p className="text-micro opacity-70 uppercase tracking-wider">completado</p>
                     </div>
                   </div>
                   <div className="h-2 rounded-full bg-white/20 overflow-hidden mt-4">
@@ -405,7 +408,7 @@ export default function Dashboard() {
               initial={{ opacity: 0, y: 15 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.3 }}
-              className="px-5 lg:px-0 mt-6 mb-24 lg:mb-6"
+              className="px-5 lg:px-0 mt-6 mb-8 lg:mb-6"
             >
               <div className="flex items-center gap-2 mb-3">
                 <Bell className="size-4 text-warning" />
@@ -421,7 +424,7 @@ export default function Dashboard() {
                     </div>
                     <div className="text-right">
                       <p className="font-bold text-sm">{mask(fmt(u.amount))}</p>
-                      <p className="text-[10px] text-warning font-semibold">en {u.daysLeft}d</p>
+                      <p className="text-micro text-warning font-semibold">en {u.daysLeft}d</p>
                     </div>
                   </div>
                 ))}
@@ -437,11 +440,11 @@ export default function Dashboard() {
                 <BarChart3 className="size-4" />
               </div>
               <p className="font-bold text-sm">Resumen anual</p>
-              <p className="text-xs text-muted-foreground mt-1">Ingresos, gastos y más</p>
+              <p className="text-xs text-muted-foreground mt-1">Ingresos, gastos y más detalles</p>
             </Link>
 
             <div className="rounded-xl bg-card border border-border p-4 shadow-soft">
-              <p className="text-xs uppercase tracking-wider font-semibold text-muted-foreground mb-3">Distribución</p>
+              <p className="text-xs uppercase tracking-wider font-semibold text-muted-foreground mb-3">Distribución de saldos</p>
               <div className="space-y-3">
                 <div>
                   <div className="flex items-center justify-between text-xs mb-1">
@@ -472,9 +475,11 @@ export default function Dashboard() {
               </div>
             </div>
 
-            <div className="rounded-xl gradient-mesh border border-border p-4 text-center">
-              <p className="text-xs font-bold text-muted-foreground">Neto acumulado</p>
-              <p className="text-2xl font-extrabold mt-1">{mask(fmt(monthStats.cumulativeNet))}</p>
+            <div className="rounded-xl bg-card border border-border p-4 text-center shadow-soft">
+              <p className="text-xs uppercase tracking-wider font-semibold text-muted-foreground">Balance neto del mes</p>
+              <p className={`text-2xl font-extrabold mt-1 ${monthStats.net >= 0 ? "text-success" : "text-destructive"}`}>
+                {mask(fmt(monthStats.net))}
+              </p>
             </div>
           </div>
         </div>
@@ -486,7 +491,7 @@ export default function Dashboard() {
 const MiniStat = memo(function MiniStat({ icon, label, value }: { icon: ReactNode; label: string; value: string }) {
   return (
     <div className="rounded-xl bg-white/15 p-2.5 backdrop-blur-sm">
-      <div className="flex items-center gap-1 opacity-90 mb-0.5">{icon}<span className="text-[10px] uppercase tracking-wider font-semibold">{label}</span></div>
+      <div className="flex items-center gap-1 opacity-90 mb-0.5">{icon}<span className="text-micro uppercase tracking-wider font-semibold">{label}</span></div>
       <p className="text-sm font-bold truncate">{value}</p>
     </div>
   );

@@ -171,7 +171,13 @@ export default function Deudas() {
                     <p className="text-xs text-muted-foreground">{fmtDate(p.date)} • {PAYMENT_METHOD_LABEL[p.paymentMethod ?? "other"]}</p>
                     {p.note && <p className="text-xs text-muted-foreground">{p.note}</p>}
                   </div>
-                  <button aria-label="Eliminar" onClick={() => setDeletePayment({ debtId: detail.id, paymentId: p.id, amount: p.amount })} className="text-destructive p-1"><Trash2 className="size-4" /></button>
+                  <button
+                    aria-label="Eliminar abono"
+                    onClick={() => setDeletePayment({ debtId: detail.id, paymentId: p.id, amount: p.amount })}
+                    className="size-8 rounded-lg flex items-center justify-center text-destructive hover:bg-destructive/10 transition shrink-0"
+                  >
+                    <Trash2 className="size-4" />
+                  </button>
                 </div>
               ))}
             </div>
@@ -182,7 +188,7 @@ export default function Deudas() {
       <div className="px-5 mt-4 space-y-3 lg:grid lg:grid-cols-2 lg:gap-3 lg:space-y-0">
         {debts.length === 0 && (
           <div className="rounded-3xl bg-card border border-dashed border-border p-8 text-center shadow-soft flex flex-col items-center mt-4">
-            <p className="text-5xl mb-4">🤝</p>
+            <p className="text-5xl mb-4" aria-hidden="true">🤝</p>
             <p className="text-base font-bold mb-2">Sin deudas ni préstamos</p>
             <p className="text-xs text-muted-foreground mb-5 max-w-[250px]">Lleva el control de lo que debes y te deben fácilmente.</p>
             <Button onClick={() => { setEditing(null); setOpen(true); }} className="h-10 px-5 rounded-xl gradient-primary text-primary-foreground font-bold border-0 shadow-glow">
@@ -211,9 +217,21 @@ export default function Deudas() {
                   </div>
                   <p className="text-xs text-muted-foreground truncate">{d.concept}</p>
                 </div>
-                <div className="flex flex-col gap-0.5">
-                  <button aria-label="Editar" onClick={() => { setEditing(d); setOpen(true); }} className="text-muted-foreground hover:text-primary p-1"><Pencil className="size-4" /></button>
-                  <button aria-label="Eliminar" onClick={() => setDeleteDebt(d)} className="text-muted-foreground hover:text-destructive p-1"><Trash2 className="size-4" /></button>
+                <div className="flex items-center gap-0.5">
+                  <button
+                    aria-label="Editar deuda"
+                    onClick={() => { setEditing(d); setOpen(true); }}
+                    className="size-8 rounded-lg flex items-center justify-center text-muted-foreground hover:text-primary hover:bg-muted/50 transition"
+                  >
+                    <Pencil className="size-4" />
+                  </button>
+                  <button
+                    aria-label="Eliminar deuda"
+                    onClick={() => setDeleteDebt(d)}
+                    className="size-8 rounded-lg flex items-center justify-center text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition"
+                  >
+                    <Trash2 className="size-4" />
+                  </button>
                 </div>
               </div>
               <div className="mt-3">
@@ -273,8 +291,8 @@ function SumCard({ label, value, tone }: { label: string; value: string; tone: "
   const map = { primary: "gradient-primary", success: "gradient-success", warning: "gradient-sunset" };
   return (
     <div className={`rounded-2xl p-2.5 text-primary-foreground shadow-pop ${map[tone]}`}>
-      <p className="text-[9px] uppercase font-bold opacity-90 truncate">{label}</p>
-      <p className="text-xs font-extrabold mt-0.5 truncate">{value}</p>
+      <p className="text-micro uppercase tracking-wider font-bold opacity-90 truncate">{label}</p>
+      <p className="text-sm font-extrabold mt-0.5 truncate">{value}</p>
     </div>
   );
 }

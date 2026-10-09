@@ -444,11 +444,16 @@ export default function Metas() {
       </div>
 
       <Dialog open={!!detailId} onOpenChange={(v) => { if(!v) setDetailId(null); }}>
-        <DialogContent className="max-w-lg p-0 border-0 bg-transparent shadow-none overflow-hidden h-[95vh]">
+        <DialogContent className="max-w-lg p-0 border-0 bg-transparent shadow-none overflow-hidden h-[95vh] sm:rounded-3xl">
+          <DialogTitle className="sr-only">Detalle de {detailGoal?.name ?? "meta"}</DialogTitle>
           <DialogDescription className="sr-only">Detalle de la meta {detailGoal?.name}</DialogDescription>
           {detailGoal && (
-            <div className={cn("h-full w-full overflow-y-auto no-scrollbar rounded-t-[40px] p-6 text-white relative", detailGoal.color)}>
-              <button onClick={() => setDetailId(null)} className="absolute top-6 right-6 size-10 rounded-full bg-white/20 flex items-center justify-center backdrop-blur-md z-10">
+            <div className={cn("h-full w-full overflow-y-auto no-scrollbar rounded-t-[32px] sm:rounded-3xl p-6 text-white relative", detailGoal.color)}>
+              <button
+                onClick={() => setDetailId(null)}
+                aria-label="Cerrar detalles"
+                className="absolute top-5 right-5 size-10 rounded-full bg-black/25 hover:bg-black/40 text-white flex items-center justify-center backdrop-blur-md z-20 transition active:scale-95"
+              >
                 <X className="size-5" />
               </button>
 
@@ -514,10 +519,10 @@ function GoalCompactCard({ goal, index, onViewMore, onContribute, accounts }: {
         </div>
 
         <div className="flex gap-2 mt-5">
-          <button onClick={() => handleQuickAdd(100)} className="flex-1 h-10 rounded-2xl bg-white/15 hover:bg-white/25 active:scale-95 transition text-[11px] font-black border border-white/10">+100</button>
-          <button onClick={() => handleQuickAdd(500)} className="flex-1 h-10 rounded-2xl bg-white/15 hover:bg-white/25 active:scale-95 transition text-[11px] font-black border border-white/10">+500</button>
-          <button onClick={() => handleQuickAdd(1000)} className="flex-1 h-10 rounded-2xl bg-white/15 hover:bg-white/25 active:scale-95 transition text-[11px] font-black border border-white/10">+1k</button>
-          <button aria-label="Agregar" onClick={onViewMore} className="size-10 rounded-2xl bg-white/25 hover:bg-white/35 active:scale-95 transition flex items-center justify-center border border-white/20"><Plus className="size-4" /></button>
+          <button onClick={() => handleQuickAdd(100)} aria-label="Aportar 100" className="flex-1 h-10 rounded-2xl bg-white/15 hover:bg-white/25 active:scale-95 transition text-xs font-black border border-white/10">+100</button>
+          <button onClick={() => handleQuickAdd(500)} aria-label="Aportar 500" className="flex-1 h-10 rounded-2xl bg-white/15 hover:bg-white/25 active:scale-95 transition text-xs font-black border border-white/10">+500</button>
+          <button onClick={() => handleQuickAdd(1000)} aria-label="Aportar 1000" className="flex-1 h-10 rounded-2xl bg-white/15 hover:bg-white/25 active:scale-95 transition text-xs font-black border border-white/10">+1k</button>
+          <button aria-label="Ver detalles o aportar" onClick={onViewMore} className="size-10 rounded-2xl bg-white/25 hover:bg-white/35 active:scale-95 transition flex items-center justify-center border border-white/20"><Plus className="size-4" /></button>
         </div>
       </div>
 
@@ -597,11 +602,15 @@ function GoalDetailContent({ goal, onEdit, onDelete, onContribute, onTogglePin, 
       </div>
 
       <div className="grid grid-cols-4 gap-2 mb-6">
-        <button onClick={onTogglePin} className={cn("h-14 rounded-2xl flex items-center justify-center transition active:scale-90", goal.pinned ? "bg-white text-foreground" : "bg-white/10 text-white")}>
+        <button
+          onClick={onTogglePin}
+          aria-label={goal.pinned ? "Desanclar meta de destacados" : "Fijar meta como destacada"}
+          className={cn("h-14 rounded-2xl flex items-center justify-center transition active:scale-90", goal.pinned ? "bg-white text-foreground" : "bg-white/10 text-white")}
+        >
           <Star className={cn("size-6", goal.pinned ? "fill-current" : "")} />
         </button>
-        <button aria-label="Editar" onClick={onEdit} className="h-14 rounded-2xl bg-white/10 flex items-center justify-center active:scale-90 transition"><Pencil className="size-6" /></button>
-        <button aria-label="Eliminar" onClick={() => setDeleteConfirm(true)} className="h-14 rounded-2xl bg-white/10 flex items-center justify-center active:scale-90 transition"><Trash2 className="size-6" /></button>
+        <button aria-label="Editar meta" onClick={onEdit} className="h-14 rounded-2xl bg-white/10 flex items-center justify-center active:scale-90 transition"><Pencil className="size-6" /></button>
+        <button aria-label="Eliminar meta" onClick={() => setDeleteConfirm(true)} className="h-14 rounded-2xl bg-white/10 flex items-center justify-center active:scale-90 transition"><Trash2 className="size-6" /></button>
         <ContribCustom onAdd={(v, acc) => onContribute(v, undefined, acc)} accounts={accounts} />
       </div>
 
@@ -923,9 +932,9 @@ function SimularTab({ goal }: { goal: Goal }) {
 
 function PaceBox({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-xl bg-white/20 px-1.5 py-1.5">
-      <p className="text-[8px] uppercase tracking-wide opacity-80 truncate">{label}</p>
-      <p className="text-[10px] font-extrabold leading-tight truncate">{value}</p>
+    <div className="rounded-xl bg-white/20 px-2 py-1.5">
+      <p className="text-micro uppercase tracking-wide opacity-80 truncate">{label}</p>
+      <p className="text-xs font-extrabold leading-tight truncate">{value}</p>
     </div>
   );
 }
@@ -941,11 +950,22 @@ function ContribCustom({ onAdd, negative, accounts }: { onAdd: (v: number, accou
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <button type="button" onClick={() => setOpen(true)} className="size-9 rounded-xl bg-white/25 hover:bg-white/35 text-xs font-bold transition flex items-center justify-center">
+      <button
+        type="button"
+        onClick={() => setOpen(true)}
+        aria-label={negative ? "Retirar monto personalizado" : "Aporte personalizado"}
+        className={cn(
+          "rounded-2xl bg-white/25 hover:bg-white/35 font-bold transition flex items-center justify-center active:scale-95",
+          negative ? "size-9 rounded-xl text-xs" : "h-14 w-full text-base"
+        )}
+      >
         {negative ? <Minus className="size-4" /> : "···"}
       </button>
       <DialogContent className="rounded-3xl">
-        <DialogHeader><DialogTitle>{negative ? "Retirar de meta" : "Aportar a meta"}</DialogTitle></DialogHeader>
+        <DialogHeader>
+          <DialogTitle>{negative ? "Retirar de meta" : "Aportar a meta"}</DialogTitle>
+          <DialogDescription className="sr-only">Formulario para registrar monto a la meta</DialogDescription>
+        </DialogHeader>
         <div className="space-y-4 pt-2">
           <div>
             <Label className="text-xs">Monto</Label>

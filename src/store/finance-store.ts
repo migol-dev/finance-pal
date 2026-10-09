@@ -6,7 +6,7 @@ import { createDebtSlice, DebtSlice } from "./slices/debt-slice";
 import { createFixedSlice, FixedSlice } from "./slices/fixed-slice";
 import { createTransactionSlice, TransactionSlice } from "./slices/transaction-slice";
 import { persist } from "zustand/middleware";
-import { FixedItem, Transaction, Goal, Debt, ChangeLogEntry, isFixedActiveInMonth, parseDateLocal, Account, ThemeMode, AccentColor, GoalFolder, NotificationPreferences, DEFAULT_NOTIFICATION_PREFS } from "@/lib/finance";
+import { FixedItem, Transaction, Goal, Debt, ChangeLogEntry, isFixedActiveInMonth, parseDateLocal, Account, ThemeMode, AccentColor, GoalFolder, NotificationPreferences, DEFAULT_NOTIFICATION_PREFS, DEFAULT_ACCESSIBILITY_SETTINGS } from "@/lib/finance";
 import { Filesystem, Directory } from "@capacitor/filesystem";
 import { Capacitor } from "@capacitor/core";
 import { supabase } from "@/lib/supabase";
@@ -366,7 +366,7 @@ export const useFinance = create<State>()(
 
         resetAll: () => {
           const d = new Date();
-          set({ fixedItems: [], transactions: [], goals: [], debts: [], changeLog: [], activeYear: d.getFullYear(), activeMonth: d.getMonth(), appSettings: { accentColor: "blue", compactMode: false, glassEffect: true, conflictResolved: false, notifications: DEFAULT_NOTIFICATION_PREFS } });
+          set({ fixedItems: [], transactions: [], goals: [], debts: [], changeLog: [], activeYear: d.getFullYear(), activeMonth: d.getMonth(), appSettings: { accentColor: "blue", compactMode: false, glassEffect: true, conflictResolved: false, notifications: DEFAULT_NOTIFICATION_PREFS, accessibility: DEFAULT_ACCESSIBILITY_SETTINGS } });
           // Audit log: all data deleted
           supabase.auth.getUser().then(({ data: authData }) => {
             const userId = authData?.user?.id;

@@ -97,7 +97,7 @@ export default function Historial() {
               ))}
             </AnimatePresence>
             {changeLog.length > 100 && (
-              <p className="text-center text-[10px] text-muted-foreground py-4">Mostrando los últimos 100 cambios</p>
+              <p className="text-center text-xs text-muted-foreground py-4">Mostrando los últimos 100 cambios</p>
             )}
           </div>
         )}

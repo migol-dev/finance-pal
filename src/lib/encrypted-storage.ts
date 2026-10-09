@@ -41,13 +41,22 @@ const LEGACY_ITERATIONS = 100000;
 import { supabase } from '@/lib/supabase';
 
 async function getDeviceSecret(): Promise<string> {
-  const { data: { session } } = await supabase.auth.getSession();
-  if (session?.user?.id) {
-    return session.user.id;
+  try {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (session?.user?.id) {
+      return session.user.id;
+    }
+  } catch {
+    // Ignore and proceed to local fallback
   }
   
-  // Fallback if no session (e.g. during signout or errors)
-  throw new Error('No active session to derive encryption key');
+  let secret = localStorage.getItem('finance-pal-device-secret');
+  if (!secret) {
+    const entropy = crypto.getRandomValues(new Uint8Array(32));
+    secret = btoa(String.fromCharCode(...entropy));
+    localStorage.setItem('finance-pal-device-secret', secret);
+  }
+  return secret;
 }
 
 async function getMasterKey(): Promise<CryptoKey> {

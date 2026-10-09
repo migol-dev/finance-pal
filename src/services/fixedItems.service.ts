@@ -46,8 +46,7 @@ export interface FixedItemInsertPayload {
   account_id: string | undefined;
 }
 
-export interface FixedItemUpdatePayload
-  extends Partial<Omit<FixedItemInsertPayload, 'id' | 'user_id'>> {}
+export type FixedItemUpdatePayload = Partial<Omit<FixedItemInsertPayload, 'id' | 'user_id'>>;
 
 const FIXED_COLS =
   'id, type, category, concept, amount, frequency, active, note, start_date, end_date, priority, pay_day, pay_week_day, icon, payment_method, account_id, created_at';

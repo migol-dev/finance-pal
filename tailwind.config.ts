@@ -81,6 +81,7 @@ export default {
         sm: "var(--radius-sm)",
       },
       fontSize: {
+        micro: ["0.6875rem", { lineHeight: "0.875rem" }],
         us: ["0.6875rem", { lineHeight: "1rem" }],
         xs: ["0.75rem", { lineHeight: "1rem" }],
         sm: ["var(--font-size-sm)", { lineHeight: "1.25rem" }],

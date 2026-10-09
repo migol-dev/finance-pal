@@ -400,7 +400,7 @@ function EmptyState({ text }: { text: string }) {
   return <p className="text-sm text-muted-foreground text-center py-8">{text}</p>;
 }
 function MiniStat({ icon, label, value }: { icon: React.ReactNode; label: string; value: string }) {
-  return <div className="rounded-xl bg-white/15 p-2.5 backdrop-blur-sm"><div className="flex items-center gap-1 opacity-90 mb-0.5">{icon}<span className="text-[10px] uppercase tracking-wider font-semibold">{label}</span></div><p className="text-sm font-bold truncate">{value}</p></div>;
+  return <div className="rounded-xl bg-white/15 p-2.5 backdrop-blur-sm"><div className="flex items-center gap-1 opacity-90 mb-0.5">{icon}<span className="text-micro uppercase tracking-wider font-semibold">{label}</span></div><p className="text-sm font-bold truncate">{value}</p></div>;
 }
 function YoyBadge({ current, previous }: { current: number; previous: number }) {
   if (previous === 0 && current === 0) return null;
@@ -414,13 +414,13 @@ function YoyCard({ label, current, previous, positive }: { label: string; curren
   const goodDirection = positive ? diff >= 0 : diff <= 0;
   const tone = goodDirection ? "text-success" : "text-destructive";
   const pct = previous !== 0 ? (diff / Math.abs(previous)) * 100 : (current === 0 ? 0 : 100);
-  return <div className="rounded-xl bg-card border border-border p-3 shadow-soft"><p className="text-[10px] uppercase tracking-wider text-muted-foreground font-bold">{label}</p><p className="text-base font-extrabold mt-1">{fmt(current)}</p><p className={`text-xs font-bold mt-0.5 ${tone}`}>{diff >= 0 ? "▲" : "▼"} {Math.abs(pct).toFixed(0)}% <span className="text-muted-foreground font-normal">· {fmt2(previous)}</span></p></div>;
+  return <div className="rounded-xl bg-card border border-border p-3 shadow-soft"><p className="text-micro uppercase tracking-wider text-muted-foreground font-bold">{label}</p><p className="text-base font-extrabold mt-1">{fmt(current)}</p><p className={`text-xs font-bold mt-0.5 ${tone}`}>{diff >= 0 ? "▲" : "▼"} {Math.abs(pct).toFixed(0)}% <span className="text-muted-foreground font-normal">· {fmt2(previous)}</span></p></div>;
 }
 function HighlightCard({ tone, icon, label, primary, secondary, onClick }: { tone: "success" | "danger" | "warning"; icon: React.ReactNode; label: string; primary: string; secondary: string; onClick?: () => void }) {
   const map = { success: "bg-success/10 text-success", danger: "bg-destructive/10 text-destructive", warning: "bg-warning/10 text-warning" };
-  return <button onClick={onClick} className="rounded-xl bg-card border border-border p-3 shadow-soft text-left active:scale-[0.98] transition"><div className={`size-8 rounded-xl flex items-center justify-center ${map[tone]}`}>{icon}</div><p className="text-[10px] uppercase tracking-wider text-muted-foreground font-bold mt-2">{label}</p><p className="text-sm font-extrabold mt-0.5">{primary}</p><p className="text-xs text-muted-foreground">{secondary}</p></button>;
+  return <button onClick={onClick} className="rounded-xl bg-card border border-border p-3 shadow-soft text-left active:scale-[0.98] transition"><div className={`size-8 rounded-xl flex items-center justify-center ${map[tone]}`}>{icon}</div><p className="text-micro uppercase tracking-wider text-muted-foreground font-bold mt-2">{label}</p><p className="text-sm font-extrabold mt-0.5">{primary}</p><p className="text-xs text-muted-foreground">{secondary}</p></button>;
 }
 function DebtStat({ icon, label, value, tone }: { icon: React.ReactNode; label: string; value: string; tone: "success" | "danger" | "warning" }) {
   const map = { success: "bg-success/10 text-success", danger: "bg-destructive/10 text-destructive", warning: "bg-warning/10 text-warning" };
-  return <div className="text-center"><div className={`size-9 mx-auto rounded-xl flex items-center justify-center ${map[tone]}`}>{icon}</div><p className="text-[10px] uppercase tracking-wider text-muted-foreground font-bold mt-2">{label}</p><p className="text-sm font-extrabold mt-0.5">{value}</p></div>;
+  return <div className="text-center"><div className={`size-9 mx-auto rounded-xl flex items-center justify-center ${map[tone]}`}>{icon}</div><p className="text-micro uppercase tracking-wider text-muted-foreground font-bold mt-2">{label}</p><p className="text-sm font-extrabold mt-0.5">{value}</p></div>;
 }

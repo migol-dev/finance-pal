@@ -388,7 +388,11 @@ export default function Movimientos() {
                                 {t.type === "income" ? "+" : "-"}{fmt(t.amount)}
                               </p>
                             </div>
-                            <button onClick={() => setExpandedId(isExpanded ? null : t.id)} className="text-muted-foreground hover:text-primary p-1">
+                            <button
+                              aria-label="Expandir detalles"
+                              onClick={() => setExpandedId(isExpanded ? null : t.id)}
+                              className="size-8 rounded-lg flex items-center justify-center text-muted-foreground hover:text-primary hover:bg-muted/50 transition shrink-0"
+                            >
                               <ChevronDown className={`size-4 transition-transform ${isExpanded ? "rotate-180" : ""}`} />
                             </button>
                           </div>
@@ -424,8 +428,18 @@ export default function Movimientos() {
                             <div className="text-right shrink-0">
                               <p className="font-bold text-sm text-primary">⇄{fmt(t.amount)}</p>
                             </div>
-                            <button aria-label="Eliminar" onClick={() => setDeleteConfirm(t as Transaction)} className="text-muted-foreground hover:text-destructive p-1 shrink-0"><Trash2 className="size-3.5" /></button>
-                            <button aria-label="Expandir" onClick={() => setExpandedId(isExpanded ? null : t.id)} className="text-muted-foreground hover:text-primary p-1 shrink-0">
+                            <button
+                              aria-label="Eliminar traspaso"
+                              onClick={() => setDeleteConfirm(t as Transaction)}
+                              className="size-8 rounded-lg flex items-center justify-center text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition shrink-0"
+                            >
+                              <Trash2 className="size-4" />
+                            </button>
+                            <button
+                              aria-label="Expandir detalles"
+                              onClick={() => setExpandedId(isExpanded ? null : t.id)}
+                              className="size-8 rounded-lg flex items-center justify-center text-muted-foreground hover:text-primary hover:bg-muted/50 transition shrink-0"
+                            >
                               <ChevronDown className={`size-4 transition-transform ${isExpanded ? "rotate-180" : ""}`} />
                             </button>
                           </div>
@@ -466,9 +480,19 @@ export default function Movimientos() {
                                 {tx.type === "income" ? "+" : tx.type === "transfer" ? "⇄" : "-"}{fmt(tx.amount)}
                               </p>
                             </div>
-                            <button aria-label="Eliminar" onClick={() => setDeleteConfirm(tx)} className="text-muted-foreground hover:text-destructive p-1 shrink-0"><Trash2 className="size-3.5" /></button>
+                            <button
+                              aria-label="Eliminar movimiento"
+                              onClick={() => setDeleteConfirm(tx)}
+                              className="size-8 rounded-lg flex items-center justify-center text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition shrink-0"
+                            >
+                              <Trash2 className="size-4" />
+                            </button>
                             {hasExtra && (
-                              <button aria-label="Expandir" onClick={() => setExpandedId(isExpanded ? null : tx.id)} className="text-muted-foreground hover:text-primary p-1 shrink-0">
+                              <button
+                                aria-label="Expandir detalles"
+                                onClick={() => setExpandedId(isExpanded ? null : tx.id)}
+                                className="size-8 rounded-lg flex items-center justify-center text-muted-foreground hover:text-primary hover:bg-muted/50 transition shrink-0"
+                              >
                                 <ChevronDown className={`size-4 transition-transform ${isExpanded ? "rotate-180" : ""}`} />
                               </button>
                             )}
@@ -537,8 +561,20 @@ export default function Movimientos() {
                             <td className="p-3 text-xs text-muted-foreground">{vacct?.name ?? "—"}</td>
                             <td className={`p-3 text-right font-bold text-sm whitespace-nowrap ${t.type === "income" ? "text-success" : "text-destructive"}`}>{t.type === "income" ? "+" : "-"}{fmt(t.amount)}</td>
                             <td className="p-3 text-right whitespace-nowrap">
-                              <button aria-label="Expandir" onClick={() => setExpandedId(isExpanded ? null : t.id)} className="text-muted-foreground hover:text-primary p-1"><ChevronDown className={`size-3.5 transition-transform ${isExpanded ? "rotate-180" : ""}`} /></button>
-                              <button aria-label="Editar" onClick={() => openEdit(t as Transaction)} className="text-muted-foreground hover:text-primary p-1"><Pencil className="size-3.5" /></button>
+                              <button
+                                aria-label="Expandir detalles"
+                                onClick={() => setExpandedId(isExpanded ? null : t.id)}
+                                className="size-8 rounded-lg inline-flex items-center justify-center text-muted-foreground hover:text-primary hover:bg-muted/50 transition"
+                              >
+                                <ChevronDown className={`size-3.5 transition-transform ${isExpanded ? "rotate-180" : ""}`} />
+                              </button>
+                              <button
+                                aria-label="Editar movimiento"
+                                onClick={() => openEdit(t as Transaction)}
+                                className="size-8 rounded-lg inline-flex items-center justify-center text-muted-foreground hover:text-primary hover:bg-muted/50 transition"
+                              >
+                                <Pencil className="size-3.5" />
+                              </button>
                             </td>
                           </tr>
                           {isExpanded && (
@@ -578,9 +614,27 @@ export default function Movimientos() {
                             <td className="p-3 text-xs text-muted-foreground">{originAcct?.name ?? "—"}</td>
                             <td className="p-3 text-right font-bold text-sm whitespace-nowrap text-primary">⇄{fmt(t.amount)}</td>
                             <td className="p-3 text-right whitespace-nowrap">
-                              <button aria-label="Expandir" onClick={() => setExpandedId(isExpanded ? null : t.id)} className="text-muted-foreground hover:text-primary p-1"><ChevronDown className={`size-3.5 transition-transform ${isExpanded ? "rotate-180" : ""}`} /></button>
-                              <button aria-label="Editar" onClick={() => openEdit(t as Transaction)} className="text-muted-foreground hover:text-primary p-1"><Pencil className="size-3.5" /></button>
-                              <button aria-label="Eliminar" onClick={() => setDeleteConfirm(t as Transaction)} className="text-muted-foreground hover:text-destructive p-1"><Trash2 className="size-3.5" /></button>
+                              <button
+                                aria-label="Expandir detalles"
+                                onClick={() => setExpandedId(isExpanded ? null : t.id)}
+                                className="size-8 rounded-lg inline-flex items-center justify-center text-muted-foreground hover:text-primary hover:bg-muted/50 transition"
+                              >
+                                <ChevronDown className={`size-3.5 transition-transform ${isExpanded ? "rotate-180" : ""}`} />
+                              </button>
+                              <button
+                                aria-label="Editar traspaso"
+                                onClick={() => openEdit(t as Transaction)}
+                                className="size-8 rounded-lg inline-flex items-center justify-center text-muted-foreground hover:text-primary hover:bg-muted/50 transition"
+                              >
+                                <Pencil className="size-3.5" />
+                              </button>
+                              <button
+                                aria-label="Eliminar traspaso"
+                                onClick={() => setDeleteConfirm(t as Transaction)}
+                                className="size-8 rounded-lg inline-flex items-center justify-center text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition"
+                              >
+                                <Trash2 className="size-3.5" />
+                              </button>
                             </td>
                           </tr>
                           {isExpanded && (
@@ -620,10 +674,28 @@ export default function Movimientos() {
                           </td>
                           <td className="p-3 text-right whitespace-nowrap">
                             {hasExtra && (
-                              <button aria-label="Expandir" onClick={() => setExpandedId(isExpanded ? null : tx.id)} className="text-muted-foreground hover:text-primary p-1"><ChevronDown className={`size-3.5 transition-transform ${isExpanded ? "rotate-180" : ""}`} /></button>
+                              <button
+                                aria-label="Expandir detalles"
+                                onClick={() => setExpandedId(isExpanded ? null : tx.id)}
+                                className="size-8 rounded-lg inline-flex items-center justify-center text-muted-foreground hover:text-primary hover:bg-muted/50 transition"
+                              >
+                                <ChevronDown className={`size-3.5 transition-transform ${isExpanded ? "rotate-180" : ""}`} />
+                              </button>
                             )}
-                            <button aria-label="Editar" onClick={() => openEdit(tx)} className="text-muted-foreground hover:text-primary p-1"><Pencil className="size-3.5" /></button>
-                            <button aria-label="Eliminar" onClick={() => setDeleteConfirm(tx)} className="text-muted-foreground hover:text-destructive p-1"><Trash2 className="size-3.5" /></button>
+                            <button
+                              aria-label="Editar movimiento"
+                              onClick={() => openEdit(tx)}
+                              className="size-8 rounded-lg inline-flex items-center justify-center text-muted-foreground hover:text-primary hover:bg-muted/50 transition"
+                            >
+                              <Pencil className="size-3.5" />
+                            </button>
+                            <button
+                              aria-label="Eliminar movimiento"
+                              onClick={() => setDeleteConfirm(tx)}
+                              className="size-8 rounded-lg inline-flex items-center justify-center text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition"
+                            >
+                              <Trash2 className="size-3.5" />
+                            </button>
                           </td>
                         </tr>
                         {hasExtra && isExpanded && (
@@ -811,31 +883,44 @@ function TxForm({ initial, onSave, accounts }: { initial: Partial<Transaction> &
         </div>
       )}
       <div className="space-y-3 lg:col-span-2">
-        {((type === "transfer") || (type !== "income" && paymentMethod !== "cash")) && (
-          <div><Label className="text-xs">{type === "transfer" ? "Cuenta origen" : "Cuenta"}</Label>
-            <Select value={accountId} onValueChange={(v) => setAccountId(v)}>
-              <SelectTrigger className="h-10 rounded-xl"><SelectValue /></SelectTrigger>
-              <SelectContent>
-                {visibleAccounts.map((a: Account) => (<SelectItem key={a.id} value={a.id}>{a.name} {a.type === "cash" ? "· Efectivo" : "· Banco"}</SelectItem>))}
-              </SelectContent>
-            </Select>
-          </div>
-        )}
-        {(type === "income" || type === "transfer") && (
-          <div><Label className="text-xs">{type === "transfer" ? "Cuenta destino" : "Cuenta de destino"}</Label>
-            <Select value={type === "transfer" ? transferToAccountId : accountId} onValueChange={(v) => type === "transfer" ? setTransferToAccountId(v) : setAccountId(v)}>
-              <SelectTrigger className="h-10 rounded-xl"><SelectValue placeholder={type === "transfer" ? "Seleccione destino" : "Seleccione cuenta"} /></SelectTrigger>
-              <SelectContent>
-                {type === "income" && paymentMethod === "cash" && cashAccount && <SelectItem value={cashAccount.id}>{cashAccount.name} · Efectivo</SelectItem>}
-                {(type === "transfer" || (type === "income" && paymentMethod !== "cash")) &&
-                  accounts
-                    .filter((a: Account) => type === "income" && paymentMethod !== "cash"
-                      ? a.type !== "cash"
-                      : true)
+        {type === "transfer" ? (
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div>
+              <Label className="text-xs">Cuenta origen</Label>
+              <Select value={accountId} onValueChange={(v) => setAccountId(v)}>
+                <SelectTrigger className="h-10 rounded-xl"><SelectValue placeholder="Seleccione origen" /></SelectTrigger>
+                <SelectContent>
+                  {accounts.map((a: Account) => (
+                    <SelectItem key={a.id} value={a.id}>{a.name} {a.type === "cash" ? "· Efectivo" : "· Banco"}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <Label className="text-xs">Cuenta destino</Label>
+              <Select value={transferToAccountId} onValueChange={(v) => setTransferToAccountId(v)}>
+                <SelectTrigger className="h-10 rounded-xl"><SelectValue placeholder="Seleccione destino" /></SelectTrigger>
+                <SelectContent>
+                  {accounts
+                    .filter((a: Account) => a.id !== accountId)
                     .map((a: Account) => (
                       <SelectItem key={a.id} value={a.id}>{a.name} {a.type === "cash" ? "· Efectivo" : "· Banco"}</SelectItem>
-                    ))
-                }
+                    ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+        ) : (
+          <div>
+            <Label className="text-xs">
+              {type === "income" ? "Cuenta donde se recibe" : "Cuenta de pago"}
+            </Label>
+            <Select value={accountId} onValueChange={(v) => setAccountId(v)}>
+              <SelectTrigger className="h-10 rounded-xl"><SelectValue placeholder="Seleccione cuenta" /></SelectTrigger>
+              <SelectContent>
+                {visibleAccounts.map((a: Account) => (
+                  <SelectItem key={a.id} value={a.id}>{a.name} {a.type === "cash" ? "· Efectivo" : "· Banco"}</SelectItem>
+                ))}
               </SelectContent>
             </Select>
           </div>

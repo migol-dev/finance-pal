@@ -5,8 +5,8 @@ import { useAuth } from '@/context/AuthContext';
 import { useSystemTheme } from '@/hooks/useSystemTheme';
 import { useFinance } from '@/store/finance-store';
 import { ACCENT_PALETTES } from '@/lib/accent-palette';
-import { toast } from 'sonner';
-import { Mail, Lock, Loader2, LogIn, UserPlus, Wallet, ShieldCheck, Key, ArrowLeft, Sparkles } from 'lucide-react';
+import { Mail, Lock, Loader2, LogIn, UserPlus, ShieldCheck, Key, ArrowLeft, Sparkles } from 'lucide-react';
+import { BrandLogo } from '@/components/app/BrandLogo';
 import { Progress } from '@/components/ui/progress';
 import { Browser } from '@capacitor/browser';
 import { Capacitor } from '@capacitor/core';
@@ -352,8 +352,8 @@ export default function Login() {
           animate={{ opacity: 1, scale: 1 }}
           className="text-center relative z-10"
         >
-          <div className="size-16 rounded-2xl gradient-primary shadow-glow flex items-center justify-center mx-auto mb-4">
-            <Wallet className="size-8 text-primary-foreground" />
+          <div className="flex justify-center mx-auto mb-4">
+            <BrandLogo size="lg" />
           </div>
           <h2 className="text-xl font-bold mb-2">Ya has iniciado sesión</h2>
           <p className="text-sm text-muted-foreground">Serás redirigido en breve.</p>
@@ -400,8 +400,10 @@ export default function Login() {
                 transition={{ delay: 0.2 }}
                 className="relative"
               >
+                <label htmlFor="login-mfa" className="sr-only">Código de autenticación 2FA</label>
                 <Key className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
                 <input
+                  id="login-mfa"
                   type="text"
                   inputMode="numeric"
                   pattern="[0-9]*"
@@ -469,24 +471,9 @@ export default function Login() {
             transition={{ delay: 0.15, duration: 0.5 }}
             className="text-center mb-8"
           >
-            <motion.div
-              animate={{ 
-                boxShadow: [
-                  '0 0 20px 0 hsl(var(--primary) / 0.3)',
-                  '0 0 40px 5px hsl(var(--primary) / 0.4)',
-                  '0 0 20px 0 hsl(var(--primary) / 0.3)',
-                ]
-              }}
-              transition={{ duration: 3, repeat: Infinity, ease: "easeInOut" }}
-              className="size-16 rounded-2xl gradient-primary flex items-center justify-center mx-auto mb-5"
-            >
-              <motion.div
-                animate={{ rotate: [0, -5, 5, 0] }}
-                transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
-              >
-                <Wallet className="size-8 text-primary-foreground" />
-              </motion.div>
-            </motion.div>
+            <div className="flex justify-center mx-auto mb-4">
+              <BrandLogo size="lg" imgClassName="size-16 rounded-2xl" />
+            </div>
             
             <h1 className="text-3xl font-extrabold tracking-tight login-text-gradient">
               Finance Pal
@@ -510,8 +497,10 @@ export default function Login() {
               transition={{ delay: 0.2, duration: 0.4 }}
               className="relative group"
             >
+              <label htmlFor="login-email" className="sr-only">Correo electrónico</label>
               <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 size-4 text-muted-foreground group-focus-within:text-primary transition-colors" />
               <input
+                id="login-email"
                 type="email"
                 placeholder="Correo electrónico"
                 className="w-full pl-11 pr-4 py-3 bg-muted/30 border border-border/50 rounded-2xl text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 focus:bg-muted/50 transition-all placeholder:text-muted-foreground/60"
@@ -529,8 +518,10 @@ export default function Login() {
               transition={{ delay: 0.25, duration: 0.4 }}
               className="relative group"
             >
+              <label htmlFor="login-password" className="sr-only">Contraseña</label>
               <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 size-4 text-muted-foreground group-focus-within:text-primary transition-colors" />
               <input
+                id="login-password"
                 type="password"
                 placeholder="Contraseña"
                 className="w-full pl-11 pr-4 py-3 bg-muted/30 border border-border/50 rounded-2xl text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 focus:bg-muted/50 transition-all placeholder:text-muted-foreground/60"

@@ -45,7 +45,7 @@ export interface DebtInsertPayload {
   account_id: string | undefined;
 }
 
-export interface DebtUpdatePayload extends Partial<Omit<DebtInsertPayload, 'id' | 'user_id'>> {}
+export type DebtUpdatePayload = Partial<Omit<DebtInsertPayload, 'id' | 'user_id'>>;
 
 export interface DebtPaymentInsertPayload {
   id: string;

@@ -7,7 +7,8 @@ import { useFinance } from "@/store/finance-store";
 import { useSystemTheme } from "@/hooks/useSystemTheme";
 import { isSupabaseEnabled } from "@/lib/supabase";
 import { SyncIndicator } from "./SyncIndicator";
-import { Sun, Moon, Monitor, BarChart3, History, Wallet } from "lucide-react";
+import { BrandLogo } from "./BrandLogo";
+import { Sun, Moon, Monitor, BarChart3, History } from "lucide-react";
 
 export const DesktopSidebar = memo(function DesktopSidebar() {
   const { themePreference, resolvedTheme } = useSystemTheme();
@@ -31,16 +32,8 @@ export const DesktopSidebar = memo(function DesktopSidebar() {
 
   return (
     <aside className="hidden lg:flex lg:flex-col lg:w-[260px] lg:shrink-0 lg:h-screen lg:border-r lg:border-border lg:bg-sidebar lg:p-5">
-      <div className="flex items-center gap-3 mb-8 px-2">
-        <div className="size-10 rounded-xl gradient-primary shadow-glow flex items-center justify-center">
-          <Wallet className="size-5 text-primary-foreground" />
-        </div>
-        <div>
-          <p className="text-sm font-extrabold tracking-tight">Finance Pal</p>
-          {profile.name && (
-            <p className="text-[11px] text-muted-foreground leading-tight font-medium">{profile.name}</p>
-          )}
-        </div>
+      <div className="mb-8 px-2">
+        <BrandLogo size="md" withText subtitle={profile.name} />
       </div>
 
       <nav className="flex-1 space-y-1">
@@ -107,6 +100,7 @@ export const DesktopSidebar = memo(function DesktopSidebar() {
 
       <button
         onClick={toggleTheme}
+        aria-label={`Cambiar tema. Modo actual: ${themeLabel}`}
         className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold text-sidebar-foreground hover:text-foreground hover:bg-sidebar-accent transition w-full"
       >
         <div className="size-8 rounded-xl bg-primary/10 text-primary flex items-center justify-center">

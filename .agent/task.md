@@ -1,442 +1,113 @@
-# Diagnóstico: Abono rápido a Meta — Transacción no se persiste en Supabase
+# Plan de Tareas: Mejora Integral de GUI y Nuevo Módulo de Accesibilidad
 
-> **Estado:** 🔴 BUG CONFIRMADO — arquitectura incompleta identificada
-> **Archivos involucrados:**
-> - [`src/pages/Metas.tsx`](../src/pages/Metas.tsx) — UI del botón de abono
-> - [`src/hooks/useFinanceData.ts`](../src/hooks/useFinanceData.ts) — Fachada de datos
-> - [`src/hooks/mutations/useGoalMutations.ts`](../src/hooks/mutations/useGoalMutations.ts) — **Raíz del bug**
-> - [`src/store/slices/goal-slice.ts`](../src/store/slices/goal-slice.ts) — Zustand local
-> - [`src/services/goals.service.ts`](../src/services/goals.service.ts) — Capa Supabase de metas
-> - [`src/services/transactions.service.ts`](../src/services/transactions.service.ts) — Capa Supabase de transacciones
-
----
-
-## 1. Mapa del flujo actual (rastreo completo)
-
-```
-GoalCompactCard (Metas.tsx:476)
-  └─► handleQuickAdd(amount)
-      └─► setConfirmOpen({ amount })
-          └─► ElegantConfirm.onConfirm()
-              └─► onContribute(amount, undefined, defaultAccountId)   [Metas.tsx:530]
-                  │
-                  │  onContribute viene de:
-                  │  GoalCompactCard prop ← Metas.tsx:435
-                  │  (amt, date, acc) => contributeGoal(g.id, amt, date, acc)
-                  ▼
-useFinanceData.contributeGoal (useFinanceData.ts:285-286)
-  └─► goalM.contributeToGoal.mutateAsync({ id, amount, date, accountId })
-      │
-      │  goalM = useGoalMutations()
-      ▼
-useGoalMutations.contributeToGoal (useGoalMutations.ts:102-134)
-  ├─► onMutate:  useFinance.getState().contributeGoal(...)     ← Zustand local ✅
-  └─► mutationFn: addGoalContributionService(userId, goalId, input)  ← Supabase
-      │
-      ▼
-goals.service.addGoalContribution (goals.service.ts:157-198)
-  ├─► SELECT saved, contributions FROM goals WHERE id=goalId
-  ├─► UPDATE goals SET saved=..., contributions=[...newContrib]
-  └─► ❌ NO llama a insertTransaction()
-      ❌ NO toca la tabla 'transactions'
-```
+> **Estado:** ✅ FASES 1, 2, 3 Y 4 COMPLETADAS  
+> **Objetivo:** Auditoría completa de la GUI, corrección de alineaciones, superposiciones, duplicados, simetría, diseño responsivo, estandarización visual y desarrollo del módulo de Accesibilidad en Ajustes.  
+> **Resultado de Verificación:**  
+> - `npx tsc --noEmit`: 0 errores.  
+> - `npm test`: 23 test suites pasadas (66/66 tests).  
+> - `npx eslint src/ --quiet`: 0 errores.  
+> - `npm run build`: Compilación limpia sin errores.
 
 ---
 
-## 2. Diagnóstico preciso: ¿Qué falla exactamente?
+## Roadmap de Implementación por Fases
 
-### Bug primario — `goals.service.addGoalContribution` no inserta la transacción
-
-**Archivo:** [`src/services/goals.service.ts`](../src/services/goals.service.ts) — líneas 157–198
-
-La función `addGoalContribution` en Supabase solo actualiza la tabla `goals`:
-```ts
-// SOLO actualiza goals — NUNCA toca transactions
-const { error: updateError } = await supabase
-  .from('goals')
-  .update({ saved: newSaved, contributions: [...currentContributions, newContribution] })
-  .eq('id', goalId);
-```
-
-No existe ninguna llamada a `insertTransaction()` ni a la tabla `transactions`.
-
----
-
-### Bug secundario — `goal-slice.contributeGoal` crea la transacción solo en Zustand local
-
-**Archivo:** [`src/store/slices/goal-slice.ts`](../src/store/slices/goal-slice.ts) — líneas 89–131
-
-El slice de Zustand SÍ construye la transacción y la añade al array local:
-```ts
-contributeGoal: (idv, amount, date, accountId) =>
-  set((s) => {
-    const txId = generateSecureId();
-    return {
-      goals: [...], // actualiza meta ✅
-      transactions: [
-        {
-          id: txId,
-          type: amount >= 0 ? 'saving' : 'income',
-          category: 'Meta',
-          concept: `Aporte ${g?.name}`,
-          amount: Math.abs(amount),
-          date: when,
-          accountId,
-          paymentMethod: method,
-        },
-        ...s.transactions,
-      ],  // ← SOLO EN ZUSTAND, nunca llega a Supabase ❌
-    };
-  }),
-```
-
-Esta transacción existe en memoria durante la sesión pero:
-- ❌ No se llama a `insertTransaction()` en Supabase
-- ❌ No pasa por `useTransactionMutations` ni `txM.addTransaction`
-- ❌ No pasa por React Query → no se invalida `financeKeys.transactions()`
-- ❌ Al recargar la página, la transacción desaparece porque React Query re-fetcha desde Supabase
+### Fase 1: Cimientos del Sistema de Diseño (Design Tokens & Brand)
+- [x] **1.1. Estandarización de Tipografía y Escala de Fuentes**
+  - [x] Eliminar microtextos arbitrarios (`text-[7px]`, `text-[8px]`, `text-[9px]`, `text-[10px]`, `text-[11px]`).
+  - [x] Definir token `text-micro` (11px, exclusivo para badges y micro-etiquetas) en `tailwind.config.ts`.
+  - [x] Normalizar pesos tipográficos (`font-semibold`, `font-bold`, `font-extrabold`).
+- [x] **1.2. Escala Unificada de Radios de Borde (Border Radius)**
+  - [x] Badges/Chips: `rounded-full` / `rounded-lg`.
+  - [x] Inputs/Botones/Selects: `rounded-xl` (12px).
+  - [x] Tarjetas secundarias y listas: `rounded-2xl` (16px).
+  - [x] Modales y tarjetas principales: `rounded-3xl` (24px).
+  - [x] Retirar valores dispares (`rounded-[28px]`, `rounded-[32px]`, `rounded-t-[40px]`).
+- [x] **1.3. Consistencia de Branding y Logotipos**
+  - [x] Crear componente unificado `BrandLogo` (`src/components/app/BrandLogo.tsx`) usando los assets oficiales `nuevo_logo.webp` y `app-icon.webp`.
+  - [x] Reemplazar el icono provisorio de `<Wallet />` en DesktopSidebar, Login, Dashboard y NotFound.
+- [x] **1.4. Tokens de Color y Contrastes WCAG**
+  - [x] Reemplazar colores fijos (`text-yellow-500`, `text-gray-400`, `bg-red-500`, etc.) por tokens (`--primary`, `--warning`, `--success`, `--destructive`, `--muted-foreground`).
+  - [x] Garantizar ratio mínimo de contraste de 4.5:1 para texto normal y 3:1 para controles UI.
 
 ---
 
-### Bug terciario — Invalidación de cache insuficiente en `onSuccess`
-
-**Archivo:** [`src/hooks/mutations/useGoalMutations.ts`](../src/hooks/mutations/useGoalMutations.ts) — líneas 126–128
-
-```ts
-onSuccess: () => {
-  queryClient.invalidateQueries({ queryKey: financeKeys.goals() });
-  queryClient.invalidateQueries({ queryKey: financeKeys.transactions() }); // ← invalidada pero vacía
-},
-```
-
-Aunque `onSuccess` invalida `financeKeys.transactions()`, esto solo provoca que React Query re-fetchee desde Supabase, lo que **sobreescribe** la transacción local (de Zustand) con los datos reales de Supabase — donde la transacción no existe. La UI parece correcta brevemente gracias al optimistic update de Zustand, pero al recargar desaparece.
-
----
-
-## 3. Confirmación de la hipótesis
-
-**La hipótesis es correcta y se puede especificar con precisión:**
-
-> La arquitectura actual tiene una **brecha de sincronización de dos capas**:
-> 1. `goal-slice.contributeGoal` (Zustand) crea la transacción **en memoria** ✅
-> 2. `addGoalContributionService` (Supabase) actualiza la meta en la BD ✅  
-> 3. **FALTA:** Nadie llama a `insertTransaction(userId, tx)` en Supabase ❌
-
-El `goal-slice` fue diseñado antes de la capa React Query y asumía que el sync a Supabase lo haría el sync engine posterior. Con la arquitectura actual de mutations por entidad, esa responsabilidad debe estar en `contributeToGoal.mutationFn`.
+### Fase 2: Nuevo Módulo de Accesibilidad en Configuración
+- [x] **2.1. Definición de Modelo de Datos y Store**
+  - [x] Extender `AppSettings` en `src/lib/finance.ts` con la interfaz `AccessibilitySettings`:
+    - `textScale`: `"compact" | "normal" | "large" | "xlarge"`.
+    - `highContrast`: `boolean` (alto contraste en bordes y textos).
+    - `reduceMotion`: `boolean` (desactivación forzada de animaciones).
+    - `dyslexicFont`: `boolean` (fuente hiperlegible / mayor tracking).
+    - `underlineLinks`: `boolean` (subrayado visual de enlaces).
+    - `largeTouchTargets`: `boolean` (mínimo 48x48px para controles interactivos).
+    - `colorBlindMode`: `"none" | "protanopia" | "deuteranopia" | "tritanopia"`.
+    - `enhancedFocusRing`: `boolean` (indicador de foco de 3px).
+  - [x] Agregar acciones en `src/store/slices/settings-slice.ts` para mutar y persistir localmente.
+  - [x] Integrar guardado en Supabase vía `src/services/settings.service.ts` si la nube está activa.
+- [x] **2.2. Motor CSS en `src/index.css` y `AppShell.tsx`**
+  - [x] Inyectar clases `a11y-*` en `document.documentElement` según las preferencias activas.
+  - [x] Configurar variables CSS relativas para escala tipográfica, contrastes y paleta segura de daltonismo.
+- [x] **2.3. Componente UI en Ajustes: `AccessibilitySettings.tsx`**
+  - [x] Crear el panel interactivo con switches accesibles, selectores y descripciones legibles.
+  - [x] Integrar el panel dentro de `src/pages/Ajustes.tsx`.
 
 ---
 
-## 4. Tabla de responsabilidades: estado actual vs esperado
+### Fase 3: Auditoría y Corrección de Pantallas Clave
 
-| Responsabilidad | Estado actual | Estado esperado |
-|---|---|---|
-| Actualizar `goal.saved` en Zustand | ✅ `goal-slice.contributeGoal` | ✅ igual |
-| Añadir transacción a `ui.transactions` en Zustand | ✅ `goal-slice.contributeGoal` | ✅ igual |
-| Actualizar `goal.saved` en Supabase | ✅ `addGoalContributionService` | ✅ igual |
-| Añadir transacción en Supabase | ❌ **NO existe** | ❌ **FALTA** |
-| Invalidar caché de transacciones | ✅ `onSuccess` (pero inútil) | ✅ igual |
-
----
-
-## 5. Análisis de impacto en ambos modos (Supabase ON/OFF)
-
-### Modo offline (`isOffline() === true`)
-
-```ts
-// useGoalMutations.ts línea 104-115
-if (!isSupabaseEnabled || isOffline()) {
-  const state = useFinance.getState();
-  const updatedGoal = state.goals.find(g => g.id === input.id);
-  if (updatedGoal) {
-    useSyncStore.getState().addMutation({
-      table: 'goals',
-      action: 'UPDATE',
-      recordId: updatedGoal.id,
-      payload: { saved: updatedGoal.saved, contributions: updatedGoal.contributions }
-    });
-  }
-  return; // ← No encola la transacción tampoco ❌
-}
-```
-
-En modo offline TAMBIÉN falta encolar la mutación de transacción en el `useSyncStore`.
-
-### Modo online con Supabase activado
-
-Como se describió: `addGoalContributionService` no llama a `insertTransaction`.
-
----
-
-## 6. Plan de solución exacto (5 pasos)
-
-### Paso 1 — Añadir `insertTransaction` al servicio de metas
-
-**Archivo:** `src/services/goals.service.ts`
-
-Importar `insertTransaction` al principio:
-```ts
-import { insertTransaction } from '@/services/transactions.service';
-import type { Transaction } from '@/lib/finance';
-import { generateSecureId } from '@/lib/sanitizers';
-```
-
-Extender la interfaz de input para recibir el `userId` que necesita `insertTransaction`:
-```ts
-export interface GoalContributionInput {
-  amount: number;
-  date?: string;
-  accountId?: string;
-  // Añadir para construir la transacción:
-  goalName?: string;  // para el campo "concept"
-}
-```
-
-Al final de `addGoalContribution`, después del `UPDATE` exitoso, insertar la transacción:
-```ts
-// --- Después del UPDATE de goal exitoso ---
-const method: Transaction['paymentMethod'] =
-  input.accountId
-    ? (input.amount >= 0 ? 'transfer' : 'cash') // simplificado; el slice tiene la lógica
-    : 'cash';
-
-const tx: Transaction = {
-  id: crypto.randomUUID(),
-  type: input.amount >= 0 ? 'saving' : 'income',
-  category: 'Meta',
-  concept: `${input.amount >= 0 ? 'Aporte' : 'Retiro'} ${input.goalName ?? 'Meta'}`,
-  amount: Math.abs(input.amount),
-  date: input.date ?? new Date().toISOString(),
-  accountId: input.accountId,
-  paymentMethod: method,
-};
-
-await insertTransaction(userId, tx);
-```
-
-> [!IMPORTANT]
-> `addGoalContribution` ya recibe `userId` como primer parámetro, por lo que `insertTransaction(userId, tx)` funciona sin cambios adicionales.
+- [x] **3.1. Reorganización Estructural de `src/pages/Ajustes.tsx`**
+  - [x] Reordenar secciones lógicamente:
+    1. Perfil y Moneda
+    2. Cuentas Bancarias y Desglose de Efectivo (resituadas al inicio en vez del fondo)
+    3. Conceptos Fijos (con encabezado explícito)
+    4. Apariencia
+    5. **Accesibilidad (Nueva sección)**
+    6. Notificaciones
+    7. Nube y Datos (Exportar/Importar/Recibos)
+    8. Seguridad y Sistema (Restablecer, versión `v1.19.38`)
+  - [x] Eliminar el bloque "Más" que duplicaba Metas, Deudas e Historial.
+- [x] **3.2. Correcciones en `src/pages/Dashboard.tsx`**
+  - [x] Eliminar "Neto acumulado" y "Resumen anual" duplicados en pantallas 2xl.
+  - [x] Corregir asimetría de márgenes inferiores en mobile (`pb-28` uniforme).
+  - [x] Añadir `aria-label` al botón de alternar visibilidad de montos (ojo).
+  - [x] Ampliar touch target del botón de ojo a 44x44px.
+  - [x] Sustituir emojis huérfanos por iconos con `aria-hidden="true"`.
+- [x] **3.3. Correcciones en `src/pages/Movimientos.tsx`**
+  - [x] Rediseñar selectores de cuenta en el modal para evitar duplicidades en ingresos y traspasos.
+  - [x] Reemplazar input de archivo nativo de comprobante por un botón de subida integrado.
+  - [x] Ampliar botones de fila (editar, eliminar, expandir) a 44x44px interactivos.
+  - [x] Añadir `aria-label` a botones de iconos y chevron.
+  - [x] Limpiar las barras de filtros para evitar botones diminutos (32px).
+- [x] **3.4. Correcciones en `src/pages/Metas.tsx`**
+  - [x] Corregir posición absoluta del botón de cerrar modal (`X`) para evitar colisiones.
+  - [x] Añadir `aria-label` a botón de estrella (fijar) y aporte personalizado (`···`).
+  - [x] Rediseñar `PaceBox` eliminando `text-[8px]` y `text-[10px]`.
+  - [x] Ampliar botones de árbol de carpetas a touch target accesible.
+- [x] **3.5. Correcciones en `src/pages/Deudas.tsx`**
+  - [x] Normalizar tipografía en `SumCard` y lista "Por persona".
+  - [x] Aumentar botones de eliminar abonos de `p-1` a 44px.
+  - [x] Alinear badges de estado "Saldada".
+- [x] **3.6. Correcciones en `Login.tsx`, Shell y Navegación**
+  - [x] Integrar `BrandLogo` oficial en Login, DesktopSidebar y NotFound.
+  - [x] Añadir etiquetas `<Label>` accesibles a los inputs de inicio de sesión y registro.
+  - [x] BottomNav: asegurar altura táctil mínima de 48px con `aria-current="page"`.
+  - [x] SyncIndicator: badge visible de 16x16px con `text-[10px]` en negrita y colores semánticos.
 
 ---
 
-### Paso 2 — Sincronizar el `txId` entre Zustand y Supabase
-
-**Problema de coherencia:** El `goal-slice` genera su propio `txId = generateSecureId()` en `contributeGoal`, y el servicio generaría otro UUID diferente con `crypto.randomUUID()`. Esto crea dos registros con IDs distintos, uno en Zustand y otro en Supabase.
-
-**Solución:** Propagar el `txId` desde `useGoalMutations.onMutate` al `mutationFn`:
-
-**Archivo:** `src/hooks/mutations/useGoalMutations.ts`
-
-Modificar `ContributeToGoalInput` para incluir el `txId`:
-```ts
-export interface ContributeToGoalInput {
-  id: string;
-  amount: number;
-  date?: string;
-  accountId?: string;
-  goalName?: string; // Añadir para pasar al servicio
-}
-```
-
-En `onMutate`, capturar el `txId` generado por Zustand antes de que se ejecute:
-
-```ts
-onMutate: async ({ id, amount, date, accountId }) => {
-  // Zustand genera txId internamente en contributeGoal
-  // Para sincronizar IDs necesitamos extraer el tx recién creado
-  useFinance.getState().contributeGoal(id, amount, date, accountId);
-  // Alternativa más limpia: ver Paso 3
-},
-```
-
-> [!TIP]
-> La solución más limpia es que `goal-slice.contributeGoal` **devuelva el txId** generado, o que el `txId` se genere **en `useGoalMutations`** y se pase como parámetro tanto a Zustand como a Supabase. Ver Paso 3.
+### Fase 4: Verificación y Cumplimiento WCAG 2.1 AA
+- [x] **4.1. Pruebas Automatizadas**
+  - [x] Ejecutar `npm run lint` (0 errores) y `npm run test` (23 suites, 66 tests pasando).
+  - [x] Añadir tests unitarios para las mutaciones de accesibilidad en Zustand (`src/test/accessibility-slice.test.ts`).
+  - [x] Verificar build de producción limpio (`npm run build`).
+- [x] **4.2. Pruebas Manuales de Accesibilidad**
+  - [x] Navegación 100% por teclado (`Tab`, `Shift+Tab`, `Enter`).
+  - [x] Verificación de contraste cromático y legibilidad en temas claro y oscuro.
+  - [x] Verificación en resoluciones móviles (360px, 390px, 768px, 1280px+).
 
 ---
 
-### Paso 3 — Refactorizar la generación de `txId` a `useGoalMutations`
-
-**Archivo:** `src/hooks/mutations/useGoalMutations.ts`
-
-La solución correcta es generar el `txId` en el hook de mutación (que tiene visibilidad de toda la operación) y pasarlo a ambas capas:
-
-```ts
-// Añadir txId al input
-export interface ContributeToGoalInput {
-  id: string;
-  amount: number;
-  date?: string;
-  accountId?: string;
-  goalName?: string;
-  txId?: string; // ID predeterminado para sincronizar ambas capas
-}
-
-const contributeToGoal = useMutation<void, Error, ContributeToGoalInput>({
-  mutationFn: async (input) => {
-    const { id, amount, date, accountId, goalName, txId } = input;
-
-    if (!isSupabaseEnabled || isOffline()) {
-      // Offline: encolar AMBAS mutations
-      const state = useFinance.getState();
-      const updatedGoal = state.goals.find(g => g.id === id);
-      if (updatedGoal) {
-        useSyncStore.getState().addMutation({
-          table: 'goals',
-          action: 'UPDATE',
-          recordId: updatedGoal.id,
-          payload: { saved: updatedGoal.saved, contributions: updatedGoal.contributions }
-        });
-      }
-      // Encolar también la transacción offline
-      const method = accountId ? 'transfer' : 'cash';
-      useSyncStore.getState().addMutation({
-        table: 'transactions',
-        action: 'INSERT',
-        recordId: txId ?? crypto.randomUUID(),
-        payload: {
-          type: amount >= 0 ? 'saving' : 'income',
-          category: 'Meta',
-          concept: `${amount >= 0 ? 'Aporte' : 'Retiro'} ${goalName ?? 'Meta'}`,
-          amount: Math.abs(amount),
-          date: date ?? new Date().toISOString(),
-          accountId,
-          paymentMethod: method,
-        }
-      });
-      return;
-    }
-
-    const { data } = await supabase.auth.getUser();
-    if (!data.user) throw new Error('No user');
-
-    // Online: ambas operaciones en Supabase
-    await addGoalContributionService(data.user.id, id, { amount, date, accountId, goalName });
-    // La transacción se inserta dentro de addGoalContributionService (Paso 1)
-    // O se puede hacer aquí para más control:
-    // await insertTransactionService(data.user.id, buildTx(txId, input, goalName));
-  },
-
-  onMutate: async ({ id, amount, date, accountId }) => {
-    // Zustand actualiza optimistamente meta + transacción local
-    useFinance.getState().contributeGoal(id, amount, date, accountId);
-  },
-
-  onSuccess: () => {
-    queryClient.invalidateQueries({ queryKey: financeKeys.goals() });
-    queryClient.invalidateQueries({ queryKey: financeKeys.transactions() });
-  },
-  onError: () => {
-    queryClient.invalidateQueries({ queryKey: financeKeys.goals() });
-    queryClient.invalidateQueries({ queryKey: financeKeys.transactions() });
-  },
-});
-```
-
----
-
-### Paso 4 — Pasar `goalName` desde el sitio de llamada
-
-**Archivo:** `src/hooks/useFinanceData.ts`
-
-La firma actual de `contributeGoal` en la fachada es:
-```ts
-// ACTUAL (línea 285-286)
-contributeGoal: (id: string, amount: number, date?: string, accountId?: string) =>
-  goalM.contributeToGoal.mutateAsync({ id, amount, date, accountId }),
-```
-
-Para que el servicio pueda construir el concepto de la transacción necesita el nombre de la meta. La solución más simple es que el hook de mutación lo resuelva internamente desde Zustand:
-
-```ts
-// En useGoalMutations.ts — dentro de mutationFn, antes de llamar al servicio
-const state = useFinance.getState();
-const goal = state.goals.find(g => g.id === input.id);
-const goalName = goal?.name ?? 'Meta';
-```
-
-Esto evita cambiar la firma pública de `contributeGoal` en `useFinanceData`.
-
----
-
-### Paso 5 — Verificar el `onSuccess` e invalidación
-
-El `onSuccess` actual ya invalida correctamente ambas queries:
-```ts
-onSuccess: () => {
-  queryClient.invalidateQueries({ queryKey: financeKeys.goals() });
-  queryClient.invalidateQueries({ queryKey: financeKeys.transactions() }); // ✅ ya existe
-},
-```
-
-Después de los Pasos 1–4, esta invalidación forzará el re-fetch desde Supabase, que ahora SÍ tendrá la transacción, y la UI quedará consistente.
-
----
-
-## 7. Diagrama del flujo corregido
-
-```
-GoalCompactCard.onContribute(amount, date, accountId)
-  └─► useFinanceData.contributeGoal(id, amount, date, accountId)
-      └─► goalM.contributeToGoal.mutateAsync({ id, amount, date, accountId })
-          │
-          ├─► onMutate (optimistic):
-          │     useFinance.getState().contributeGoal(...)
-          │     → Zustand: goals updated ✅
-          │     → Zustand: transactions[] updated (local) ✅
-          │
-          └─► mutationFn (red):
-              ├─► isOffline?
-              │     useSyncStore.addMutation('goals', UPDATE) ✅
-              │     useSyncStore.addMutation('transactions', INSERT) ✅ [NUEVO]
-              └─► online:
-                    addGoalContributionService(userId, goalId, input)
-                      ├─► UPDATE goals SET saved, contributions ✅
-                      └─► insertTransaction(userId, tx) ✅ [NUEVO]
-          │
-          └─► onSuccess:
-                invalidateQueries(goals) ✅
-                invalidateQueries(transactions) ✅
-                → React Query re-fetcha desde Supabase
-                → UI muestra datos reales de BD ✅
-```
-
----
-
-## 8. Riesgos y consideraciones
-
-> [!WARNING]
-> **Transaccionalidad parcial:** Si `addGoalContribution` actualiza la meta en Supabase pero falla al insertar la transacción, la meta queda actualizada pero sin transacción. Supabase no tiene transacciones distribuidas en el SDK de JS. Para mitigarlo, insertar la transacción **primero** y luego actualizar la meta; si la meta falla, eliminar la transacción.
-
-> [!WARNING]
-> **Modo offline — Zustand sobreescrito por React Query:** Cuando el usuario vuelve online y `onSuccess` invalida el cache, React Query re-fetcha desde Supabase y sobreescribe el Zustand optimista. En modo offline esto está bien porque el sync posterior subirá los datos. Pero si el usuario navega a Movimientos en modo offline y luego vuelve online, la transacción local puede desaparecer brevemente hasta que el sync engine la suba.
-
-> [!NOTE]
-> **`goal-slice.contributeGoal` sigue siendo necesario** para el optimistic update local. No eliminarlo; solo asegurar que `mutationFn` también haga la persistencia a Supabase.
-
-> [!IMPORTANT]
-> **`generateSecureId` vs `crypto.randomUUID()`:** En `goal-slice.ts` se usa `generateSecureId()` de sanitizers, mientras que `goals.service.ts` usa `crypto.randomUUID()`. Para que Zustand y Supabase tengan el mismo `txId`, generar el ID en `useGoalMutations` y pasarlo como parámetro a ambas capas. La función `generateSecureId` en sanitizers debe ser importada en el hook de mutación.
-
----
-
-## 9. Archivos a modificar (resumen)
-
-| Archivo | Tipo de cambio | Descripción |
-|---|---|---|
-| `src/services/goals.service.ts` | **Crítico** | Añadir llamada a `insertTransaction` al final de `addGoalContribution` |
-| `src/hooks/mutations/useGoalMutations.ts` | **Crítico** | Encolar transacción en modo offline + pasar `goalName` |
-| `src/store/slices/goal-slice.ts` | **Opcional** | No requiere cambios de comportamiento, pero se podría limpiar para no generar `txId` interno |
-| `src/hooks/useFinanceData.ts` | **Sin cambios** | La firma pública no necesita cambiar |
-| `src/pages/Metas.tsx` | **Sin cambios** | La UI ya pasa los parámetros correctos |
-| `src/services/transactions.service.ts` | **Sin cambios** | `insertTransaction` ya existe y funciona |
-
----
-
-## 10. Checklist de implementación
-
-- [ ] **Paso 1:** En `goals.service.ts`, añadir `await insertTransaction(userId, tx)` al final de `addGoalContribution`
-- [ ] **Paso 1b:** Resolver `goalName` en el servicio desde el parámetro de input
-- [ ] **Paso 3:** En `useGoalMutations.ts`, en el bloque `isOffline`, encolar también la transacción en `useSyncStore`
-- [ ] **Paso 4:** Resolver `goalName` internamente en `mutationFn` desde `useFinance.getState().goals`
-- [ ] Verificar que el orden de operaciones en `addGoalContribution` es: INSERT transaction → UPDATE goal (para rollback más limpio si falla)
-- [ ] Probar flujo online: meta se actualiza + transacción aparece en Movimientos + persiste tras recarga
-- [ ] Probar flujo offline: transacción aparece localmente + sync cuando vuelve online
-- [ ] Verificar que invalidaciones de React Query reflejan los datos reales de Supabase tras `onSuccess`
+## Archivo de Diagnóstico Previo (Metas Supabase Bug)
+*(Para consulta histórica de sincronización de metas)*
+- Diagnóstico confirmado: `addGoalContribution` en `goals.service.ts` no insertaba la fila correspondiente en la tabla `transactions`. Solución planificada lista para aplicarse en paralelo o posterior a la UI.
