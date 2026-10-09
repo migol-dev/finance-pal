@@ -7,11 +7,11 @@ import { navItems } from "./nav-items";
 export const BottomNav = memo(function BottomNav() {
   return (
     <nav className="fixed bottom-0 inset-x-0 z-50 safe-bottom lg:hidden">
-      <div className="mx-auto max-w-lg px-3 pb-3">
+      <div className="mx-auto max-w-lg px-2 sm:px-3 pb-2 sm:pb-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
         <motion.div
           initial={{ y: 24, opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
-          className="glass-strong rounded-2xl border border-border/80 shadow-card flex items-center justify-around px-1.5 py-1.5"
+          className="glass-strong rounded-2xl border border-border/80 shadow-card flex items-center justify-around px-1 py-1.5"
         >
           {navItems.map(({ to, icon: Icon, label }) => (
             <NavLink
@@ -21,7 +21,7 @@ export const BottomNav = memo(function BottomNav() {
               aria-label={label}
               className={({ isActive }) =>
                 cn(
-                  "flex flex-col items-center justify-center gap-0.5 px-2 py-1.5 rounded-xl text-micro font-semibold transition-all min-w-[48px] relative",
+                  "flex flex-col items-center justify-center gap-0.5 px-1.5 min-[360px]:px-2 py-1.5 rounded-xl text-[10px] min-[360px]:text-micro font-semibold transition-all min-w-[40px] min-[360px]:min-w-[48px] relative",
                   isActive
                     ? "text-primary"
                     : "text-muted-foreground/70 hover:text-foreground"
@@ -38,7 +38,7 @@ export const BottomNav = memo(function BottomNav() {
                     />
                   )}
                   <Icon className={cn("size-5 relative z-10", isActive && "text-primary")} />
-                  <span className="relative z-10">{label}</span>
+                  <span className="relative z-10 truncate max-w-[58px] text-center leading-none">{label}</span>
                 </>
               )}
             </NavLink>
