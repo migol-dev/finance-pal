@@ -115,7 +115,13 @@ export function AppShell({ children }: { children: ReactNode }) {
     const root = document.documentElement;
     if (!a11y) return;
 
-    // Scale
+    // Dynamic text scale
+    const percent = a11y.textScalePercent ?? (
+      a11y.textScale === "compact" ? 85 :
+      a11y.textScale === "large" ? 115 :
+      a11y.textScale === "xlarge" ? 135 : 100
+    );
+    root.style.fontSize = `${(percent / 100) * 16}px`;
     root.classList.remove("a11y-scale-compact", "a11y-scale-large", "a11y-scale-xlarge");
     if (a11y.textScale === "compact") root.classList.add("a11y-scale-compact");
     else if (a11y.textScale === "large") root.classList.add("a11y-scale-large");

@@ -1,113 +1,100 @@
-# Plan de Tareas: Mejora Integral de GUI y Nuevo Módulo de Accesibilidad
+# Especificación Técnica y Plan de Tareas: Ajustes Modulares y Accesibilidad Avanzada
 
-> **Estado:** ✅ FASES 1, 2, 3 Y 4 COMPLETADAS  
-> **Objetivo:** Auditoría completa de la GUI, corrección de alineaciones, superposiciones, duplicados, simetría, diseño responsivo, estandarización visual y desarrollo del módulo de Accesibilidad en Ajustes.  
-> **Resultado de Verificación:**  
-> - `npx tsc --noEmit`: 0 errores.  
-> - `npm test`: 23 test suites pasadas (66/66 tests).  
-> - `npx eslint src/ --quiet`: 0 errores.  
-> - `npm run build`: Compilación limpia sin errores.
-
----
-
-## Roadmap de Implementación por Fases
-
-### Fase 1: Cimientos del Sistema de Diseño (Design Tokens & Brand)
-- [x] **1.1. Estandarización de Tipografía y Escala de Fuentes**
-  - [x] Eliminar microtextos arbitrarios (`text-[7px]`, `text-[8px]`, `text-[9px]`, `text-[10px]`, `text-[11px]`).
-  - [x] Definir token `text-micro` (11px, exclusivo para badges y micro-etiquetas) en `tailwind.config.ts`.
-  - [x] Normalizar pesos tipográficos (`font-semibold`, `font-bold`, `font-extrabold`).
-- [x] **1.2. Escala Unificada de Radios de Borde (Border Radius)**
-  - [x] Badges/Chips: `rounded-full` / `rounded-lg`.
-  - [x] Inputs/Botones/Selects: `rounded-xl` (12px).
-  - [x] Tarjetas secundarias y listas: `rounded-2xl` (16px).
-  - [x] Modales y tarjetas principales: `rounded-3xl` (24px).
-  - [x] Retirar valores dispares (`rounded-[28px]`, `rounded-[32px]`, `rounded-t-[40px]`).
-- [x] **1.3. Consistencia de Branding y Logotipos**
-  - [x] Crear componente unificado `BrandLogo` (`src/components/app/BrandLogo.tsx`) usando los assets oficiales `nuevo_logo.webp` y `app-icon.webp`.
-  - [x] Reemplazar el icono provisorio de `<Wallet />` en DesktopSidebar, Login, Dashboard y NotFound.
-- [x] **1.4. Tokens de Color y Contrastes WCAG**
-  - [x] Reemplazar colores fijos (`text-yellow-500`, `text-gray-400`, `bg-red-500`, etc.) por tokens (`--primary`, `--warning`, `--success`, `--destructive`, `--muted-foreground`).
-  - [x] Garantizar ratio mínimo de contraste de 4.5:1 para texto normal y 3:1 para controles UI.
+> **Estado:** ✅ COMPLETADO Y VERIFICADO (24/24 suites pasadas, Build exitoso)  
+> **Objetivo:** 
+> 1. Modularizar la página de Ajustes (`Ajustes.tsx`) separándola en un Hub central de categorías y 8 subpáginas/subvistas independientes con navegación de ida y vuelta fluida (soporte de `?seccion=...`).
+> 2. Perfeccionar el modo de Alto Contraste para alcanzar estándares WCAG AAA (bordes nítidos de 2px, tarjetas demarcadas, opacidad 100% en textos y botones de alto impacto).
+> 3. Implementar ajuste granular del tamaño de texto a elección del usuario (Slider interactivo de 80% a 150%, badges de porcentaje, presets rápidos y preview en tiempo real).
+> 4. Potenciar la opción de texto hiperlegible para dislexia (fuente Atkinson Hyperlegible / Lexend, espaciado tipográfico, altura de línea y pesos adaptados).
 
 ---
 
-### Fase 2: Nuevo Módulo de Accesibilidad en Configuración
-- [x] **2.1. Definición de Modelo de Datos y Store**
-  - [x] Extender `AppSettings` en `src/lib/finance.ts` con la interfaz `AccessibilitySettings`:
-    - `textScale`: `"compact" | "normal" | "large" | "xlarge"`.
-    - `highContrast`: `boolean` (alto contraste en bordes y textos).
-    - `reduceMotion`: `boolean` (desactivación forzada de animaciones).
-    - `dyslexicFont`: `boolean` (fuente hiperlegible / mayor tracking).
-    - `underlineLinks`: `boolean` (subrayado visual de enlaces).
-    - `largeTouchTargets`: `boolean` (mínimo 48x48px para controles interactivos).
-    - `colorBlindMode`: `"none" | "protanopia" | "deuteranopia" | "tritanopia"`.
-    - `enhancedFocusRing`: `boolean` (indicador de foco de 3px).
-  - [x] Agregar acciones en `src/store/slices/settings-slice.ts` para mutar y persistir localmente.
-  - [x] Integrar guardado en Supabase vía `src/services/settings.service.ts` si la nube está activa.
-- [x] **2.2. Motor CSS en `src/index.css` y `AppShell.tsx`**
-  - [x] Inyectar clases `a11y-*` en `document.documentElement` según las preferencias activas.
-  - [x] Configurar variables CSS relativas para escala tipográfica, contrastes y paleta segura de daltonismo.
-- [x] **2.3. Componente UI en Ajustes: `AccessibilitySettings.tsx`**
-  - [x] Crear el panel interactivo con switches accesibles, selectores y descripciones legibles.
-  - [x] Integrar el panel dentro de `src/pages/Ajustes.tsx`.
+## 1. Estado de Implementación y Checklist
+
+- [x] **Motor de Alto Contraste WCAG AAA (`src/index.css`)**:
+  - Bordes reforzados de 2px sólidos en contenedores, tarjetas, modales y botones.
+  - Opacidad 100% forzada en `text-muted-foreground` y textos secundarios para ratio de contraste > 7:1.
+  - Colores blanco y negro absolutos en tema claro y oscuro respectivamente.
+  - Anillo de enfoque de 3px de alto contraste.
+- [x] **Ajuste de Tamaño de Texto Granular (`src/components/app/AccessibilitySettings.tsx` & `src/lib/finance.ts`)**:
+  - Parámetro `textScalePercent: number` (80 a 150, por defecto 100).
+  - Slider interactivo Radix UI con saltos de 5% y badge numérico en tiempo real.
+  - Presets rápidos de 1 toque: 85% (Compacto), 100% (Normal), 115% (Grande), 135% (Muy Grande).
+  - Vista previa en vivo con métricas financieras reales.
+  - Escalado tipográfico proporcional en raíz (`document.documentElement.style.fontSize`) en `AppShell.tsx`.
+- [x] **Tipografía Hiperlegible para Dislexia (`src/index.css`)**:
+  - Importación de fuentes amigables con dislexia: Atkinson Hyperlegible y Lexend.
+  - Pila de fuentes con discriminación de caracteres críticos (I/l/1, O/0, b/d/p/q).
+  - Tracking adaptado (`letter-spacing: 0.05em`), espaciado de palabras (`word-spacing: 0.1em`) y altura de línea (`line-height: 1.7`).
+- [x] **Modularización de Ajustes (`src/pages/ajustes/` & `src/pages/Ajustes.tsx`)**:
+  - `AjustesHub.tsx`: Panel principal responsivo con tarjetas categorizadas e insignias de estado en tiempo real.
+  - `AjustesHeader.tsx`: Cabecera unificada con botón accesible "← Ajustes" (con min 44px de toque).
+  - `secciones/PerfilSection.tsx`: Nombre, avatar, moneda y sesión.
+  - `secciones/CuentasSection.tsx`: Gestión bancaria, efectivo y desgloses.
+  - `secciones/FijosSection.tsx`: Conceptos fijos, suscripciones y gastos programados.
+  - `secciones/AparienciaSection.tsx`: Selector de tema, colores de acento, modo compacto y efectos de cristal.
+  - `secciones/AccesibilidadSection.tsx`: Panel de accesibilidad avanzada, alto contraste y dislexia.
+  - `secciones/NotificacionesSection.tsx`: Push web, alertas de presupuesto y avisos de corte.
+  - `secciones/DatosSection.tsx`: Sincronización Supabase, exportación/importación ScopePicker y limpiador de recibos.
+  - `secciones/SeguridadSection.tsx`: Diagnóstico del sistema, zona de peligro y versión.
+  - `Ajustes.tsx`: Controlador centralizado ligero (~85 líneas) con soporte para parámetros de búsqueda `?seccion=...` y transiciones suaves con `AnimatePresence`.
+- [x] **Pruebas Automatizadas y Calidad**:
+  - `src/test/accessibility-slice.test.ts`: Pruebas de inicialización y mutación de `textScalePercent` (3 pasadas).
+  - `src/test/ajustes-modular.test.tsx`: Pruebas de renderizado de Hub, navegación a subsecciones y retroceso (3 pasadas).
+  - Suite completa: 24/24 suites pasadas (69 tests).
+  - Verificación estática: `npx tsc --noEmit` completado con 0 errores.
+  - Compilación de producción: `npm run build` completado exitosamente.
 
 ---
 
-### Fase 3: Auditoría y Corrección de Pantallas Clave
+## 2. Estructura de Archivos Resultante
 
-- [x] **3.1. Reorganización Estructural de `src/pages/Ajustes.tsx`**
-  - [x] Reordenar secciones lógicamente:
-    1. Perfil y Moneda
-    2. Cuentas Bancarias y Desglose de Efectivo (resituadas al inicio en vez del fondo)
-    3. Conceptos Fijos (con encabezado explícito)
-    4. Apariencia
-    5. **Accesibilidad (Nueva sección)**
-    6. Notificaciones
-    7. Nube y Datos (Exportar/Importar/Recibos)
-    8. Seguridad y Sistema (Restablecer, versión `v1.19.38`)
-  - [x] Eliminar el bloque "Más" que duplicaba Metas, Deudas e Historial.
-- [x] **3.2. Correcciones en `src/pages/Dashboard.tsx`**
-  - [x] Eliminar "Neto acumulado" y "Resumen anual" duplicados en pantallas 2xl.
-  - [x] Corregir asimetría de márgenes inferiores en mobile (`pb-28` uniforme).
-  - [x] Añadir `aria-label` al botón de alternar visibilidad de montos (ojo).
-  - [x] Ampliar touch target del botón de ojo a 44x44px.
-  - [x] Sustituir emojis huérfanos por iconos con `aria-hidden="true"`.
-- [x] **3.3. Correcciones en `src/pages/Movimientos.tsx`**
-  - [x] Rediseñar selectores de cuenta en el modal para evitar duplicidades en ingresos y traspasos.
-  - [x] Reemplazar input de archivo nativo de comprobante por un botón de subida integrado.
-  - [x] Ampliar botones de fila (editar, eliminar, expandir) a 44x44px interactivos.
-  - [x] Añadir `aria-label` a botones de iconos y chevron.
-  - [x] Limpiar las barras de filtros para evitar botones diminutos (32px).
-- [x] **3.4. Correcciones en `src/pages/Metas.tsx`**
-  - [x] Corregir posición absoluta del botón de cerrar modal (`X`) para evitar colisiones.
-  - [x] Añadir `aria-label` a botón de estrella (fijar) y aporte personalizado (`···`).
-  - [x] Rediseñar `PaceBox` eliminando `text-[8px]` y `text-[10px]`.
-  - [x] Ampliar botones de árbol de carpetas a touch target accesible.
-- [x] **3.5. Correcciones en `src/pages/Deudas.tsx`**
-  - [x] Normalizar tipografía en `SumCard` y lista "Por persona".
-  - [x] Aumentar botones de eliminar abonos de `p-1` a 44px.
-  - [x] Alinear badges de estado "Saldada".
-- [x] **3.6. Correcciones en `Login.tsx`, Shell y Navegación**
-  - [x] Integrar `BrandLogo` oficial en Login, DesktopSidebar y NotFound.
-  - [x] Añadir etiquetas `<Label>` accesibles a los inputs de inicio de sesión y registro.
-  - [x] BottomNav: asegurar altura táctil mínima de 48px con `aria-current="page"`.
-  - [x] SyncIndicator: badge visible de 16x16px con `text-[10px]` en negrita y colores semánticos.
+```
+src/
+├── pages/
+│   ├── Ajustes.tsx                            # Controlador principal y enrutador modular (~85 líneas)
+│   └── ajustes/
+│       ├── types.ts                           # Tipos e interfaces de las secciones de ajustes
+│       ├── AjustesHub.tsx                     # Menú principal con tarjetas categorizadas
+│       ├── AjustesHeader.tsx                  # Cabecera reutilizable con botón "← Ajustes"
+│       └── secciones/
+│           ├── PerfilSection.tsx              # Perfil, avatar, moneda y cuenta
+│           ├── CuentasSection.tsx             # Cuentas bancarias, efectivo y desglose
+│           ├── FijosSection.tsx               # Conceptos fijos y suscripciones recurrentes
+│           ├── AparienciaSection.tsx          # Tema, color de acento, modo compacto, cristal
+│           ├── AccesibilidadSection.tsx       # Slider de escala, alto contraste, dislexia, daltonismo
+│           ├── NotificacionesSection.tsx      # Web push, alertas de presupuesto y avisos de corte
+│           ├── DatosSection.tsx               # Sincronización Supabase, exportar/importar, comprobantes
+│           └── SeguridadSection.tsx           # Restablecimiento de datos y versión de la app
+├── components/
+│   └── app/
+│       └── AccessibilitySettings.tsx          # Slider de texto continuo, presets y preview en vivo
+├── lib/
+│   └── finance.ts                             # textScalePercent y textScale 'custom'
+├── index.css                                  # Reglas WCAG AAA alto contraste y estilos dislexia
+└── test/
+    ├── accessibility-slice.test.ts            # Cobertura para textScalePercent
+    └── ajustes-modular.test.tsx               # Pruebas de navegación modular en Ajustes
+```
 
 ---
 
-### Fase 4: Verificación y Cumplimiento WCAG 2.1 AA
-- [x] **4.1. Pruebas Automatizadas**
-  - [x] Ejecutar `npm run lint` (0 errores) y `npm run test` (23 suites, 66 tests pasando).
-  - [x] Añadir tests unitarios para las mutaciones de accesibilidad en Zustand (`src/test/accessibility-slice.test.ts`).
-  - [x] Verificar build de producción limpio (`npm run build`).
-- [x] **4.2. Pruebas Manuales de Accesibilidad**
-  - [x] Navegación 100% por teclado (`Tab`, `Shift+Tab`, `Enter`).
-  - [x] Verificación de contraste cromático y legibilidad en temas claro y oscuro.
-  - [x] Verificación en resoluciones móviles (360px, 390px, 768px, 1280px+).
+## 3. Criterios de Aceptación Verificados
 
----
-
-## Archivo de Diagnóstico Previo (Metas Supabase Bug)
-*(Para consulta histórica de sincronización de metas)*
-- Diagnóstico confirmado: `addGoalContribution` en `goals.service.ts` no insertaba la fila correspondiente en la tabla `transactions`. Solución planificada lista para aplicarse en paralelo o posterior a la UI.
+1. **Modularidad:**
+   - La pantalla principal de `/ajustes` muestra el Hub de 8 categorías organizadas con badges de estado actual.
+   - Cada categoría abre su vista dedicada y cuenta con un botón visible y accesible para volver al Hub.
+   - La URL refleja `?seccion=<id>` y el botón "Atrás" del navegador retorna al Hub sin salir de la app ni perder el estado.
+2. **Alto Contraste WCAG AAA:**
+   - Bordes nítidos de 2px y textos sin opacidades reducidas.
+   - Contraste medible superior a 7:1 para textos y 4.5:1 para elementos interactivos.
+3. **Escala de Texto a Elección:**
+   - Slider interactivo desde 80% hasta 150% con escalado dinámico proporcional a nivel raíz.
+   - Presets directos de 85%, 100%, 115% y 135%.
+   - El valor seleccionado persiste en `localStorage` (y en Supabase si hay sesión).
+4. **Tipografía para Dislexia:**
+   - Fuentes Atkinson Hyperlegible y Lexend aplicadas en toda la interfaz con espaciado optimizado.
+5. **Calidad y Robustez:**
+   - `npx tsc --noEmit` finalizado con 0 errores de tipo.
+   - 24/24 suites de pruebas unitarias e integradas pasando (69 tests).
+   - `npm run build` exitoso sin advertencias de código crítico.

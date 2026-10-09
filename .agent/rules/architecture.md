@@ -37,7 +37,11 @@ La arquitectura se divide en 3 capas principales:
   - **`pages/`**: Vistas principales de React (rutas). 
     - `Dashboard.tsx`: Resumen principal.
     - `Movimientos.tsx`: Lista de transacciones e inyección dinámica de "abonos virtuales" a deudas.
-    - `Metas.tsx`, `Cuentas.tsx`, `Deudas.tsx`, `Ajustes.tsx`, etc.
+    - `Metas.tsx`, `Cuentas.tsx`, `Deudas.tsx`, etc.
+    - `Ajustes.tsx`: Controlador y enrutador modular de configuración vía parámetros URL (`?seccion=...`).
+    - `ajustes/`: Submódulos y páginas dedicadas de configuración:
+      - `AjustesHub.tsx`: Hub central de categorías con navegación por tarjetas.
+      - `secciones/`: Vistas independientes (`PerfilSection`, `CuentasSection`, `FijosSection`, `AparienciaSection`, `AccesibilidadSection`, `NotificacionesSection`, `DatosSection`, `SeguridadSection`).
   - **`services/`**: Repositorios de datos contra Supabase.
     - `transactions.service.ts`, `goals.service.ts`, `debts.service.ts`, etc. Extraen, mapean e insertan rows en la DB.
   - **`store/`**: Estado local (Zustand).

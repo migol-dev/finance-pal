@@ -367,11 +367,12 @@ export interface UserProfile {
   avatar?: IconRef;
 }
 
-export type TextScale = "compact" | "normal" | "large" | "xlarge";
+export type TextScale = "compact" | "normal" | "large" | "xlarge" | "custom";
 export type ColorBlindMode = "none" | "protanopia" | "deuteranopia" | "tritanopia";
 
 export interface AccessibilitySettings {
   textScale: TextScale;
+  textScalePercent: number;
   highContrast: boolean;
   reduceMotion: boolean;
   dyslexicFont: boolean;
@@ -383,6 +384,7 @@ export interface AccessibilitySettings {
 
 export const DEFAULT_ACCESSIBILITY_SETTINGS: AccessibilitySettings = {
   textScale: "normal",
+  textScalePercent: 100,
   highContrast: false,
   reduceMotion: false,
   dyslexicFont: false,

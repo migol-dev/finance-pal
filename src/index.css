@@ -1,3 +1,5 @@
+@import url('https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:ital,wght@0,400;0,700;1,400;1,700&family=Lexend:wght@400;500;600;700&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -569,17 +571,34 @@
   }
 
   html.a11y-high-contrast {
-    --border: 240 10% 20%;
-    --muted-foreground: 250 15% 25%;
-    --input: 240 10% 30%;
+    --border: 0 0% 0%;
+    --muted-foreground: 0 0% 10%;
+    --input: 0 0% 0%;
+    --card: 0 0% 100%;
+    --background: 0 0% 100%;
+    --foreground: 0 0% 0%;
   }
   html.dark.a11y-high-contrast {
-    --border: 220 20% 75%;
-    --muted-foreground: 210 25% 92%;
-    --input: 220 20% 65%;
+    --border: 0 0% 100%;
+    --muted-foreground: 0 0% 95%;
+    --input: 0 0% 100%;
+    --card: 0 0% 0%;
+    --background: 0 0% 0%;
+    --foreground: 0 0% 100%;
   }
-  html.a11y-high-contrast .border {
-    border-width: 1.5px !important;
+  html.a11y-high-contrast .border,
+  html.a11y-high-contrast [class*="border-"] {
+    border-width: 2px !important;
+  }
+  html.a11y-high-contrast .text-muted-foreground {
+    opacity: 1 !important;
+    font-weight: 600;
+  }
+  html.a11y-high-contrast button,
+  html.a11y-high-contrast [role="button"],
+  html.a11y-high-contrast input,
+  html.a11y-high-contrast select {
+    border: 2px solid hsl(var(--border)) !important;
   }
 
   html.a11y-reduce-motion,
@@ -589,10 +608,12 @@
     transition-duration: 0.001ms !important;
   }
 
-  html.a11y-dyslexic-font {
-    font-family: 'Atkinson Hyperlegible', system-ui, sans-serif !important;
-    letter-spacing: 0.03em !important;
-    word-spacing: 0.05em !important;
+  html.a11y-dyslexic-font,
+  html.a11y-dyslexic-font * {
+    font-family: 'Atkinson Hyperlegible', 'Lexend', 'OpenDyslexic', 'Comic Sans MS', sans-serif !important;
+    letter-spacing: 0.05em !important;
+    word-spacing: 0.1em !important;
+    line-height: 1.7 !important;
   }
 
   html.a11y-underline-links a,

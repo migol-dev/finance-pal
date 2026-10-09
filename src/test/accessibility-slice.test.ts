@@ -11,6 +11,7 @@ describe('accessibility settings slice', () => {
     const a11y = useFinance.getState().appSettings.accessibility;
     expect(a11y).toEqual(DEFAULT_ACCESSIBILITY_SETTINGS);
     expect(a11y.textScale).toBe('normal');
+    expect(a11y.textScalePercent).toBe(100);
     expect(a11y.highContrast).toBe(false);
     expect(a11y.reduceMotion).toBe(false);
     expect(a11y.dyslexicFont).toBe(false);
@@ -20,11 +21,12 @@ describe('accessibility settings slice', () => {
     expect(a11y.enhancedFocusRing).toBe(true);
   });
 
-  it('updates individual accessibility settings', () => {
-    useFinance.getState().setAccessibilitySettings({ highContrast: true, textScale: 'large' });
+  it('updates individual accessibility settings including textScalePercent', () => {
+    useFinance.getState().setAccessibilitySettings({ highContrast: true, textScale: 'large', textScalePercent: 125 });
     let a11y = useFinance.getState().appSettings.accessibility;
     expect(a11y.highContrast).toBe(true);
     expect(a11y.textScale).toBe('large');
+    expect(a11y.textScalePercent).toBe(125);
     expect(a11y.reduceMotion).toBe(false);
 
     useFinance.getState().setAccessibilitySettings({ colorBlindMode: 'deuteranopia', dyslexicFont: true });
