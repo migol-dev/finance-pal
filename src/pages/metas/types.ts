@@ -1,4 +1,4 @@
-import { Goal, GoalFolder, parseDateLocal } from "@/lib/finance";
+import { Goal, GoalFolder, parseDateLocal, parseGoalDeadline } from "@/lib/finance";
 
 export const PALETTES = [
   "gradient-sunset",
@@ -35,10 +35,11 @@ export function normalizeUrl(u?: string): string | undefined {
 
 export function paceFor(goal: Goal) {
   if (!goal.deadline) return null;
+  const parsed = parseGoalDeadline(goal.deadline);
+  if (!parsed) return null;
   const remaining = Math.max(0, goal.target - goal.saved);
   const today = startOfDay(new Date());
-  const cleanDl = goal.deadline.slice(0, 10);
-  const dl = startOfDay(parseDateLocal(`${cleanDl}T12:00:00`));
+  const dl = startOfDay(parsed);
   const days = Math.max(1, daysBetween(today, dl) || 1);
   return {
     remaining,
@@ -52,9 +53,10 @@ export function paceFor(goal: Goal) {
 
 export function expectedAt(goal: Goal, date: Date): number {
   if (!goal.deadline) return goal.target;
+  const parsed = parseGoalDeadline(goal.deadline);
+  if (!parsed) return goal.target;
   const start = startOfDay(parseDateLocal(goal.createdAt ?? new Date().toISOString()));
-  const cleanDl = goal.deadline.slice(0, 10);
-  const dl = startOfDay(parseDateLocal(`${cleanDl}T12:00:00`));
+  const dl = startOfDay(parsed);
   const total = Math.max(1, daysBetween(start, dl));
   const elapsed = Math.min(total, Math.max(0, daysBetween(start, date)));
   return (goal.target * elapsed) / total;

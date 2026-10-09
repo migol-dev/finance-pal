@@ -38,6 +38,10 @@ export function FolderChips({
 }: FolderChipsProps) {
   const [drawerOpen, setDrawerOpen] = useState(false);
   const uncategorizedCount = goals.filter((g) => !g.folderId).length;
+  const selectedSubfolder =
+    selectedFolderId && selectedFolderId !== "uncategorized" && !folderTree.some((f) => f.id === selectedFolderId)
+      ? goalFolders.find((f) => f.id === selectedFolderId)
+      : null;
 
   const handleSelectInsideDrawer = (id: string | null) => {
     onSelectFolder(id);
@@ -98,6 +102,20 @@ export function FolderChips({
             </button>
           );
         })}
+
+        {/* Active subfolder chip if a non-root folder is selected */}
+        {selectedSubfolder && (
+          <button
+            type="button"
+            onClick={() => onSelectFolder(selectedSubfolder.id)}
+            className="shrink-0 h-9 px-3.5 rounded-full text-xs font-bold transition flex items-center gap-1.5 max-w-[160px] gradient-primary text-primary-foreground shadow-glow"
+          >
+            <span className="truncate">{selectedSubfolder.name}</span>
+            <span className="text-[10px] opacity-80 tabular-nums">
+              ({getFolderGoalCount(selectedSubfolder.id)})
+            </span>
+          </button>
+        )}
 
         {/* Drawer Trigger Button */}
         <Drawer open={drawerOpen} onOpenChange={setDrawerOpen}>

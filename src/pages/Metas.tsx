@@ -132,7 +132,7 @@ export default function Metas() {
 
       {/* Goal Form Modal */}
       <Dialog open={open} onOpenChange={(v) => { setOpen(v); if (!v) setEditing(null); }}>
-        <DialogContent className="rounded-2xl max-h-[90dvh] overflow-y-auto p-5">
+        <DialogContent bottomSheet={true} className="rounded-2xl max-h-[90dvh] overflow-y-auto p-5">
           <DialogHeader>
             <DialogTitle className="text-lg">{editing ? "Editar meta" : "Nueva meta"}</DialogTitle>
           </DialogHeader>
@@ -162,7 +162,7 @@ export default function Metas() {
 
       {/* Folder Form Modal */}
       <Dialog open={folderOpen} onOpenChange={(v) => { setFolderOpen(v); if (!v) setEditingFolder(null); }}>
-        <DialogContent className="rounded-2xl max-h-[90dvh] overflow-y-auto p-5">
+        <DialogContent bottomSheet={true} className="rounded-2xl max-h-[90dvh] overflow-y-auto p-5">
           <DialogHeader>
             <DialogTitle className="text-lg">
               {editingFolder?.id ? "Editar carpeta" : "Nueva carpeta"}
@@ -296,6 +296,7 @@ export default function Metas() {
       <Dialog open={!!detailId} onOpenChange={(v) => { if (!v) setDetailId(null); }}>
         <DialogContent
           hideCloseButton={true}
+          bottomSheet={true}
           className="max-w-lg p-0 border-0 bg-transparent shadow-none overflow-hidden max-h-[92dvh] sm:rounded-3xl"
         >
           <DialogTitle className="sr-only">Detalle de {detailGoal?.name ?? "meta"}</DialogTitle>

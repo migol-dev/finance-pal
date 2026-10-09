@@ -29,6 +29,7 @@ import {
   fmt,
   fmt2,
   fmtDate,
+  parseDateLocal,
   parseGoalDeadline,
   iconFor,
   Goal,
@@ -278,7 +279,7 @@ function ResumenTab({ goal }: { goal: Goal }) {
   const data = useMemo(() => {
     const parsedDl = parseGoalDeadline(goal.deadline);
     if (!parsedDl) return [] as { label: string; ideal: number; actual: number | null }[];
-    const start = startOfDay(new Date(goal.createdAt ?? new Date().toISOString()));
+    const start = startOfDay(parseDateLocal(goal.createdAt ?? new Date().toISOString()));
     const dl = startOfDay(parsedDl);
     const total = Math.max(1, daysBetween(start, dl));
     const today = startOfDay(new Date());
@@ -349,12 +350,13 @@ function CalendarioTab({
   const [selected, setSelected] = useState<Date | undefined>(new Date());
   const [amount, setAmount] = useState("");
   const [accountId, setAccountId] = useState<string | undefined>(accounts[0]?.id);
+  const effectiveAccountId = accountId || accounts[0]?.id;
   const pace = paceFor(goal);
 
   const contribsByDay = useMemo(() => {
     const m = new Map<string, number>();
     (goal.contributions ?? []).forEach((c) => {
-      const k = ymd(startOfDay(new Date(c.date)));
+      const k = ymd(startOfDay(parseDateLocal(c.date)));
       m.set(k, (m.get(k) ?? 0) + c.amount);
     });
     return m;
@@ -391,7 +393,7 @@ function CalendarioTab({
           </div>
           <div>
             <Label className="text-[10px] uppercase font-bold text-muted-foreground">Cuenta origen</Label>
-            <Select value={accountId} onValueChange={setAccountId}>
+            <Select value={effectiveAccountId} onValueChange={setAccountId}>
               <SelectTrigger className="h-9 rounded-xl mt-1 text-xs">
                 <SelectValue placeholder="Seleccionar cuenta" />
               </SelectTrigger>
@@ -420,7 +422,7 @@ function CalendarioTab({
                 if (!v) { toast.error("Ingresa un monto"); return; }
                 const d = new Date(selected);
                 d.setHours(12, 0, 0, 0);
-                onContribute(v, d.toISOString(), accountId);
+                onContribute(v, d.toISOString(), effectiveAccountId);
                 setAmount("");
                 toast.success(`Aporte de ${fmt(v)} registrado`);
               }}
@@ -448,7 +450,7 @@ function SimularTab({ goal }: { goal: Goal }) {
   const data = useMemo(() => {
     const parsedDl = parseGoalDeadline(goal.deadline);
     if (!parsedDl) return [] as any[];
-    const start = startOfDay(new Date(goal.createdAt ?? new Date().toISOString()));
+    const start = startOfDay(parseDateLocal(goal.createdAt ?? new Date().toISOString()));
     const dl = startOfDay(parsedDl);
     const today = startOfDay(new Date());
     const total = Math.max(1, daysBetween(start, dl));
@@ -574,6 +576,7 @@ function ContribCustom({
   const [open, setOpen] = useState(false);
   const [v, setV] = useState("");
   const [accountId, setAccountId] = useState<string | undefined>(accounts[0]?.id);
+  const effectiveAccountId = accountId || accounts[0]?.id;
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
@@ -608,7 +611,7 @@ function ContribCustom({
           </div>
           <div>
             <Label className="text-xs">{negative ? "Cuenta destino" : "Cuenta origen"}</Label>
-            <Select value={accountId} onValueChange={setAccountId}>
+            <Select value={effectiveAccountId} onValueChange={setAccountId}>
               <SelectTrigger className="h-12 rounded-2xl">
                 <SelectValue placeholder="Seleccionar cuenta" />
               </SelectTrigger>
@@ -626,7 +629,7 @@ function ContribCustom({
             onClick={() => {
               const n = parseFloat(v);
               if (n) {
-                onAdd(n, accountId);
+                onAdd(n, effectiveAccountId);
                 setOpen(false);
                 setV("");
                 toast.success(negative ? "Retiro registrado" : "¡Aporte registrado!");

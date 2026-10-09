@@ -32,9 +32,13 @@ export default function SimpleAreaChart({
   React.useEffect(() => {
     const el = ref.current;
     if (!el) return;
+    if (typeof ResizeObserver === "undefined") {
+      setWidth(el.clientWidth || 300);
+      return;
+    }
     const ro = new ResizeObserver(() => setWidth(Math.max(0, el.clientWidth)));
     ro.observe(el);
-    setWidth(el.clientWidth);
+    setWidth(el.clientWidth || 300);
     return () => ro.disconnect();
   }, []);
 
@@ -64,20 +68,23 @@ export default function SimpleAreaChart({
     const y = (v: number) => margin.top + (1 - (v - min) / range) * chartH;
 
     const buildPath = (key: string) => {
+      if (!data || data.length === 0) return "";
       let d = "";
-      for (let i = 0; i < n; i++) {
-        const v = data[i][key];
+      for (let i = 0; i < data.length; i++) {
+        const v = data[i]?.[key];
         if (v == null) continue;
         const px = x(i);
         const py = y(v);
-        d += i === 0 ? `M ${px} ${py}` : ` L ${px} ${py}`;
+        d += d === "" ? `M ${px} ${py}` : ` L ${px} ${py}`;
       }
       return d;
     };
 
     const buildAreaPath = (key: string) => {
+      if (!data || data.length === 0) return "";
       const top = buildPath(key);
-      const lastX = x(n - 1);
+      if (!top) return "";
+      const lastX = x(data.length - 1);
       const firstX = x(0);
       const baseY = y(min);
       return `${top} L ${lastX} ${baseY} L ${firstX} ${baseY} Z`;
@@ -89,6 +96,7 @@ export default function SimpleAreaChart({
   const [hoverIdx, setHoverIdx] = React.useState<number | null>(null);
 
   const handlePointer = (clientX: number, target: SVGRectElement) => {
+    if (!data || data.length === 0) return;
     const rect = target.getBoundingClientRect();
     const px = clientX - rect.left;
     const idx = Math.round((px / chartW) * (memo.n - 1));
@@ -170,7 +178,7 @@ export default function SimpleAreaChart({
       </svg>
 
       {/* tooltip */}
-      {hoverIdx != null && (
+      {hoverIdx != null && data && data[hoverIdx] && (
         <div
           style={{
             position: "absolute",

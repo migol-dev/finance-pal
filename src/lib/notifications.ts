@@ -2,7 +2,7 @@ import { LocalNotifications, PermissionStatus } from "@capacitor/local-notificat
 import { PushNotifications, PushNotificationSchema, Token } from "@capacitor/push-notifications";
 import { Capacitor } from "@capacitor/core";
 import { Goal, FixedItem } from "./finance";
-import { startOfDay, parseDateLocal } from "./finance";
+import { startOfDay, parseDateLocal, parseGoalDeadline } from "./finance";
 
 export interface NotificationPreferences {
   enabled: boolean;
@@ -285,11 +285,13 @@ function hashCode(str: string): number {
 
 function paceFor(goal: Goal) {
   if (!goal.deadline) return null;
+  const dl = parseGoalDeadline(goal.deadline);
+  if (!dl) return null;
   const remaining = Math.max(0, goal.target - goal.saved);
   const today = startOfDay(new Date());
-  const dl = startOfDay(new Date(`${goal.deadline}T12:00:00`));
-  const days = Math.max(1, Math.round((dl.getTime() - today.getTime()) / 86400000) || 1);
-  return { remaining, days, perDay: remaining / days, overdue: dl < today };
+  const dlDay = startOfDay(dl);
+  const days = Math.max(1, Math.round((dlDay.getTime() - today.getTime()) / 86400000) || 1);
+  return { remaining, days, perDay: remaining / days, overdue: dlDay < today };
 }
 
 function statusFor(goal: Goal) {
@@ -314,7 +316,7 @@ export function computeGoalNotifications(
   if (isQuietHours(prefs)) return [];
   
   const notifications: ScheduledNotification[] = [];
-  const deadline = parseDateLocal(goal.deadline);
+  const deadline = parseGoalDeadline(goal.deadline) ?? parseDateLocal(goal.deadline);
   const today = startOfDay(new Date());
   const pace = paceFor(goal);
   const status = statusFor(goal);

@@ -51,7 +51,7 @@ export function FolderTreeItem({
           isSelected
             ? "border-l-4 border-primary bg-primary/10 text-primary font-bold shadow-soft"
             : "hover:bg-muted/60 text-foreground",
-          level > 0 && "border-l border-border/40"
+          level > 0 && !isSelected && "border-l border-border/40"
         )}
         style={{ paddingLeft: `${indentPx}px` }}
       >
