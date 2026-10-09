@@ -223,13 +223,31 @@ export function fmt2(n: number): string {
   return n.toLocaleString("es-MX", { style: "currency", currency: "MXN" });
 }
 
-/** Format a date as dd/mm/yy (local) */
-export function fmtDate(d: string | Date): string {
-  const dt = typeof d === "string" ? new Date(d) : d;
+/** Format a date as dd/mm/yyyy (local) with safety check against Invalid Date */
+export function fmtDate(d: string | Date | null | undefined): string {
+  if (!d) return "—";
+  const dt = typeof d === "string" ? parseDateLocal(d) : d;
+  if (!dt || isNaN(dt.getTime())) return "—";
   const dd = String(dt.getDate()).padStart(2, "0");
   const mm = String(dt.getMonth() + 1).padStart(2, "0");
   const yyyy = String(dt.getFullYear());
   return `${dd}/${mm}/${yyyy}`;
+}
+
+/**
+ * Robustly parse a goal deadline string into a local Date at 12:00:00.
+ * Handles bare YYYY-MM-DD as well as full ISO strings (e.g. 2026-05-10T00:00:00.000Z).
+ * Returns null if deadline is missing or invalid.
+ */
+export function parseGoalDeadline(deadline?: string | null): Date | null {
+  if (!deadline || typeof deadline !== "string") return null;
+  const cleanDate = deadline.slice(0, 10);
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(cleanDate)) {
+    const fallback = new Date(deadline);
+    return isNaN(fallback.getTime()) ? null : fallback;
+  }
+  const dt = parseDateLocal(`${cleanDate}T12:00:00`);
+  return isNaN(dt.getTime()) ? null : dt;
 }
 
 /**
