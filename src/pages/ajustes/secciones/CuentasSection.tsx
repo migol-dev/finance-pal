@@ -167,7 +167,7 @@ export const CuentasSection = memo(function CuentasSection({ onBack }: SectionPr
           const denomTotal = a.denominations && a.denominations.length > 0 ? cashTotalFromDenominations(a.denominations) : null;
           const computed = balances[a.id] ?? a.initialBalance ?? 0;
           return (
-            <div key={a.id} className="rounded-2xl bg-card border border-border p-4 shadow-soft flex items-center justify-between gap-3">
+            <div key={a.id} className="rounded-2xl bg-card border border-border p-4 shadow-soft flex flex-col min-[380px]:flex-row min-[380px]:items-center justify-between gap-3">
               <div className="flex items-center gap-3 min-w-0">
                 <div className="size-11 rounded-2xl bg-primary/10 text-primary flex items-center justify-center shrink-0">
                   {a.type === "cash" ? <HandCoins className="size-5.5" /> : <Database className="size-5.5" />}
@@ -182,12 +182,12 @@ export const CuentasSection = memo(function CuentasSection({ onBack }: SectionPr
                 </div>
               </div>
 
-              <div className="flex items-center gap-1.5 shrink-0">
+              <div className="flex items-center justify-end gap-1.5 shrink-0 w-full min-[380px]:w-auto pt-2 min-[380px]:pt-0 border-t min-[380px]:border-t-0 border-border/50">
                 <Button
                   size="sm"
                   variant="outline"
                   onClick={() => { setEditingAccount(a); setAccountsOpen(true); }}
-                  className="size-8 p-0 rounded-xl"
+                  className="size-9 min-[380px]:size-8 p-0 rounded-xl"
                   aria-label={`Editar cuenta ${a.name}`}
                 >
                   <Pencil className="size-3.5" />
@@ -196,7 +196,7 @@ export const CuentasSection = memo(function CuentasSection({ onBack }: SectionPr
                   size="sm"
                   variant="ghost"
                   onClick={() => setAccountToDelete(a)}
-                  className="size-8 p-0 rounded-xl text-destructive hover:bg-destructive/10"
+                  className="size-9 min-[380px]:size-8 p-0 rounded-xl text-destructive hover:bg-destructive/10"
                   aria-label={`Eliminar cuenta ${a.name}`}
                 >
                   <Trash2 className="size-3.5" />
@@ -276,7 +276,7 @@ export const CuentasSection = memo(function CuentasSection({ onBack }: SectionPr
 
       {/* Account Modal */}
       <Dialog open={accountsOpen} onOpenChange={setAccountsOpen}>
-        <DialogContent className="rounded-3xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="rounded-3xl max-h-[90dvh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>{editingAccount ? "Editar cuenta" : "Nueva cuenta"}</DialogTitle>
             <DialogDescription className="sr-only">Formulario para crear o actualizar cuenta bancaria o de efectivo</DialogDescription>

@@ -13,6 +13,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { User, Pencil, LogOut, Shield, ShieldCheck, ShieldOff, Key, Mail } from "lucide-react";
 import { toast } from "sonner";
+import { ElegantConfirm } from "@/components/app/ElegantConfirm";
 import { useAuth } from "@/context/AuthContext";
 import { supabase, isSupabaseEnabled } from "@/lib/supabase";
 import { audit } from "@/lib/audit-logger";
@@ -85,6 +86,7 @@ function AccountSettings() {
   const [changingPass, setChangingPass] = useState(false);
   const [enrollingMfa, setEnrollingMfa] = useState(false);
   const [verifyingMfa, setVerifyingMfa] = useState(false);
+  const [unenrollConfirmOpen, setUnenrollConfirmOpen] = useState(false);
 
   const checkMfaStatus = useCallback(async () => {
     if (!session) return;
@@ -225,7 +227,7 @@ function AccountSettings() {
           <Key className="size-3.5 mr-1.5" /> Cambiar contraseña
         </Button>
         {mfaEnrolled ? (
-          <Button variant="outline" size="sm" onClick={handleUnenrollMfa} className="rounded-xl text-xs h-9 text-destructive hover:text-destructive">
+          <Button variant="outline" size="sm" onClick={() => setUnenrollConfirmOpen(true)} className="rounded-xl text-xs h-9 text-destructive hover:text-destructive">
             <ShieldOff className="size-3.5 mr-1.5" /> Desactivar 2FA
           </Button>
         ) : (
@@ -237,6 +239,20 @@ function AccountSettings() {
           <LogOut className="size-3.5 mr-1.5" /> Cerrar sesión
         </Button>
       </div>
+
+      <ElegantConfirm
+        open={unenrollConfirmOpen}
+        onOpenChange={setUnenrollConfirmOpen}
+        title="¿Desactivar autenticación 2FA?"
+        description="Tu cuenta será menos segura si desactivas la verificación en dos pasos. Podrás volver a activarla cuando quieras."
+        onConfirm={async () => {
+          await handleUnenrollMfa();
+          setUnenrollConfirmOpen(false);
+        }}
+        icon={ShieldOff}
+        iconColor="bg-destructive"
+        confirmText="Sí, desactivar 2FA"
+      />
 
       {/* Dialogs */}
       <Dialog open={emailOpen} onOpenChange={setEmailOpen}>

@@ -10,6 +10,7 @@ import { BrandLogo } from '@/components/app/BrandLogo';
 import { Progress } from '@/components/ui/progress';
 import { Browser } from '@capacitor/browser';
 import { Capacitor } from '@capacitor/core';
+import { toast } from 'sonner';
 
 const GoogleIcon = () => (
   <svg className="w-5 h-5" viewBox="0 0 24 24">
@@ -345,7 +346,7 @@ export default function Login() {
   // If user is logged in and does not need MFA, show redirecting banner
   if (session && !mfaRequired) {
     return (
-      <div className="flex h-screen w-full items-center justify-center p-4 bg-background relative overflow-hidden">
+      <div className="flex min-h-[100dvh] w-full items-center justify-center p-4 bg-background relative overflow-y-auto">
         <AnimatedBackground />
         <motion.div
           initial={{ opacity: 0, scale: 0.9 }}
@@ -365,7 +366,7 @@ export default function Login() {
   // 2FA TOTP Challenge Screen
   if (session && mfaRequired) {
     return (
-      <div className="flex min-h-screen w-full items-center justify-center p-4 bg-background relative overflow-hidden">
+      <div className="flex min-h-[100dvh] w-full items-start sm:items-center justify-center p-4 py-8 bg-background relative overflow-y-auto">
         <AnimatedBackground />
         <motion.div
           initial={{ opacity: 0, scale: 0.95 }}
@@ -452,7 +453,7 @@ export default function Login() {
   }
 
   return (
-    <div className="flex min-h-screen w-full items-center justify-center p-4 bg-background relative overflow-hidden">
+    <div className="flex min-h-[100dvh] w-full items-start sm:items-center justify-center p-4 py-6 sm:py-8 bg-background relative overflow-y-auto">
       {/* Animated background */}
       <AnimatedBackground />
 
@@ -461,28 +462,28 @@ export default function Login() {
         initial={{ opacity: 0, y: 30, scale: 0.96 }}
         animate={{ opacity: 1, y: 0, scale: 1 }}
         transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
-        className="w-full max-w-[420px] relative z-10"
+        className="w-full max-w-[420px] relative z-10 my-auto"
       >
-        <div className="login-glass-card rounded-3xl p-8 shadow-pop">
+        <div className="login-glass-card rounded-3xl p-5 min-[400px]:p-8 shadow-pop">
           {/* Header with animated logo */}
           <motion.div
             initial={{ opacity: 0, y: 16 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.15, duration: 0.5 }}
-            className="text-center mb-8"
+            className="text-center mb-6 sm:mb-8"
           >
             <div className="flex justify-center mx-auto mb-4">
               <BrandLogo size="lg" imgClassName="size-16 rounded-2xl" />
             </div>
             
-            <h1 className="text-3xl font-extrabold tracking-tight login-text-gradient">
+            <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight login-text-gradient">
               Finance Pal
             </h1>
             <motion.p
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               transition={{ delay: 0.4 }}
-              className="text-sm text-muted-foreground mt-2 flex items-center justify-center gap-1.5"
+              className="text-xs sm:text-sm text-muted-foreground mt-2 flex items-center justify-center gap-1.5"
             >
               <Sparkles className="size-3.5 text-primary" />
               {isLogin ? 'Bienvenido de nuevo' : 'Crea tu cuenta para empezar'}
@@ -503,7 +504,7 @@ export default function Login() {
                 id="login-email"
                 type="email"
                 placeholder="Correo electrónico"
-                className="w-full pl-11 pr-4 py-3 bg-muted/30 border border-border/50 rounded-2xl text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 focus:bg-muted/50 transition-all placeholder:text-muted-foreground/60"
+                className="w-full pl-11 pr-4 py-3 bg-muted/30 border border-border/50 rounded-2xl text-base sm:text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 focus:bg-muted/50 transition-all placeholder:text-muted-foreground/60"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 autoComplete="email"
@@ -524,7 +525,7 @@ export default function Login() {
                 id="login-password"
                 type="password"
                 placeholder="Contraseña"
-                className="w-full pl-11 pr-4 py-3 bg-muted/30 border border-border/50 rounded-2xl text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 focus:bg-muted/50 transition-all placeholder:text-muted-foreground/60"
+                className="w-full pl-11 pr-4 py-3 bg-muted/30 border border-border/50 rounded-2xl text-base sm:text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 focus:bg-muted/50 transition-all placeholder:text-muted-foreground/60"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 autoComplete={isLogin ? 'current-password' : 'new-password'}

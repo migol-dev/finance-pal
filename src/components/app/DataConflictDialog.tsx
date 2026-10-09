@@ -184,17 +184,17 @@ export function DataConflictDialog({ onUpload, onDownload }: Props) {
   }, [session?.user?.id]);
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/80 backdrop-blur-sm p-4">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/80 backdrop-blur-sm p-4 overflow-y-auto">
       <motion.div
         initial={{ opacity: 0, scale: 0.9 }}
         animate={{ opacity: 1, scale: 1 }}
-        className="max-w-sm w-full rounded-3xl bg-card border border-border shadow-2xl p-6 space-y-5"
+        className="max-w-sm w-full rounded-3xl bg-card border border-border shadow-2xl p-5 sm:p-6 space-y-4 max-h-[calc(100dvh-2rem)] overflow-y-auto"
       >
-        <div className="text-center space-y-2">
-          <div className="mx-auto size-14 rounded-2xl bg-amber-100 dark:bg-amber-900/30 flex items-center justify-center">
-            <AlertTriangle className="size-7 text-amber-600 dark:text-amber-500" />
+        <div className="text-center space-y-1.5">
+          <div className="mx-auto size-12 sm:size-14 rounded-2xl bg-amber-100 dark:bg-amber-900/30 flex items-center justify-center">
+            <AlertTriangle className="size-6 sm:size-7 text-amber-600 dark:text-amber-500" />
           </div>
-          <h2 className="text-lg font-extrabold">Datos en conflicto</h2>
+          <h2 className="text-base sm:text-lg font-extrabold">Datos en conflicto</h2>
           <p className="text-xs text-muted-foreground">
             Este navegador tiene datos guardados localmente, pero tu cuenta en la nube también tiene datos. 
           </p>
@@ -202,31 +202,31 @@ export function DataConflictDialog({ onUpload, onDownload }: Props) {
 
         {hasStats && (
           <div className="grid grid-cols-2 gap-2 text-xs border border-border rounded-xl p-3 bg-muted/30">
-            <div className="space-y-1 text-center">
+            <div className="space-y-0.5 text-center">
               <p className="font-bold text-foreground">Local</p>
-              <p className="text-muted-foreground">{localStats.txs} movs, {localStats.items} items</p>
+              <p className="text-muted-foreground text-[11px]">{localStats.txs} movs, {localStats.items} items</p>
             </div>
-            <div className="space-y-1 text-center border-l border-border">
+            <div className="space-y-0.5 text-center border-l border-border">
               <p className="font-bold text-foreground">Nube</p>
-              <p className="text-muted-foreground">{cloudStats.txs} movs, {cloudStats.items} items</p>
+              <p className="text-muted-foreground text-[11px]">{cloudStats.txs} movs, {cloudStats.items} items</p>
             </div>
           </div>
         )}
 
-        <div className="space-y-3">
+        <div className="space-y-2.5">
           <Button
             onClick={handleUpload}
             disabled={!!loading}
-            className="w-full h-14 rounded-2xl gradient-primary text-primary-foreground border-0 shadow-glow font-bold flex items-center gap-3"
+            className="w-full h-auto min-h-14 py-2.5 px-3 rounded-2xl gradient-primary text-primary-foreground border-0 shadow-glow font-bold flex items-center gap-3 text-left whitespace-normal"
           >
             {loading === "upload" ? (
-              <Loader2 className="size-5 animate-spin" />
+              <Loader2 className="size-5 animate-spin shrink-0" />
             ) : (
-              <CloudUpload className="size-5" />
+              <CloudUpload className="size-5 shrink-0" />
             )}
-            <div className="text-left">
-              <p className="text-sm">Sobrescribir nube</p>
-              <p className="text-micro opacity-80 font-normal">Sube datos locales (migración)</p>
+            <div className="text-left min-w-0">
+              <p className="text-sm leading-tight">Sobrescribir nube</p>
+              <p className="text-micro opacity-80 font-normal mt-0.5">Sube datos locales (migración)</p>
             </div>
           </Button>
 
@@ -234,16 +234,16 @@ export function DataConflictDialog({ onUpload, onDownload }: Props) {
             onClick={handleDownload}
             disabled={!!loading}
             variant="outline"
-            className="w-full h-14 rounded-2xl border-border font-bold flex items-center gap-3"
+            className="w-full h-auto min-h-14 py-2.5 px-3 rounded-2xl border-border font-bold flex items-center gap-3 text-left whitespace-normal"
           >
             {loading === "download" ? (
-              <Loader2 className="size-5 animate-spin" />
+              <Loader2 className="size-5 animate-spin shrink-0" />
             ) : (
-              <Download className="size-5" />
+              <Download className="size-5 shrink-0" />
             )}
-            <div className="text-left">
-              <p className="text-sm">Usar datos de la nube</p>
-              <p className="text-micro text-muted-foreground font-normal">Reemplaza datos locales</p>
+            <div className="text-left min-w-0">
+              <p className="text-sm leading-tight">Usar datos de la nube</p>
+              <p className="text-micro text-muted-foreground font-normal mt-0.5">Reemplaza datos locales</p>
             </div>
           </Button>
           
@@ -254,12 +254,12 @@ export function DataConflictDialog({ onUpload, onDownload }: Props) {
             }}
             disabled={!!loading}
             variant="outline"
-            className="w-full h-14 rounded-2xl border border-primary/30 bg-primary/5 text-primary font-bold flex items-center gap-3"
+            className="w-full h-auto min-h-14 py-2.5 px-3 rounded-2xl border border-primary/30 bg-primary/5 text-primary font-bold flex items-center gap-3 text-left whitespace-normal"
           >
-            <CloudUpload className="size-5" />
-            <div className="text-left">
-              <p className="text-sm">Fusionar datos</p>
-              <p className="text-micro opacity-80 font-normal">Sincroniza y combina todo</p>
+            <CloudUpload className="size-5 shrink-0" />
+            <div className="text-left min-w-0">
+              <p className="text-sm leading-tight">Fusionar datos</p>
+              <p className="text-micro opacity-80 font-normal mt-0.5">Sincroniza y combina todo</p>
             </div>
           </Button>
         </div>

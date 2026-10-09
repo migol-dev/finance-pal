@@ -272,7 +272,7 @@ export const FijosSection = memo(function FijosSection({ onBack }: SectionProps)
             return (
               <div
                 key={item.id}
-                className="rounded-2xl bg-card border border-border p-4 shadow-soft flex items-center justify-between gap-3"
+                className="rounded-2xl bg-card border border-border p-4 shadow-soft flex flex-col min-[380px]:flex-row min-[380px]:items-center justify-between gap-3"
               >
                 <div className="flex items-center gap-3 min-w-0">
                   <div className="size-11 rounded-2xl bg-muted/70 text-foreground flex items-center justify-center shrink-0">
@@ -281,7 +281,7 @@ export const FijosSection = memo(function FijosSection({ onBack }: SectionProps)
                   <div className="min-w-0">
                     <div className="flex items-center gap-2">
                       <span className="font-bold text-sm sm:text-base text-foreground truncate">{item.concept}</span>
-                      <span className="text-[10px] font-semibold text-muted-foreground bg-muted px-2 py-0.5 rounded-full">
+                      <span className="text-[10px] font-semibold text-muted-foreground bg-muted px-2 py-0.5 rounded-full shrink-0">
                         {FREQ_LABEL[item.frequency]}
                       </span>
                     </div>
@@ -292,30 +292,32 @@ export const FijosSection = memo(function FijosSection({ onBack }: SectionProps)
                   </div>
                 </div>
 
-                <div className="flex items-center gap-2 shrink-0">
+                <div className="flex items-center justify-between min-[380px]:justify-end gap-2 shrink-0 w-full min-[380px]:w-auto pt-2 min-[380px]:pt-0 border-t min-[380px]:border-t-0 border-border/50">
                   <Switch
                     checked={item.active}
                     onCheckedChange={() => toggleFixed(item.id)}
                     aria-label={`Alternar estado activo de ${item.concept}`}
                   />
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={() => openEdit(item)}
-                    className="size-8 p-0 rounded-xl"
-                    aria-label={`Editar ${item.concept}`}
-                  >
-                    <Pencil className="size-3.5" />
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant="ghost"
-                    onClick={() => setDeleteConfirm(item)}
-                    className="size-8 p-0 rounded-xl text-destructive hover:bg-destructive/10"
-                    aria-label={`Eliminar ${item.concept}`}
-                  >
-                    <Trash2 className="size-3.5" />
-                  </Button>
+                  <div className="flex items-center gap-1.5">
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => openEdit(item)}
+                      className="size-9 min-[380px]:size-8 p-0 rounded-xl"
+                      aria-label={`Editar ${item.concept}`}
+                    >
+                      <Pencil className="size-3.5" />
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      onClick={() => setDeleteConfirm(item)}
+                      className="size-9 min-[380px]:size-8 p-0 rounded-xl text-destructive hover:bg-destructive/10"
+                      aria-label={`Eliminar ${item.concept}`}
+                    >
+                      <Trash2 className="size-3.5" />
+                    </Button>
+                  </div>
                 </div>
               </div>
             );
@@ -325,7 +327,7 @@ export const FijosSection = memo(function FijosSection({ onBack }: SectionProps)
 
       {/* Modal Dialog */}
       <Dialog open={open} onOpenChange={(v) => { setOpen(v); if (!v) setEditing(null); }}>
-        <DialogContent className="rounded-3xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="rounded-3xl max-h-[90dvh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>{editing ? "Editar concepto fijo" : "Nuevo concepto fijo"}</DialogTitle>
             <DialogDescription className="sr-only">Formulario para crear o editar un concepto fijo</DialogDescription>

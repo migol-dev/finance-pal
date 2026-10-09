@@ -153,7 +153,7 @@ export const AjustesHub = memo(function AjustesHub({ onSelectSection }: AjustesH
                     <IconComponent className="size-5.5" />
                   </div>
                   <div className="min-w-0">
-                    <div className="flex items-center gap-2">
+                    <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5">
                       <span className="font-bold text-sm text-foreground truncate">{cat.title}</span>
                       {cat.badge && (
                         <span className="px-2 py-0.5 rounded-full bg-muted text-[10px] font-bold text-muted-foreground shrink-0 capitalize">
@@ -161,7 +161,7 @@ export const AjustesHub = memo(function AjustesHub({ onSelectSection }: AjustesH
                         </span>
                       )}
                     </div>
-                    <p className="text-xs text-muted-foreground truncate mt-0.5">{cat.description}</p>
+                    <p className="text-xs text-muted-foreground line-clamp-2 mt-0.5">{cat.description}</p>
                   </div>
                 </div>
 
