@@ -1,227 +1,36 @@
 import { useMemo, useState } from "react";
 import { useFinanceData } from "@/hooks/useFinanceData";
-import { fmt, fmt2, iconFor, IconRef, Goal, GoalFolder, fmtDate, parseDateLocal, Account } from "@/lib/finance";
 import { Header } from "@/components/app/Header";
-import { Plus, Trash2, Pencil, Minus, CalendarDays, ExternalLink, Sparkles, AlertTriangle, CheckCircle2, Star, ChevronRight, X, FolderOpen, FolderPlus, ChevronDown } from "lucide-react";
+import { Plus, FolderPlus } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Slider } from "@/components/ui/slider";
-import { Calendar } from "@/components/ui/calendar";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { motion, AnimatePresence } from "@/lib/framer";
+import { AnimatePresence } from "@/lib/framer";
 import { toast } from "sonner";
-import { IconPicker } from "@/components/app/IconPicker";
 import { IconDisplay } from "@/components/app/IconDisplay";
-import SimpleAreaChart from "@/components/ui/SimpleAreaChart";
-import { cn } from "@/lib/utils";
-import { PillTabs } from "@/components/app/PillTabs";
-import { ElegantConfirm } from "@/components/app/ElegantConfirm";
+import { Goal, GoalFolder } from "@/lib/finance";
 
-const PALETTES = ["gradient-sunset", "gradient-ocean", "gradient-secondary", "gradient-success", "gradient-primary"];
-
-function startOfDay(d: Date) { const x = new Date(d); x.setHours(0, 0, 0, 0); return x; }
-function daysBetween(a: Date, b: Date) { return Math.max(0, Math.round((startOfDay(b).getTime() - startOfDay(a).getTime()) / 86400000)); }
-function ymd(d: Date) {
-  const pad = (n: number) => String(n).padStart(2, "0");
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
-}
-function normalizeUrl(u?: string) {
-  if (!u) return undefined;
-  const t = u.trim();
-  if (!t) return undefined;
-  if (/^https?:\/\//i.test(t)) return t;
-  return `https://${t}`;
-}
-
-/** Pace required to reach goal on time (per day/week/month). */
-function paceFor(goal: Goal) {
-  if (!goal.deadline) return null;
-  const remaining = Math.max(0, goal.target - goal.saved);
-  const today = startOfDay(new Date());
-  const dl = startOfDay(new Date(`${goal.deadline}T12:00:00`));
-  const days = Math.max(1, daysBetween(today, dl) || 1);
-  return {
-    remaining, days,
-    perDay: remaining / days,
-    perWeek: remaining / (days / 7),
-    perMonth: remaining / (days / 30),
-    overdue: dl < today,
-  };
-}
-
-/** Returns the cumulative ideal vs actual amount at a given date. */
-function expectedAt(goal: Goal, date: Date) {
-  if (!goal.deadline) return goal.target;
-  const start = startOfDay(parseDateLocal(goal.createdAt ?? new Date().toISOString()));
-  const dl = startOfDay(new Date(`${goal.deadline}T12:00:00`));
-  const total = Math.max(1, daysBetween(start, dl));
-  const elapsed = Math.min(total, Math.max(0, daysBetween(start, date)));
-  return (goal.target * elapsed) / total;
-}
-
-function actualAt(goal: Goal, date: Date) {
-  const end = startOfDay(date).getTime();
-  const initial = (goal.contributions && goal.contributions.length > 0)
-    ? 0
-    : goal.saved; // legacy goal without log → use current saved as baseline
-  const sum = (goal.contributions ?? []).reduce((acc, c) => {
-    const t = startOfDay(parseDateLocal(c.date)).getTime();
-    return t <= end ? acc + c.amount : acc;
-  }, 0);
-  return Math.max(0, initial + sum);
-}
-
-/** Status: ahead / on-track / behind compared to ideal at today's date. */
-function statusFor(goal: Goal) {
-  if (!goal.deadline) return null;
-  const today = new Date();
-  const ideal = expectedAt(goal, today);
-  const actual = actualAt(goal, today);
-  const diff = actual - ideal;
-  const tolerance = Math.max(50, goal.target * 0.02);
-  if (goal.saved >= goal.target) return { kind: "done" as const, diff };
-  if (diff < -tolerance) return { kind: "behind" as const, diff };
-  if (diff > tolerance) return { kind: "ahead" as const, diff };
-  return { kind: "ontrack" as const, diff };
-}
-
-type FolderNode = GoalFolder & { children: FolderNode[] };
-
-function FolderTreeNode({ 
-  folder, 
-  level, 
-  selectedFolderId, 
-  onSelect, 
-  onEdit, 
-  onDelete, 
-  onAddChild,
-  goalCount,
-  goalFolders,
-  getFolderGoalCount
-}: { 
-  folder: FolderNode;
-  level: number;
-  selectedFolderId: string | null;
-  onSelect: (id: string | null) => void;
-  onEdit: (folder: GoalFolder) => void;
-  onDelete: (id: string) => void;
-  onAddChild: () => void;
-  goalCount: number;
-  goalFolders: GoalFolder[];
-  getFolderGoalCount: (id: string) => number;
-}) {
-  const [expanded, setExpanded] = useState(true);
-  const hasChildren = folder.children.length > 0;
-  const isSelected = selectedFolderId === folder.id;
-  const indent = level * 16;
-
-  return (
-    <div className="group">
-      <div
-        role="button"
-        tabIndex={0}
-        onClick={() => onSelect(folder.id)}
-        onKeyDown={(e) => e.key === 'Enter' && onSelect(folder.id)}
-        className={cn(
-          "w-full flex items-center gap-2 px-2 py-1.5 rounded-xl text-sm font-medium transition cursor-pointer",
-          isSelected ? "bg-primary text-primary-foreground shadow-glow" : "hover:bg-accent text-accent-foreground"
-        )}
-        style={{ paddingLeft: 8 + indent }}
-      >
-        {hasChildren && (
-          <button
-            onClick={(e) => { e.stopPropagation(); setExpanded(!expanded); }}
-            className="flex-shrink-0 size-6 rounded p-0.5 hover:bg-white/10 transition"
-            aria-label={expanded ? "Contraer" : "Expandir"}
-          >
-            <ChevronDown className={cn("size-4 transition-transform", expanded && "rotate-90")} />
-          </button>
-        )}
-        {!hasChildren && <div className="flex-shrink-0 size-6" />}
-        <IconDisplay 
-          icon={folder.icon ?? { kind: "emoji", value: "📁" }} 
-          size="sm" 
-          className="flex-shrink-0 bg-white/20" 
-        />
-        <span className="flex-1 truncate">{folder.name}</span>
-        <span className="text-xs opacity-70">{goalCount}</span>
-        <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-          <button onClick={(e) => { e.stopPropagation(); onAddChild(); }} className="size-7 rounded-lg hover:bg-white/10 p-0.5" aria-label="Añadir subcarpeta">
-            <FolderPlus className="size-3.5" />
-          </button>
-          <button onClick={(e) => { e.stopPropagation(); onEdit(folder); }} className="size-7 rounded-lg hover:bg-white/10 p-0.5" aria-label="Editar carpeta">
-            <Pencil className="size-3.5" />
-          </button>
-          <button onClick={(e) => { e.stopPropagation(); onDelete(folder.id); }} className="size-7 rounded-lg hover:bg-white/10 p-0.5 text-destructive" aria-label="Eliminar carpeta">
-            <Trash2 className="size-3.5" />
-          </button>
-        </div>
-      </div>
-      
-      {expanded && hasChildren && (
-        <div className="mt-0.5">
-          {folder.children.map((child) => (
-            <FolderTreeNode
-              key={child.id}
-              folder={child}
-              level={level + 1}
-              selectedFolderId={selectedFolderId}
-              onSelect={onSelect}
-              onEdit={onEdit}
-              onDelete={onDelete}
-              onAddChild={() => onAddChild()}
-              goalCount={getFolderGoalCount(child.id)}
-              goalFolders={goalFolders}
-              getFolderGoalCount={getFolderGoalCount}
-            />
-          ))}
-        </div>
-      )}
-    </div>
-  );
-}
-
-function FolderForm({ initial, onSave }: { initial: GoalFolder | null; onSave: (f: Omit<GoalFolder, "id">) => void }) {
-  const [name, setName] = useState(initial?.name ?? "");
-  const [color, setColor] = useState(initial?.color ?? PALETTES[0]);
-  const [icon, setIcon] = useState<IconRef>(initial?.icon ?? { kind: "emoji", value: "📁" });
-
-  return (
-    <form onSubmit={(e) => {
-      e.preventDefault();
-      if (!name) { toast.error("Completa el nombre"); return; }
-      const payload: Omit<GoalFolder, "id"> = { name, color, icon, order: initial?.order ?? 0, createdAt: initial?.createdAt ?? new Date().toISOString() };
-      if (initial?.parentId) payload.parentId = initial.parentId;
-      onSave(payload);
-    }} className="space-y-3">
-      <div className="flex justify-center"><IconPicker value={icon} onChange={setIcon} /></div>
-      <div><Label className="text-xs">Nombre</Label><Input autoFocus value={name} onChange={(e) => setName(e.target.value)} placeholder="Ej. Biker" className="h-11 rounded-2xl" /></div>
-      <div>
-        <Label className="text-xs">Color</Label>
-        <div className="flex gap-2 mt-1">
-          {PALETTES.map((p) => <button key={p} type="button" onClick={() => setColor(p)} className={`flex-1 h-10 rounded-xl ${p} transition ${color === p ? "ring-4 ring-offset-2 ring-primary" : ""}`} />)}
-        </div>
-      </div>
-      <Button type="submit" className="w-full h-12 rounded-2xl gradient-primary text-primary-foreground border-0 shadow-glow font-bold">{initial?.id ? "Guardar cambios" : "Crear carpeta"}</Button>
-    </form>
-  );
-}
+import { FolderNode, PALETTES } from "./metas/types";
+import { FolderTree } from "./metas/FolderTree";
+import { FolderChips } from "./metas/FolderChips";
+import { GoalCompactCard } from "./metas/GoalCompactCard";
+import { GoalDetailContent } from "./metas/GoalDetailContent";
+import { GoalForm } from "./metas/GoalForm";
+import { FolderForm } from "./metas/FolderForm";
 
 export default function Metas() {
-  const { 
-    goals, 
+  const {
+    goals,
     goalFolders,
-    addGoal, 
-    updateGoal, 
-    removeGoal, 
-    contributeGoal, 
+    addGoal,
+    updateGoal,
+    removeGoal,
+    contributeGoal,
     accounts,
     addGoalFolder,
     updateGoalFolder,
     removeGoalFolder,
   } = useFinanceData();
+
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<Goal | null>(null);
   const [detailId, setDetailId] = useState<string | null>(null);
@@ -229,15 +38,15 @@ export default function Metas() {
   const [editingFolder, setEditingFolder] = useState<GoalFolder | null>(null);
   const [selectedFolderId, setSelectedFolderId] = useState<string | null>(null); // null = all, "uncategorized" = no folder
 
-  const detailGoal = useMemo(() => goals.find(g => g.id === detailId) || null, [goals, detailId]);
+  const detailGoal = useMemo(() => goals.find((g) => g.id === detailId) || null, [goals, detailId]);
 
   // Build folder tree
   const folderTree = useMemo(() => {
     const folderMap = new Map<string, FolderNode>();
-    goalFolders.forEach(f => folderMap.set(f.id, { ...f, children: [] }));
-    
+    goalFolders.forEach((f) => folderMap.set(f.id, { ...f, children: [] }));
+
     const roots: FolderNode[] = [];
-    goalFolders.forEach(f => {
+    goalFolders.forEach((f) => {
       const folder = folderMap.get(f.id)!;
       if (f.parentId) {
         const parent = folderMap.get(f.parentId);
@@ -246,194 +55,234 @@ export default function Metas() {
         roots.push(folder);
       }
     });
-    
-    // Sort by order
+
     const sortFolders = (folders: FolderNode[]) => {
-      folders.sort((a, b) => a.order - b.order).forEach(f => sortFolders(f.children));
+      folders.sort((a, b) => a.order - b.order).forEach((f) => sortFolders(f.children));
     };
     sortFolders(roots);
-    
+
     return roots;
   }, [goalFolders]);
 
-  // Get goals for selected folder
-  const filteredGoals = useMemo(() => {
-    if (selectedFolderId === null) return goals; // All goals
-    if (selectedFolderId === "uncategorized") return goals.filter(g => !g.folderId);
-    return goals.filter(g => g.folderId === selectedFolderId);
-  }, [goals, selectedFolderId]);
-
   // Count goals in folder (including subfolders)
   const getFolderGoalCount = (folderId: string): number => {
-    let count = goals.filter(g => g.folderId === folderId).length;
-    const getChildren = (id: string) => goalFolders.filter(f => f.parentId === id);
+    let count = goals.filter((g) => g.folderId === folderId).length;
+    const getChildren = (id: string) => goalFolders.filter((f) => f.parentId === id);
     const children = getChildren(folderId);
-    children.forEach(c => count += getFolderGoalCount(c.id));
+    children.forEach((c) => {
+      count += getFolderGoalCount(c.id);
+    });
     return count;
   };
 
-  const openNew = () => { setEditing(null); setOpen(true); };
-  
-  const openNewFolder = (parentId?: string) => { 
-    setEditingFolder({ 
-      id: '', 
-      name: '', 
-      color: PALETTES[0], 
-      order: goalFolders.length,
-      createdAt: new Date().toISOString(),
-      parentId: parentId ?? undefined
-    } as GoalFolder); 
-    setFolderOpen(true); 
+  // Get goals for selected folder
+  const filteredGoals = useMemo(() => {
+    if (selectedFolderId === null) return goals;
+    if (selectedFolderId === "uncategorized") return goals.filter((g) => !g.folderId);
+    return goals.filter((g) => g.folderId === selectedFolderId);
+  }, [goals, selectedFolderId]);
+
+  const openNew = () => {
+    setEditing(null);
+    setOpen(true);
   };
 
-  const openEditFolder = (folder: GoalFolder) => { 
-    setEditingFolder(folder); 
-    setFolderOpen(true); 
+  const openNewFolder = (parentId?: string) => {
+    setEditingFolder({
+      id: "",
+      name: "",
+      color: PALETTES[0],
+      order: goalFolders.length,
+      createdAt: new Date().toISOString(),
+      parentId: parentId ?? undefined,
+    } as GoalFolder);
+    setFolderOpen(true);
+  };
+
+  const openEditFolder = (folder: GoalFolder) => {
+    setEditingFolder(folder);
+    setFolderOpen(true);
   };
 
   return (
     <div className="pb-28">
-      <Header title="Metas" subtitle="Sueños con plan" action={
-        <div className="flex items-center gap-2">
-          <Button onClick={() => openNewFolder()} variant="ghost" className="h-10 rounded-xl px-3">
-            <FolderPlus className="size-4 mr-1.5" />Carpeta
-          </Button>
-          <Button onClick={openNew} className="rounded-xl gradient-primary text-primary-foreground border-0 shadow-glow h-10 text-sm"><Plus className="size-4 mr-1.5" />Nueva</Button>
-        </div>
-      } />
+      <Header
+        title="Metas"
+        subtitle="Sueños con plan"
+        action={
+          <div className="flex items-center gap-1.5 sm:gap-2">
+            <Button
+              onClick={() => openNewFolder()}
+              variant="ghost"
+              className="h-10 rounded-xl px-2.5 sm:px-3 text-xs sm:text-sm"
+            >
+              <FolderPlus className="size-4 mr-1 sm:mr-1.5" />
+              <span className="hidden xs:inline">Carpeta</span>
+            </Button>
+            <Button
+              onClick={openNew}
+              className="rounded-xl gradient-primary text-primary-foreground border-0 shadow-glow h-10 text-xs sm:text-sm px-3 sm:px-4"
+            >
+              <Plus className="size-4 mr-1 sm:mr-1.5" />
+              <span>Nueva</span>
+            </Button>
+          </div>
+        }
+      />
 
+      {/* Goal Form Modal */}
       <Dialog open={open} onOpenChange={(v) => { setOpen(v); if (!v) setEditing(null); }}>
-          <DialogContent className="rounded-2xl max-h-[90vh] overflow-y-auto p-5">
-            <DialogHeader><DialogTitle className="text-lg">{editing ? "Editar meta" : "Nueva meta"}</DialogTitle></DialogHeader>
-            <DialogDescription className="sr-only">Formulario para crear o editar una meta</DialogDescription>
-          <GoalForm 
-            initial={editing} 
+        <DialogContent className="rounded-2xl max-h-[90dvh] overflow-y-auto p-5">
+          <DialogHeader>
+            <DialogTitle className="text-lg">{editing ? "Editar meta" : "Nueva meta"}</DialogTitle>
+          </DialogHeader>
+          <DialogDescription className="sr-only">Formulario para crear o editar una meta</DialogDescription>
+          <GoalForm
+            initial={editing}
             folders={goalFolders}
             defaultFolderId={selectedFolderId === "uncategorized" || !selectedFolderId ? undefined : selectedFolderId}
             onSave={async (g) => {
               try {
-                if (editing) { await updateGoal(editing.id, g); toast.success("Actualizado"); }
-                else { await addGoal(g); toast.success("Meta creada ✨"); }
-                setOpen(false); setEditing(null);
+                if (editing) {
+                  await updateGoal(editing.id, g);
+                  toast.success("Actualizado");
+                } else {
+                  await addGoal(g);
+                  toast.success("Meta creada ✨");
+                }
+                setOpen(false);
+                setEditing(null);
               } catch (e: any) {
                 toast.error(e.message || "Ocurrió un error");
               }
-            }} 
+            }}
           />
         </DialogContent>
       </Dialog>
 
+      {/* Folder Form Modal */}
       <Dialog open={folderOpen} onOpenChange={(v) => { setFolderOpen(v); if (!v) setEditingFolder(null); }}>
-        <DialogContent className="rounded-2xl max-h-[90vh] overflow-y-auto p-5">
-          <DialogHeader><DialogTitle className="text-lg">{editingFolder?.id ? "Editar carpeta" : "Nueva carpeta"}</DialogTitle></DialogHeader>
+        <DialogContent className="rounded-2xl max-h-[90dvh] overflow-y-auto p-5">
+          <DialogHeader>
+            <DialogTitle className="text-lg">
+              {editingFolder?.id ? "Editar carpeta" : "Nueva carpeta"}
+            </DialogTitle>
+          </DialogHeader>
           <DialogDescription className="sr-only">Formulario para crear o editar una carpeta</DialogDescription>
-          <FolderForm initial={editingFolder} onSave={async (f) => {
-            try {
-              if (editingFolder?.id) { await updateGoalFolder(editingFolder.id, f); toast.success("Carpeta actualizada"); }
-              else { await addGoalFolder(f); toast.success("Carpeta creada ✨"); }
-              setFolderOpen(false); setEditingFolder(null);
-            } catch (e: any) {
-              toast.error(e.message || "Ocurrió un error");
-            }
-          }} />
+          <FolderForm
+            initial={editingFolder}
+            onSave={async (f) => {
+              try {
+                if (editingFolder?.id) {
+                  await updateGoalFolder(editingFolder.id, f);
+                  toast.success("Carpeta actualizada");
+                } else {
+                  await addGoalFolder(f);
+                  toast.success("Carpeta creada ✨");
+                }
+                setFolderOpen(false);
+                setEditingFolder(null);
+              } catch (e: any) {
+                toast.error(e.message || "Ocurrió un error");
+              }
+            }}
+          />
         </DialogContent>
       </Dialog>
 
-      <div className="lg:grid lg:grid-cols-[280px_1fr] lg:gap-4">
-        {/* Folder Sidebar */}
-        <aside className="lg:sticky lg:top-16 lg:h-[calc(100vh-8rem)] lg:overflow-y-auto space-y-2 p-2 bg-card/50 rounded-2xl border border-border">
-          <button 
-            onClick={() => setSelectedFolderId(null)}
-            className={cn("w-full flex items-center gap-3 px-3 py-2 rounded-xl text-sm font-medium transition", 
-              selectedFolderId === null ? "bg-primary text-primary-foreground shadow-glow" : "hover:bg-accent text-accent-foreground")}
-          >
-            <FolderOpen className="size-5" />
-            <span className="flex-1 truncate">Todas las metas</span>
-            <span className="text-xs opacity-70">{goals.length}</span>
-          </button>
-          
-          <button 
-            onClick={() => setSelectedFolderId("uncategorized")}
-            className={cn("w-full flex items-center gap-3 px-3 py-2 rounded-xl text-sm font-medium transition",
-              selectedFolderId === "uncategorized" ? "bg-primary text-primary-foreground shadow-glow" : "hover:bg-accent text-accent-foreground")}
-          >
-            <FolderOpen className="size-5 opacity-50" />
-            <span className="flex-1 truncate">Sin carpeta</span>
-            <span className="text-xs opacity-70">{goals.filter(g => !g.folderId).length}</span>
-          </button>
+      {/* Mobile Folder Chips (<lg) */}
+      <div className="px-5 lg:hidden">
+        <FolderChips
+          folderTree={folderTree}
+          goals={goals}
+          goalFolders={goalFolders}
+          selectedFolderId={selectedFolderId}
+          onSelectFolder={setSelectedFolderId}
+          onEditFolder={openEditFolder}
+          onDeleteFolder={removeGoalFolder}
+          onAddChildFolder={openNewFolder}
+          getFolderGoalCount={getFolderGoalCount}
+        />
+      </div>
 
-          <div className="border-t border-border my-2" />
-          
-          {folderTree.length === 0 ? (
-            <p className="px-3 py-2 text-xs text-muted-foreground text-center">Sin carpetas aún</p>
-          ) : (
-            <>
-              {folderTree.map((folder) => (
-                <FolderTreeNode 
-                  key={folder.id} 
-                  folder={folder} 
-                  level={0}
-                  selectedFolderId={selectedFolderId}
-                  onSelect={setSelectedFolderId}
-                  onEdit={openEditFolder}
-                  onDelete={removeGoalFolder}
-                  onAddChild={() => openNewFolder(folder.id)}
-                  goalCount={getFolderGoalCount(folder.id)}
-                  goalFolders={goalFolders}
-                  getFolderGoalCount={getFolderGoalCount}
-                />
-              ))}
-            </>
-          )}
+      <div className="lg:grid lg:grid-cols-[280px_1fr] lg:gap-5 px-5 lg:px-6">
+        {/* Desktop Folder Sidebar (>=lg) */}
+        <aside className="hidden lg:block lg:sticky lg:top-20 lg:h-[calc(100dvh-8rem)] lg:overflow-y-auto space-y-2 p-3 bg-card/60 backdrop-blur-sm rounded-2xl border border-border shadow-soft">
+          <FolderTree
+            folderTree={folderTree}
+            goals={goals}
+            goalFolders={goalFolders}
+            selectedFolderId={selectedFolderId}
+            onSelectFolder={setSelectedFolderId}
+            onEditFolder={openEditFolder}
+            onDeleteFolder={removeGoalFolder}
+            onAddChildFolder={openNewFolder}
+            getFolderGoalCount={getFolderGoalCount}
+          />
         </aside>
 
-        {/* Goals Grid */}
-        <div className="px-5 lg:px-0 space-y-4">
-          
-          {/* Subfolders Grid */}
-          {selectedFolderId !== "uncategorized" && goalFolders.filter(f => f.parentId === (selectedFolderId ?? undefined)).length > 0 && (
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mb-6">
-              {goalFolders.filter(f => f.parentId === (selectedFolderId ?? undefined)).sort((a,b)=>a.order - b.order).map(f => (
-                <button 
-                  key={f.id}
-                  onClick={() => setSelectedFolderId(f.id)}
-                  className="p-4 rounded-3xl bg-card border border-border flex flex-col items-start gap-3 shadow-soft text-left hover:scale-[1.02] active:scale-95 transition"
-                >
-                  <IconDisplay icon={f.icon ?? { kind: "emoji", value: "📁" }} size="md" className="bg-muted" />
-                  <div className="w-full">
-                    <p className="font-bold text-sm truncate w-full">{f.name}</p>
-                    <p className="text-xs text-muted-foreground">{getFolderGoalCount(f.id)} metas</p>
-                  </div>
-                </button>
-              ))}
-            </div>
-          )}
+        {/* Goals Area */}
+        <div className="space-y-4 min-w-0">
+          {/* Subfolders Grid if any inside selected folder */}
+          {selectedFolderId !== "uncategorized" &&
+            goalFolders.filter((f) => f.parentId === (selectedFolderId ?? undefined)).length > 0 && (
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5 sm:gap-3 mb-4">
+                {goalFolders
+                  .filter((f) => f.parentId === (selectedFolderId ?? undefined))
+                  .sort((a, b) => a.order - b.order)
+                  .map((f) => (
+                    <button
+                      key={f.id}
+                      type="button"
+                      onClick={() => setSelectedFolderId(f.id)}
+                      className="p-3.5 sm:p-4 rounded-2xl sm:rounded-3xl bg-card border border-border flex flex-col items-start gap-2.5 shadow-soft text-left hover:border-primary/40 hover:bg-muted/20 active:scale-95 transition min-w-0"
+                    >
+                      <IconDisplay icon={f.icon ?? { kind: "emoji", value: "📁" }} size="md" className="bg-muted shrink-0" />
+                      <div className="w-full min-w-0">
+                        <p className="font-bold text-sm truncate w-full">{f.name}</p>
+                        <p className="text-xs text-muted-foreground">{getFolderGoalCount(f.id)} metas</p>
+                      </div>
+                    </button>
+                  ))}
+              </div>
+            )}
 
-          {filteredGoals.length === 0 && goalFolders.filter(f => f.parentId === (selectedFolderId ?? undefined)).length === 0 && (
-            <div className="rounded-3xl bg-card border border-dashed border-border p-8 text-center shadow-soft flex flex-col items-center">
-              <p className="text-5xl mb-4">🎯</p>
-              <p className="text-base font-bold mb-2">
-                {selectedFolderId === "uncategorized" 
-                  ? "No hay metas sin carpeta"
-                  : selectedFolderId === null
-                  ? "No tienes metas de ahorro"
-                  : `Esta carpeta está vacía`}
-              </p>
-              <p className="text-xs text-muted-foreground mb-5 max-w-[280px]">
-                {selectedFolderId === "uncategorized" 
-                  ? "Todas tus metas están organizadas en carpetas."
-                  : selectedFolderId === null
-                  ? "Crea tu primera meta y empieza a ahorrar para cumplir tus sueños."
-                  : "Crea una nueva meta o arrastra una existente aquí."}
-              </p>
-              <Button onClick={openNew} className="h-10 px-5 rounded-xl gradient-primary text-primary-foreground font-bold border-0 shadow-glow">
-                Crear nueva meta
-              </Button>
-            </div>
-          )}
+          {/* Empty state */}
+          {filteredGoals.length === 0 &&
+            goalFolders.filter((f) => f.parentId === (selectedFolderId ?? undefined)).length === 0 && (
+              <div className="rounded-3xl bg-card border border-dashed border-border p-8 text-center shadow-soft flex flex-col items-center">
+                <p className="text-5xl mb-4" aria-hidden="true">🎯</p>
+                <p className="text-base font-bold mb-2">
+                  {selectedFolderId === "uncategorized"
+                    ? "No hay metas sin carpeta"
+                    : selectedFolderId === null
+                    ? "No tienes metas de ahorro"
+                    : "Esta carpeta está vacía"}
+                </p>
+                <p className="text-xs text-muted-foreground mb-5 max-w-[280px]">
+                  {selectedFolderId === "uncategorized"
+                    ? "Todas tus metas están organizadas en carpetas."
+                    : selectedFolderId === null
+                    ? "Crea tu primera meta y empieza a ahorrar para cumplir tus sueños."
+                    : "Crea una nueva meta o arrastra una existente aquí."}
+                </p>
+                <Button
+                  type="button"
+                  onClick={openNew}
+                  className="h-10 px-5 rounded-xl gradient-primary text-primary-foreground font-bold border-0 shadow-glow"
+                >
+                  Crear nueva meta
+                </Button>
+              </div>
+            )}
+
+          {/* Goal Cards */}
           <AnimatePresence>
             {filteredGoals.map((g, i) => (
-              <GoalCompactCard key={g.id} goal={g} index={i}
+              <GoalCompactCard
+                key={g.id}
+                goal={g}
+                index={i}
                 onViewMore={() => setDetailId(g.id)}
                 onContribute={(amt, date, acc) => contributeGoal(g.id, amt, date, acc)}
                 accounts={accounts}
@@ -443,632 +292,34 @@ export default function Metas() {
         </div>
       </div>
 
-      <Dialog open={!!detailId} onOpenChange={(v) => { if(!v) setDetailId(null); }}>
-        <DialogContent className="max-w-lg p-0 border-0 bg-transparent shadow-none overflow-hidden h-[95vh] sm:rounded-3xl">
+      {/* Goal Detail Dialog with hideCloseButton=true to avoid double X */}
+      <Dialog open={!!detailId} onOpenChange={(v) => { if (!v) setDetailId(null); }}>
+        <DialogContent
+          hideCloseButton={true}
+          className="max-w-lg p-0 border-0 bg-transparent shadow-none overflow-hidden max-h-[92dvh] sm:rounded-3xl"
+        >
           <DialogTitle className="sr-only">Detalle de {detailGoal?.name ?? "meta"}</DialogTitle>
           <DialogDescription className="sr-only">Detalle de la meta {detailGoal?.name}</DialogDescription>
           {detailGoal && (
-            <div className={cn("h-full w-full overflow-y-auto no-scrollbar rounded-t-[32px] sm:rounded-3xl p-6 text-white relative", detailGoal.color)}>
-              <button
-                onClick={() => setDetailId(null)}
-                aria-label="Cerrar detalles"
-                className="absolute top-5 right-5 size-10 rounded-full bg-black/25 hover:bg-black/40 text-white flex items-center justify-center backdrop-blur-md z-20 transition active:scale-95"
-              >
-                <X className="size-5" />
-              </button>
-
-<GoalDetailContent
-                goal={detailGoal}
-                onEdit={() => { setEditing(detailGoal); setOpen(true); setDetailId(null); }}
-                onDelete={() => { removeGoal(detailGoal.id); setDetailId(null); }}
-                onContribute={(amt, date, acc) => contributeGoal(detailGoal.id, amt, date, acc)}
-                onTogglePin={() => updateGoal(detailGoal.id, { pinned: !detailGoal.pinned })}
-                accounts={accounts}
-              />
-            </div>
+            <GoalDetailContent
+              goal={detailGoal}
+              onClose={() => setDetailId(null)}
+              onEdit={() => {
+                setEditing(detailGoal);
+                setOpen(true);
+                setDetailId(null);
+              }}
+              onDelete={() => {
+                removeGoal(detailGoal.id);
+                setDetailId(null);
+              }}
+              onContribute={(amt, date, acc) => contributeGoal(detailGoal.id, amt, date, acc)}
+              onTogglePin={() => updateGoal(detailGoal.id, { pinned: !detailGoal.pinned })}
+              accounts={accounts}
+            />
           )}
         </DialogContent>
       </Dialog>
     </div>
-  );
-}
-
-function GoalCompactCard({ goal, index, onViewMore, onContribute, accounts }: {
-  goal: Goal; index: number; onViewMore: () => void;
-  onContribute: (amount: number, date?: string, accountId?: string) => void;
-  accounts: Account[];
-}) {
-  const pct = goal.target > 0 ? Math.min(100, (goal.saved / goal.target) * 100) : 0;
-  const [confirmOpen, setConfirmOpen] = useState<{ amount: number } | null>(null);
-
-  const handleQuickAdd = (amount: number) => {
-    setConfirmOpen({ amount });
-  };
-
-  return (
-    <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: index * 0.05 }}
-      className={cn("rounded-3xl p-5 text-primary-foreground shadow-pop relative overflow-hidden", goal.color)}>
-      <div className="absolute -top-10 -right-10 size-40 rounded-full bg-white/10 blur-3xl" />
-
-      <div className="relative">
-        <div className="flex items-center justify-between mb-4">
-          <div className="flex items-center gap-3">
-            <IconDisplay icon={iconFor(goal)} size="lg" className="bg-white/20 shadow-inner" />
-            <div>
-              <p className="font-bold text-lg leading-tight">{goal.name}</p>
-              <p className="text-[10px] opacity-80 font-semibold tracking-wider uppercase">{goal.pinned ? "Meta Principal" : "Meta Ahorro"}</p>
-            </div>
-          </div>
-          <button onClick={onViewMore} className="size-10 rounded-2xl bg-white/20 flex items-center justify-center active:scale-90 transition">
-            <ChevronRight className="size-5" />
-          </button>
-        </div>
-
-        <div className="space-y-1">
-          <div className="flex items-end justify-between">
-            <p className="text-2xl font-black">{fmt(goal.saved)}</p>
-            <p className="text-xs font-bold opacity-80 mb-1">Objetivo: {fmt(goal.target)}</p>
-          </div>
-          <div className="h-2.5 rounded-full bg-white/20 overflow-hidden relative">
-            <motion.div initial={{ width: 0 }} animate={{ width: `${pct}%` }} transition={{ duration: 1, ease: "easeOut" }} className="h-full bg-white rounded-full shadow-glow" />
-          </div>
-          <div className="flex justify-between items-center text-[10px] font-bold uppercase tracking-tighter pt-1">
-            <span>{pct.toFixed(1)}%</span>
-            <span className="opacity-70">{fmt(goal.target - goal.saved)} restantes</span>
-          </div>
-        </div>
-
-        <div className="flex gap-2 mt-5">
-          <button onClick={() => handleQuickAdd(100)} aria-label="Aportar 100" className="flex-1 h-10 rounded-2xl bg-white/15 hover:bg-white/25 active:scale-95 transition text-xs font-black border border-white/10">+100</button>
-          <button onClick={() => handleQuickAdd(500)} aria-label="Aportar 500" className="flex-1 h-10 rounded-2xl bg-white/15 hover:bg-white/25 active:scale-95 transition text-xs font-black border border-white/10">+500</button>
-          <button onClick={() => handleQuickAdd(1000)} aria-label="Aportar 1000" className="flex-1 h-10 rounded-2xl bg-white/15 hover:bg-white/25 active:scale-95 transition text-xs font-black border border-white/10">+1k</button>
-          <button aria-label="Ver detalles o aportar" onClick={onViewMore} className="size-10 rounded-2xl bg-white/25 hover:bg-white/35 active:scale-95 transition flex items-center justify-center border border-white/20"><Plus className="size-4" /></button>
-        </div>
-      </div>
-
-      <ElegantConfirm
-        open={!!confirmOpen}
-        onOpenChange={(v) => !v && setConfirmOpen(null)}
-        title="¿Confirmar aporte?"
-        description={<span className="text-sm text-muted-foreground">Vas a añadir <span className="font-bold text-foreground">{fmt(confirmOpen?.amount ?? 0)}</span> a tu meta <span className="font-bold text-foreground">"{goal.name}"</span>.</span>}
-        onConfirm={() => {
-          if (confirmOpen) {
-            // Use first account as default for quick add
-            const defaultAccountId = accounts[0]?.id;
-            onContribute(confirmOpen.amount, undefined, defaultAccountId);
-          }
-          setConfirmOpen(null);
-          toast.success("¡Aporte registrado! 🚀");
-        }}
-        icon={Plus}
-        iconColor={goal.color}
-      />
-    </motion.div>
-  );
-}
-
-function GoalDetailContent({ goal, onEdit, onDelete, onContribute, onTogglePin, accounts }: {
-  goal: Goal; onEdit: () => void; onDelete: () => void;
-  onContribute: (amount: number, date?: string, accountId?: string) => void;
-  onTogglePin: () => void;
-  accounts: Account[];
-}) {
-  const [tab, setTab] = useState<"resumen" | "calendario" | "simular">("resumen");
-  const [confirmOpen, setConfirmOpen] = useState<{ amount: number } | null>(null);
-  const [deleteConfirm, setDeleteConfirm] = useState(false);
-  const pct = goal.target > 0 ? Math.min(100, (goal.saved / goal.target) * 100) : 0;
-  const status = statusFor(goal);
-  const url = normalizeUrl(goal.purchaseUrl);
-
-  const handleQuickAdd = (amount: number) => {
-    setConfirmOpen({ amount });
-  };
-
-  return (
-    <div className="pb-10">
-      <div className="flex items-center gap-4 mb-6 pr-12">
-        {url ? (
-          <a href={url} target="_blank" rel="noopener noreferrer" className="relative group active:scale-95 transition">
-            <IconDisplay icon={iconFor(goal)} size="lg" className="bg-white/20 ring-4 ring-white/10" />
-            <span className="absolute -bottom-1 -right-1 size-6 rounded-full bg-white text-foreground flex items-center justify-center shadow-lg">
-              <ExternalLink className="size-3.5" />
-            </span>
-          </a>
-        ) : (
-          <IconDisplay icon={iconFor(goal)} size="lg" className="bg-white/20 shadow-xl" />
-        )}
-        <div className="min-w-0">
-          <h2 className="text-2xl font-black truncate">{goal.name}</h2>
-          {goal.deadline && (
-            <p className="text-xs font-bold opacity-80 flex items-center gap-1.5 mt-0.5">
-              <CalendarDays className="size-3.5" /> {fmtDate(`${goal.deadline}T12:00:00`)}
-            </p>
-          )}
-        </div>
-      </div>
-
-      <div className="bg-white/10 backdrop-blur-md rounded-[32px] p-6 mb-4 border border-white/10">
-        <div className="flex items-baseline justify-between mb-2">
-          <p className="text-4xl font-black">{fmt(goal.saved)}</p>
-          <p className="text-sm font-bold opacity-70">de {fmt(goal.target)}</p>
-        </div>
-        <div className="h-3 rounded-full bg-black/20 overflow-hidden mb-2">
-          <motion.div initial={{ width: 0 }} animate={{ width: `${pct}%` }} transition={{ duration: 1.2 }} className="h-full bg-white rounded-full" />
-        </div>
-        <div className="flex justify-between items-center">
-          <p className="text-sm font-black">{pct.toFixed(1)}%</p>
-          <StatusBanner status={status} />
-        </div>
-      </div>
-
-      <div className="grid grid-cols-4 gap-2 mb-6">
-        <button
-          onClick={onTogglePin}
-          aria-label={goal.pinned ? "Desanclar meta de destacados" : "Fijar meta como destacada"}
-          className={cn("h-14 rounded-2xl flex items-center justify-center transition active:scale-90", goal.pinned ? "bg-white text-foreground" : "bg-white/10 text-white")}
-        >
-          <Star className={cn("size-6", goal.pinned ? "fill-current" : "")} />
-        </button>
-        <button aria-label="Editar meta" onClick={onEdit} className="h-14 rounded-2xl bg-white/10 flex items-center justify-center active:scale-90 transition"><Pencil className="size-6" /></button>
-        <button aria-label="Eliminar meta" onClick={() => setDeleteConfirm(true)} className="h-14 rounded-2xl bg-white/10 flex items-center justify-center active:scale-90 transition"><Trash2 className="size-6" /></button>
-        <ContribCustom onAdd={(v, acc) => onContribute(v, undefined, acc)} accounts={accounts} />
-      </div>
-
-      <div className="flex gap-2 mb-6">
-        <ContributeBtn label="+ $100" onClick={() => handleQuickAdd(100)} />
-        <ContributeBtn label="+ $500" onClick={() => handleQuickAdd(500)} />
-        <ContribCustom negative onAdd={(v, acc) => onContribute(-v, undefined, acc)} accounts={accounts} />
-      </div>
-
-      <ElegantConfirm
-        open={!!confirmOpen}
-        onOpenChange={(v) => !v && setConfirmOpen(null)}
-        title="¿Confirmar aporte?"
-        description={<span className="text-sm text-muted-foreground block">Vas a añadir <span className="font-bold text-foreground">{fmt(confirmOpen?.amount ?? 0)}</span> a tu meta <span className="font-bold text-foreground">"{goal.name}"</span>.</span>}
-        onConfirm={() => {
-          if (confirmOpen) {
-            const defaultAccountId = accounts[0]?.id;
-            onContribute(confirmOpen.amount, undefined, defaultAccountId);
-          }
-          setConfirmOpen(null);
-          toast.success("¡Aporte registrado! 🚀");
-        }}
-        icon={Plus}
-        iconColor={goal.color}
-      />
-
-      <ElegantConfirm
-        open={deleteConfirm}
-        onOpenChange={setDeleteConfirm}
-        title="¿Eliminar meta?"
-        description={<span className="text-sm text-muted-foreground">¿Estás seguro de que quieres eliminar <span className="font-bold text-foreground">"{goal.name}"</span>? Esta acción no se puede deshacer.</span>}
-        onConfirm={onDelete}
-        icon={Trash2}
-        iconColor="bg-destructive"
-      />
-
-      <PillTabs<"resumen" | "calendario" | "simular">
-        className="mb-4 bg-black/10 p-1 rounded-2xl"
-        ariaLabel={`Vistas de meta ${goal.name}`}
-        tabs={["resumen", "calendario", "simular"]}
-        value={tab}
-        onChange={setTab}
-      />
-
-      <AnimatePresence mode="wait">
-        <motion.div key={tab} initial={{ opacity: 0, x: 10 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -10 }} transition={{ duration: 0.2 }}>
-          {tab === "resumen" && <ResumenTab goal={goal} />}
-          {tab === "calendario" && <CalendarioTab goal={goal} onContribute={onContribute} accounts={accounts} />}
-          {tab === "simular" && <SimularTab goal={goal} />}
-        </motion.div>
-      </AnimatePresence>
-    </div>
-  );
-}
-
-function StatusBanner({ status }: { status: ReturnType<typeof statusFor> }) {
-  if (!status) return null;
-  if (status.kind === "done") {
-    return (
-      <div className="flex items-center gap-2 rounded-2xl bg-white/25 px-3 py-1">
-        <CheckCircle2 className="size-4 shrink-0" />
-        <p className="text-[10px] font-bold">🎉 Cumplida</p>
-      </div>
-    );
-  }
-  if (status.kind === "behind") {
-    return (
-      <div className="flex items-center gap-2 rounded-2xl bg-destructive/30 ring-1 ring-white/40 px-3 py-1 animate-pulse">
-        <AlertTriangle className="size-4 shrink-0" />
-        <p className="text-[10px] font-bold">Atrasado</p>
-      </div>
-    );
-  }
-  if (status.kind === "ahead") {
-    return (
-      <div className="flex items-center gap-2 rounded-2xl bg-white/25 px-3 py-1">
-        <Sparkles className="size-4 shrink-0" />
-        <p className="text-[10px] font-bold">¡Adelantado!</p>
-      </div>
-    );
-  }
-  return (
-    <div className="flex items-center gap-2 rounded-2xl bg-white/15 px-3 py-1">
-      <CheckCircle2 className="size-4 shrink-0" />
-      <p className="text-[10px] font-bold">Al ritmo</p>
-    </div>
-  );
-}
-
-function ResumenTab({ goal }: { goal: Goal }) {
-  const pace = paceFor(goal);
-  const data = useMemo(() => {
-    if (!goal.deadline) return [] as { label: string; ideal: number; actual: number | null }[];
-    const start = startOfDay(parseDateLocal(goal.createdAt ?? new Date().toISOString()));
-    const dl = startOfDay(new Date(`${goal.deadline}T12:00:00`));
-    const total = Math.max(1, daysBetween(start, dl));
-    const today = startOfDay(new Date());
-    const steps = 10;
-    const arr: { label: string; ideal: number; actual: number | null }[] = [];
-      for (let i = 0; i <= steps; i++) {
-      const t = i / steps;
-      const date = new Date(start.getTime() + total * t * 86400000);
-      const ideal = goal.target * t;
-      const actual = date <= today ? Math.round(actualAt(goal, date)) : null;
-      arr.push({
-        label: fmtDate(date),
-        ideal: Math.round(ideal),
-        actual,
-      });
-    }
-    return arr;
-  }, [goal]);
-
-  
-  return (
-    <div className="rounded-2xl bg-white/15 backdrop-blur-sm p-3 space-y-3">
-      {pace && pace.remaining > 0 && (
-        <>
-          <div className="grid grid-cols-3 gap-2 text-center">
-            <PaceBox label="Por día" value={fmt2(pace.perDay)} />
-            <PaceBox label="Por semana" value={fmt2(pace.perWeek)} />
-            <PaceBox label="Por mes" value={fmt2(pace.perMonth)} />
-          </div>
-          <p className="text-[10px] text-center opacity-80">
-            {pace.overdue ? "⚠️ Fecha vencida — " : ""}
-            Faltan {fmt(pace.remaining)} en {pace.days} día{pace.days === 1 ? "" : "s"}
-          </p>
-        </>
-      )}
-      {data.length > 0 && (
-        <div className="h-40 -mx-1">
-          <SimpleAreaChart
-            data={data}
-            xKey="label"
-            height={160}
-            maxY={goal.target}
-            series={[
-              { key: "ideal", label: "Plan ideal", color: "#ffffff88", type: "area", formatter: (v) => (v == null ? "—" : fmt(Number(v))) },
-              { key: "actual", label: "Actual", color: "#ffffff", type: "line", formatter: (v) => fmt(Number(v)) },
-            ]}
-            referenceLines={[{ value: goal.target, label: "Meta" }]}
-          />
-        </div>
-      )}
-      {!goal.deadline && (
-        <p className="text-[11px] text-center opacity-80">Añade una fecha límite para ver el plan recomendado y el gráfico.</p>
-      )}
-    </div>
-  );
-}
-
-function CalendarioTab({ goal, onContribute, accounts }: { goal: Goal; onContribute: (amount: number, date?: string, accountId?: string) => void; accounts: Account[] }) {
-  const [selected, setSelected] = useState<Date | undefined>(new Date());
-  const [amount, setAmount] = useState("");
-  const [accountId, setAccountId] = useState<string | undefined>(accounts[0]?.id);
-  const pace = paceFor(goal);
-
-  const contribsByDay = useMemo(() => {
-    const m = new Map<string, number>();
-    (goal.contributions ?? []).forEach((c) => {
-      const k = ymd(startOfDay(parseDateLocal(c.date)));
-      m.set(k, (m.get(k) ?? 0) + c.amount);
-    });
-    return m;
-  }, [goal.contributions]);
-
-  const contribDays = useMemo(() => Array.from(contribsByDay.keys()).map((k) => new Date(`${k}T12:00:00`)), [contribsByDay]);
-
-  const recommended = pace?.perDay ?? 0;
-  const dayKey = selected ? ymd(startOfDay(selected)) : null;
-  const dayContrib = dayKey ? (contribsByDay.get(dayKey) ?? 0) : 0;
-
-  return (
-    <div className="rounded-2xl bg-card text-card-foreground p-3 space-y-3 shadow-sm">
-      <Calendar
-        mode="single"
-        selected={selected}
-        onSelect={setSelected}
-        modifiers={{ contributed: contribDays }}
-        modifiersClassNames={{ contributed: "ring-2 ring-success rounded-md font-bold" }}
-        className={cn("p-0 pointer-events-auto mx-auto")}
-      />
-      {selected && (
-        <div className="rounded-xl bg-muted p-3 space-y-2">
-          <div className="flex items-center justify-between text-xs">
-            <span className="font-semibold">{fmtDate(selected)}</span>
-            {dayContrib > 0 && <span className="text-success font-bold">+{fmt(dayContrib)}</span>}
-          </div>
-          <div className="flex items-center justify-between text-[11px] text-muted-foreground">
-            <span>Recomendado:</span>
-            <span className="font-bold text-foreground">{recommended > 0 ? fmt2(recommended) : "—"}</span>
-          </div>
-          <div>
-            <Label className="text-[10px] uppercase font-bold text-muted-foreground">Cuenta origen</Label>
-            <Select value={accountId} onValueChange={setAccountId}>
-              <SelectTrigger className="h-9 rounded-xl mt-1 text-xs">
-                <SelectValue placeholder="Seleccionar cuenta" />
-              </SelectTrigger>
-              <SelectContent>
-                {accounts.map((a) => (
-                  <SelectItem key={a.id} value={a.id}>{a.name}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-          <div className="flex gap-2">
-            <Input type="number" value={amount} onChange={(e) => setAmount(e.target.value)}
-              placeholder={recommended > 0 ? recommended.toFixed(0) : "Monto"} className="h-10 rounded-xl" />
-            <Button
-              type="button"
-              onClick={() => {
-                const v = parseFloat(amount) || recommended;
-                if (!v) { toast.error("Ingresa un monto"); return; }
-                const d = new Date(selected); d.setHours(12, 0, 0, 0);
-                onContribute(v, d.toISOString(), accountId);
-                setAmount("");
-                toast.success(`Aporte de ${fmt(v)} registrado`);
-              }}
-              className="h-10 rounded-xl gradient-primary text-primary-foreground border-0 font-bold">
-              <Plus className="size-4 mr-1" />Registrar
-            </Button>
-          </div>
-        </div>
-      )}
-      <p className="text-[10px] text-muted-foreground text-center">
-        <CalendarDays className="inline size-3 mr-1" />
-        Días con aporte aparecen marcados en verde
-      </p>
-    </div>
-  );
-}
-
-function SimularTab({ goal }: { goal: Goal }) {
-  const pace = paceFor(goal);
-  const recommended = pace?.perDay ?? 0;
-  const [perDay, setPerDay] = useState<number>(Math.max(1, Math.round(recommended || 50)));
-
-  const data = useMemo(() => {
-    if (!goal.deadline) return [] as any[];
-    const start = startOfDay(parseDateLocal(goal.createdAt ?? new Date().toISOString()));
-    const dl = startOfDay(new Date(`${goal.deadline}T12:00:00`));
-    const today = startOfDay(new Date());
-    const total = Math.max(1, daysBetween(start, dl));
-    const steps = 12;
-    const arr: any[] = [];
-      for (let i = 0; i <= steps; i++) {
-      const t = i / steps;
-      const date = new Date(start.getTime() + total * t * 86400000);
-      const ideal = goal.target * t;
-      const actualUpToToday = date <= today ? actualAt(goal, date) : actualAt(goal, today);
-      const futureDays = Math.max(0, daysBetween(today, date));
-      const sim = actualUpToToday + perDay * futureDays;
-      arr.push({
-        label: fmtDate(date),
-        ideal: Math.round(ideal),
-        simulado: Math.round(Math.min(sim, goal.target * 2)), // Increased limit for visualization
-      });
-    }
-    return arr;
-  }, [goal, perDay]);
-
-  // Will the simulation hit target by deadline?
-  const projection = useMemo(() => {
-    const today = startOfDay(new Date());
-    const dl = goal.deadline ? startOfDay(new Date(`${goal.deadline}T12:00:00`)) : null;
-    if (!dl) return null;
-    const future = Math.max(0, daysBetween(today, dl));
-    const projected = actualAt(goal, today) + perDay * future;
-    const surplus = projected - goal.target;
-    const remaining = Math.max(0, goal.target - actualAt(goal, today));
-    const daysToHit = perDay > 0 ? Math.ceil(remaining / perDay) : Infinity;
-    const hitDate = perDay > 0 && Number.isFinite(daysToHit)
-      ? new Date(today.getTime() + daysToHit * 86400000)
-      : null;
-    return { projected, surplus, hitDate };
-  }, [goal, perDay]);
-
-  return (
-    <div className="rounded-2xl bg-white/15 backdrop-blur-sm p-3 space-y-3">
-      <div>
-        <div className="flex items-center justify-between text-[11px] font-semibold">
-          <span>Aporte por día</span>
-          <span className="font-extrabold">{fmt2(perDay)}</span>
-        </div>
-        <Slider min={0} max={Math.max(1000, Math.round((recommended || 100) * 4))} step={10}
-          value={[perDay]} onValueChange={(v) => setPerDay(v[0])} className="mt-2" />
-        {recommended > 0 && (
-          <p className="text-[10px] opacity-80 mt-1">Recomendado: {fmt2(recommended)} / día</p>
-        )}
-      </div>
-
-      {projection && (
-        <div className="rounded-xl bg-white/20 p-2 text-[11px] space-y-0.5">
-          <div className="flex justify-between"><span>Proyección a la fecha límite:</span><span className="font-bold">{fmt(projection.projected)}</span></div>
-          {projection.surplus >= 0
-            ? <p className="font-bold">✅ Llegas {projection.hitDate ? `el ${fmtDate(projection.hitDate)}` : "a tiempo"} con {fmt(projection.surplus)} extra</p>
-            : <p className="font-bold">⚠️ Te faltarán {fmt(Math.abs(projection.surplus))}</p>}
-        </div>
-      )}
-
-      {data.length > 0 && (
-        <div className="h-40 -mx-1">
-          <SimpleAreaChart
-            data={data}
-            xKey="label"
-            height={160}
-            maxY={Math.max(goal.target, ...data.map((d: any) => d.simulado))}
-            series={[
-              { key: "ideal", label: "Ideal", color: "#ffffff88", type: "line", formatter: (v) => fmt(Number(v)) },
-              { key: "simulado", label: "Simulado", color: "#ffffff", type: "area", formatter: (v) => fmt(Number(v)) },
-            ]}
-            referenceLines={[{ value: goal.target, label: "Meta" }]}
-          />
-        </div>
-      )}
-    </div>
-  );
-}
-
-function PaceBox({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="rounded-xl bg-white/20 px-2 py-1.5">
-      <p className="text-micro uppercase tracking-wide opacity-80 truncate">{label}</p>
-      <p className="text-xs font-extrabold leading-tight truncate">{value}</p>
-    </div>
-  );
-}
-
-function ContributeBtn({ label, onClick }: { label: string; onClick: () => void }) {
-  return <button onClick={onClick} className="flex-1 h-9 rounded-xl bg-white/25 hover:bg-white/35 backdrop-blur-sm text-xs font-bold transition active:scale-95">{label}</button>;
-}
-
-function ContribCustom({ onAdd, negative, accounts }: { onAdd: (v: number, accountId?: string) => void; negative?: boolean; accounts: Account[] }) {
-  const [open, setOpen] = useState(false);
-  const [v, setV] = useState("");
-  const [accountId, setAccountId] = useState<string | undefined>(accounts[0]?.id);
-
-  return (
-    <Dialog open={open} onOpenChange={setOpen}>
-      <button
-        type="button"
-        onClick={() => setOpen(true)}
-        aria-label={negative ? "Retirar monto personalizado" : "Aporte personalizado"}
-        className={cn(
-          "rounded-2xl bg-white/25 hover:bg-white/35 font-bold transition flex items-center justify-center active:scale-95",
-          negative ? "size-9 rounded-xl text-xs" : "h-14 w-full text-base"
-        )}
-      >
-        {negative ? <Minus className="size-4" /> : "···"}
-      </button>
-      <DialogContent className="rounded-3xl">
-        <DialogHeader>
-          <DialogTitle>{negative ? "Retirar de meta" : "Aportar a meta"}</DialogTitle>
-          <DialogDescription className="sr-only">Formulario para registrar monto a la meta</DialogDescription>
-        </DialogHeader>
-        <div className="space-y-4 pt-2">
-          <div>
-            <Label className="text-xs">Monto</Label>
-            <Input autoFocus type="number" value={v} onChange={(e) => setV(e.target.value)} placeholder="0.00" className="h-14 text-2xl font-bold rounded-2xl" />
-          </div>
-          <div>
-            <Label className="text-xs">{negative ? "Cuenta destino" : "Cuenta origen"}</Label>
-            <Select value={accountId} onValueChange={setAccountId}>
-              <SelectTrigger className="h-12 rounded-2xl">
-                <SelectValue placeholder="Seleccionar cuenta" />
-              </SelectTrigger>
-              <SelectContent>
-                {accounts.map((a) => (
-                  <SelectItem key={a.id} value={a.id}>{a.name}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-          <Button onClick={() => { const n = parseFloat(v); if (n) { onAdd(n, accountId); setOpen(false); setV(""); toast.success(negative ? "Retiro registrado" : "¡Aporte registrado!"); } }}
-            className="w-full h-12 rounded-2xl gradient-primary text-primary-foreground border-0 font-bold">{negative ? "Retirar" : "Aportar"}</Button>
-        </div>
-      </DialogContent>
-    </Dialog>
-  );
-}
-
-function GoalForm({ initial, defaultFolderId, folders, onSave }: { initial: Goal | null; defaultFolderId?: string; folders: GoalFolder[]; onSave: (g: Omit<Goal, "id">) => void }) {
-  const [name, setName] = useState(initial?.name ?? "");
-  const [target, setTarget] = useState(initial?.target ? String(initial.target) : "");
-  const [saved, setSaved] = useState(initial?.saved ? String(initial.saved) : "0");
-  const [icon, setIcon] = useState<IconRef>(initial?.icon ?? { kind: "emoji", value: "🎯" });
-  const [color, setColor] = useState(initial?.color ?? PALETTES[0]);
-  const [deadline, setDeadline] = useState(initial?.deadline?.slice(0, 10) ?? "");
-  const [purchaseUrl, setPurchaseUrl] = useState(initial?.purchaseUrl ?? "");
-  const [folderId, setFolderId] = useState<string>(initial?.folderId ?? defaultFolderId ?? "uncategorized");
-
-  const flattenedFolders = useMemo(() => {
-    const result: { id: string, name: string, level: number }[] = [];
-    const roots = folders.filter(f => !f.parentId).sort((a, b) => a.order - b.order);
-    const traverse = (f: GoalFolder, level: number) => {
-      result.push({ id: f.id, name: f.name, level });
-      folders.filter(child => child.parentId === f.id)
-             .sort((a, b) => a.order - b.order)
-             .forEach(child => traverse(child, level + 1));
-    };
-    roots.forEach(r => traverse(r, 0));
-    return result;
-  }, [folders]);
-
-  return (
-    <form onSubmit={(e) => {
-      e.preventDefault();
-      const t = parseFloat(target);
-      const s = parseFloat(saved) || 0;
-      if (!t || !name) { toast.error("Completa nombre y monto"); return; }
-      onSave({
-        name, target: t, saved: s,
-        emoji: icon.kind === "emoji" ? icon.value : "🎯",
-        color,
-        deadline: deadline || undefined,
-        icon,
-        purchaseUrl: purchaseUrl.trim() || undefined,
-        createdAt: initial?.createdAt,
-        contributions: initial?.contributions,
-        folderId: folderId === "uncategorized" ? undefined : folderId,
-      });
-    }} className="space-y-3 lg:grid lg:grid-cols-2 lg:gap-x-4 lg:gap-y-3 lg:space-y-0">
-      <div className="lg:col-span-2 flex justify-center"><IconPicker value={icon} onChange={setIcon} /></div>
-      <div className="lg:col-span-2"><Label className="text-xs">Nombre</Label><Input autoFocus value={name} onChange={(e) => setName(e.target.value)} placeholder="Ej. Vacaciones a Cancún" className="h-11 rounded-2xl" /></div>
-      <div><Label className="text-xs">Objetivo</Label><Input type="number" value={target} onChange={(e) => setTarget(e.target.value)} placeholder="0.00" className="h-12 text-lg font-bold rounded-2xl" /></div>
-      <div><Label className="text-xs">Ya ahorrado</Label><Input type="number" value={saved} onChange={(e) => setSaved(e.target.value)} placeholder="0" className="h-12 text-lg font-bold rounded-2xl" /></div>
-      <div className="lg:col-span-2">
-        <Label className="text-xs">Carpeta</Label>
-        <Select value={folderId} onValueChange={setFolderId}>
-          <SelectTrigger className="h-11 rounded-2xl bg-muted/50 border-0">
-            <SelectValue placeholder="Sin carpeta">
-              {folderId === "uncategorized" ? "Sin carpeta" : folders.find(f => f.id === folderId)?.name}
-            </SelectValue>
-          </SelectTrigger>
-          <SelectContent className="rounded-2xl max-h-[40vh]">
-            <SelectItem value="uncategorized">Sin carpeta</SelectItem>
-            {flattenedFolders.map(f => (
-              <SelectItem key={f.id} value={f.id}>
-                <span className="opacity-50 mr-1">{Array(f.level).fill("\u00A0\u00A0\u00A0\u00A0").join("")}{f.level > 0 ? "└ " : ""}</span>
-                {f.name}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      </div>
-      <div><Label className="text-xs">Fecha límite (opcional)</Label><Input type="date" value={deadline} onChange={(e) => setDeadline(e.target.value)} className="h-11 rounded-2xl" /></div>
-      <div>
-        <Label className="text-xs flex items-center gap-1"><ExternalLink className="size-3" /> Link de compra (opcional)</Label>
-        <Input type="url" value={purchaseUrl} onChange={(e) => setPurchaseUrl(e.target.value)} placeholder="https://..." className="h-11 rounded-2xl" />
-        <p className="text-[10px] text-muted-foreground mt-1">Toca el icono de la meta para abrirlo</p>
-      </div>
-      <div className="lg:col-span-2">
-        <Label className="text-xs">Color</Label>
-        <div className="flex gap-2 mt-1">
-          {PALETTES.map((p) => <button key={p} type="button" onClick={() => setColor(p)} className={`flex-1 h-10 rounded-xl ${p} transition ${color === p ? "ring-4 ring-offset-2 ring-primary" : ""}`} />)}
-        </div>
-      </div>
-      <Button type="submit" className="w-full h-12 rounded-2xl gradient-primary text-primary-foreground border-0 shadow-glow font-bold lg:col-span-2">{initial ? "Guardar cambios" : "Crear meta"}</Button>
-    </form>
   );
 }
