@@ -37,10 +37,13 @@ export default function Historial() {
   const [confirmOpen, setConfirmOpen] = useState(false);
 
   return (
-    <div className="flex flex-col h-screen overflow-hidden bg-background">
+    <div className="flex flex-col min-h-[100dvh] pb-[calc(7rem+env(safe-area-inset-bottom))] overflow-hidden bg-background">
       <Header title="Historial" subtitle="Cambios y ediciones" action={
         changeLog.length > 0 ? (
-          <Button onClick={() => setConfirmOpen(true)} variant="secondary" className="rounded-xl h-10 text-sm"><Trash2 className="size-4 mr-1.5" />Limpiar</Button>
+          <Button onClick={() => setConfirmOpen(true)} variant="secondary" className="rounded-xl h-10 text-sm px-3 shrink-0" aria-label="Limpiar historial">
+            <Trash2 className="size-4 min-[360px]:mr-1.5" />
+            <span className="hidden min-[360px]:inline">Limpiar</span>
+          </Button>
         ) : undefined
       } />
 
@@ -87,7 +90,7 @@ export default function Historial() {
                   {e.changes && e.changes.length > 0 && (
                     <ul className="mt-2 space-y-0.5">
                       {e.changes.slice(0, 2).map((c, i) => (
-                        <li key={i} className="text-xs text-muted-foreground truncate">
+                        <li key={i} className="text-xs text-muted-foreground break-words line-clamp-2">
                           <span className="font-semibold text-foreground/70">{c.field}</span>: <span className="line-through opacity-50">{fmtVal(c.from)}</span> <span className="text-foreground font-medium">{fmtVal(c.to)}</span>
                         </li>
                       ))}

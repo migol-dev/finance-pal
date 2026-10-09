@@ -39,10 +39,10 @@ export default function SimpleAreaChart({
   }, []);
 
   const margin = { top: 8, right: 8, bottom: 24, left: 8 };
-  const w = Math.max(200, width || 600);
+  const w = width > 0 ? width : 300;
   const h = height;
-  const chartW = w - margin.left - margin.right;
-  const chartH = h - margin.top - margin.bottom;
+  const chartW = Math.max(10, w - margin.left - margin.right);
+  const chartH = Math.max(10, h - margin.top - margin.bottom);
   const memo = React.useMemo(() => {
     const n = data.length || 1;
     // determine value range
@@ -88,19 +88,31 @@ export default function SimpleAreaChart({
 
   const [hoverIdx, setHoverIdx] = React.useState<number | null>(null);
 
+  const handlePointer = (clientX: number, target: SVGRectElement) => {
+    const rect = target.getBoundingClientRect();
+    const px = clientX - rect.left;
+    const idx = Math.round((px / chartW) * (memo.n - 1));
+    setHoverIdx(Math.max(0, Math.min(memo.n - 1, idx)));
+  };
+
   return (
-    <div ref={ref} style={{ width: "100%" }} className="relative">
+    <div ref={ref} style={{ width: "100%" }} className="relative max-w-full overflow-hidden">
       {showLegend && (
-        <div className="flex gap-3 items-center mb-2">
+        <div className="flex flex-wrap gap-3 items-center mb-2">
           {series.map((s) => (
             <div key={s.key} className="flex items-center gap-1 text-xs">
               <span style={{ width: 12, height: 8, background: s.color ?? "#000", display: "inline-block", borderRadius: 2 }} />
-              <span>{s.label ?? s.key}</span>
+              <span className="truncate max-w-[120px]">{s.label ?? s.key}</span>
             </div>
           ))}
         </div>
       )}
-      <svg width={w} height={h}>
+      <svg
+        width={w}
+        height={h}
+        viewBox={`0 0 ${w} ${h}`}
+        className="block w-full max-w-full h-auto overflow-hidden touch-pan-x"
+      >
         {/* grid lines */}
         {[0, 0.25, 0.5, 0.75, 1].map((t) => (
           <line key={t} x1={margin.left} x2={margin.left + chartW} y1={margin.top + t * chartH} y2={margin.top + t * chartH} stroke="var(--border)" strokeOpacity={0.12} />
@@ -145,24 +157,34 @@ export default function SimpleAreaChart({
         })}
 
         {/* overlay for pointer events */}
-        <rect x={margin.left} y={margin.top} width={chartW} height={chartH} fill="transparent"
-          onMouseMove={(e) => {
-            const rect = (e.target as SVGRectElement).getBoundingClientRect();
-            const px = e.clientX - rect.left;
-            const idx = Math.round((px / chartW) * (memo.n - 1));
-            setHoverIdx(Math.max(0, Math.min(memo.n - 1, idx)));
-          }}
-          onMouseLeave={() => setHoverIdx(null)} />
+        <rect
+          x={margin.left}
+          y={margin.top}
+          width={chartW}
+          height={chartH}
+          fill="transparent"
+          onPointerMove={(e) => handlePointer(e.clientX, e.currentTarget)}
+          onPointerDown={(e) => handlePointer(e.clientX, e.currentTarget)}
+          onPointerLeave={() => setHoverIdx(null)}
+        />
       </svg>
 
       {/* tooltip */}
       {hoverIdx != null && (
-        <div style={{ position: "absolute", left: 8 + (hoverIdx / Math.max(1, memo.n - 1)) * chartW, top: 8 }} className="pointer-events-none bg-card border border-border rounded-md p-2 text-xs">
+        <div
+          style={{
+            position: "absolute",
+            left: hoverIdx > (memo.n - 1) / 2 ? undefined : margin.left + (hoverIdx / Math.max(1, memo.n - 1)) * chartW,
+            right: hoverIdx > (memo.n - 1) / 2 ? Math.max(8, w - (margin.left + (hoverIdx / Math.max(1, memo.n - 1)) * chartW)) : undefined,
+            top: 8,
+          }}
+          className="pointer-events-none bg-card border border-border rounded-xl p-2.5 text-xs max-w-[70vw] z-10 whitespace-nowrap shadow-md backdrop-blur-sm"
+        >
           <div className="font-semibold">{String(data[hoverIdx]?.[xKey] ?? "")}</div>
           {series.map((s) => {
             const v = data[hoverIdx]?.[s.key];
             if (v == null) return null;
-            return <div key={s.key} className="flex items-center gap-2"><span style={{ width:10,height:8,background:s.color||"#000" }} /> <span>{s.label ?? s.key}:</span> <span className="font-medium">{s.formatter ? s.formatter(v) : String(v)}</span></div>;
+            return <div key={s.key} className="flex items-center gap-2 mt-0.5"><span style={{ width:10,height:8,background:s.color||"#000" }} /> <span>{s.label ?? s.key}:</span> <span className="font-medium">{s.formatter ? s.formatter(v) : String(v)}</span></div>;
           })}
         </div>
       )}

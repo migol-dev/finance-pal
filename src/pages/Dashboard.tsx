@@ -234,15 +234,15 @@ export default function Dashboard() {
           </div>
         </div>
         <div className="flex items-center gap-2">
-          <Link to="/anual" aria-label="Resumen anual" className="size-9 rounded-xl bg-muted flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted/80 transition">
-            <BarChart3 className="size-4" />
+          <Link to="/anual" aria-label="Resumen anual" className="size-10 rounded-xl bg-muted flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted/80 transition active:scale-95">
+            <BarChart3 className="size-4.5" />
           </Link>
           <button
             onClick={() => setHide((h) => !h)}
             aria-label={hide ? "Mostrar saldos" : "Ocultar saldos"}
-            className="size-9 rounded-xl bg-muted flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted/80 transition"
+            className="size-10 rounded-xl bg-muted flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted/80 transition active:scale-95"
           >
-            {hide ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
+            {hide ? <EyeOff className="size-4.5" /> : <Eye className="size-4.5" />}
           </button>
         </div>
       </header>
@@ -255,12 +255,12 @@ export default function Dashboard() {
         initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}
         className="mx-5 mt-3 rounded-2xl gradient-primary text-primary-foreground p-5 shadow-glow relative overflow-hidden"
       >
-        <div className="absolute -top-8 -right-8 size-32 rounded-full bg-white/10 blur-2xl" />
-        <div className="absolute -bottom-8 -left-6 size-24 rounded-full bg-white/10 blur-2xl" />
+        <div className="absolute -top-8 -right-8 size-32 rounded-full bg-white/10 blur-2xl pointer-events-none" />
+        <div className="absolute -bottom-8 -left-6 size-24 rounded-full bg-white/10 blur-2xl pointer-events-none" />
         <div className="relative">
           <p className="text-xs uppercase tracking-wider font-semibold opacity-80">Neto acumulado</p>
-          <p className="text-4xl font-extrabold tracking-tight mt-1 truncate">{mask(fmt(monthStats.cumulativeNet))}</p>
-          <div className="grid grid-cols-3 gap-2 mt-5">
+          <p className="text-3xl min-[400px]:text-4xl font-extrabold tracking-tight mt-1 truncate min-w-0 tabular-nums">{mask(fmt(monthStats.cumulativeNet))}</p>
+          <div className="grid grid-cols-1 min-[380px]:grid-cols-3 gap-2 mt-5">
             <MiniStat icon={<TrendingUp className="size-3.5" />} label="Ingresos" value={mask(fmt(monthStats.income))} />
             <MiniStat icon={<TrendingDown className="size-3.5" />} label="Gastos" value={mask(fmt(monthStats.expense))} />
             <MiniStat icon={<PiggyBank className="size-3.5" />} label="Ahorro" value={mask(fmt(monthStats.saving))} />
@@ -323,7 +323,7 @@ export default function Dashboard() {
                       <p className="font-semibold text-sm truncate">{t.concept}</p>
                       <p className="text-xs text-muted-foreground">{fmtDate(t.date)}</p>
                     </div>
-                    <p className={`font-bold text-sm ${t.type === "income" ? "text-success" : t.type === "saving" ? "text-secondary" : t.type === "transfer" ? "text-primary" : "text-destructive"}`}>
+                    <p className={`font-bold text-sm shrink-0 whitespace-nowrap tabular-nums ${t.type === "income" ? "text-success" : t.type === "saving" ? "text-secondary" : t.type === "transfer" ? "text-primary" : "text-destructive"}`}>
                       {t.type === "income" ? "+" : t.type === "transfer" ? "⇄" : "-"}{mask(fmt(t.amount))}
                     </p>
                   </div>
@@ -422,8 +422,8 @@ export default function Dashboard() {
                       <p className="font-semibold text-sm truncate">{u.concept}</p>
                       <p className="text-xs text-muted-foreground">{u.payDay ? `Día ${u.payDay}` : (typeof u.payWeekDay === "number" ? ["Dom","Lun","Mar","Mie","Jue","Vie","Sáb"][u.payWeekDay] : "")}</p>
                     </div>
-                    <div className="text-right">
-                      <p className="font-bold text-sm">{mask(fmt(u.amount))}</p>
+                    <div className="text-right shrink-0">
+                      <p className="font-bold text-sm whitespace-nowrap tabular-nums">{mask(fmt(u.amount))}</p>
                       <p className="text-micro text-warning font-semibold">en {u.daysLeft}d</p>
                     </div>
                   </div>
