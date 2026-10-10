@@ -2,6 +2,7 @@ import { memo, useState } from "react";
 import { useFinanceData } from "@/hooks/useFinanceData";
 import { useFinance } from "@/store/finance-store";
 import { isEncryptionAvailable } from "@/lib/encrypted-storage";
+import { getCurrentVersion } from "@/lib/version-check";
 import { AjustesHeader } from "../AjustesHeader";
 import { SectionProps } from "../types";
 import { ShieldCheck, RotateCcw, AlertTriangle, Lock, Cpu, Sparkles } from "lucide-react";
@@ -69,7 +70,7 @@ export const SeguridadSection = memo(function SeguridadSection({ onBack }: Secti
         </p>
         <div className="pt-2">
           <span className="px-3 py-1 rounded-full bg-primary/10 text-primary font-mono text-xs font-bold">
-            Versión actual: v1.19.38
+            Versión actual: v{getCurrentVersion()}
           </span>
         </div>
       </div>

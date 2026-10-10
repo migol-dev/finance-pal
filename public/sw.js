@@ -1,4 +1,4 @@
-const CACHE_VERSION = 'fp-v1.19.38';
+const CACHE_VERSION = 'fp-v1.20.2';
 
 self.addEventListener('install', (event) => {
   self.skipWaiting();

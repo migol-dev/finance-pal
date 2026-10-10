@@ -15,6 +15,7 @@ import { useFinanceData } from "@/hooks/useFinanceData";
 import { useFinance } from "@/store/finance-store";
 import { useAuth } from "@/context/AuthContext";
 import { isSupabaseEnabled } from "@/lib/supabase";
+import { getCurrentVersion } from "@/lib/version-check";
 import { AjustesSectionId, AjustesCategoryMeta } from "./types";
 import { Header } from "@/components/app/Header";
 
@@ -93,7 +94,7 @@ export const AjustesHub = memo(function AjustesHub({ onSelectSection }: AjustesH
       title: "Seguridad y Sistema",
       description: "Restablecer datos, diagnóstico y versión",
       icon: ShieldCheck,
-      badge: "v1.19.38",
+      badge: `v${getCurrentVersion()}`,
       colorClass: "bg-orange-500/10 text-orange-500",
     },
   ];
@@ -177,7 +178,7 @@ export const AjustesHub = memo(function AjustesHub({ onSelectSection }: AjustesH
       {/* Footer Info */}
       <div className="text-center pt-4 pb-12 text-xs text-muted-foreground flex items-center justify-center gap-2">
         <Sparkles className="size-3.5 text-primary" />
-        <span>Finance Pal v1.19.38 • Todos tus datos son seguros y locales</span>
+        <span>Finance Pal v{getCurrentVersion()} • Todos tus datos son seguros y locales</span>
       </div>
     </div>
   );
