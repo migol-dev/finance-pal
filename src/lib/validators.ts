@@ -21,7 +21,17 @@ const denominationSchema: z.ZodType<Denomination> = z.object({
 
 const paymentMethodSchema = z.enum(['cash', 'transfer', 'card', 'other']) satisfies z.ZodEnum<[PaymentMethod, ...PaymentMethod[]]>;
 const itemTypeSchema = z.enum(['income_fixed', 'expense_fixed', 'expense_variable', 'saving_fixed']) satisfies z.ZodEnum<[ItemType, ...ItemType[]]>;
-const frequencySchema = z.enum(['monthly', 'weekly', 'yearly', 'one_time', 'bimonthly', 'quarterly', 'fourmonthly', 'biannual']) satisfies z.ZodEnum<[Frequency, ...Frequency[]]>;
+export const frequencySchema = z.enum([
+  'monthly',
+  'biweekly',
+  'weekly',
+  'yearly',
+  'one_time',
+  'bimonthly',
+  'quarterly',
+  'fourmonthly',
+  'biannual',
+]) satisfies z.ZodEnum<[Frequency, ...Frequency[]]>;
 const prioritySchema = z.enum(['low', 'medium', 'high']) satisfies z.ZodEnum<[Priority, ...Priority[]]>;
 const accountTypeSchema = z.enum(['bank', 'cash', 'other']) satisfies z.ZodEnum<[AccountType, ...AccountType[]]>;
 const transactionTypeSchema = z.enum(['income', 'expense', 'saving', 'transfer']);
@@ -75,7 +85,7 @@ export const fixedItemSchema = z.object({
   startDate: z.string().datetime({ offset: true, local: true }).or(z.string().date()),
   endDate: z.string().datetime({ offset: true, local: true }).or(z.string().date()),
   priority: prioritySchema,
-  payDay: z.number().int().min(1).max(28).optional(),
+  payDay: z.number().int().min(1).max(31, 'Día de pago debe ser entre 1 y 31').optional(),
   payWeekDay: z.number().int().min(0).max(6).optional(),
   icon: iconRefSchema.optional(),
   paymentMethod: paymentMethodSchema.optional(),
@@ -85,14 +95,14 @@ export const fixedItemSchema = z.object({
     if (data.frequency === 'monthly' || data.frequency === 'bimonthly' || 
         data.frequency === 'quarterly' || data.frequency === 'fourmonthly' || 
         data.frequency === 'biannual') {
-      return data.payDay !== undefined && data.payDay >= 1 && data.payDay <= 28;
+      return data.payDay !== undefined && data.payDay >= 1 && data.payDay <= 31;
     }
     if (data.frequency === 'weekly') {
       return data.payWeekDay !== undefined && data.payWeekDay >= 0 && data.payWeekDay <= 6;
     }
     return true;
   },
-  { message: 'payDay required for monthly frequencies (1-28), payWeekDay for weekly (0-6)', path: ['payDay'] }
+  { message: 'Día de pago debe ser entre 1 y 31', path: ['payDay'] }
 );
 
 export const goalSchema = z.object({

@@ -71,18 +71,20 @@ export function DataConflictDialog({ onUpload, onDownload }: Props) {
 
       const mapTx = (r: any) => ({
         id: r.id, type: r.type, category: r.category, concept: r.concept,
-        amount: Number(r.amount), date: r.date, note: r.note,
-        icon: r.icon, paymentMethod: r.payment_method, fixedId: r.fixed_id,
-        accountId: r.account_id, transferToAccountId: r.transfer_to_account_id,
-        externalPayee: r.external_payee, receipt: r.receipt,
+        amount: Number(r.amount), date: r.date, note: r.note ?? undefined,
+        icon: r.icon ?? undefined, paymentMethod: r.payment_method ?? undefined, fixedId: r.fixed_id ?? undefined,
+        accountId: r.account_id ?? undefined, transferToAccountId: r.transfer_to_account_id ?? undefined,
+        externalPayee: r.external_payee ?? undefined, receipt: r.receipt ?? undefined,
       });
 
       const mapFixed = (r: any) => ({
         id: r.id, type: r.type, category: r.category, concept: r.concept,
-        amount: Number(r.amount), frequency: r.frequency, active: r.active,
-        note: r.note, startDate: r.start_date, endDate: r.end_date,
-        priority: r.priority, payDay: r.pay_day, payWeekDay: r.pay_week_day,
-        icon: r.icon, paymentMethod: r.payment_method, accountId: r.account_id,
+        amount: Number(r.amount),
+        frequency: (r.frequency === "annual" ? "yearly" : r.frequency),
+        active: r.active,
+        note: r.note ?? undefined, startDate: r.start_date, endDate: r.end_date,
+        priority: r.priority, payDay: r.pay_day ?? undefined, payWeekDay: r.pay_week_day ?? undefined,
+        icon: r.icon ?? undefined, paymentMethod: r.payment_method ?? undefined, accountId: r.account_id ?? undefined,
       });
 
       const mapGoal = (r: any) => ({

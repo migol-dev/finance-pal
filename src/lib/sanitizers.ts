@@ -139,16 +139,17 @@ export function sanitizeIcon(v: unknown): IconRef | undefined {
 export function sanitizeFixed(raw: unknown): FixedItem | null {
     if (!isObj(raw) || !isStr(raw.concept) || !isNum(raw.amount)) return null;
     const types = ["income_fixed", "expense_fixed", "expense_variable", "saving_fixed"] as const;
-    const freqs = ["monthly", "weekly", "yearly", "one_time", "bimonthly", "quarterly", "fourmonthly", "biannual"] as const;
+    const freqs = ["monthly", "biweekly", "weekly", "yearly", "one_time", "bimonthly", "quarterly", "fourmonthly", "biannual"] as const;
     const prios = ["low", "medium", "high"] as const;
     const pays = ["cash", "transfer", "card", "other"] as const;
+    const rawFreq = raw.frequency === "annual" ? "yearly" : raw.frequency;
     return {
         id: isStr(raw.id) && isValidUUID(raw.id) ? raw.id : generateSecureId(),
         type: inSet(types, raw.type) ? raw.type : "expense_fixed",
         category: isStr(raw.category) ? raw.category : "Otros",
         concept: raw.concept,
         amount: raw.amount,
-        frequency: inSet(freqs, raw.frequency) ? raw.frequency : "monthly",
+        frequency: inSet(freqs, rawFreq) ? rawFreq : "monthly",
         active: isBool(raw.active) ? raw.active : true,
         note: isStr(raw.note) ? raw.note : undefined,
         startDate: isStr(raw.startDate) ? raw.startDate : new Date().toISOString(),

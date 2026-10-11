@@ -58,7 +58,7 @@ export function mapFixedItemFromDb(row: FixedItemRow): FixedItem {
     category: row.category,
     concept: row.concept,
     amount: Number(row.amount),
-    frequency: row.frequency as FixedItem['frequency'],
+    frequency: (row.frequency === 'annual' ? 'yearly' : row.frequency) as FixedItem['frequency'],
     active: row.active,
     note: row.note ?? undefined,
     startDate: row.start_date,
@@ -160,12 +160,20 @@ export async function deleteFixedItem(userId: string, id: string): Promise<void>
   }
 }
 
-export async function toggleFixedItemActive(id: string, active: boolean): Promise<void> {
-  const { error } = await supabase.from('fixed_items').update({ active }).eq("id", id).eq("user_id", userId);
+export async function toggleFixedItemActive(
+  userId: string,
+  id: string,
+  active: boolean,
+): Promise<void> {
+  const { error } = await supabase
+    .from('fixed_items')
+    .update({ active })
+    .eq("id", id)
+    .eq("user_id", userId);
   if (error) {
     throw new AppError(ErrorCodes.DB_UPDATE_FAILED, 'Error toggling fixed item', {
       originalError: error,
-      context: { fixedItemId: id, active },
+      context: { userId, fixedItemId: id, active },
     });
   }
 }

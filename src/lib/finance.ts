@@ -1,5 +1,14 @@
 export type ItemType = "income_fixed" | "expense_fixed" | "expense_variable" | "saving_fixed";
-export type Frequency = "monthly" | "weekly" | "yearly" | "one_time" | "bimonthly" | "quarterly" | "fourmonthly" | "biannual";
+export type Frequency =
+  | "monthly"
+  | "biweekly"
+  | "weekly"
+  | "yearly"
+  | "one_time"
+  | "bimonthly"
+  | "quarterly"
+  | "fourmonthly"
+  | "biannual";
 export type Priority = "low" | "medium" | "high";
 export type PaymentMethod = "cash" | "transfer" | "card" | "other";
 
@@ -57,7 +66,7 @@ export interface FixedItem {
   startDate: string;
   endDate: string;
   priority: Priority;
-  payDay?: number;     // day of month (1-28) - optional
+  payDay?: number;     // day of month (1-31) - optional
   payWeekDay?: number; // day of week (0=Sunday..6=Saturday) - optional
   icon?: IconRef;
   paymentMethod?: PaymentMethod;
@@ -161,6 +170,7 @@ export const TYPE_LABEL: Record<ItemType | "transfer", string> = {
 
 export const FREQ_LABEL: Record<Frequency, string> = {
   monthly: "Mensual",
+  biweekly: "Quincenal",
   weekly: "Semanal",
   yearly: "Anual",
   one_time: "Una vez",
@@ -178,9 +188,10 @@ export const MONTHS = [
 export const MONTHS_SHORT = ["Ene","Feb","Mar","Abr","May","Jun","Jul","Ago","Sep","Oct","Nov","Dic"];
 
 export function monthlyAmount(item: FixedItem): number {
-  if (!item.active) return 0;
+  if (!item || !item.active) return 0;
   switch (item.frequency) {
     case "monthly": return item.amount;
+    case "biweekly": return item.amount * 2;
     case "weekly": return item.amount * 4.345;
     case "yearly": return item.amount / 12;
     case "one_time": return 0;
@@ -188,6 +199,9 @@ export function monthlyAmount(item: FixedItem): number {
     case "quarterly": return item.amount / 3;
     case "fourmonthly": return item.amount / 4;
     case "biannual": return item.amount / 6;
+    default:
+      if ((item.frequency as string) === "annual") return item.amount / 12;
+      return 0;
   }
 }
 
@@ -199,20 +213,201 @@ export function isFixedActiveInMonth(item: FixedItem, year: number, month: numbe
   const monthStart = new Date(year, month, 1);
   const monthEnd = new Date(year, month + 1, 0, 23, 59, 59);
   if (end < monthStart || start > monthEnd) return false;
-  if (item.frequency === "yearly") {
+  const freq = (item.frequency as string) === "annual" ? "yearly" : item.frequency;
+  if (freq === "yearly") {
     return start.getMonth() === month;
   }
-  if (item.frequency === "one_time") {
+  if (freq === "one_time") {
     return start.getFullYear() === year && start.getMonth() === month;
   }
   // Periodic frequencies that hit only on certain months relative to startDate
   const monthsSinceStart = (year - start.getFullYear()) * 12 + (month - start.getMonth());
   if (monthsSinceStart < 0) return false;
-  if (item.frequency === "bimonthly") return monthsSinceStart % 2 === 0;
-  if (item.frequency === "quarterly") return monthsSinceStart % 3 === 0;
-  if (item.frequency === "fourmonthly") return monthsSinceStart % 4 === 0;
-  if (item.frequency === "biannual") return monthsSinceStart % 6 === 0;
+  if (freq === "bimonthly") return monthsSinceStart % 2 === 0;
+  if (freq === "quarterly") return monthsSinceStart % 3 === 0;
+  if (freq === "fourmonthly") return monthsSinceStart % 4 === 0;
+  if (freq === "biannual") return monthsSinceStart % 6 === 0;
   return true;
+}
+
+/**
+ * Genera un UUID v4 determinístico a partir de fixedId y la fecha YYYY-MM-DD (occISO).
+ * Garantiza idempotencia en memoria local y en upserts hacia Supabase/Postgres.
+ */
+export function buildScheduledTxId(fixedId: string, occISO: string): string {
+  const input = `scheduled:${fixedId}:${occISO}`;
+  const seeds = [0x811c9dc5, 0x9e3779b9, 0x85ebca6b, 0xc2b2ae35];
+  const hashes = seeds.map((seed, idx) => {
+    let h = seed ^ (idx * 0x27d4eb2d);
+    for (let i = 0; i < input.length; i++) {
+      h ^= input.charCodeAt(i);
+      h = Math.imul(h, 0x01000193);
+      h ^= h >>> 16;
+    }
+    return h >>> 0;
+  });
+  const bytes = new Uint8Array(16);
+  for (let i = 0; i < 4; i++) {
+    const val = hashes[i];
+    bytes[i * 4] = (val >>> 24) & 0xff;
+    bytes[i * 4 + 1] = (val >>> 16) & 0xff;
+    bytes[i * 4 + 2] = (val >>> 8) & 0xff;
+    bytes[i * 4 + 3] = val & 0xff;
+  }
+  bytes[6] = (bytes[6] & 0x0f) | 0x40; // version 4
+  bytes[8] = (bytes[8] & 0x3f) | 0x80; // variant 10xx
+  const hex = Array.from(bytes, (b) => b.toString(16).padStart(2, "0")).join("");
+  return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20, 32)}`;
+}
+
+/**
+ * Evalúa un concepto fijo activo y devuelve las transacciones programadas del periodo actual
+ * cuya fecha de cobro ya llegó o ya pasó (<= today) y que aún no existen en `transactions`.
+ */
+export function getDueOccurrencesForFixedItem(
+  f: FixedItem,
+  transactions: Transaction[],
+  now: Date = new Date(),
+): Transaction[] {
+  if (!f.active) return [];
+  const amount = Number(f.amount);
+  if (!Number.isFinite(amount) || amount <= 0) return [];
+
+  const pad = (n: number) => String(n).padStart(2, "0");
+  const toYMD = (d: Date) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+
+  const start = parseDateLocal(f.startDate);
+  const end = parseDateLocal(f.endDate);
+  if (isNaN(start.getTime()) || isNaN(end.getTime())) return [];
+
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 12, 0, 0);
+  const todayISO = toYMD(today);
+  const startISO = toYMD(start);
+  const endISO = toYMD(end);
+
+  if (todayISO < startISO || todayISO > endISO) return [];
+
+  const year = today.getFullYear();
+  const month = today.getMonth();
+  const daysInMonth = new Date(year, month + 1, 0).getDate();
+  const freq = (f.frequency as string) === "annual" ? "yearly" : f.frequency;
+  const isSinglePerMonthFreq = [
+    "monthly",
+    "bimonthly",
+    "quarterly",
+    "fourmonthly",
+    "biannual",
+    "yearly",
+    "one_time",
+  ].includes(freq);
+
+  const candidateDates: Date[] = [];
+
+  if (freq === "weekly" && typeof f.payWeekDay === "number" && Number.isFinite(f.payWeekDay)) {
+    const daysSincePayDay = (today.getDay() - f.payWeekDay + 7) % 7;
+    const occDate = new Date(year, month, today.getDate() - daysSincePayDay, 12, 0, 0);
+    const occISO = toYMD(occDate);
+    if (occISO >= startISO && occISO <= endISO) {
+      candidateDates.push(occDate);
+    }
+  } else if (freq === "biweekly") {
+    if (isFixedActiveInMonth(f, year, month)) {
+      const rawPayDay = typeof f.payDay === "number" && Number.isFinite(f.payDay) ? f.payDay : 1;
+      const baseDay = Math.min(Math.max(1, rawPayDay), daysInMonth);
+      const firstHalfDay = baseDay <= 15 ? baseDay : Math.max(1, baseDay - 15);
+      const secondHalfDay = Math.min(firstHalfDay + 15, daysInMonth);
+      const biweeklyDays = Array.from(new Set([firstHalfDay, secondHalfDay])).sort((a, b) => a - b);
+      for (const d of biweeklyDays) {
+        if (today.getDate() >= d) {
+          const occDate = new Date(year, month, d, 12, 0, 0);
+          const occISO = toYMD(occDate);
+          if (occISO >= startISO && occISO <= endISO) {
+            candidateDates.push(occDate);
+          }
+        }
+      }
+    }
+  } else if (
+    ["monthly", "bimonthly", "quarterly", "fourmonthly", "biannual", "yearly"].includes(freq)
+  ) {
+    if (isFixedActiveInMonth(f, year, month)) {
+      const rawPayDay =
+        typeof f.payDay === "number" && Number.isFinite(f.payDay) ? f.payDay : start.getDate();
+      const effectiveDay = Math.min(Math.max(1, rawPayDay), daysInMonth);
+      if (today.getDate() >= effectiveDay) {
+        const occDate = new Date(year, month, effectiveDay, 12, 0, 0);
+        const occISO = toYMD(occDate);
+        if (occISO <= endISO) {
+          candidateDates.push(occDate);
+        }
+      }
+    }
+  } else if (freq === "one_time") {
+    if (start.getFullYear() === year && start.getMonth() === month) {
+      const rawPayDay =
+        typeof f.payDay === "number" && Number.isFinite(f.payDay) ? f.payDay : start.getDate();
+      const effectiveDay = Math.min(Math.max(1, rawPayDay), daysInMonth);
+      if (today.getDate() >= effectiveDay) {
+        const occDate = new Date(year, month, effectiveDay, 12, 0, 0);
+        const occISO = toYMD(occDate);
+        if (occISO >= startISO && occISO <= endISO) {
+          candidateDates.push(occDate);
+        }
+      }
+    }
+  }
+
+  let txType: Transaction["type"] = "expense";
+  if (f.type === "income_fixed") txType = "income";
+  else if (f.type === "saving_fixed") txType = "saving";
+
+  const uuidRe = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+  const validPayMethods: PaymentMethod[] = ["cash", "transfer", "card", "other"];
+
+  const due: Transaction[] = [];
+  for (const occDate of candidateDates) {
+    const occISO = toYMD(occDate);
+    const scheduledId = buildScheduledTxId(f.id, occISO);
+    const already = transactions.some((t) => {
+      if (t.id === scheduledId) return true;
+      if (t.fixedId !== f.id) return false;
+      const td = parseDateLocal(t.date ?? "");
+      if (isNaN(td.getTime())) return false;
+      if (toYMD(td) === occISO) return true;
+      if (isSinglePerMonthFreq && td.getFullYear() === year && td.getMonth() === month) {
+        return true;
+      }
+      return false;
+    });
+    if (already) continue;
+
+    const validIcon =
+      f.icon &&
+      ((f.icon.kind === "emoji" && typeof f.icon.value === "string" && f.icon.value.length <= 8) ||
+        (f.icon.kind === "image" &&
+          typeof f.icon.value === "string" &&
+          f.icon.value.startsWith("data:image/") &&
+          f.icon.value.length <= 200000))
+        ? { kind: f.icon.kind, value: f.icon.value }
+        : undefined;
+
+    due.push({
+      id: scheduledId,
+      type: txType,
+      category: (f.category || "Otros").slice(0, 50),
+      concept: (f.concept || "Concepto fijo").slice(0, 200),
+      amount,
+      date: occDate.toISOString(),
+      note: f.note ? f.note.slice(0, 1000) : undefined,
+      icon: validIcon,
+      paymentMethod:
+        f.paymentMethod && validPayMethods.includes(f.paymentMethod) ? f.paymentMethod : undefined,
+      fixedId: uuidRe.test(f.id) ? f.id : undefined,
+      accountId: f.accountId && uuidRe.test(f.accountId) ? f.accountId : undefined,
+    });
+  }
+
+  return due;
 }
 
 export function fmt(n: number): string {

@@ -45,7 +45,14 @@ export default function Anual() {
       let income = 0, expense = 0, saving = 0;
       for (const i of fixedItems) {
         if (!isFixedActiveInMonth(i, year, idx)) continue;
-        const ma = monthlyAmount(i);
+        const recordedForFixed = transactions
+          .filter((t) => {
+            if (t.fixedId !== i.id) return false;
+            const d = parseDateLocal(t.date);
+            return d.getFullYear() === year && d.getMonth() === idx;
+          })
+          .reduce((sum, t) => sum + t.amount, 0);
+        const ma = Math.max(0, monthlyAmount(i) - recordedForFixed);
         if (i.type === "income_fixed") income += ma;
         else if (i.type === "saving_fixed") saving += ma;
         else expense += ma;
@@ -89,7 +96,17 @@ export default function Anual() {
     const map: Record<string, number> = {};
     fixedItems.filter((i) => i.type === "expense_fixed" || i.type === "expense_variable").forEach((i) => {
       let total = 0;
-      for (let m = 0; m < 12; m++) if (isFixedActiveInMonth(i, activeYear, m)) total += monthlyAmount(i);
+      for (let m = 0; m < 12; m++) {
+        if (!isFixedActiveInMonth(i, activeYear, m)) continue;
+        const recordedForFixed = transactions
+          .filter((t) => {
+            if (t.fixedId !== i.id || t.type !== "expense") return false;
+            const d = parseDateLocal(t.date);
+            return d.getFullYear() === activeYear && d.getMonth() === m;
+          })
+          .reduce((sum, t) => sum + t.amount, 0);
+        total += Math.max(0, monthlyAmount(i) - recordedForFixed);
+      }
       if (total > 0) map[i.category] = (map[i.category] || 0) + total;
     });
     transactions.filter((t) => t.type === "expense" && parseDateLocal(t.date).getFullYear() === activeYear).forEach((t) => {
@@ -120,7 +137,17 @@ export default function Anual() {
     fixedItems.filter((i) => i.type === "expense_fixed" || i.type === "expense_variable").forEach((i) => {
       if (!i.paymentMethod) return;
       let total = 0;
-      for (let m = 0; m < 12; m++) if (isFixedActiveInMonth(i, activeYear, m)) total += monthlyAmount(i);
+      for (let m = 0; m < 12; m++) {
+        if (!isFixedActiveInMonth(i, activeYear, m)) continue;
+        const recordedForFixed = transactions
+          .filter((t) => {
+            if (t.fixedId !== i.id || t.type !== "expense") return false;
+            const d = parseDateLocal(t.date);
+            return d.getFullYear() === activeYear && d.getMonth() === m;
+          })
+          .reduce((sum, t) => sum + t.amount, 0);
+        total += Math.max(0, monthlyAmount(i) - recordedForFixed);
+      }
       map[i.paymentMethod] += total;
     });
     return (Object.keys(map) as PaymentMethod[]).map((k) => ({ key: k, name: PAYMENT_METHOD_LABEL[k], emoji: PAYMENT_METHOD_EMOJI[k], value: Math.round(map[k]) })).filter((x) => x.value > 0).sort((a, b) => b.value - a.value);

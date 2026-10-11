@@ -7,13 +7,16 @@ import {
   Priority,
   IconRef,
   PaymentMethod,
+  Account,
   CATEGORY_EMOJI,
   PAYMENT_METHOD_LABEL,
   PAYMENT_METHOD_EMOJI,
   FREQ_LABEL,
   TYPE_LABEL,
   monthlyAmount,
+  iconFor,
   fmt,
+  parseDateLocal,
 } from "@/lib/finance";
 import { AjustesHeader } from "../AjustesHeader";
 import { SectionProps } from "../types";
@@ -29,54 +32,99 @@ import { Plus, CalendarClock, Pencil, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { ElegantConfirm } from "@/components/app/ElegantConfirm";
 
+const WEEKDAY_NAMES = ["Dom", "Lun", "Mar", "Mié", "Jue", "Vie", "Sáb"];
+
+function toLocalInputDate(raw: string | undefined, fallback: string): string {
+  if (!raw) return fallback;
+  const dt = parseDateLocal(raw);
+  if (isNaN(dt.getTime())) return fallback;
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${dt.getFullYear()}-${pad(dt.getMonth() + 1)}-${pad(dt.getDate())}`;
+}
+
 function FixedForm({
   initial,
+  accounts,
   onSave,
 }: {
   initial: FixedItem | null;
+  accounts: Account[];
   onSave: (i: Omit<FixedItem, "id">) => void;
 }) {
   const cats = Object.keys(CATEGORY_EMOJI);
+  const initialFreq: Frequency = initial?.frequency
+    ? ((initial.frequency as string) === "annual" ? "yearly" : initial.frequency)
+    : "monthly";
   const [type, setType] = useState<ItemType>(initial?.type ?? "expense_fixed");
   const [category, setCategory] = useState(initial?.category ?? "Otros");
   const [concept, setConcept] = useState(initial?.concept ?? "");
   const [amount, setAmount] = useState(initial?.amount ? String(initial.amount) : "");
-  const [frequency, setFrequency] = useState<Frequency>(initial?.frequency ?? "monthly");
+  const [frequency, setFrequency] = useState<Frequency>(initialFreq);
   const [priority, setPriority] = useState<Priority>(initial?.priority ?? "medium");
-  const [payDay, setPayDay] = useState(initial?.payDay ? String(initial.payDay) : "");
-  const [payWeekDay, setPayWeekDay] = useState(initial?.payWeekDay !== undefined ? String(initial.payWeekDay) : "none");
+  const [payDay, setPayDay] = useState(
+    initial?.payDay ? String(initial.payDay) : String(new Date().getDate()),
+  );
+  const [payWeekDay, setPayWeekDay] = useState(
+    initial?.payWeekDay !== undefined ? String(initial.payWeekDay) : String(new Date().getDay()),
+  );
   const [note, setNote] = useState(initial?.note ?? "");
   const [icon, setIcon] = useState<IconRef | undefined>(initial?.icon);
   const pad = (n: number) => String(n).padStart(2, "0");
-  const todayLocal = `${new Date().getFullYear()}-${pad(new Date().getMonth() + 1)}-${pad(new Date().getDate())}`;
-  const [startDate, setStartDate] = useState(initial?.startDate?.slice(0, 10) ?? todayLocal);
-  const [endDate, setEndDate] = useState(initial?.endDate?.slice(0, 10) ?? `${new Date().getFullYear() + 5}-12-31`);
-  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>(initial?.paymentMethod ?? "transfer");
+  const firstDayOfMonth = `${new Date().getFullYear()}-${pad(new Date().getMonth() + 1)}-01`;
+  const defaultEndDate = `${new Date().getFullYear() + 5}-12-31`;
+  const [startDate, setStartDate] = useState(() =>
+    toLocalInputDate(initial?.startDate, firstDayOfMonth),
+  );
+  const [endDate, setEndDate] = useState(() =>
+    toLocalInputDate(initial?.endDate, defaultEndDate),
+  );
+  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>(
+    initial?.paymentMethod ?? "transfer",
+  );
+  const [accountId, setAccountId] = useState<string>(initial?.accountId ?? "none");
 
   return (
     <form
       onSubmit={(e) => {
         e.preventDefault();
         const a = parseFloat(amount);
-        if (!a || !concept) {
+        if (!Number.isFinite(a) || a <= 0 || !concept.trim()) {
           toast.error("Completa concepto y monto");
           return;
         }
+        const rawDay = parseInt(payDay, 10);
+        const parsedPayDay = Number.isFinite(rawDay) ? Math.min(31, Math.max(1, rawDay)) : undefined;
+        const rawWeekDay = payWeekDay !== "none" ? parseInt(payWeekDay, 10) : NaN;
+        const parsedPayWeekDay =
+          Number.isFinite(rawWeekDay) && rawWeekDay >= 0 && rawWeekDay <= 6 ? rawWeekDay : undefined;
+
+        const safeStartStr = /^\d{4}-\d{2}-\d{2}$/.test(startDate) ? startDate : firstDayOfMonth;
+        const safeEndStr = /^\d{4}-\d{2}-\d{2}$/.test(endDate) ? endDate : defaultEndDate;
+        const startDt = new Date(`${safeStartStr}T12:00:00`);
+        const endDt = new Date(`${safeEndStr}T12:00:00`);
+        const finalStartISO = isNaN(startDt.getTime())
+          ? new Date(`${firstDayOfMonth}T12:00:00`).toISOString()
+          : startDt.toISOString();
+        const finalEndISO = isNaN(endDt.getTime())
+          ? new Date(`${defaultEndDate}T12:00:00`).toISOString()
+          : endDt.toISOString();
+
         onSave({
           type,
           category,
-          concept,
+          concept: concept.trim(),
           amount: a,
           frequency,
           active: initial?.active ?? true,
-          startDate: new Date(`${startDate}T12:00:00`).toISOString(),
-          endDate: new Date(`${endDate}T12:00:00`).toISOString(),
+          startDate: finalStartISO,
+          endDate: finalEndISO,
           priority,
-          payDay: payDay ? parseInt(payDay) : undefined,
-          payWeekDay: payWeekDay !== "none" ? parseInt(payWeekDay) : undefined,
-          note: note || undefined,
+          payDay: frequency === "weekly" ? undefined : (parsedPayDay ?? new Date().getDate()),
+          payWeekDay: frequency === "weekly" ? (parsedPayWeekDay ?? new Date().getDay()) : undefined,
+          note: note.trim() || undefined,
           icon,
           paymentMethod,
+          accountId: accountId !== "none" ? accountId : undefined,
         });
       }}
       className="space-y-3"
@@ -132,7 +180,12 @@ function FixedForm({
               <SelectItem value="weekly">Semanal</SelectItem>
               <SelectItem value="biweekly">Quincenal</SelectItem>
               <SelectItem value="monthly">Mensual</SelectItem>
-              <SelectItem value="annual">Anual</SelectItem>
+              <SelectItem value="bimonthly">Bimestral</SelectItem>
+              <SelectItem value="quarterly">Trimestral</SelectItem>
+              <SelectItem value="fourmonthly">Cuatrimestral</SelectItem>
+              <SelectItem value="biannual">Semestral</SelectItem>
+              <SelectItem value="yearly">Anual</SelectItem>
+              <SelectItem value="one_time">Una vez</SelectItem>
             </SelectContent>
           </Select>
         </div>
@@ -174,20 +227,48 @@ function FixedForm({
           </Select>
         </div>
       </div>
-      <div>
-        <Label className="text-xs">Método de pago habitual</Label>
-        <Select value={paymentMethod} onValueChange={(v) => setPaymentMethod(v as PaymentMethod)}>
-          <SelectTrigger className="h-11 rounded-2xl">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            {(["transfer", "cash", "card", "other"] as PaymentMethod[]).map((m) => (
-              <SelectItem key={m} value={m}>
-                {PAYMENT_METHOD_EMOJI[m]} {PAYMENT_METHOD_LABEL[m]}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+      <div className="grid grid-cols-2 gap-2">
+        <div>
+          <Label className="text-xs">Fecha de inicio</Label>
+          <Input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} className="h-11 rounded-2xl" />
+        </div>
+        <div>
+          <Label className="text-xs">Fecha de fin</Label>
+          <Input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} className="h-11 rounded-2xl" />
+        </div>
+      </div>
+      <div className="grid grid-cols-2 gap-2">
+        <div>
+          <Label className="text-xs">Método de pago habitual</Label>
+          <Select value={paymentMethod} onValueChange={(v) => setPaymentMethod(v as PaymentMethod)}>
+            <SelectTrigger className="h-11 rounded-2xl">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {(["transfer", "cash", "card", "other"] as PaymentMethod[]).map((m) => (
+                <SelectItem key={m} value={m}>
+                  {PAYMENT_METHOD_EMOJI[m]} {PAYMENT_METHOD_LABEL[m]}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+        <div>
+          <Label className="text-xs">Cuenta asociada</Label>
+          <Select value={accountId} onValueChange={setAccountId}>
+            <SelectTrigger className="h-11 rounded-2xl">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="none">Automática</SelectItem>
+              {accounts.map((acc) => (
+                <SelectItem key={acc.id} value={acc.id}>
+                  {acc.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
       </div>
       <div>
         <Label className="text-xs">Nota adicional</Label>
@@ -201,7 +282,7 @@ function FixedForm({
 }
 
 export const FijosSection = memo(function FijosSection({ onBack }: SectionProps) {
-  const { fixedItems, addFixed, updateFixed, removeFixed, toggleFixed } = useFinanceData();
+  const { fixedItems, accounts, addFixed, updateFixed, removeFixed, toggleFixed } = useFinanceData();
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<FixedItem | null>(null);
   const [tab, setTab] = useState<"all" | ItemType>("all");
@@ -268,26 +349,31 @@ export const FijosSection = memo(function FijosSection({ onBack }: SectionProps)
           </div>
         ) : (
           filtered.map((item) => {
-            const mAmount = monthlyAmount(item.amount, item.frequency);
+            const mAmount = monthlyAmount(item);
+            const freqLabel =
+              FREQ_LABEL[item.frequency] ??
+              ((item.frequency as string) === "annual" ? "Anual" : item.frequency);
             return (
               <div
                 key={item.id}
                 className="rounded-2xl bg-card border border-border p-4 shadow-soft flex flex-col min-[380px]:flex-row min-[380px]:items-center justify-between gap-3"
               >
                 <div className="flex items-center gap-3 min-w-0">
-                  <div className="size-11 rounded-2xl bg-muted/70 text-foreground flex items-center justify-center shrink-0">
-                    {item.icon ? <IconDisplay icon={item.icon} className="size-5.5" /> : <span>{CATEGORY_EMOJI[item.category] ?? "📄"}</span>}
-                  </div>
+                  <IconDisplay icon={iconFor(item)} />
                   <div className="min-w-0">
                     <div className="flex items-center gap-2">
                       <span className="font-bold text-sm sm:text-base text-foreground truncate">{item.concept}</span>
                       <span className="text-[10px] font-semibold text-muted-foreground bg-muted px-2 py-0.5 rounded-full shrink-0">
-                        {FREQ_LABEL[item.frequency]}
+                        {freqLabel}
                       </span>
                     </div>
                     <p className="text-xs text-muted-foreground truncate mt-0.5">
                       {TYPE_LABEL[item.type]} • {fmt(item.amount)} ({fmt(mAmount)}/mes)
-                      {item.payDay && ` • Día ${item.payDay}`}
+                      {item.frequency === "weekly" && typeof item.payWeekDay === "number"
+                        ? ` • ${WEEKDAY_NAMES[item.payWeekDay]}`
+                        : item.payDay
+                        ? ` • Día ${item.payDay}`
+                        : ""}
                     </p>
                   </div>
                 </div>
@@ -334,6 +420,7 @@ export const FijosSection = memo(function FijosSection({ onBack }: SectionProps)
           </DialogHeader>
           <FixedForm
             initial={editing}
+            accounts={accounts}
             onSave={(i) => {
               if (editing) {
                 updateFixed(editing.id, i);

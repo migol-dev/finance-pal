@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef } from 'react';
+import { useCallback, useEffect, useMemo, useRef } from 'react';
 import { useShallow } from 'zustand/react/shallow';
 import { generateSecureId } from '@/lib/sanitizers';
 import { useFinance } from '@/store/finance-store';
@@ -24,25 +24,28 @@ import type {
   DeleteReceiptForTransactionInput,
 } from '@/hooks/mutations/useReceiptMutations';
 import { fetchUserSettings, upsertUserSettings } from '@/services/settings.service';
-import type {
-  Account,
-  Transaction,
-  FixedItem,
-  Goal,
-  GoalFolder,
-  Debt,
-  DebtPayment,
-  ThemeMode,
-  UserProfile,
-  ChangeLogEntry,
-  AppSettings,
-  AccentColor,
+import {
+  getDueOccurrencesForFixedItem,
+  type Account,
+  type Transaction,
+  type FixedItem,
+  type Goal,
+  type GoalFolder,
+  type Debt,
+  type DebtPayment,
+  type ThemeMode,
+  type UserProfile,
+  type ChangeLogEntry,
+  type AppSettings,
+  type AccentColor,
 } from '@/lib/finance';
 
 // Hook fachada: único punto de entrada para componentes y páginas.
 // - Datos de servidor: React Query como fuente de verdad cuando Supabase está habilitado.
 // - Mutations: hooks de mutations (optimistic update en Zustand + red + invalidación).
 // - Estado UI y operaciones locales: Zustand (nunca toca la red).
+
+const scheduledInFlightKeys = new Set<string>();
 
 type UiSelection = {
   accounts: Account[];
@@ -198,6 +201,64 @@ export function useFinanceData() {
     return ui.debts;
   }, [isSupabase, debtsQuery.data, ui.debts]);
 
+  // --- Reconciliación de transacciones programadas (Zustand + Supabase) ---
+  const reconcileScheduledTransactions = useCallback(() => {
+    if (!isSupabase) {
+      ui.ensureScheduledTransactions?.();
+      return;
+    }
+
+    if (
+      !userId ||
+      !fixedItemsQuery.isSuccess ||
+      !transactionsQuery.isSuccess ||
+      fixedItemsQuery.isFetching ||
+      transactionsQuery.isFetching
+    ) {
+      return;
+    }
+
+    for (const f of fixedItems) {
+      try {
+        const dueTxs = getDueOccurrencesForFixedItem(f, transactions);
+        for (const tx of dueTxs) {
+          const key = `${userId}:${tx.id}`;
+          if (scheduledInFlightKeys.has(key)) continue;
+          scheduledInFlightKeys.add(key);
+          const safeAccountId =
+            tx.accountId &&
+            (!accountsQuery.isSuccess || accounts.some((a) => a.id === tx.accountId))
+              ? tx.accountId
+              : undefined;
+          const safeTx: Transaction = { ...tx, accountId: safeAccountId };
+          txM.addTransaction.mutateAsync(safeTx).catch((err) => {
+            scheduledInFlightKeys.delete(key);
+            console.error('[useFinanceData] Error al registrar movimiento programado:', f.id, err);
+          });
+        }
+      } catch (err) {
+        console.error('[useFinanceData] Error evaluando concepto fijo:', f.id, err);
+      }
+    }
+  }, [
+    isSupabase,
+    userId,
+    accounts,
+    fixedItems,
+    transactions,
+    accountsQuery.isSuccess,
+    fixedItemsQuery.isSuccess,
+    fixedItemsQuery.isFetching,
+    transactionsQuery.isSuccess,
+    transactionsQuery.isFetching,
+    txM.addTransaction,
+    ui,
+  ]);
+
+  useEffect(() => {
+    reconcileScheduledTransactions();
+  }, [reconcileScheduledTransactions]);
+
   // --- Estado de carga del servidor ---
   const isLoading =
     isSupabase &&
@@ -320,8 +381,8 @@ export function useFinanceData() {
     setCompactMode: ui.setCompactMode,
     setGlassEffect: ui.setGlassEffect,
 
-    // --- Operaciones de datos locales (Zustand) ---
-    ensureScheduledTransactions: ui.ensureScheduledTransactions,
+    // --- Operaciones de datos locales / híbridas ---
+    ensureScheduledTransactions: reconcileScheduledTransactions,
     exportData: ui.exportData,
     importData: ui.importData,
     resetAll: ui.resetAll,

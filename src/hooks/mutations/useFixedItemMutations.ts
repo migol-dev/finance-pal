@@ -105,15 +105,27 @@ export function useFixedItemMutations(): FixedItemMutations {
 
   const toggleFixedItem = useMutation<void, Error, string>({
     mutationFn: async (id) => {
+      const localItem = useFinance.getState().fixedItems.find((x) => x.id === id);
+      const cachedItems = queryClient.getQueryData<FixedItem[]>(financeKeys.fixedItems());
+      const cachedItem = cachedItems?.find((x) => x.id === id);
+      const nextActive =
+        isSupabaseEnabled && cachedItem !== undefined
+          ? !cachedItem.active
+          : localItem
+          ? localItem.active
+          : cachedItem
+          ? !cachedItem.active
+          : true;
+
       if (!isSupabaseEnabled || isOffline()) {
         useSyncStore
           .getState()
-          .addMutation({ table: 'fixed_items', action: 'UPDATE', recordId: id });
+          .addMutation({ table: 'fixed_items', action: 'UPDATE', recordId: id, payload: { active: nextActive } });
         return;
       }
-      const current = useFinance.getState().fixedItems.find((x) => x.id === id);
-      // onMutate ya invirtió el flag; el estado actual es el valor objetivo.
-      await toggleFixedItemActive(id, current?.active ?? true);
+      const { data } = await supabase.auth.getUser();
+      if (!data.user) throw new Error('No user');
+      await toggleFixedItemActive(data.user.id, id, nextActive);
     },
     onMutate: async (id) => {
       await useFinance.getState().toggleFixed(id);

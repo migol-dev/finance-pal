@@ -76,6 +76,28 @@ export default function Dashboard() {
         continue;
       }
 
+      if (i.frequency === "biweekly") {
+        const baseDay = Math.min(Math.max(1, i.payDay ?? 1), daysInMonth);
+        const firstHalfDay = baseDay <= 15 ? baseDay : Math.max(1, baseDay - 15);
+        const secondHalfDay = Math.min(firstHalfDay + 15, daysInMonth);
+        const biweeklyDays = Array.from(new Set([firstHalfDay, secondHalfDay])).sort((a, b) => a - b);
+        const startISO = ymd(start);
+        const endISO = ymd(end);
+        for (const day of biweeklyDays) {
+          if (isViewingCurrentMonth && day > today.getDate()) continue;
+          const dt = new Date(activeYear, activeMonth, day);
+          const dtISO = ymd(dt);
+          if (dtISO < startISO || dtISO > endISO) continue;
+          const already = transactions.some((t) => t.fixedId === i.id && txYmd(t.date) === dtISO);
+          if (!already) {
+            if (i.type === "income_fixed") income += i.amount;
+            else if (i.type === "saving_fixed") saving += i.amount;
+            else expense += i.amount;
+          }
+        }
+        continue;
+      }
+
       if (typeof i.payDay === "number") {
         const day = Math.min(i.payDay, daysInMonth);
         const dt = new Date(activeYear, activeMonth, day);
@@ -83,9 +105,14 @@ export default function Dashboard() {
         const endISO = ymd(end);
         const dtISO = ymd(dt);
         if (dtISO < startISO || dtISO > endISO) continue;
-        if (isViewingCurrentMonth && i.payDay > today.getDate()) continue;
+        if (isViewingCurrentMonth && day > today.getDate()) continue;
         const occISO = dtISO;
-        const already = transactions.some((t) => t.fixedId === i.id && txYmd(t.date) === occISO);
+        const already = transactions.some((t) => {
+          if (t.fixedId !== i.id) return false;
+          if (txYmd(t.date) === occISO) return true;
+          const td = parseDateLocal(t.date ?? "");
+          return td.getFullYear() === activeYear && td.getMonth() === activeMonth;
+        });
         if (!already) {
           if (i.type === "income_fixed") income += i.amount;
           else if (i.type === "saving_fixed") saving += i.amount;
@@ -190,7 +217,22 @@ export default function Dashboard() {
       .filter((i) => isFixedActiveInMonth(i, activeYear, activeMonth) && (typeof i.payDay === "number" || typeof i.payWeekDay === "number") && i.type !== "income_fixed")
       .map((i) => {
         let daysLeft = 999;
-        if (typeof i.payDay === "number") {
+        if (i.frequency === "weekly" && typeof i.payWeekDay === "number") {
+          daysLeft = (i.payWeekDay - todayWeekday + 7) % 7;
+        } else if (i.frequency === "biweekly") {
+          const daysInMonth = new Date(activeYear, activeMonth + 1, 0).getDate();
+          const baseDay = Math.min(Math.max(1, i.payDay ?? 1), daysInMonth);
+          const firstHalfDay = baseDay <= 15 ? baseDay : Math.max(1, baseDay - 15);
+          const secondHalfDay = Math.min(firstHalfDay + 15, daysInMonth);
+          const todayUTC = Date.UTC(today.getFullYear(), today.getMonth(), today.getDate());
+          const nextDayInMonth = [firstHalfDay, secondHalfDay].find((d) => d >= today.getDate());
+          const target =
+            nextDayInMonth !== undefined
+              ? new Date(activeYear, activeMonth, nextDayInMonth)
+              : new Date(activeYear, activeMonth + 1, firstHalfDay);
+          const targetUTC = Date.UTC(target.getFullYear(), target.getMonth(), target.getDate());
+          daysLeft = Math.max(0, Math.round((targetUTC - todayUTC) / 86400000));
+        } else if (typeof i.payDay === "number") {
           const daysInMonth = new Date(activeYear, activeMonth + 1, 0).getDate();
           const targetDay = Math.min(i.payDay, daysInMonth);
           const todayUTC = Date.UTC(today.getFullYear(), today.getMonth(), today.getDate());
@@ -420,7 +462,15 @@ export default function Dashboard() {
                     <IconDisplay icon={iconFor(u)} />
                     <div className="flex-1 min-w-0">
                       <p className="font-semibold text-sm truncate">{u.concept}</p>
-                      <p className="text-xs text-muted-foreground">{u.payDay ? `Día ${u.payDay}` : (typeof u.payWeekDay === "number" ? ["Dom","Lun","Mar","Mie","Jue","Vie","Sáb"][u.payWeekDay] : "")}</p>
+                      <p className="text-xs text-muted-foreground">
+                        {u.frequency === "weekly" && typeof u.payWeekDay === "number"
+                          ? ["Dom","Lun","Mar","Mie","Jue","Vie","Sáb"][u.payWeekDay]
+                          : u.payDay
+                          ? `Día ${u.payDay}`
+                          : typeof u.payWeekDay === "number"
+                          ? ["Dom","Lun","Mar","Mie","Jue","Vie","Sáb"][u.payWeekDay]
+                          : ""}
+                      </p>
                     </div>
                     <div className="text-right shrink-0">
                       <p className="font-bold text-sm whitespace-nowrap tabular-nums">{mask(fmt(u.amount))}</p>

@@ -6,7 +6,7 @@ import { createDebtSlice, DebtSlice } from "./slices/debt-slice";
 import { createFixedSlice, FixedSlice } from "./slices/fixed-slice";
 import { createTransactionSlice, TransactionSlice } from "./slices/transaction-slice";
 import { persist } from "zustand/middleware";
-import { FixedItem, Transaction, Goal, Debt, ChangeLogEntry, isFixedActiveInMonth, parseDateLocal, Account, ThemeMode, AccentColor, GoalFolder, NotificationPreferences, DEFAULT_NOTIFICATION_PREFS, DEFAULT_ACCESSIBILITY_SETTINGS } from "@/lib/finance";
+import { FixedItem, Transaction, Goal, Debt, ChangeLogEntry, isFixedActiveInMonth, parseDateLocal, getDueOccurrencesForFixedItem, Account, ThemeMode, AccentColor, GoalFolder, NotificationPreferences, DEFAULT_NOTIFICATION_PREFS, DEFAULT_ACCESSIBILITY_SETTINGS } from "@/lib/finance";
 import { Filesystem, Directory } from "@capacitor/filesystem";
 import { Capacitor } from "@capacitor/core";
 import { supabase } from "@/lib/supabase";
@@ -141,58 +141,15 @@ export const useFinance = create<State>()(
 
         ensureScheduledTransactions: () => {
           const s = get();
-          const today = new Date();
-          const pad = (n: number) => String(n).padStart(2, "0");
-          const todayISO = `${today.getFullYear()}-${pad(today.getMonth() + 1)}-${pad(today.getDate())}`;
           for (const f of s.fixedItems) {
-            if (!f.active) continue;
-            const start = parseDateLocal(f.startDate);
-            const end = parseDateLocal(f.endDate);
-            const startISO = `${start.getFullYear()}-${pad(start.getMonth() + 1)}-${pad(start.getDate())}`;
-            const endISO = `${end.getFullYear()}-${pad(end.getMonth() + 1)}-${pad(end.getDate())}`;
-            // only consider items whose range includes today (compare date-only strings to avoid timezone issues)
-            if (todayISO < startISO || todayISO > endISO) continue;
-
-            let shouldCreate = false;
-            let occDate: Date | null = null;
-
-            if (f.frequency === "weekly" && typeof f.payWeekDay === "number") {
-              if (today.getDay() === f.payWeekDay) { occDate = new Date(today.getFullYear(), today.getMonth(), today.getDate()); shouldCreate = true; }
-            } else if (["monthly", "bimonthly", "quarterly", "fourmonthly", "biannual"].includes(f.frequency)) {
-              if (typeof f.payDay === "number") {
-                if (today.getDate() === f.payDay && isFixedActiveInMonth(f, today.getFullYear(), today.getMonth())) {
-                  occDate = new Date(today.getFullYear(), today.getMonth(), f.payDay);
-                  shouldCreate = true;
-                }
+            try {
+              const dueTxs = getDueOccurrencesForFixedItem(f, get().transactions);
+              for (const tx of dueTxs) {
+                get().addTx(tx);
               }
-            } else if (f.frequency === "one_time") {
-              const sd = parseDateLocal(f.startDate);
-              if (sd.getFullYear() === today.getFullYear() && sd.getMonth() === today.getMonth() && sd.getDate() === today.getDate()) {
-                occDate = sd; shouldCreate = true;
-              }
-            } else if (f.frequency === "yearly") {
-              const sd = parseDateLocal(f.startDate);
-              if (sd.getDate() === today.getDate() && sd.getMonth() === today.getMonth()) { occDate = new Date(today.getFullYear(), today.getMonth(), today.getDate()); shouldCreate = true; }
+            } catch (err) {
+              console.error("[FinanceStore] Error al registrar movimiento programado:", f.id, err);
             }
-
-            if (!shouldCreate || !occDate) continue;
-            const occISO = `${occDate.getFullYear()}-${pad(occDate.getMonth() + 1)}-${pad(occDate.getDate())}`;
-            if (occISO < startISO || occISO > endISO) continue;
-
-            const already = s.transactions.some((t) => {
-              if (t.fixedId !== f.id) return false;
-              const td = parseDateLocal(t.date ?? "");
-              const tISO = `${td.getFullYear()}-${pad(td.getMonth() + 1)}-${pad(td.getDate())}`;
-              return tISO === occISO;
-            });
-            if (already) continue;
-
-            // Map fixed type to transaction type
-            let txType: Transaction["type"] = "expense";
-            if (f.type === "income_fixed") txType = "income";
-            else if (f.type === "saving_fixed") txType = "saving";
-
-            get().addTx({ id: generateSecureId(), type: txType, category: f.category, concept: f.concept, amount: f.amount, date: occDate.toISOString(), note: undefined, icon: f.icon, paymentMethod: f.paymentMethod, fixedId: f.id });
           }
         },
 
