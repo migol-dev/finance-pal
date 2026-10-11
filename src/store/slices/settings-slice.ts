@@ -10,6 +10,7 @@ import {
     DEFAULT_NOTIFICATION_PREFS,
     DEFAULT_ACCESSIBILITY_SETTINGS,
 } from '@/lib/finance';
+import { sanitizeNotificationPrefs } from '@/lib/sanitizers';
 
 export interface SettingsSlice {
     theme: ThemeMode;
@@ -83,12 +84,22 @@ export const createSettingsSlice: StateCreator<
         set((s) => ({ appSettings: { ...s.appSettings, glassEffect: glass } })),
 
     setNotificationPrefs: (prefs) =>
-        set((s) => ({
-            appSettings: {
-                ...s.appSettings,
-                notifications: { ...s.appSettings.notifications, ...prefs },
-            },
-        })),
+        set((s) => {
+            const currentNotifs = s.appSettings?.notifications ?? DEFAULT_NOTIFICATION_PREFS;
+            const nextNotifs = sanitizeNotificationPrefs({
+                ...currentNotifs,
+                ...prefs,
+                quietHours: prefs.quietHours
+                    ? { ...currentNotifs.quietHours, ...prefs.quietHours }
+                    : currentNotifs.quietHours,
+            });
+            return {
+                appSettings: {
+                    ...s.appSettings,
+                    notifications: nextNotifs,
+                },
+            };
+        }),
 
     setAccessibilitySettings: (prefs) =>
         set((s) => ({

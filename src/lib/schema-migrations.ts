@@ -11,8 +11,10 @@
 import { 
   Currency, 
   AppSettings, 
-  DEFAULT_NOTIFICATION_PREFS
+  DEFAULT_NOTIFICATION_PREFS,
+  DEFAULT_ACCESSIBILITY_SETTINGS
 } from '@/lib/finance';
+import { sanitizeNotificationPrefs } from '@/lib/sanitizers';
 
 export const CURRENT_SCHEMA_VERSION = 5;
 
@@ -135,10 +137,7 @@ const migrations: Record<number, (data: any, ctx: MigrationContext) => Promise<a
       appSettings: {
         ...getDefaultAppSettings(),
         ...data.appSettings,
-        notifications: {
-          ...DEFAULT_NOTIFICATION_PREFS,
-          ...data.appSettings?.notifications,
-        },
+        notifications: sanitizeNotificationPrefs(data.appSettings?.notifications),
       },
       _meta: { ...data._meta, schemaVersion: 5 }
     };
@@ -155,6 +154,7 @@ function getDefaultAppSettings(): AppSettings {
     glassEffect: true,
     conflictResolved: false,
     notifications: DEFAULT_NOTIFICATION_PREFS,
+    accessibility: DEFAULT_ACCESSIBILITY_SETTINGS,
   };
 }
 
@@ -260,7 +260,15 @@ export function sanitizeMigratedData(data: any): any {
   // Ensure required objects
   sanitized.theme = data.theme ?? 'light';
   sanitized.profile = data.profile ?? { name: '', currency: 'MXN' };
-  sanitized.appSettings = { ...getDefaultAppSettings(), ...data.appSettings };
+  sanitized.appSettings = {
+    ...getDefaultAppSettings(),
+    ...data.appSettings,
+    notifications: sanitizeNotificationPrefs(data.appSettings?.notifications),
+    accessibility: {
+      ...DEFAULT_ACCESSIBILITY_SETTINGS,
+      ...(data.appSettings?.accessibility ?? {}),
+    },
+  };
 
   // Fix common issues
   sanitized.goals = sanitized.goals.map((g: any) => ({

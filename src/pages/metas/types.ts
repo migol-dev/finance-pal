@@ -1,4 +1,15 @@
-import { Goal, GoalFolder, parseDateLocal, parseGoalDeadline } from "@/lib/finance";
+import {
+  Goal,
+  GoalFolder,
+  startOfDay,
+  daysBetween,
+  paceForGoal,
+  expectedGoalAt,
+  actualGoalAt,
+  statusForGoal,
+} from "@/lib/finance";
+
+export { startOfDay, daysBetween };
 
 export const PALETTES = [
   "gradient-sunset",
@@ -9,16 +20,6 @@ export const PALETTES = [
 ];
 
 export type FolderNode = GoalFolder & { children: FolderNode[] };
-
-export function startOfDay(d: Date): Date {
-  const x = new Date(d);
-  x.setHours(0, 0, 0, 0);
-  return x;
-}
-
-export function daysBetween(a: Date, b: Date): number {
-  return Math.max(0, Math.round((startOfDay(b).getTime() - startOfDay(a).getTime()) / 86400000));
-}
 
 export function ymd(d: Date): string {
   const pad = (n: number) => String(n).padStart(2, "0");
@@ -33,56 +34,9 @@ export function normalizeUrl(u?: string): string | undefined {
   return `https://${t}`;
 }
 
-export function paceFor(goal: Goal) {
-  if (!goal.deadline) return null;
-  const parsed = parseGoalDeadline(goal.deadline);
-  if (!parsed) return null;
-  const remaining = Math.max(0, goal.target - goal.saved);
-  const today = startOfDay(new Date());
-  const dl = startOfDay(parsed);
-  const days = Math.max(1, daysBetween(today, dl) || 1);
-  return {
-    remaining,
-    days,
-    perDay: remaining / days,
-    perWeek: remaining / (days / 7),
-    perMonth: remaining / (days / 30),
-    overdue: dl < today,
-  };
-}
+export const paceFor = paceForGoal;
+export const expectedAt = expectedGoalAt;
+export const actualAt = actualGoalAt;
+export const statusFor = (goal: Goal): ReturnType<typeof statusForGoal> =>
+  statusForGoal(goal, 2);
 
-export function expectedAt(goal: Goal, date: Date): number {
-  if (!goal.deadline) return goal.target;
-  const parsed = parseGoalDeadline(goal.deadline);
-  if (!parsed) return goal.target;
-  const start = startOfDay(parseDateLocal(goal.createdAt ?? new Date().toISOString()));
-  const dl = startOfDay(parsed);
-  const total = Math.max(1, daysBetween(start, dl));
-  const elapsed = Math.min(total, Math.max(0, daysBetween(start, date)));
-  return (goal.target * elapsed) / total;
-}
-
-export function actualAt(goal: Goal, date: Date): number {
-  const end = startOfDay(date).getTime();
-  const initial = (goal.contributions && goal.contributions.length > 0)
-    ? 0
-    : goal.saved;
-  const sum = (goal.contributions ?? []).reduce((acc, c) => {
-    const t = startOfDay(parseDateLocal(c.date)).getTime();
-    return t <= end ? acc + c.amount : acc;
-  }, 0);
-  return Math.max(0, initial + sum);
-}
-
-export function statusFor(goal: Goal) {
-  if (!goal.deadline) return null;
-  const today = new Date();
-  const ideal = expectedAt(goal, today);
-  const actual = actualAt(goal, today);
-  const diff = actual - ideal;
-  const tolerance = Math.max(50, goal.target * 0.02);
-  if (goal.saved >= goal.target) return { kind: "done" as const, diff };
-  if (diff < -tolerance) return { kind: "behind" as const, diff };
-  if (diff > tolerance) return { kind: "ahead" as const, diff };
-  return { kind: "ontrack" as const, diff };
-}

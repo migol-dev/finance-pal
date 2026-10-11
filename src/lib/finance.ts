@@ -616,27 +616,299 @@ export interface AppSettings {
   accessibility: AccessibilitySettings;
 }
 
+export type NotificationRepeatFrequency = "daily" | "every_3_days" | "weekly" | "once";
+export type NotificationPermissionState = "granted" | "denied" | "prompt" | "unsupported";
+
 export interface NotificationPreferences {
   enabled: boolean;
   pushEnabled: boolean;
   localEnabled: boolean;
-  upcomingDays: number[];
+  inAppToastEnabled: boolean;
+  // Alertas de Metas (límites de fecha y atraso según el plan)
+  goalDeadlineReminders: boolean;
+  upcomingDays: number[];                    // ej. [7, 3, 1, 0] (0 = mismo día del vencimiento)
   overdueAlert: boolean;
+  overdueRepeat: NotificationRepeatFrequency;
   behindPaceAlert: boolean;
+  behindPaceRepeat: NotificationRepeatFrequency;
+  behindPaceTolerancePct: number;            // porcentaje del objetivo (2, 5, 10)
+  // Alertas de Conceptos Fijos / Recurrentes (gastos, ingresos, ahorros)
   fixedItemReminders: boolean;
-  quietHours: { start: string; end: string };
+  notifyFixedExpenses: boolean;
+  notifyFixedIncomes: boolean;
+  notifyFixedSavings: boolean;
+  fixedUpcomingDays: number[];               // ej. [3, 1, 0] (días antes + día de cobro)
+  skipIfAlreadyRecorded: boolean;
+  // Horario, canal y privacidad
+  preferredTime: string;                     // "HH:mm" (ej. "09:00")
+  quietHoursEnabled: boolean;
+  quietHours: { start: string; end: string }; // ej. { start: "22:00", end: "08:00" }
+  soundEnabled: boolean;
+  vibrationEnabled: boolean;
+  hideAmountsInNotifications: boolean;
 }
 
 export const DEFAULT_NOTIFICATION_PREFS: NotificationPreferences = {
   enabled: true,
   pushEnabled: true,
   localEnabled: true,
-  upcomingDays: [7, 3, 1],
+  inAppToastEnabled: true,
+  goalDeadlineReminders: true,
+  upcomingDays: [7, 3, 1, 0],
   overdueAlert: true,
+  overdueRepeat: "every_3_days",
   behindPaceAlert: true,
+  behindPaceRepeat: "weekly",
+  behindPaceTolerancePct: 2,
   fixedItemReminders: true,
+  notifyFixedExpenses: true,
+  notifyFixedIncomes: true,
+  notifyFixedSavings: true,
+  fixedUpcomingDays: [3, 1, 0],
+  skipIfAlreadyRecorded: true,
+  preferredTime: "09:00",
+  quietHoursEnabled: true,
   quietHours: { start: "22:00", end: "08:00" },
+  soundEnabled: true,
+  vibrationEnabled: true,
+  hideAmountsInNotifications: false,
 };
+
+export interface GoalPaceInfo {
+  remaining: number;
+  days: number;
+  perDay: number;
+  perWeek: number;
+  perMonth: number;
+  overdue: boolean;
+}
+
+export interface GoalStatusInfo {
+  kind: "done" | "behind" | "ahead" | "ontrack";
+  diff: number;
+  ideal: number;
+  actual: number;
+}
+
+export interface FixedOccurrenceInfo {
+  dueDate: Date;
+  dueISO: string;
+  daysUntil: number;
+  alreadyRecorded: boolean;
+  autoRecordedToday: boolean;
+}
+
+export function paceForGoal(goal: Goal, now: Date = new Date()): GoalPaceInfo | null {
+  if (!goal.deadline) return null;
+  const parsed = parseGoalDeadline(goal.deadline);
+  if (!parsed) return null;
+  const remaining = Math.max(0, goal.target - goal.saved);
+  const today = startOfDay(now);
+  const dl = startOfDay(parsed);
+  const days = Math.max(1, daysBetween(today, dl) || 1);
+  return {
+    remaining,
+    days,
+    perDay: remaining / days,
+    perWeek: remaining / (days / 7),
+    perMonth: remaining / (days / 30),
+    overdue: dl < today,
+  };
+}
+
+export function expectedGoalAt(goal: Goal, date: Date): number {
+  if (!goal.deadline) return goal.target;
+  const parsed = parseGoalDeadline(goal.deadline);
+  if (!parsed) return goal.target;
+  const start = startOfDay(parseDateLocal(goal.createdAt ?? date.toISOString()));
+  const dl = startOfDay(parsed);
+  const total = Math.max(1, daysBetween(start, dl));
+  const elapsed = Math.min(total, Math.max(0, daysBetween(start, date)));
+  return (goal.target * elapsed) / total;
+}
+
+export function actualGoalAt(goal: Goal, date: Date): number {
+  const end = startOfDay(date).getTime();
+  const initial = goal.contributions && goal.contributions.length > 0 ? 0 : goal.saved;
+  const sum = (goal.contributions ?? []).reduce((acc, c) => {
+    const t = startOfDay(parseDateLocal(c.date)).getTime();
+    return t <= end ? acc + c.amount : acc;
+  }, 0);
+  return Math.max(0, initial + sum);
+}
+
+export function statusForGoal(
+  goal: Goal,
+  tolerancePct: number = 2,
+  now: Date = new Date(),
+): GoalStatusInfo | null {
+  if (goal.saved >= goal.target) {
+    const actual = actualGoalAt(goal, now);
+    const ideal = goal.deadline ? expectedGoalAt(goal, now) : goal.target;
+    return { kind: "done", diff: actual - ideal, ideal, actual };
+  }
+  if (!goal.deadline) return null;
+  const parsed = parseGoalDeadline(goal.deadline);
+  if (!parsed) return null;
+  const ideal = expectedGoalAt(goal, now);
+  const actual = actualGoalAt(goal, now);
+  const diff = actual - ideal;
+  const safeTolerancePct = Number.isFinite(tolerancePct)
+    ? Math.min(50, Math.max(0, tolerancePct))
+    : 2;
+  const tolerance = Math.max(50, goal.target * (safeTolerancePct / 100));
+  if (diff < -tolerance) return { kind: "behind", diff, ideal, actual };
+  if (diff > tolerance) return { kind: "ahead", diff, ideal, actual };
+  return { kind: "ontrack", diff, ideal, actual };
+}
+
+export function getUpcomingOccurrencesForFixedItem(
+  item: FixedItem,
+  transactions: Transaction[] = [],
+  now: Date = new Date(),
+  maxCount: number = 2,
+): FixedOccurrenceInfo[] {
+  if (!item || !item.active) return [];
+  const amount = Number(item.amount);
+  if (!Number.isFinite(amount) || amount <= 0) return [];
+
+  const pad = (n: number) => String(n).padStart(2, "0");
+  const toYMD = (d: Date) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+
+  const start = parseDateLocal(item.startDate);
+  const end = parseDateLocal(item.endDate);
+  if (isNaN(start.getTime()) || isNaN(end.getTime())) return [];
+
+  const today = startOfDay(now);
+  const startDay = startOfDay(start);
+  const endDay = startOfDay(end);
+  const todayISO = toYMD(today);
+  const startISO = toYMD(startDay);
+  const endISO = toYMD(endDay);
+
+  if (todayISO > endISO) return [];
+
+  const freq = (item.frequency as string) === "annual" ? "yearly" : item.frequency;
+  const isSinglePerMonthFreq = [
+    "monthly",
+    "bimonthly",
+    "quarterly",
+    "fourmonthly",
+    "biannual",
+    "yearly",
+    "one_time",
+  ].includes(freq);
+
+  const candidateDates: Date[] = [];
+
+  if (freq === "weekly") {
+    const payWeekDay =
+      typeof item.payWeekDay === "number" && Number.isFinite(item.payWeekDay)
+        ? ((Math.round(item.payWeekDay) % 7) + 7) % 7
+        : startDay.getDay();
+    const base = today > startDay ? today : startDay;
+    const daysUntilFirst = (payWeekDay - base.getDay() + 7) % 7;
+    const firstDate = new Date(base.getFullYear(), base.getMonth(), base.getDate() + daysUntilFirst, 12, 0, 0);
+    for (let w = 0; w < maxCount + 6 && candidateDates.length < maxCount; w++) {
+      const cand = new Date(firstDate.getFullYear(), firstDate.getMonth(), firstDate.getDate() + w * 7, 12, 0, 0);
+      const candISO = toYMD(cand);
+      if (candISO > endISO) break;
+      if (candISO >= todayISO && candISO >= startISO) {
+        candidateDates.push(cand);
+      }
+    }
+  } else if (freq === "one_time") {
+    const y = startDay.getFullYear();
+    const m = startDay.getMonth();
+    const daysInMonth = new Date(y, m + 1, 0).getDate();
+    const rawPayDay =
+      typeof item.payDay === "number" && Number.isFinite(item.payDay)
+        ? item.payDay
+        : startDay.getDate();
+    const effDay = Math.min(Math.max(1, rawPayDay), daysInMonth);
+    const cand = new Date(y, m, effDay, 12, 0, 0);
+    const candISO = toYMD(cand);
+    if (candISO >= todayISO && candISO >= startISO && candISO <= endISO) {
+      candidateDates.push(cand);
+    }
+  } else if (freq === "biweekly") {
+    for (let offset = 0; offset < 24 && candidateDates.length < maxCount; offset++) {
+      const monthDate = new Date(today.getFullYear(), today.getMonth() + offset, 1);
+      const y = monthDate.getFullYear();
+      const m = monthDate.getMonth();
+      if (new Date(y, m, 1) > endDay) break;
+      if (!isFixedActiveInMonth(item, y, m)) continue;
+      const daysInMonth = new Date(y, m + 1, 0).getDate();
+      const rawPayDay =
+        typeof item.payDay === "number" && Number.isFinite(item.payDay) ? item.payDay : 1;
+      const baseDay = Math.min(Math.max(1, rawPayDay), daysInMonth);
+      const firstHalfDay = baseDay <= 15 ? baseDay : Math.max(1, baseDay - 15);
+      const secondHalfDay = Math.min(firstHalfDay + 15, daysInMonth);
+      const biweeklyDays = Array.from(new Set([firstHalfDay, secondHalfDay])).sort((a, b) => a - b);
+      for (const d of biweeklyDays) {
+        if (candidateDates.length >= maxCount) break;
+        const cand = new Date(y, m, d, 12, 0, 0);
+        const candISO = toYMD(cand);
+        if (candISO >= todayISO && candISO >= startISO && candISO <= endISO) {
+          candidateDates.push(cand);
+        }
+      }
+    }
+  } else if (isSinglePerMonthFreq) {
+    for (let offset = 0; offset < 36 && candidateDates.length < maxCount; offset++) {
+      const monthDate = new Date(today.getFullYear(), today.getMonth() + offset, 1);
+      const y = monthDate.getFullYear();
+      const m = monthDate.getMonth();
+      if (new Date(y, m, 1) > endDay) break;
+      if (!isFixedActiveInMonth(item, y, m)) continue;
+      const daysInMonth = new Date(y, m + 1, 0).getDate();
+      const rawPayDay =
+        typeof item.payDay === "number" && Number.isFinite(item.payDay)
+          ? item.payDay
+          : startDay.getDate();
+      const effDay = Math.min(Math.max(1, rawPayDay), daysInMonth);
+      const cand = new Date(y, m, effDay, 12, 0, 0);
+      const candISO = toYMD(cand);
+      if (candISO >= todayISO && candISO <= endISO && (today >= startDay || candISO >= startISO)) {
+        candidateDates.push(cand);
+      }
+    }
+  }
+
+  return candidateDates.map((cand) => {
+    const dueDate = startOfDay(cand);
+    const dueISO = toYMD(dueDate);
+    const daysUntil = daysBetween(today, dueDate);
+    const scheduledId = buildScheduledTxId(item.id, dueISO);
+
+    const autoRecordedToday =
+      dueISO === todayISO && transactions.some((t) => t.id === scheduledId);
+
+    const alreadyRecorded = transactions.some((t) => {
+      if (t.id === scheduledId) return true;
+      if (t.fixedId !== item.id) return false;
+      const td = parseDateLocal(t.date ?? "");
+      if (isNaN(td.getTime())) return false;
+      if (toYMD(td) === dueISO) return true;
+      if (
+        isSinglePerMonthFreq &&
+        td.getFullYear() === dueDate.getFullYear() &&
+        td.getMonth() === dueDate.getMonth()
+      ) {
+        return true;
+      }
+      return false;
+    });
+
+    return {
+      dueDate,
+      dueISO,
+      daysUntil,
+      alreadyRecorded,
+      autoRecordedToday,
+    };
+  });
+}
 
 export const emojiFor = (cat: string) => CATEGORY_EMOJI[cat] ?? "💸";
 
@@ -646,3 +918,4 @@ export function iconFor(rec: { icon?: IconRef; category?: string; emoji?: string
   if (rec.emoji) return { kind: "emoji", value: rec.emoji };
   return { kind: "emoji", value: emojiFor(rec.category ?? "") };
 }
+

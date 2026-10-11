@@ -2,7 +2,7 @@ import { z } from 'zod';
 import { 
   ItemType, Frequency, Priority, PaymentMethod, AccountType, 
   ChangeAction, ChangeEntity, IconRef, Denomination,
-  Currency, ThemeMode
+  Currency, ThemeMode, NotificationRepeatFrequency, NotificationPreferences
 } from '@/lib/finance';
 
 const iconRefSchema: z.ZodType<IconRef> = z.object({
@@ -189,6 +189,43 @@ export const userProfileSchema = z.object({
   avatar: iconRefSchema.optional(),
 }).strict();
 
+const timeHHMMSchema = z.string().regex(/^([01]\d|2[0-3]):([0-5]\d)$/, 'Invalid HH:mm format');
+export const notificationRepeatFrequencySchema = z.enum([
+  'daily',
+  'every_3_days',
+  'weekly',
+  'once',
+]) satisfies z.ZodEnum<[NotificationRepeatFrequency, ...NotificationRepeatFrequency[]]>;
+
+export const notificationPreferencesSchema: z.ZodType<NotificationPreferences> = z.object({
+  enabled: z.boolean(),
+  pushEnabled: z.boolean(),
+  localEnabled: z.boolean(),
+  inAppToastEnabled: z.boolean(),
+  goalDeadlineReminders: z.boolean(),
+  upcomingDays: z.array(z.number().int().min(0).max(60)).max(20),
+  overdueAlert: z.boolean(),
+  overdueRepeat: notificationRepeatFrequencySchema,
+  behindPaceAlert: z.boolean(),
+  behindPaceRepeat: notificationRepeatFrequencySchema,
+  behindPaceTolerancePct: z.number().min(1).max(50),
+  fixedItemReminders: z.boolean(),
+  notifyFixedExpenses: z.boolean(),
+  notifyFixedIncomes: z.boolean(),
+  notifyFixedSavings: z.boolean(),
+  fixedUpcomingDays: z.array(z.number().int().min(0).max(60)).max(20),
+  skipIfAlreadyRecorded: z.boolean(),
+  preferredTime: timeHHMMSchema,
+  quietHoursEnabled: z.boolean(),
+  quietHours: z.object({
+    start: timeHHMMSchema,
+    end: timeHHMMSchema,
+  }).strict(),
+  soundEnabled: z.boolean(),
+  vibrationEnabled: z.boolean(),
+  hideAmountsInNotifications: z.boolean(),
+}).strict();
+
 export const exportDataSchema = z.object({
   app: z.literal('finance-pal').or(z.literal('migol-finanzas')),
   version: z.number().int().positive(),
@@ -241,7 +278,9 @@ export const validationSchemas = {
   debtPayment: debtPaymentSchema,
   changeLogEntry: changeLogEntrySchema,
   userProfile: userProfileSchema,
+  notificationPreferences: notificationPreferencesSchema,
   exportData: exportDataSchema,
 } as const;
 
 export type ValidationSchemas = typeof validationSchemas;
+

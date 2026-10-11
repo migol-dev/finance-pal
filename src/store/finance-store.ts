@@ -30,7 +30,8 @@ import {
   sanitizeGoalFolder,
   sanitizeDebt,
   sanitizeFixed,
-  sanitizeProfile
+  sanitizeProfile,
+  sanitizeNotificationPrefs
 } from "@/lib/sanitizers";
 export * from "@/lib/sanitizers";
 
@@ -73,8 +74,6 @@ export const ALL_SCOPES: Required<ExportScopes> = {
   excludePII: false, excludeBankDetails: false, excludeEmail: false, excludeReceipts: false,
 };
 
-const now = new Date();
-
 export const useFinance = create<State>()(
   persist(
     (...a) => {
@@ -90,54 +89,12 @@ export const useFinance = create<State>()(
           { id: generateSecureId(), name: "Efectivo", type: "cash", initialBalance: 0, denominations: [] },
           { id: generateSecureId(), name: "Cuenta 1", type: "bank", initialBalance: 0 },
         ],
-        changeLog: [],
-        theme: "system",
-        profile: { name: "", currency: "MXN" },
-        // whether to mirror filter state to URL query params
-        syncFiltersToURL: false,
-        setSyncFiltersToURL: (v: boolean) => set({ syncFiltersToURL: v }),
-        appSettings: { accentColor: "blue", compactMode: false, glassEffect: true, conflictResolved: false, notifications: DEFAULT_NOTIFICATION_PREFS },
-        setAccentColor: (color: AccentColor) => {
-          set((s) => ({ appSettings: { ...s.appSettings, accentColor: color } }));
-        },
-        setCompactMode: (compact: boolean) => {
-          set((s) => ({ appSettings: { ...s.appSettings, compactMode: compact } }));
-        },
-        setGlassEffect: (glass: boolean) => {
-          set((s) => ({ appSettings: { ...s.appSettings, glassEffect: glass } }));
-        },
-        setNotificationPrefs: (prefs: Partial<NotificationPreferences>) => {
-          set((s) => ({ appSettings: { ...s.appSettings, notifications: { ...s.appSettings.notifications, ...prefs } } }));
-        },
-        setConflictResolved: () => {
-          set((s) => ({ appSettings: { ...s.appSettings, conflictResolved: true } }));
-        },
-        activeYear: now.getFullYear(),
-        activeMonth: now.getMonth(),
 
         hasLocalData: () => {
           const s = get();
           if (!s) return false;
           return ((s.transactions?.length ?? 0) + (s.fixedItems?.length ?? 0) + (s.goals?.length ?? 0) + (s.debts?.length ?? 0) + (s.goalFolders?.length ?? 0)) > 0;
         },
-
-        // Solo estado local. La sincronización a la nube (user_settings)
-        // se gestiona fuera del store vía settings.service + useFinanceData.
-        setProfile: (p) => {
-          set((s) => ({ profile: { ...s.profile, ...p } }));
-        },
-
-        setTheme: (t) => {
-          set({ theme: t });
-        },
-        toggleTheme: () => {
-          const current = get().theme;
-          const next = current === "system" ? "light" : current === "light" ? "dark" : "system";
-          get().setTheme(next);
-        },
-
-        setActive: (y, m) => set({ activeYear: y, activeMonth: m }),
-        resetToToday: () => { const d = new Date(); set({ activeYear: d.getFullYear(), activeMonth: d.getMonth() }); },
 
         ensureScheduledTransactions: () => {
           const s = get();
@@ -152,8 +109,6 @@ export const useFinance = create<State>()(
             }
           }
         },
-
-        clearChangeLog: () => set({ changeLog: [] }),
 
         exportData: (scopes) => {
           const s = get();
@@ -431,6 +386,27 @@ export const useFinance = create<State>()(
         };
 
         return next;
+      },
+      merge: (persistedState: any, currentState: State): State => {
+        if (!persistedState || typeof persistedState !== "object") {
+          return currentState;
+        }
+        const persistedAppSettings = isObj(persistedState.appSettings)
+          ? persistedState.appSettings
+          : {};
+        return {
+          ...currentState,
+          ...persistedState,
+          appSettings: {
+            ...currentState.appSettings,
+            ...persistedAppSettings,
+            notifications: sanitizeNotificationPrefs(persistedAppSettings.notifications),
+            accessibility: {
+              ...DEFAULT_ACCESSIBILITY_SETTINGS,
+              ...(isObj(persistedAppSettings.accessibility) ? persistedAppSettings.accessibility : {}),
+            },
+          },
+        };
       },
     }
   )

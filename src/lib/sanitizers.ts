@@ -1,7 +1,8 @@
 import {
     FixedItem, Transaction, Goal, GoalFolder, Debt, DebtPayment,
     ChangeLogEntry, ChangeAction, ChangeEntity, IconRef,
-    Account, Currency, UserProfile
+    Account, Currency, UserProfile,
+    NotificationPreferences, DEFAULT_NOTIFICATION_PREFS, NotificationRepeatFrequency
 } from "@/lib/finance";
 import { validationSchemas } from '@/lib/validators';
 import { CURRENT_SCHEMA_VERSION } from '@/lib/schema-migrations';
@@ -305,6 +306,74 @@ export function sanitizeProfile(raw: unknown): UserProfile {
         email: isStr(raw.email) ? raw.email : undefined,
         currency: currencies.includes(raw.currency as Currency) ? (raw.currency as Currency) : "MXN",
         avatar: sanitizeIcon(raw.avatar),
+    };
+}
+
+const TIME_HHMM_RE = /^([01]\d|2[0-3]):([0-5]\d)$/;
+const REPEAT_FREQS = ["daily", "every_3_days", "weekly", "once"] as const;
+
+function sanitizeDaysArray(raw: unknown, fallback: number[]): number[] {
+    if (!Array.isArray(raw)) return [...fallback];
+    const cleaned = Array.from(
+        new Set(
+            raw
+                .map((x) => (typeof x === "number" ? Math.round(x) : Number(x)))
+                .filter((n) => Number.isFinite(n) && n >= 0 && n <= 60)
+        )
+    ).sort((a, b) => b - a);
+    return cleaned.slice(0, 20);
+}
+
+export function sanitizeNotificationPrefs(raw: unknown): NotificationPreferences {
+    if (!isObj(raw)) return { ...DEFAULT_NOTIFICATION_PREFS, quietHours: { ...DEFAULT_NOTIFICATION_PREFS.quietHours } };
+    const qh = isObj(raw.quietHours) ? raw.quietHours : {};
+    const start = isStr(qh.start) && TIME_HHMM_RE.test(qh.start) ? qh.start : DEFAULT_NOTIFICATION_PREFS.quietHours.start;
+    const end = isStr(qh.end) && TIME_HHMM_RE.test(qh.end) ? qh.end : DEFAULT_NOTIFICATION_PREFS.quietHours.end;
+    const preferredTime =
+        isStr(raw.preferredTime) && TIME_HHMM_RE.test(raw.preferredTime)
+            ? raw.preferredTime
+            : DEFAULT_NOTIFICATION_PREFS.preferredTime;
+
+    const tol = isNum(raw.behindPaceTolerancePct)
+        ? Math.min(50, Math.max(1, raw.behindPaceTolerancePct))
+        : DEFAULT_NOTIFICATION_PREFS.behindPaceTolerancePct;
+
+    return {
+        enabled: isBool(raw.enabled) ? raw.enabled : DEFAULT_NOTIFICATION_PREFS.enabled,
+        pushEnabled: isBool(raw.pushEnabled) ? raw.pushEnabled : DEFAULT_NOTIFICATION_PREFS.pushEnabled,
+        localEnabled: isBool(raw.localEnabled) ? raw.localEnabled : DEFAULT_NOTIFICATION_PREFS.localEnabled,
+        inAppToastEnabled: isBool(raw.inAppToastEnabled) ? raw.inAppToastEnabled : DEFAULT_NOTIFICATION_PREFS.inAppToastEnabled,
+        goalDeadlineReminders: isBool(raw.goalDeadlineReminders)
+            ? raw.goalDeadlineReminders
+            : Array.isArray(raw.upcomingDays)
+                ? raw.upcomingDays.length > 0
+                : DEFAULT_NOTIFICATION_PREFS.goalDeadlineReminders,
+        upcomingDays: sanitizeDaysArray(raw.upcomingDays, DEFAULT_NOTIFICATION_PREFS.upcomingDays),
+        overdueAlert: isBool(raw.overdueAlert) ? raw.overdueAlert : DEFAULT_NOTIFICATION_PREFS.overdueAlert,
+        overdueRepeat: inSet(REPEAT_FREQS, raw.overdueRepeat)
+            ? (raw.overdueRepeat as NotificationRepeatFrequency)
+            : DEFAULT_NOTIFICATION_PREFS.overdueRepeat,
+        behindPaceAlert: isBool(raw.behindPaceAlert) ? raw.behindPaceAlert : DEFAULT_NOTIFICATION_PREFS.behindPaceAlert,
+        behindPaceRepeat: inSet(REPEAT_FREQS, raw.behindPaceRepeat)
+            ? (raw.behindPaceRepeat as NotificationRepeatFrequency)
+            : DEFAULT_NOTIFICATION_PREFS.behindPaceRepeat,
+        behindPaceTolerancePct: tol,
+        fixedItemReminders: isBool(raw.fixedItemReminders) ? raw.fixedItemReminders : DEFAULT_NOTIFICATION_PREFS.fixedItemReminders,
+        notifyFixedExpenses: isBool(raw.notifyFixedExpenses) ? raw.notifyFixedExpenses : DEFAULT_NOTIFICATION_PREFS.notifyFixedExpenses,
+        notifyFixedIncomes: isBool(raw.notifyFixedIncomes) ? raw.notifyFixedIncomes : DEFAULT_NOTIFICATION_PREFS.notifyFixedIncomes,
+        notifyFixedSavings: isBool(raw.notifyFixedSavings) ? raw.notifyFixedSavings : DEFAULT_NOTIFICATION_PREFS.notifyFixedSavings,
+        fixedUpcomingDays: sanitizeDaysArray(raw.fixedUpcomingDays, DEFAULT_NOTIFICATION_PREFS.fixedUpcomingDays),
+        skipIfAlreadyRecorded: isBool(raw.skipIfAlreadyRecorded)
+            ? raw.skipIfAlreadyRecorded
+            : DEFAULT_NOTIFICATION_PREFS.skipIfAlreadyRecorded,
+        preferredTime,
+        quietHoursEnabled: isBool(raw.quietHoursEnabled) ? raw.quietHoursEnabled : DEFAULT_NOTIFICATION_PREFS.quietHoursEnabled,
+        quietHours: { start, end },
+        soundEnabled: isBool(raw.soundEnabled) ? raw.soundEnabled : DEFAULT_NOTIFICATION_PREFS.soundEnabled,
+        vibrationEnabled: isBool(raw.vibrationEnabled) ? raw.vibrationEnabled : DEFAULT_NOTIFICATION_PREFS.vibrationEnabled,
+        hideAmountsInNotifications: isBool(raw.hideAmountsInNotifications)
+            ? raw.hideAmountsInNotifications
+            : DEFAULT_NOTIFICATION_PREFS.hideAmountsInNotifications,
     };
 }
 
