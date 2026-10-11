@@ -61,7 +61,11 @@ export function mapUserSettingsFromDb(row: UserSettingsRow): UserSettings | null
     theme: (validTheme ?? 'system') as ThemeMode,
     profile:
       row.profile && typeof row.profile === 'object'
-        ? ({ name: '', currency: 'MXN', ...row.profile } as UserProfile)
+        ? ({
+            ...row.profile,
+            name: row.profile.name || '',
+            currency: row.profile.currency || 'MXN',
+          } as UserProfile)
         : ({ name: '', currency: 'MXN' } as UserProfile),
     notificationPrefs: hasNotifPrefs
       ? sanitizeNotificationPrefs(row.notification_prefs)

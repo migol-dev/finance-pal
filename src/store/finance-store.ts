@@ -6,7 +6,7 @@ import { createDebtSlice, DebtSlice } from "./slices/debt-slice";
 import { createFixedSlice, FixedSlice } from "./slices/fixed-slice";
 import { createTransactionSlice, TransactionSlice } from "./slices/transaction-slice";
 import { persist } from "zustand/middleware";
-import { FixedItem, Transaction, Goal, Debt, ChangeLogEntry, isFixedActiveInMonth, parseDateLocal, getDueOccurrencesForFixedItem, Account, ThemeMode, AccentColor, GoalFolder, NotificationPreferences, DEFAULT_NOTIFICATION_PREFS, DEFAULT_ACCESSIBILITY_SETTINGS } from "@/lib/finance";
+import { FixedItem, Transaction, Goal, Debt, ChangeLogEntry, getDueOccurrencesForFixedItem, Account, ThemeMode, GoalFolder, DEFAULT_NOTIFICATION_PREFS, DEFAULT_ACCESSIBILITY_SETTINGS } from "@/lib/finance";
 import { Filesystem, Directory } from "@capacitor/filesystem";
 import { Capacitor } from "@capacitor/core";
 import { supabase } from "@/lib/supabase";

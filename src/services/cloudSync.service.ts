@@ -6,7 +6,7 @@ import { mapFixedItemFromDb } from '@/services/fixedItems.service';
 import { mapGoalFromDb } from '@/services/goals.service';
 import { mapGoalFolderFromDb } from '@/services/goalFolders.service';
 import { mapDebtFromDb } from '@/services/debts.service';
-import { mapUserSettingsFromDb } from '@/services/settings.service';
+import { fetchUserSettings, upsertUserSettings } from '@/services/settings.service';
 import type {
   Account,
   Transaction,
@@ -73,13 +73,6 @@ export interface CloudSyncInput {
  *   supabase.from('goal_folders')...,
  * ])
  * y aplica los mappers de cada servicio correspondiente.
- */
-import { fetchUserSettings, upsertUserSettings } from '@/services/settings.service';
-
-/**
- * Descarga todas las entidades de Supabase para el userId dado.
- * Usa los mappers existentes de cada servicio por entidad.
- * Lanza AppError(ErrorCodes.DB_QUERY_FAILED) si alguna de las 6 consultas falla.
  */
 export async function downloadAllFromCloud(
   userId: string
