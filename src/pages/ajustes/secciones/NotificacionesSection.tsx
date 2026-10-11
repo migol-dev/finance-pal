@@ -121,7 +121,8 @@ export const NotificacionesSection = memo(function NotificacionesSection({
   };
 
   const addCustomGoalDay = () => {
-    const n = Math.round(Number(customGoalDay));
+    const trimmed = customGoalDay.trim();
+    const n = trimmed === "" ? NaN : Math.round(Number(trimmed));
     if (!Number.isFinite(n) || n < 0 || n > 60) {
       toast.error("Ingresa un número de días entre 0 y 60");
       return;
@@ -142,7 +143,8 @@ export const NotificacionesSection = memo(function NotificacionesSection({
   };
 
   const addCustomFixedDay = () => {
-    const n = Math.round(Number(customFixedDay));
+    const trimmed = customFixedDay.trim();
+    const n = trimmed === "" ? NaN : Math.round(Number(trimmed));
     if (!Number.isFinite(n) || n < 0 || n > 60) {
       toast.error("Ingresa un número de días entre 0 y 60");
       return;

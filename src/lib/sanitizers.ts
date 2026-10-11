@@ -317,8 +317,9 @@ function sanitizeDaysArray(raw: unknown, fallback: number[]): number[] {
     const cleaned = Array.from(
         new Set(
             raw
-                .map((x) => (typeof x === "number" ? Math.round(x) : Number(x)))
-                .filter((n) => Number.isFinite(n) && n >= 0 && n <= 60)
+                .filter((x) => typeof x === "number" || (typeof x === "string" && x.trim() !== ""))
+                .map((x) => Math.round(Number(x)))
+                .filter((n) => Number.isInteger(n) && n >= 0 && n <= 60)
         )
     ).sort((a, b) => b - a);
     return cleaned.slice(0, 20);

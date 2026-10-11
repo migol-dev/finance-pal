@@ -17,6 +17,7 @@ import {
   getUpcomingOccurrencesForFixedItem,
 } from "./finance";
 import { sanitizeNotificationPrefs } from "./sanitizers";
+import { toast } from "sonner";
 
 // Re-export obligatorio para mantener compatibilidad con consumidores y tests existentes
 export {
@@ -53,6 +54,10 @@ let channelCreated = false;
 
 // Mapa en memoria de timers para sesión Web activa
 const webNotificationTimers = new Map<string, ReturnType<typeof setTimeout>>();
+// Protección contra cancelación prematura de notificaciones inmediatas en Android (ventana de 3.5s)
+const recentImmediateAndroidIds = new Map<number, number>();
+// Cola de serialización para evitar que dos llamadas concurrentes a scheduleAllNotifications se pisen
+let scheduleQueuePromise: Promise<unknown> = Promise.resolve();
 
 function pad2(n: number): string {
   return String(n).padStart(2, "0");
@@ -370,6 +375,25 @@ export async function showWebNotification(
   }
 }
 
+export function showInAppToastNotification(
+  notification: ScheduledNotification,
+  rawPrefs?: Partial<NotificationPreferences>,
+): boolean {
+  if (typeof window === "undefined") return false;
+  if (typeof document !== "undefined" && document.visibilityState === "hidden") return false;
+  const prefs = sanitizeNotificationPrefs(rawPrefs);
+  if (!prefs.enabled || !prefs.inAppToastEnabled) return false;
+  try {
+    toast.info(notification.title, {
+      description: notification.body,
+      id: notification.dedupeKey || notification.id,
+    });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 export async function scheduleLocalNotification(
   notification: ScheduledNotification,
   rawPrefs?: Partial<NotificationPreferences>,
@@ -377,6 +401,7 @@ export async function scheduleLocalNotification(
   const prefs = sanitizeNotificationPrefs(rawPrefs);
 
   if (Capacitor.isNativePlatform()) {
+    if (!prefs.localEnabled) return;
     try {
       const { display } = await LocalNotifications.checkPermissions();
       if (display !== "granted") return;
@@ -385,15 +410,22 @@ export async function scheduleLocalNotification(
         await ensureAndroidNotificationChannel(prefs);
       }
 
+      const nowMs = Date.now();
+      const isImmediate = notification.scheduledAt.getTime() <= nowMs + 2000;
       const safeAt =
-        notification.scheduledAt.getTime() <= Date.now()
-          ? new Date(Date.now() + 1500)
+        notification.scheduledAt.getTime() <= nowMs
+          ? new Date(nowMs + 1500)
           : notification.scheduledAt;
+
+      const numericId = hashCode(notification.id);
+      if (isImmediate) {
+        recentImmediateAndroidIds.set(numericId, nowMs + 4000);
+      }
 
       await LocalNotifications.schedule({
         notifications: [
           {
-            id: hashCode(notification.id),
+            id: numericId,
             title: notification.title,
             body: notification.body,
             channelId: ANDROID_CHANNEL_ID,
@@ -421,13 +453,15 @@ export async function scheduleLocalNotification(
   }
 
   // Programación Web en sesión activa
-  if (typeof window !== "undefined" && "Notification" in window) {
+  if (typeof window !== "undefined") {
     if (webNotificationTimers.has(notification.id)) {
       clearTimeout(webNotificationTimers.get(notification.id)!);
       webNotificationTimers.delete(notification.id);
     }
 
-    if (Notification.permission !== "granted") return;
+    const canShowOsWeb =
+      prefs.localEnabled && "Notification" in window && Notification.permission === "granted";
+    if (!canShowOsWeb && !prefs.inAppToastEnabled) return;
 
     const delay = notification.scheduledAt.getTime() - Date.now();
     // Límite seguro para setTimeout (24.8 días)
@@ -436,8 +470,13 @@ export async function scheduleLocalNotification(
         try {
           const key = notification.dedupeKey || notification.id;
           if (!hasNotificationBeenDelivered(key)) {
-            const shown = await showWebNotification(notification, prefs);
-            if (shown) {
+            const osShown = prefs.localEnabled
+              ? await showWebNotification(notification, prefs)
+              : false;
+            const toastShown = prefs.inAppToastEnabled
+              ? showInAppToastNotification(notification, prefs)
+              : false;
+            if (osShown || toastShown) {
               markNotificationDelivered(key);
             }
           }
@@ -455,7 +494,9 @@ export async function scheduleLocalNotification(
 export async function cancelLocalNotification(id: string): Promise<void> {
   if (Capacitor.isNativePlatform()) {
     try {
-      await LocalNotifications.cancel({ notifications: [{ id: hashCode(id) }] });
+      const numericId = hashCode(id);
+      recentImmediateAndroidIds.delete(numericId);
+      await LocalNotifications.cancel({ notifications: [{ id: numericId }] });
     } catch (e) {
       console.warn("Native notification cancel failed:", e);
     }
@@ -471,10 +512,17 @@ export async function cancelLocalNotification(id: string): Promise<void> {
 export async function cancelAllLocalNotifications(): Promise<void> {
   if (Capacitor.isNativePlatform()) {
     try {
+      const nowMs = Date.now();
+      for (const [id, exp] of recentImmediateAndroidIds.entries()) {
+        if (exp <= nowMs) recentImmediateAndroidIds.delete(id);
+      }
       const pending = await LocalNotifications.getPending();
-      if (pending.notifications.length > 0) {
+      const cancellable = pending.notifications.filter(
+        (n) => !recentImmediateAndroidIds.has(n.id),
+      );
+      if (cancellable.length > 0) {
         await LocalNotifications.cancel({
-          notifications: pending.notifications.map((n) => ({ id: n.id })),
+          notifications: cancellable.map((n) => ({ id: n.id })),
         });
       }
     } catch (e) {
@@ -498,6 +546,7 @@ export async function sendTestNotification(
     if (perm.display !== "granted") {
       throw new Error("Permisos de notificación denegados en el dispositivo");
     }
+    recentImmediateAndroidIds.set(999999, Date.now() + 4000);
     await LocalNotifications.schedule({
       notifications: [
         {
@@ -567,7 +616,7 @@ export function computeGoalNotifications(
   now: Date = new Date(),
 ): ScheduledNotification[] {
   const prefs = sanitizeNotificationPrefs(rawPrefs);
-  if (!prefs.enabled || !prefs.localEnabled) return [];
+  if (!prefs.enabled || (!prefs.localEnabled && !prefs.inAppToastEnabled)) return [];
   if (!goal || !goal.deadline) return [];
   if (goal.saved >= goal.target) return [];
 
@@ -685,7 +734,9 @@ export function computeFixedItemNotifications(
   now: Date = new Date(),
 ): ScheduledNotification[] {
   const prefs = sanitizeNotificationPrefs(rawPrefs);
-  if (!prefs.enabled || !prefs.localEnabled || !prefs.fixedItemReminders) return [];
+  if (!prefs.enabled || (!prefs.localEnabled && !prefs.inAppToastEnabled) || !prefs.fixedItemReminders) {
+    return [];
+  }
   if (!item || !item.active) return [];
 
   // Filtrar por tipo configurado por el usuario
@@ -703,7 +754,21 @@ export function computeFixedItemNotifications(
   }
 
   const today = startOfDay(now);
-  const occurrences = getUpcomingOccurrencesForFixedItem(item, transactions, now, 2);
+  const maxDaysBefore =
+    prefs.fixedUpcomingDays.length > 0 ? Math.max(0, ...prefs.fixedUpcomingDays) : 0;
+  const minOccurrences =
+    item.frequency === "weekly"
+      ? Math.max(2, Math.ceil(maxDaysBefore / 7) + 2)
+      : item.frequency === "biweekly"
+        ? Math.max(2, Math.ceil(maxDaysBefore / 14) + 2)
+        : Math.max(2, Math.ceil(maxDaysBefore / 28) + 2);
+
+  const occurrences = getUpcomingOccurrencesForFixedItem(
+    item,
+    transactions,
+    now,
+    minOccurrences,
+  );
   if (occurrences.length === 0) return [];
 
   const fmtAmt = (n: number) => (prefs.hideAmountsInNotifications ? "$•••" : formatCurrency(n));
@@ -776,7 +841,7 @@ export function computeFixedItemNotifications(
 
 /* ─────────────────────────  Orquestador Principal  ───────────────────────── */
 
-export async function scheduleAllNotifications(
+async function executeScheduleAllNotifications(
   goals: Goal[],
   fixedItems: FixedItem[],
   rawPrefs: Partial<NotificationPreferences>,
@@ -786,7 +851,7 @@ export async function scheduleAllNotifications(
   await cancelAllLocalNotifications();
 
   const prefs = sanitizeNotificationPrefs(rawPrefs);
-  if (!prefs.enabled || !prefs.localEnabled) {
+  if (!prefs.enabled || (!prefs.localEnabled && !prefs.inAppToastEnabled)) {
     return [];
   }
 
@@ -816,14 +881,32 @@ export async function scheduleAllNotifications(
           const postponedAt = applyPreferredTimeAndQuietHours(now, prefs, true);
           await scheduleLocalNotification({ ...notif, scheduledAt: postponedAt }, prefs);
         } else if (Capacitor.isNativePlatform()) {
-          await scheduleLocalNotification(
-            { ...notif, scheduledAt: new Date(Date.now() + 1500) },
-            prefs,
-          );
-          markNotificationDelivered(key, now);
+          let delivered = false;
+          if (prefs.localEnabled) {
+            const { display } = await LocalNotifications.checkPermissions();
+            if (display === "granted") {
+              await scheduleLocalNotification(
+                { ...notif, scheduledAt: new Date(Date.now() + 1500) },
+                prefs,
+              );
+              delivered = true;
+            }
+          }
+          if (prefs.inAppToastEnabled) {
+            const toastShown = showInAppToastNotification(notif, prefs);
+            delivered = delivered || toastShown;
+          }
+          if (delivered) {
+            markNotificationDelivered(key, now);
+          }
         } else {
-          const shown = await showWebNotification(notif, prefs);
-          if (shown) {
+          const osShown = prefs.localEnabled
+            ? await showWebNotification(notif, prefs)
+            : false;
+          const toastShown = prefs.inAppToastEnabled
+            ? showInAppToastNotification(notif, prefs)
+            : false;
+          if (osShown || toastShown) {
             markNotificationDelivered(key, now);
           }
         }
@@ -836,6 +919,20 @@ export async function scheduleAllNotifications(
   }
 
   return allNotifications;
+}
+
+export async function scheduleAllNotifications(
+  goals: Goal[],
+  fixedItems: FixedItem[],
+  rawPrefs: Partial<NotificationPreferences>,
+  transactions: Transaction[] = [],
+  now: Date = new Date(),
+): Promise<ScheduledNotification[]> {
+  const nextRun = scheduleQueuePromise
+    .catch(() => {})
+    .then(() => executeScheduleAllNotifications(goals, fixedItems, rawPrefs, transactions, now));
+  scheduleQueuePromise = nextRun;
+  return nextRun;
 }
 
 export function formatCurrency(n: number): string {

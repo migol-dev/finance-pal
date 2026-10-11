@@ -729,8 +729,10 @@ export function expectedGoalAt(goal: Goal, date: Date): number {
 
 export function actualGoalAt(goal: Goal, date: Date): number {
   const end = startOfDay(date).getTime();
-  const initial = goal.contributions && goal.contributions.length > 0 ? 0 : goal.saved;
-  const sum = (goal.contributions ?? []).reduce((acc, c) => {
+  const contribs = goal.contributions ?? [];
+  const totalContribs = contribs.reduce((acc, c) => acc + c.amount, 0);
+  const initial = contribs.length > 0 ? Math.max(0, goal.saved - totalContribs) : goal.saved;
+  const sum = contribs.reduce((acc, c) => {
     const t = startOfDay(parseDateLocal(c.date)).getTime();
     return t <= end ? acc + c.amount : acc;
   }, 0);

@@ -7,6 +7,7 @@ import {
   getUpcomingOccurrencesForFixedItem,
   statusForGoal,
   paceForGoal,
+  actualGoalAt,
   buildScheduledTxId,
 } from "@/lib/finance";
 import { sanitizeNotificationPrefs } from "@/lib/sanitizers";
@@ -14,6 +15,7 @@ import { notificationPreferencesSchema } from "@/lib/validators";
 import {
   computeGoalNotifications,
   computeFixedItemNotifications,
+  scheduleAllNotifications,
   isDateInQuietHours,
   applyPreferredTimeAndQuietHours,
   hasNotificationBeenDelivered,
@@ -47,7 +49,7 @@ describe("Notifications Engine, Preferences Sanitizer & Calculators", () => {
       expect(validation.success).toBe(true);
     });
 
-    it("maneja null, undefined o valores corruptos devolviendo defaults seguros", () => {
+    it("maneja null, undefined, strings vacíos o flotantes en arrays de días devolviendo enteros válidos", () => {
       const fromNull = sanitizeNotificationPrefs(null);
       expect(fromNull).toEqual(DEFAULT_NOTIFICATION_PREFS);
 
@@ -55,10 +57,13 @@ describe("Notifications Engine, Preferences Sanitizer & Calculators", () => {
         preferredTime: "99:99",
         behindPaceTolerancePct: 500,
         overdueRepeat: "invalid_freq",
+        upcomingDays: [null, false, "", "   ", "3.7", 1.2],
       });
       expect(fromCorrupt.preferredTime).toBe("09:00");
       expect(fromCorrupt.behindPaceTolerancePct).toBe(50);
       expect(fromCorrupt.overdueRepeat).toBe("every_3_days");
+      expect(fromCorrupt.upcomingDays).toEqual([4, 1]);
+      expect(notificationPreferencesSchema.safeParse(fromCorrupt).success).toBe(true);
     });
 
     it("genera IDs enteros positivos de 31 bits seguros para Android NotificationManager", () => {
@@ -398,9 +403,31 @@ describe("Notifications Engine, Preferences Sanitizer & Calculators", () => {
       );
       expect(withAutoToday.some((n) => n.payload?.dueISO === "2026-05-15")).toBe(true);
     });
+
+    it("escala el horizonte de ocurrencias para conceptos weekly/biweekly cuando fixedUpcomingDays incluye días mayores a 7 (ej. 14d)", () => {
+      const sunMay10 = new Date(2026, 4, 10, 8, 0, 0); // Domingo 10 de mayo 2026
+      const weeklyItem: FixedItem = {
+        ...baseItem,
+        startDate: "2026-01-01",
+        frequency: "weekly",
+        payWeekDay: 1, // Lunes (11 mayo, 18 mayo, 25 mayo)
+      };
+
+      const notifs = computeFixedItemNotifications(
+        weeklyItem,
+        { ...DEFAULT_NOTIFICATION_PREFS, fixedUpcomingDays: [14] },
+        [],
+        sunMay10,
+      );
+
+      // El lunes 25 de mayo menos 14 días es el lunes 11 de mayo (>= 10 de mayo), por lo que debe agendarse
+      expect(notifs.some((n) => n.payload?.dueISO === "2026-05-25" && n.payload?.daysBefore === 14)).toBe(
+        true,
+      );
+    });
   });
 
-  describe("4. Horario Silencioso (No Molestar) y Deduplicación Persistente", () => {
+  describe("4. Horario Silencioso (No Molestar), In-App Toasts y Deduplicación Persistente", () => {
     it("desplaza alertas que caen en horario silencioso (22:00 - 08:00) hacia las 08:00 sin descartarlas", () => {
       const prefs = {
         ...DEFAULT_NOTIFICATION_PREFS,
@@ -426,6 +453,56 @@ describe("Notifications Engine, Preferences Sanitizer & Calculators", () => {
       expect(hasNotificationBeenDelivered(key)).toBe(false);
       markNotificationDelivered(key, new Date());
       expect(hasNotificationBeenDelivered(key)).toBe(true);
+    });
+
+    it("preserva el saldo manual inicial en actualGoalAt aunque existan contribuciones parciales registradas", () => {
+      const goalWithManualAndContribs: Goal = {
+        id: "77777777-7777-4777-8777-777777777777",
+        name: "Auto",
+        target: 10000,
+        saved: 5500, // 4000 de saldo base + 1500 en contribuciones
+        emoji: "🚗",
+        color: "gradient-primary",
+        createdAt: "2026-04-01T00:00:00.000Z",
+        deadline: "2026-07-10T00:00:00.000Z",
+        contributions: [{ id: "c1", date: "2026-05-01T00:00:00.000Z", amount: 1500 }],
+      };
+
+      const mid = new Date(2026, 4, 21, 10, 0, 0);
+      expect(actualGoalAt(goalWithManualAndContribs, mid)).toBe(5500);
+      expect(statusForGoal(goalWithManualAndContribs, 2, mid)?.kind).toBe("ahead");
+    });
+
+    it("entrega avisos in-app cuando inAppToastEnabled=true aunque localEnabled=false y los marca como entregados", async () => {
+      const nowAfterPreferred = new Date(2026, 4, 10, 11, 0, 0); // 11:00 AM (después de 09:00 AM)
+      const overdueGoal: Goal = {
+        id: "88888888-8888-4888-8888-888888888888",
+        name: "Curso Inglés",
+        target: 5000,
+        saved: 1000,
+        emoji: "📚",
+        color: "gradient-primary",
+        deadline: "2026-05-01",
+      };
+
+      const scheduled = await scheduleAllNotifications(
+        [overdueGoal],
+        [],
+        {
+          ...DEFAULT_NOTIFICATION_PREFS,
+          enabled: true,
+          localEnabled: false,
+          inAppToastEnabled: true,
+          overdueAlert: true,
+          overdueRepeat: "daily",
+        },
+        [],
+        nowAfterPreferred,
+      );
+
+      expect(scheduled).toHaveLength(1);
+      const dedupeKey = scheduled[0].dedupeKey!;
+      expect(hasNotificationBeenDelivered(dedupeKey)).toBe(true);
     });
   });
 });

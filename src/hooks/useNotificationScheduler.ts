@@ -12,19 +12,57 @@ import type { NotificationPermissionState } from "@/lib/finance";
 const SCHEDULER_DEBOUNCE_MS = 600;
 const PERIODIC_EVAL_MS = 15 * 60 * 1000; // 15 minutos
 
+interface SharedSchedulerState {
+  permissionState: NotificationPermissionState;
+  scheduledCount: number;
+}
+
+const sharedState: SharedSchedulerState = {
+  permissionState: "prompt",
+  scheduledCount: 0,
+};
+
+const listeners = new Set<(state: SharedSchedulerState) => void>();
+let globalDebounceTimer: ReturnType<typeof setTimeout> | null = null;
+let globalLastPushSyncKey: string | null = null;
+
+function notifySchedulerListeners() {
+  const snapshot = { ...sharedState };
+  listeners.forEach((fn) => fn(snapshot));
+}
+
 export function useNotificationScheduler() {
   const { goals, fixedItems, transactions, appSettings, isLoading } = useFinanceData();
   const notificationPrefs = appSettings.notifications;
 
-  const [permissionState, setPermissionState] = useState<NotificationPermissionState>("prompt");
-  const [scheduledCount, setScheduledCount] = useState<number>(0);
-  const debounceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const lastPushSyncRef = useRef<string | null>(null);
+  const [permissionState, setPermissionState] = useState<NotificationPermissionState>(
+    sharedState.permissionState,
+  );
+  const [scheduledCount, setScheduledCount] = useState<number>(sharedState.scheduledCount);
+  const isPrimaryInstanceRef = useRef<boolean>(false);
+
+  useEffect(() => {
+    const isFirst = listeners.size === 0;
+    isPrimaryInstanceRef.current = isFirst;
+    const listener = (s: SharedSchedulerState) => {
+      setPermissionState(s.permissionState);
+      setScheduledCount(s.scheduledCount);
+    };
+    listeners.add(listener);
+    return () => {
+      listeners.delete(listener);
+    };
+  }, []);
 
   const refreshPermissionState = useCallback(async () => {
     try {
       const state = await getNotificationPermissionState();
-      setPermissionState(state);
+      if (sharedState.permissionState !== state) {
+        sharedState.permissionState = state;
+        notifySchedulerListeners();
+      } else {
+        setPermissionState(state);
+      }
       return state;
     } catch {
       return "prompt" as NotificationPermissionState;
@@ -41,7 +79,8 @@ export function useNotificationScheduler() {
         notificationPrefs,
         transactions,
       );
-      setScheduledCount(list.length);
+      sharedState.scheduledCount = list.length;
+      notifySchedulerListeners();
     } catch (e) {
       console.warn("[useNotificationScheduler] Failed to schedule notifications:", e);
     }
@@ -69,26 +108,28 @@ export function useNotificationScheduler() {
     };
   }, [refreshPermissionState]);
 
-  // 2. Reprogramar con debounce cuando cambien metas, fijos, transacciones, preferencias o permisos
+  // 2. Reprogramar con debounce único global cuando cambien metas, fijos, transacciones, preferencias o permisos
   useEffect(() => {
     if (isLoading) return;
-    if (debounceTimerRef.current) {
-      clearTimeout(debounceTimerRef.current);
+    if (globalDebounceTimer) {
+      clearTimeout(globalDebounceTimer);
     }
-    debounceTimerRef.current = setTimeout(() => {
+    globalDebounceTimer = setTimeout(() => {
+      globalDebounceTimer = null;
       runSchedule();
     }, SCHEDULER_DEBOUNCE_MS);
 
     return () => {
-      if (debounceTimerRef.current) {
-        clearTimeout(debounceTimerRef.current);
+      if (globalDebounceTimer && listeners.size <= 1) {
+        clearTimeout(globalDebounceTimer);
+        globalDebounceTimer = null;
       }
     };
   }, [runSchedule, permissionState, isLoading]);
 
-  // 3. Evaluación periódica autónoma (cada 15m y al volver a la pestaña)
+  // 3. Evaluación periódica autónoma (cada 15m y al volver a la pestaña, solo en la instancia primaria)
   useEffect(() => {
-    if (isLoading || !notificationPrefs.enabled) return;
+    if (!isPrimaryInstanceRef.current || isLoading || !notificationPrefs.enabled) return;
 
     const interval = setInterval(() => {
       runSchedule();
@@ -117,8 +158,8 @@ export function useNotificationScheduler() {
     if (permissionState !== "granted") return;
     const desired = Boolean(notificationPrefs.enabled && notificationPrefs.pushEnabled);
     const syncKey = `${permissionState}:${desired}`;
-    if (lastPushSyncRef.current === syncKey) return;
-    lastPushSyncRef.current = syncKey;
+    if (globalLastPushSyncKey === syncKey) return;
+    globalLastPushSyncKey = syncKey;
 
     if (desired) {
       subscribeToWebPush().catch((err) => {

@@ -86,6 +86,27 @@ function daysBetween(a: Date, b: Date): number {
   return Math.round((startOfDay(b).getTime() - startOfDay(a).getTime()) / 86400000);
 }
 
+function parseTimeHHMM(value: string | undefined, fallbackH: number, fallbackM: number): [number, number] {
+  if (!value || typeof value !== "string") return [fallbackH, fallbackM];
+  const m = value.match(/^([01]\d|2[0-3]):([0-5]\d)$/);
+  if (!m) return [fallbackH, fallbackM];
+  return [Number(m[1]), Number(m[2])];
+}
+
+function isDateInQuietHours(date: Date, prefs: any): boolean {
+  if (!prefs?.quietHoursEnabled) return false;
+  const [startH, startM] = parseTimeHHMM(prefs.quietHours?.start, 22, 0);
+  const [endH, endM] = parseTimeHHMM(prefs.quietHours?.end, 8, 0);
+  const startMins = startH * 60 + startM;
+  const endMins = endH * 60 + endM;
+  if (startMins === endMins) return false;
+  const currentMins = date.getHours() * 60 + date.getMinutes();
+  if (startMins < endMins) {
+    return currentMins >= startMins && currentMins < endMins;
+  }
+  return currentMins >= startMins || currentMins < endMins;
+}
+
 function shouldTriggerRepeat(repeat: string, daysSinceRef: number): boolean {
   if (daysSinceRef < 0) return false;
   if (repeat === "once") return daysSinceRef === 0 || daysSinceRef === 1;
@@ -114,7 +135,7 @@ function isFixedActiveInMonth(item: any, year: number, month: number): boolean {
   return true;
 }
 
-function getNextFixedDueDates(item: any, today: Date): Date[] {
+function getNextFixedDueDates(item: any, today: Date, maxDaysBefore: number = 7): Date[] {
   const start = parseDateSafe(item.start_date) ?? today;
   const end = parseDateSafe(item.end_date) ?? new Date(today.getFullYear() + 5, 11, 31);
   const todayDay = startOfDay(today);
@@ -131,9 +152,11 @@ function getNextFixedDueDates(item: any, today: Date): Date[] {
   if (freq === "weekly") {
     const payWeekDay =
       typeof item.pay_week_day === "number" ? ((item.pay_week_day % 7) + 7) % 7 : startDay.getDay();
-    const daysUntil = (payWeekDay - todayDay.getDay() + 7) % 7;
-    const first = new Date(todayDay.getFullYear(), todayDay.getMonth(), todayDay.getDate() + daysUntil, 12, 0, 0);
-    for (let w = 0; w < 3; w++) {
+    const base = todayDay > startDay ? todayDay : startDay;
+    const daysUntil = (payWeekDay - base.getDay() + 7) % 7;
+    const first = new Date(base.getFullYear(), base.getMonth(), base.getDate() + daysUntil, 12, 0, 0);
+    const maxWeeks = Math.max(3, Math.ceil(maxDaysBefore / 7) + 2);
+    for (let w = 0; w < maxWeeks; w++) {
       const cand = new Date(first.getFullYear(), first.getMonth(), first.getDate() + w * 7, 12, 0, 0);
       const iso = toYMD(cand);
       if (iso >= todayISO && iso >= startISO && iso <= endISO) dates.push(cand);
@@ -142,7 +165,9 @@ function getNextFixedDueDates(item: any, today: Date): Date[] {
   }
 
   if (freq === "biweekly") {
-    for (let offset = 0; offset < 3; offset++) {
+    const maxMonths = Math.max(3, Math.ceil(maxDaysBefore / 28) + 2);
+    const maxCount = Math.max(2, Math.ceil(maxDaysBefore / 14) + 2);
+    for (let offset = 0; offset < maxMonths; offset++) {
       const mDate = new Date(todayDay.getFullYear(), todayDay.getMonth() + offset, 1);
       const y = mDate.getFullYear();
       const m = mDate.getMonth();
@@ -158,10 +183,11 @@ function getNextFixedDueDates(item: any, today: Date): Date[] {
         if (iso >= todayISO && iso >= startISO && iso <= endISO) dates.push(cand);
       }
     }
-    return dates.slice(0, 2);
+    return dates.slice(0, maxCount);
   }
 
-  for (let offset = 0; offset < 14 && dates.length < 2; offset++) {
+  const maxCount = Math.max(2, Math.ceil(maxDaysBefore / 28) + 2);
+  for (let offset = 0; offset < 24 && dates.length < maxCount; offset++) {
     const mDate = new Date(todayDay.getFullYear(), todayDay.getMonth() + offset, 1);
     const y = mDate.getFullYear();
     const m = mDate.getMonth();
@@ -254,7 +280,9 @@ Deno.serve(async (req) => {
       userSubsMap.get(sub.user_id)!.push(sub);
     }
 
-    const today = startOfDay(new Date());
+    const nowDate = new Date();
+    const today = startOfDay(nowDate);
+    const todayISO = toYMD(today);
     let totalSent = 0;
     let totalFailed = 0;
     const deadSubIds: string[] = [];
@@ -269,6 +297,9 @@ Deno.serve(async (req) => {
 
       const prefs = mergePrefs(settingsRow?.notification_prefs);
       if (!prefs.enabled || !prefs.pushEnabled) {
+        continue;
+      }
+      if (isDateInQuietHours(nowDate, prefs)) {
         continue;
       }
 
@@ -328,23 +359,31 @@ Deno.serve(async (req) => {
             const startDay = startOfDay(createdDate);
             const totalDays = Math.max(1, daysBetween(startDay, dlDay));
             const elapsedDays = Math.min(totalDays, Math.max(0, daysBetween(startDay, today)));
-            const ideal = (Number(g.target) * elapsedDays) / totalDays;
+            const targetAmt = Math.max(1, Number(g.target) || 1);
+            const ideal = (targetAmt * elapsedDays) / totalDays;
             const actual = Number(g.saved) || 0;
             const diff = actual - ideal;
             const tolerance = Math.max(
               50,
-              Number(g.target) * ((Number(prefs.behindPaceTolerancePct) || 2) / 100),
+              targetAmt * ((Number(prefs.behindPaceTolerancePct) || 2) / 100),
             );
 
-            if (diff < -tolerance && shouldTriggerRepeat(prefs.behindPaceRepeat, elapsedDays)) {
-              const deficit = Math.max(0, Math.round(ideal - actual));
-              const perDay = Math.ceil(remaining / Math.max(1, diffDays));
-              notificationsToSend.push({
-                title: `Te estás atrasando: ${g.name}`,
-                body: `Vas ${fmtAmt(deficit)} por debajo del plan. Necesitas ahorrar ${fmtAmt(perDay)}/día para llegar a tiempo.`,
-                url: "/metas",
-                tag: `goal_behind_pace_${g.id}_${toYMD(today)}`,
-              });
+            if (diff < -tolerance) {
+              const firstBehindDay = Math.max(
+                1,
+                Math.floor(((actual + tolerance) * totalDays) / targetAmt) + 1,
+              );
+              const daysBehind = Math.max(0, elapsedDays - firstBehindDay);
+              if (shouldTriggerRepeat(prefs.behindPaceRepeat, daysBehind)) {
+                const deficit = Math.max(0, Math.round(ideal - actual));
+                const perDay = Math.ceil(remaining / Math.max(1, diffDays));
+                notificationsToSend.push({
+                  title: `Te estás atrasando: ${g.name}`,
+                  body: `Vas ${fmtAmt(deficit)} por debajo del plan. Necesitas ahorrar ${fmtAmt(perDay)}/día para llegar a tiempo.`,
+                  url: "/metas",
+                  tag: `goal_behind_pace_${g.id}_${toYMD(today)}`,
+                });
+              }
             }
           }
         }
@@ -367,6 +406,11 @@ Deno.serve(async (req) => {
             .not("fixed_id", "is", null),
         ]);
 
+        const maxDaysBefore =
+          Array.isArray(prefs.fixedUpcomingDays) && prefs.fixedUpcomingDays.length > 0
+            ? Math.max(0, ...prefs.fixedUpcomingDays)
+            : 7;
+
         if (fixedItems) {
           for (const item of fixedItems) {
             if (
@@ -385,17 +429,45 @@ Deno.serve(async (req) => {
                   ? "Ahorro"
                   : "Gasto";
             const amountStr = fmtAmt(Number(item.amount) || 0);
-            const dueDates = getNextFixedDueDates(item, today);
+            const freq = item.frequency === "annual" ? "yearly" : item.frequency;
+            const isSinglePerMonthFreq = [
+              "monthly",
+              "bimonthly",
+              "quarterly",
+              "fourmonthly",
+              "biannual",
+              "yearly",
+              "one_time",
+            ].includes(freq);
+            const dueDates = getNextFixedDueDates(item, today, maxDaysBefore);
 
             for (const dueDate of dueDates) {
               const dueISO = toYMD(dueDate);
               const daysUntil = daysBetween(today, dueDate);
               if (!prefs.fixedUpcomingDays.includes(daysUntil)) continue;
 
-              if (prefs.skipIfAlreadyRecorded && Array.isArray(recentTxs)) {
-                const recorded = recentTxs.some(
-                  (t: any) => t.fixed_id === item.id && String(t.date ?? "").slice(0, 10) === dueISO,
-                );
+              const scheduledId = `scheduled-${item.id}-${dueISO}`;
+              const autoRecordedToday =
+                dueISO === todayISO &&
+                Array.isArray(recentTxs) &&
+                recentTxs.some((t: any) => t.id === scheduledId);
+
+              if (prefs.skipIfAlreadyRecorded && !autoRecordedToday && Array.isArray(recentTxs)) {
+                const recorded = recentTxs.some((t: any) => {
+                  if (t.id === scheduledId) return true;
+                  if (t.fixed_id !== item.id) return false;
+                  const td = parseDateSafe(t.date);
+                  if (!td) return false;
+                  if (toYMD(td) === dueISO) return true;
+                  if (
+                    isSinglePerMonthFreq &&
+                    td.getFullYear() === dueDate.getFullYear() &&
+                    td.getMonth() === dueDate.getMonth()
+                  ) {
+                    return true;
+                  }
+                  return false;
+                });
                 if (recorded) continue;
               }
 
