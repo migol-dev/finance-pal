@@ -315,9 +315,13 @@ export const PerfilSection = memo(function PerfilSection({ onBack }: SectionProp
       <div className="rounded-2xl bg-card border border-border p-4 sm:p-5 shadow-soft space-y-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3.5">
-            <div className="size-14 rounded-2xl bg-primary/10 text-primary flex items-center justify-center shrink-0 shadow-sm">
-              {profile.avatar ? <IconDisplay icon={profile.avatar} className="size-7" /> : <User className="size-7" />}
-            </div>
+            {profile.avatar ? (
+              <IconDisplay icon={profile.avatar} size="lg" className="shadow-sm" />
+            ) : (
+              <div className="size-14 rounded-2xl bg-primary/10 text-primary flex items-center justify-center shrink-0 shadow-sm">
+                <User className="size-7" />
+              </div>
+            )}
             <div>
               <h2 className="font-extrabold text-base sm:text-lg text-foreground">{profile.name || "Sin nombre configurado"}</h2>
               <p className="text-xs text-muted-foreground mt-0.5">{profile.email || "Sin correo asociado"}</p>
