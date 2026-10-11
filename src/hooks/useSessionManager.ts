@@ -3,7 +3,8 @@ import { supabase, isSupabaseEnabled } from '@/lib/supabase';
 import { useAuth } from '@/context/AuthContext';
 import { processSyncQueue } from '@/lib/sync-engine';
 import { Capacitor } from '@capacitor/core';
-import { requestNotificationPermissions, scheduleLocalNotification } from '@/lib/notifications';
+import { scheduleLocalNotification } from '@/lib/notifications';
+import { useFinance } from '@/store/finance-store';
 
 const DEVICE_ID_KEY = 'finance-pal-device-id';
 const POLL_INTERVAL = 30000;
@@ -123,17 +124,18 @@ export function useSessionManager() {
       })
       .on('broadcast', { event: 'new_login' }, async (payload) => {
         if (payload.payload.sourceDeviceId !== deviceId) {
-          // Inform the user someone just logged in
+          // Inform the user someone just logged in (if notifications are already permitted & enabled)
           try {
-            await requestNotificationPermissions();
+            const prefs = useFinance.getState()?.appSettings?.notifications;
+            if (prefs && !prefs.enabled) return;
             await scheduleLocalNotification({
               id: `new_login_${payload.payload.sourceDeviceId}`,
-              type: 'new_login' as any,
+              type: 'new_login',
               entityId: payload.payload.sourceDeviceId,
               title: 'Nuevo inicio de sesión detectado',
               body: `Se ha iniciado sesión desde ${payload.payload.deviceName}.`,
               scheduledAt: new Date(Date.now() + 1000)
-            });
+            }, prefs);
           } catch (e) {
             console.warn('Failed to notify new login', e);
           }

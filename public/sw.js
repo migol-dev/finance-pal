@@ -19,7 +19,32 @@ self.addEventListener('activate', (event) => {
   self.clients.claim();
 });
 
-// Service Worker para Web Push - Finance Pal
+// Service Worker para Web Push y Notificaciones Locales - Finance Pal
+function buildNotificationOptions(data = {}) {
+  const silent = Boolean(data.silent);
+  const vibrate = silent ? undefined : (Array.isArray(data.vibrate) ? data.vibrate : [100, 50, 100]);
+  return {
+    body: data.body || "Tienes un recordatorio pendiente.",
+    icon: data.icon || "/icon-192.png",
+    badge: data.badge || "/icon-192.png",
+    tag: data.tag || undefined,
+    renotify: Boolean(data.tag),
+    silent,
+    vibrate,
+    data: {
+      ...(data.data || {}),
+      url: data.url || data.data?.url || "/",
+      dateOfArrival: Date.now(),
+    },
+    actions: [
+      {
+        action: "explore",
+        title: "Abrir Finance Pal",
+      },
+    ],
+  };
+}
+
 self.addEventListener("push", (event) => {
   let data = {
     title: "Finance Pal",
@@ -39,24 +64,19 @@ self.addEventListener("push", (event) => {
     }
   }
 
-  const options = {
-    body: data.body,
-    icon: data.icon || "/icon-192.png",
-    badge: data.badge || "/icon-192.png",
-    vibrate: [100, 50, 100],
-    data: {
-      url: data.url || "/",
-      dateOfArrival: Date.now(),
-    },
-    actions: [
-      {
-        action: "explore",
-        title: "Abrir Finance Pal",
-      },
-    ],
-  };
+  const options = buildNotificationOptions(data);
+  event.waitUntil(self.registration.showNotification(data.title || "Finance Pal", options));
+});
 
-  event.waitUntil(self.registration.showNotification(data.title, options));
+self.addEventListener("message", (event) => {
+  const msg = event.data;
+  if (!msg || typeof msg !== "object") return;
+  if (msg.type === "SHOW_LOCAL_NOTIFICATION" && msg.payload) {
+    const payload = msg.payload;
+    const title = payload.title || "Finance Pal";
+    const options = buildNotificationOptions(payload);
+    event.waitUntil(self.registration.showNotification(title, options));
+  }
 });
 
 self.addEventListener("notificationclick", (event) => {
@@ -66,17 +86,18 @@ self.addEventListener("notificationclick", (event) => {
 
   event.waitUntil(
     clients.matchAll({ type: "window", includeUncontrolled: true }).then((windowClients) => {
-      // Si la ventana ya está abierta, enfocarla y navegar
       for (const client of windowClients) {
         if (client.url.includes(self.location.origin) && "focus" in client) {
-          client.navigate(urlToOpen);
+          if ("navigate" in client) {
+            client.navigate(urlToOpen);
+          }
           return client.focus();
         }
       }
-      // Si no está abierta, abrir una nueva ventana
       if (clients.openWindow) {
         return clients.openWindow(urlToOpen);
       }
     })
   );
 });
+

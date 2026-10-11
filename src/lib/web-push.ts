@@ -71,6 +71,24 @@ export async function subscribeToWebPush(): Promise<PushSubscription | null> {
 }
 
 /**
+ * Verifica si el navegador tiene una suscripción Web Push activa
+ */
+export async function isWebPushSubscribed(): Promise<boolean> {
+  if (Capacitor.isNativePlatform()) return false;
+  if (typeof window === "undefined" || !("serviceWorker" in navigator) || !("PushManager" in window)) {
+    return false;
+  }
+  try {
+    const registration = await navigator.serviceWorker.getRegistration("/sw.js") ?? await navigator.serviceWorker.getRegistration();
+    if (!registration) return false;
+    const subscription = await registration.pushManager.getSubscription();
+    return Boolean(subscription);
+  } catch {
+    return false;
+  }
+}
+
+/**
  * Desuscribe el navegador de Web Push y remueve el registro de Supabase
  */
 export async function unsubscribeFromWebPush(): Promise<boolean> {
@@ -78,15 +96,23 @@ export async function unsubscribeFromWebPush(): Promise<boolean> {
   if (typeof window === "undefined" || !("serviceWorker" in navigator)) return false;
 
   try {
-    const registration = await navigator.serviceWorker.ready;
+    const registration = await navigator.serviceWorker.getRegistration("/sw.js") ?? await navigator.serviceWorker.getRegistration();
+    if (!registration) return false;
     const subscription = await registration.pushManager.getSubscription();
 
     if (subscription) {
       const endpoint = subscription.endpoint;
       await subscription.unsubscribe();
 
-      // Eliminar de Supabase
-      await supabase.from("push_subscriptions").delete().eq("endpoint", endpoint);
+      // Eliminar de Supabase filtrando por user_id (SEC-005)
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session?.user?.id) {
+        await supabase
+          .from("push_subscriptions")
+          .delete()
+          .eq("endpoint", endpoint)
+          .eq("user_id", session.user.id);
+      }
       console.log("[WebPush] Suscripción eliminada exitosamente.");
       return true;
     }
@@ -95,3 +121,4 @@ export async function unsubscribeFromWebPush(): Promise<boolean> {
   }
   return false;
 }
+

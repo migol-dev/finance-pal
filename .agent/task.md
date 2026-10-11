@@ -653,10 +653,10 @@ flowchart TD
 ---
 
 ### Fase 2: Motor Multiplataforma (Web SW + Android Nativo + Deduplicación)
-- [ ] **2.1.** Crear `android/app/src/main/res/drawable/ic_stat_notification.xml`, actualizar `capacitor.config.ts` y añadir permisos en `android/app/src/main/AndroidManifest.xml`.
-- [ ] **2.2.** Actualizar `public/sw.js` (`SHOW_LOCAL_NOTIFICATION`, `tag`, `silent`, `vibrate`, `notificationclick`) y asegurar `.eq("user_id", session.user.id)` en `src/lib/web-push.ts` (`SEC-005`).
-- [ ] **2.3.** Reescribir `src/lib/notifications.ts` (re-exportando `NotificationPreferences` y `DEFAULT_NOTIFICATION_PREFS`, soportando canal Android, `allowWhileIdle: true`, desplazamiento de horario silencioso, deduplicación y nuevas reglas de metas/recurrentes) y limpiar `src/hooks/useSessionManager.ts`.
-- [ ] **🏁 CHECKPOINT 2 (Victoria 2 — Motor de Notificaciones Web/PWA y Android Nativo):**
+- [x] **2.1.** Crear `android/app/src/main/res/drawable/ic_stat_notification.xml`, actualizar `capacitor.config.ts` y añadir permisos en `android/app/src/main/AndroidManifest.xml`.
+- [x] **2.2.** Actualizar `public/sw.js` (`SHOW_LOCAL_NOTIFICATION`, `tag`, `silent`, `vibrate`, `notificationclick`) y asegurar `.eq("user_id", session.user.id)` en `src/lib/web-push.ts` (`SEC-005`).
+- [x] **2.3.** Reescribir `src/lib/notifications.ts` (re-exportando `NotificationPreferences` y `DEFAULT_NOTIFICATION_PREFS`, soportando canal Android, `allowWhileIdle: true`, desplazamiento de horario silencioso, deduplicación y nuevas reglas de metas/recurrentes) y limpiar `src/hooks/useSessionManager.ts`.
+- [x] **🏁 CHECKPOINT 2 (Victoria 2 — Motor de Notificaciones Web/PWA y Android Nativo):**
   - **Qué se logró:** El motor programa y dispara notificaciones reales en Web (vía Service Worker) y Android (con canal e ícono válidos y Doze Mode), sin vaciar la cola en horario silencioso ni duplicar envíos.
   - **Verificación obligatoria:** `npx tsc --noEmit && npm test`
   - **Commit sugerido:** `fix(notifications): implement SW showNotification, Android channel/icon, quiet-hours shift and deduplication`
