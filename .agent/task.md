@@ -677,9 +677,9 @@ flowchart TD
 ---
 
 ### Fase 4: Prompt Personalizado de Permisos y Panel de Ajustes 100% Configurable
-- [ ] **4.1.** Crear `src/components/app/NotificationPermissionPrompt.tsx` e integrarlo junto con `useNotificationScheduler` en `src/components/app/AppShell.tsx` y migrar `AppShell.tsx` + `src/pages/ajustes/AjustesHub.tsx` a `useFinanceData()`.
-- [ ] **4.2.** Rediseñar `src/pages/ajustes/secciones/NotificacionesSection.tsx` consumiendo exclusivamente `useFinanceData()` con las 6 tarjetas de configuración 100% personalizable y botón de prueba en vivo.
-- [ ] **🏁 CHECKPOINT 4 (Victoria 4 — UI de Permisos y Panel de Configuración Total):**
+- [x] **4.1.** Crear `src/components/app/NotificationPermissionPrompt.tsx` e integrarlo junto con `useNotificationScheduler` en `src/components/app/AppShell.tsx` y migrar `AppShell.tsx` + `src/pages/ajustes/AjustesHub.tsx` a `useFinanceData()`.
+- [x] **4.2.** Rediseñar `src/pages/ajustes/secciones/NotificacionesSection.tsx` consumiendo exclusivamente `useFinanceData()` con las 6 tarjetas de configuración 100% personalizable y botón de prueba en vivo.
+- [x] **🏁 CHECKPOINT 4 (Victoria 4 — UI de Permisos y Panel de Configuración Total):**
   - **Qué se logró:** La app solicita permiso con un banner fiel al diseño mediante gesto válido de usuario y ofrece control 100% granular sobre qué, cómo y cada cuánto se envían las notificaciones.
   - **Verificación obligatoria:** `npx tsc --noEmit && npm test`
   - **Commit sugerido:** `feat(ui): add custom permission prompt and 100% customizable notifications settings panel`

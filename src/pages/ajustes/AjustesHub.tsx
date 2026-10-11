@@ -12,7 +12,6 @@ import {
   Sparkles,
 } from "lucide-react";
 import { useFinanceData } from "@/hooks/useFinanceData";
-import { useFinance } from "@/store/finance-store";
 import { useAuth } from "@/context/AuthContext";
 import { isSupabaseEnabled } from "@/lib/supabase";
 import { getCurrentVersion } from "@/lib/version-check";
@@ -24,10 +23,10 @@ interface AjustesHubProps {
 }
 
 export const AjustesHub = memo(function AjustesHub({ onSelectSection }: AjustesHubProps) {
-  const { profile, accounts, fixedItems } = useFinanceData();
-  const accentColor = useFinance((s) => s.appSettings.accentColor);
-  const a11y = useFinance((s) => s.appSettings.accessibility);
-  const notifications = useFinance((s) => s.appSettings.notifications);
+  const { profile, accounts, fixedItems, appSettings } = useFinanceData();
+  const accentColor = appSettings.accentColor;
+  const a11y = appSettings.accessibility;
+  const notifications = appSettings.notifications;
   const { session } = useAuth();
 
   const textScalePercent = a11y?.textScalePercent ?? 100;

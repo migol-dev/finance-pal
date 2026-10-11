@@ -2,15 +2,15 @@ import { ReactNode, useEffect, useRef, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { BottomNav } from "./BottomNav";
 import { DesktopSidebar } from "./DesktopSidebar";
-import { useFinance } from "@/store/finance-store";
 import { useFinanceData } from "@/hooks/useFinanceData";
 import { useSystemTheme } from "@/hooks/useSystemTheme";
+import { useNotificationScheduler } from "@/hooks/useNotificationScheduler";
+import { NotificationPermissionPrompt } from "./NotificationPermissionPrompt";
 import { SplashScreen } from "./SplashScreen";
 import { Capacitor } from "@capacitor/core";
 import { App as CapacitorApp } from "@capacitor/app";
 import { toast } from "sonner";
 import { ACCENT_PALETTES, AccentColor } from "@/lib/accent-palette";
-import { scheduleAllNotifications, requestNotificationPermissions } from "@/lib/notifications";
 import { isSupabaseEnabled } from "@/lib/supabase";
 
 function applyAccentVars(root: HTMLElement, color: AccentColor) {
@@ -45,14 +45,16 @@ function applyAccentVars(root: HTMLElement, color: AccentColor) {
 const SWIPE_ROUTES = ["/", "/movimientos", "/deudas", "/metas", "/ajustes"];
 
 export function AppShell({ children }: { children: ReactNode }) {
-  const setActive = useFinance((s) => s.setActive);
+  const { setActive, appSettings, goals, fixedItems } = useFinanceData();
   const { resolvedTheme } = useSystemTheme();
-  const accentColor = useFinance((s) => s.appSettings.accentColor);
-  const compactMode = useFinance((s) => s.appSettings.compactMode);
-  const glassEffect = useFinance((s) => s.appSettings.glassEffect);
-  const a11y = useFinance((s) => s.appSettings.accessibility);
-  const notificationPrefs = useFinance((s) => s.appSettings.notifications);
-  const { goals, fixedItems } = useFinanceData();
+  const accentColor = appSettings.accentColor;
+  const compactMode = appSettings.compactMode;
+  const glassEffect = appSettings.glassEffect;
+  const a11y = appSettings.accessibility;
+
+  // Activar motor reactivo autónomo de notificaciones
+  useNotificationScheduler();
+
   const didInit = useRef(false);
   const [booting, setBooting] = useState(true);
   const location = useLocation();
@@ -68,23 +70,12 @@ export function AppShell({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     if (didInit.current) return;
-    
-    // We wait until we actually have some data loaded before scheduling notifications
-    // or if we're offline, we just schedule with what we have
     if (goals.length > 0 || fixedItems.length > 0 || !isSupabaseEnabled) {
       didInit.current = true;
       const d = new Date();
       setActive(d.getFullYear(), d.getMonth());
-
-      // Request notification permissions
-      requestNotificationPermissions().catch(console.warn);
-
-      // Schedule notifications
-      if (notificationPrefs?.enabled) {
-        scheduleAllNotifications(goals, fixedItems, notificationPrefs).catch(console.warn);
-      }
     }
-  }, [setActive, notificationPrefs, goals, fixedItems]);
+  }, [setActive, goals.length, fixedItems.length]);
 
   useEffect(() => {
     const root = document.documentElement;
@@ -209,6 +200,7 @@ export function AppShell({ children }: { children: ReactNode }) {
           </div>
         </main>
       </div>
+      <NotificationPermissionPrompt />
       <BottomNav />
     </div>
   );
