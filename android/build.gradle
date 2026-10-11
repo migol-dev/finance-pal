@@ -17,13 +17,144 @@ buildscript {
 
 apply from: "variables.gradle"
 
+class WindowsFileUtils {
+    static boolean isWindows() {
+        return System.getProperty('os.name', '').toLowerCase(Locale.ROOT).contains('windows')
+    }
+
+    static void stripReadOnlyAttr(java.nio.file.Path path) {
+        if (path == null) {
+            return
+        }
+        try {
+            java.nio.file.attribute.DosFileAttributes attrs = java.nio.file.Files.readAttributes(
+                path,
+                java.nio.file.attribute.DosFileAttributes.class,
+                java.nio.file.LinkOption.NOFOLLOW_LINKS
+            )
+            if (attrs != null && attrs.isReadOnly()) {
+                java.nio.file.Files.setAttribute(path, 'dos:readonly', false, java.nio.file.LinkOption.NOFOLLOW_LINKS)
+            }
+        } catch (Exception ignored) {}
+    }
+
+    static void clearAncestorsReadOnly(File startDir) {
+        if (!isWindows() || startDir == null) {
+            return
+        }
+        try {
+            java.nio.file.Path current = startDir.toPath().toAbsolutePath().normalize()
+            while (current != null) {
+                stripReadOnlyAttr(current)
+                current = current.getParent()
+            }
+        } catch (Exception ignored) {}
+    }
+
+    static void clearReadOnlyTree(File targetDir) {
+        if (!isWindows() || targetDir == null || !targetDir.exists()) {
+            return
+        }
+        try {
+            java.nio.file.Files.walkFileTree(targetDir.toPath(), new java.nio.file.SimpleFileVisitor<java.nio.file.Path>() {
+                private void strip(java.nio.file.Path path, java.nio.file.attribute.BasicFileAttributes attrs) {
+                    try {
+                        if (attrs instanceof java.nio.file.attribute.DosFileAttributes && ((java.nio.file.attribute.DosFileAttributes) attrs).isReadOnly()) {
+                            java.nio.file.Files.setAttribute(path, 'dos:readonly', false, java.nio.file.LinkOption.NOFOLLOW_LINKS)
+                        }
+                    } catch (Exception ignored) {}
+                }
+
+                @Override
+                java.nio.file.FileVisitResult preVisitDirectory(java.nio.file.Path dir, java.nio.file.attribute.BasicFileAttributes attrs) {
+                    strip(dir, attrs)
+                    return java.nio.file.FileVisitResult.CONTINUE
+                }
+
+                @Override
+                java.nio.file.FileVisitResult visitFile(java.nio.file.Path file, java.nio.file.attribute.BasicFileAttributes attrs) {
+                    strip(file, attrs)
+                    return java.nio.file.FileVisitResult.CONTINUE
+                }
+
+                @Override
+                java.nio.file.FileVisitResult visitFileFailed(java.nio.file.Path file, java.io.IOException exc) {
+                    stripReadOnlyAttr(file)
+                    return java.nio.file.FileVisitResult.CONTINUE
+                }
+            })
+        } catch (Exception ignored) {}
+    }
+
+    static void clearReadOnlyDirs(Iterable<File> dirs) {
+        if (!isWindows() || dirs == null) {
+            return
+        }
+        for (File dir : dirs) {
+            clearReadOnlyTree(dir)
+        }
+    }
+}
+
+class ClearWindowsReadOnlyAction implements org.gradle.api.Action<org.gradle.api.Task> {
+    private final List<File> targetDirs
+
+    ClearWindowsReadOnlyAction(List<File> targetDirs) {
+        this.targetDirs = new ArrayList<File>(targetDirs)
+    }
+
+    @Override
+    void execute(org.gradle.api.Task task) {
+        WindowsFileUtils.clearReadOnlyDirs(targetDirs)
+    }
+}
+
+WindowsFileUtils.clearAncestorsReadOnly(rootProject.projectDir)
+File injectedApkLocation = rootProject.hasProperty('android.injected.apk.location')
+    ? new File(rootProject.property('android.injected.apk.location').toString())
+    : null
+if (injectedApkLocation != null) {
+    WindowsFileUtils.clearAncestorsReadOnly(injectedApkLocation)
+    WindowsFileUtils.clearReadOnlyTree(new File(injectedApkLocation, 'release'))
+    WindowsFileUtils.clearReadOnlyTree(new File(injectedApkLocation, 'debug'))
+}
+
 allprojects {
     repositories {
         google()
         mavenCentral()
     }
+
+    WindowsFileUtils.stripReadOnlyAttr(project.projectDir.toPath())
+
+    List<File> projectTargetDirs = [
+        project.layout.buildDirectory.asFile.get(),
+        project.file('release'),
+        project.file('debug')
+    ]
+    if (project.path == ':app' && injectedApkLocation != null) {
+        projectTargetDirs.add(new File(injectedApkLocation, 'release'))
+        projectTargetDirs.add(new File(injectedApkLocation, 'debug'))
+        if (injectedApkLocation != project.projectDir) {
+            projectTargetDirs.add(injectedApkLocation)
+        }
+    }
+
+    WindowsFileUtils.clearReadOnlyDirs(projectTargetDirs)
+
+    tasks.matching { task ->
+        task.name == 'clean' ||
+        task.name == 'preBuild' ||
+        task.name.startsWith('package') ||
+        task.name.startsWith('bundle')
+    }.configureEach {
+        doFirst(new ClearWindowsReadOnlyAction(projectTargetDirs))
+    }
 }
 
-task clean(type: Delete) {
-    delete rootProject.buildDir
+tasks.register('clean', Delete) {
+    List<File> rootBuildDirs = [rootProject.layout.buildDirectory.asFile.get()]
+    doFirst(new ClearWindowsReadOnlyAction(rootBuildDirs))
+    delete rootProject.layout.buildDirectory
 }
+
