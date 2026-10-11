@@ -16,6 +16,7 @@ import type {
   Debt,
   ThemeMode,
   UserProfile,
+  NotificationPreferences,
 } from '@/lib/finance';
 // NO importar React, NO importar hooks, NO importar Zustand
 
@@ -33,6 +34,7 @@ export interface CloudSnapshot {
 export interface CloudSettings {
   theme: ThemeMode;
   profile: UserProfile;
+  notificationPrefs?: NotificationPreferences;
 }
 
 // Resultado del sync masivo a la nube
@@ -54,6 +56,7 @@ export interface CloudSyncInput {
   debts: Debt[];
   theme: ThemeMode;
   profile: UserProfile;
+  notificationPrefs?: NotificationPreferences;
 }
 
 /**
@@ -229,7 +232,11 @@ export async function syncAllToCloud(
 
   // Settings
   try {
-    await upsertUserSettings(userId, { theme: input.theme, profile: input.profile });
+    await upsertUserSettings(userId, {
+      theme: input.theme,
+      profile: input.profile,
+      notificationPrefs: input.notificationPrefs,
+    });
   } catch (error: any) {
     errors.push({ entity: 'user_settings', message: error?.message ?? 'Error upserting settings' });
   }
@@ -238,12 +245,9 @@ export async function syncAllToCloud(
 }
 
 /**
- * Carga theme y profile del usuario desde user_settings.
+ * Carga theme, profile y notificationPrefs del usuario desde user_settings.
  * Delega a fetchUserSettings de settings.service.ts.
  * Retorna null si no hay registro aún.
- *
- * NOTA: Esta función existe solo por compatibilidad semántica.
- * En realidad es un wrapper de fetchUserSettings.
  */
 export async function loadSettingsFromCloud(
   userId: string
@@ -253,5 +257,7 @@ export async function loadSettingsFromCloud(
   return {
     theme: settings.theme,
     profile: settings.profile,
+    notificationPrefs: settings.notificationPrefs,
   };
 }
+

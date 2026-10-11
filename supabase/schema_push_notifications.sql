@@ -22,23 +22,31 @@ CREATE INDEX IF NOT EXISTS idx_push_subs_endpoint ON public.push_subscriptions(e
 -- Habilitar Row Level Security (RLS)
 ALTER TABLE public.push_subscriptions ENABLE ROW LEVEL SECURITY;
 
--- Políticas de seguridad RLS
+-- Políticas de seguridad RLS (idempotentes)
+DROP POLICY IF EXISTS "Users can view own push subscriptions" ON public.push_subscriptions;
 CREATE POLICY "Users can view own push subscriptions"
     ON public.push_subscriptions FOR SELECT
     USING (auth.uid() = user_id);
 
+DROP POLICY IF EXISTS "Users can insert own push subscriptions" ON public.push_subscriptions;
 CREATE POLICY "Users can insert own push subscriptions"
     ON public.push_subscriptions FOR INSERT
     WITH CHECK (auth.uid() = user_id);
 
+DROP POLICY IF EXISTS "Users can update own push subscriptions" ON public.push_subscriptions;
 CREATE POLICY "Users can update own push subscriptions"
     ON public.push_subscriptions FOR UPDATE
     USING (auth.uid() = user_id)
     WITH CHECK (auth.uid() = user_id);
 
+DROP POLICY IF EXISTS "Users can delete own push subscriptions" ON public.push_subscriptions;
 CREATE POLICY "Users can delete own push subscriptions"
     ON public.push_subscriptions FOR DELETE
     USING (auth.uid() = user_id);
+
+-- 2. Columna para persistir las preferencias granulares de notificaciones por usuario
+ALTER TABLE public.user_settings
+ADD COLUMN IF NOT EXISTS notification_prefs jsonb DEFAULT NULL;
 
 -- ====================================================================
 -- OPCIONAL: Cron Job para ejecutar la Edge Function automáticamente
@@ -58,3 +66,4 @@ CREATE POLICY "Users can delete own push subscriptions"
 --   );
 --   $$
 -- );
+

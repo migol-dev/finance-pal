@@ -665,10 +665,10 @@ flowchart TD
 ---
 
 ### Fase 3: Sincronización en Nube Resiliente, Fachada `useFinanceData`, Scheduler y Edge Function
-- [ ] **3.1.** Actualizar `supabase/schema_push_notifications.sql` (`DROP POLICY IF EXISTS` + columna `notification_prefs`), `src/services/settings.service.ts` (con fallback si la columna aún no existe), `src/services/cloudSync.service.ts` y `src/hooks/mutations/useCloudSyncMutations.ts`.
-- [ ] **3.2.** Exponer `setNotificationPrefs` y `setAccessibilitySettings` en `src/hooks/useFinanceData.ts` y conectar su sincronización con `user_settings`.
-- [ ] **3.3.** Crear `src/hooks/useNotificationScheduler.ts` y actualizar `supabase/functions/send-reminders/index.ts` (`SEC-003`, `SEC-017`, preferencias por usuario, 9 frecuencias y atraso de metas).
-- [ ] **🏁 CHECKPOINT 3 (Victoria 3 — Sincronización Cloud, Scheduler Autónomo y Edge Function):**
+- [x] **3.1.** Actualizar `supabase/schema_push_notifications.sql` (`DROP POLICY IF EXISTS` + columna `notification_prefs`), `src/services/settings.service.ts` (con fallback si la columna aún no existe), `src/services/cloudSync.service.ts` y `src/hooks/mutations/useCloudSyncMutations.ts`.
+- [x] **3.2.** Exponer `setNotificationPrefs` y `setAccessibilitySettings` en `src/hooks/useFinanceData.ts` y conectar su sincronización con `user_settings`.
+- [x] **3.3.** Crear `src/hooks/useNotificationScheduler.ts` y actualizar `supabase/functions/send-reminders/index.ts` (`SEC-003`, `SEC-017`, preferencias por usuario, 9 frecuencias y atraso de metas).
+- [x] **🏁 CHECKPOINT 3 (Victoria 3 — Sincronización Cloud, Scheduler Autónomo y Edge Function):**
   - **Qué se logró:** Las preferencias se sincronizan con Supabase de forma resiliente, el scheduler reprograma y dispara alertas automáticamente ante cualquier cambio de datos o paso del tiempo, y la Edge Function respeta las preferencias del usuario.
   - **Verificación obligatoria:** `npx tsc --noEmit && npm test`
   - **Commit sugerido:** `feat(sync): sync notification preferences with Supabase and add autonomous notification scheduler`

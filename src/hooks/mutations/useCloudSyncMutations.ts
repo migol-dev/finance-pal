@@ -80,6 +80,7 @@ export function useCloudSyncMutations(): CloudSyncMutations {
         debts: s.debts,
         theme: s.theme,
         profile: s.profile,
+        notificationPrefs: s.appSettings?.notifications,
       };
 
       return syncAllToCloud(input);
@@ -101,6 +102,9 @@ export function useCloudSyncMutations(): CloudSyncMutations {
       if (settings !== null) {
         useFinance.getState().setTheme(settings.theme);
         useFinance.getState().setProfile(settings.profile);
+        if (settings.notificationPrefs) {
+          useFinance.getState().setNotificationPrefs(settings.notificationPrefs);
+        }
       }
 
       return settings;

@@ -38,6 +38,8 @@ import {
   type ChangeLogEntry,
   type AppSettings,
   type AccentColor,
+  type NotificationPreferences,
+  type AccessibilitySettings,
 } from '@/lib/finance';
 
 // Hook fachada: único punto de entrada para componentes y páginas.
@@ -71,6 +73,8 @@ type UiSelection = {
   setAccentColor: (color: AccentColor) => void;
   setCompactMode: (compact: boolean) => void;
   setGlassEffect: (glass: boolean) => void;
+  setNotificationPrefs: (prefs: Partial<NotificationPreferences>) => void;
+  setAccessibilitySettings: (prefs: Partial<AccessibilitySettings>) => void;
   clearChangeLog: () => void;
   exportData: (scopes?: ExportScopes) => string;
   importData: (
@@ -133,6 +137,8 @@ export function useFinanceData() {
       setAccentColor: state.setAccentColor,
       setCompactMode: state.setCompactMode,
       setGlassEffect: state.setGlassEffect,
+      setNotificationPrefs: state.setNotificationPrefs,
+      setAccessibilitySettings: state.setAccessibilitySettings,
       clearChangeLog: state.clearChangeLog,
       exportData: state.exportData,
       importData: state.importData,
@@ -146,7 +152,7 @@ export function useFinanceData() {
   // Los slices ya no tocan la red: la carga inicial y el upsert reactivo viven aquí.
   const settingsReadyFor = useRef<string | null>(null);
 
-  // Carga inicial al detectar sesión: aplica theme/profile guardados en la nube.
+  // Carga inicial al detectar sesión: aplica theme/profile/notificationPrefs guardados en la nube.
   useEffect(() => {
     if (!isSupabaseEnabled || !userId) return;
     if (settingsReadyFor.current === userId) return;
@@ -156,6 +162,9 @@ export function useFinanceData() {
         const store = useFinance.getState();
         store.setTheme(remote.theme);
         store.setProfile(remote.profile);
+        if (remote.notificationPrefs) {
+          store.setNotificationPrefs(remote.notificationPrefs);
+        }
       })
       .catch(() => {})
       .finally(() => {
@@ -163,12 +172,16 @@ export function useFinanceData() {
       });
   }, [userId]);
 
-  // Upsert reactivo: cuando theme/profile locales cambian, se suben a user_settings.
+  // Upsert reactivo: cuando theme/profile/notificationPrefs locales cambian, se suben a user_settings.
   useEffect(() => {
     if (!isSupabaseEnabled || !userId) return;
     if (settingsReadyFor.current !== userId) return; // espera la carga inicial
-    upsertUserSettings(userId, { theme: ui.theme, profile: ui.profile }).catch(() => {});
-  }, [userId, ui.theme, ui.profile]);
+    upsertUserSettings(userId, {
+      theme: ui.theme,
+      profile: ui.profile,
+      notificationPrefs: ui.appSettings?.notifications,
+    }).catch(() => {});
+  }, [userId, ui.theme, ui.profile, ui.appSettings?.notifications]);
 
   // --- Datos: React Query es la fuente de verdad cuando hay sesión ---
   const accounts = useMemo((): Account[] => {
@@ -380,6 +393,8 @@ export function useFinanceData() {
     setAccentColor: ui.setAccentColor,
     setCompactMode: ui.setCompactMode,
     setGlassEffect: ui.setGlassEffect,
+    setNotificationPrefs: ui.setNotificationPrefs,
+    setAccessibilitySettings: ui.setAccessibilitySettings,
 
     // --- Operaciones de datos locales / híbridas ---
     ensureScheduledTransactions: reconcileScheduledTransactions,

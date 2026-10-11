@@ -1,20 +1,181 @@
 /* eslint-disable @typescript-eslint/ban-ts-comment */
 // @ts-nocheck
 // Supabase Edge Function: send-reminders
-// Dispara recordatorios diarios de Metas y Pagos fijos a través de Web Push
+// Dispara recordatorios diarios autónomos de Metas y Conceptos Fijos a través de Web Push
+// Respetando el 100% de las preferencias granulares por usuario (notification_prefs)
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import webpush from "npm:web-push@3.6.7";
 
+const allowedOrigin = Deno.env.get("ALLOWED_ORIGIN") || "*";
 const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Origin": allowedOrigin,
+  "Access-Control-Allow-Headers":
+    "authorization, x-client-info, apikey, content-type, x-function-secret",
 };
 
 // Rate limiting in-memory store
 const rateLimit = new Map<string, { count: number; resetTime: number }>();
-const RATE_LIMIT_MAX = 5; // max 5 requests
-const RATE_LIMIT_WINDOW_MS = 60000; // 1 minute
+const RATE_LIMIT_MAX = 5;
+const RATE_LIMIT_WINDOW_MS = 60000;
+
+const DEFAULT_PREFS = {
+  enabled: true,
+  pushEnabled: true,
+  localEnabled: true,
+  inAppToastEnabled: true,
+  goalDeadlineReminders: true,
+  upcomingDays: [7, 3, 1, 0],
+  overdueAlert: true,
+  overdueRepeat: "every_3_days",
+  behindPaceAlert: true,
+  behindPaceRepeat: "weekly",
+  behindPaceTolerancePct: 2,
+  fixedItemReminders: true,
+  notifyFixedExpenses: true,
+  notifyFixedIncomes: true,
+  notifyFixedSavings: true,
+  fixedUpcomingDays: [3, 1, 0],
+  skipIfAlreadyRecorded: true,
+  preferredTime: "09:00",
+  quietHoursEnabled: true,
+  quietHours: { start: "22:00", end: "08:00" },
+  soundEnabled: true,
+  vibrationEnabled: true,
+  hideAmountsInNotifications: false,
+};
+
+function mergePrefs(raw: any) {
+  if (!raw || typeof raw !== "object") return { ...DEFAULT_PREFS };
+  return {
+    ...DEFAULT_PREFS,
+    ...raw,
+    upcomingDays: Array.isArray(raw.upcomingDays) ? raw.upcomingDays : DEFAULT_PREFS.upcomingDays,
+    fixedUpcomingDays: Array.isArray(raw.fixedUpcomingDays)
+      ? raw.fixedUpcomingDays
+      : DEFAULT_PREFS.fixedUpcomingDays,
+    quietHours:
+      raw.quietHours && typeof raw.quietHours === "object"
+        ? { ...DEFAULT_PREFS.quietHours, ...raw.quietHours }
+        : DEFAULT_PREFS.quietHours,
+  };
+}
+
+function startOfDay(d: Date): Date {
+  const x = new Date(d);
+  x.setHours(0, 0, 0, 0);
+  return x;
+}
+
+function parseDateSafe(d: string | Date | null | undefined): Date | null {
+  if (!d) return null;
+  if (d instanceof Date) return isNaN(d.getTime()) ? null : d;
+  const clean = String(d).slice(0, 10);
+  const m = clean.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (m) return new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]), 12, 0, 0);
+  const fallback = new Date(d);
+  return isNaN(fallback.getTime()) ? null : fallback;
+}
+
+function toYMD(d: Date): string {
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+}
+
+function daysBetween(a: Date, b: Date): number {
+  return Math.round((startOfDay(b).getTime() - startOfDay(a).getTime()) / 86400000);
+}
+
+function shouldTriggerRepeat(repeat: string, daysSinceRef: number): boolean {
+  if (daysSinceRef < 0) return false;
+  if (repeat === "once") return daysSinceRef === 0 || daysSinceRef === 1;
+  if (repeat === "daily") return true;
+  if (repeat === "every_3_days") return daysSinceRef % 3 === 0;
+  // weekly
+  return daysSinceRef % 7 === 0;
+}
+
+function isFixedActiveInMonth(item: any, year: number, month: number): boolean {
+  if (!item.active) return false;
+  const start = parseDateSafe(item.start_date) ?? new Date(year, 0, 1);
+  const end = parseDateSafe(item.end_date) ?? new Date(year + 5, 11, 31);
+  const monthStart = new Date(year, month, 1);
+  const monthEnd = new Date(year, month + 1, 0, 23, 59, 59);
+  if (end < monthStart || start > monthEnd) return false;
+  const freq = item.frequency === "annual" ? "yearly" : item.frequency;
+  if (freq === "yearly") return start.getMonth() === month;
+  if (freq === "one_time") return start.getFullYear() === year && start.getMonth() === month;
+  const monthsSinceStart = (year - start.getFullYear()) * 12 + (month - start.getMonth());
+  if (monthsSinceStart < 0) return false;
+  if (freq === "bimonthly") return monthsSinceStart % 2 === 0;
+  if (freq === "quarterly") return monthsSinceStart % 3 === 0;
+  if (freq === "fourmonthly") return monthsSinceStart % 4 === 0;
+  if (freq === "biannual") return monthsSinceStart % 6 === 0;
+  return true;
+}
+
+function getNextFixedDueDates(item: any, today: Date): Date[] {
+  const start = parseDateSafe(item.start_date) ?? today;
+  const end = parseDateSafe(item.end_date) ?? new Date(today.getFullYear() + 5, 11, 31);
+  const todayDay = startOfDay(today);
+  const startDay = startOfDay(start);
+  const endDay = startOfDay(end);
+  const todayISO = toYMD(todayDay);
+  const startISO = toYMD(startDay);
+  const endISO = toYMD(endDay);
+  if (todayISO > endISO) return [];
+
+  const freq = item.frequency === "annual" ? "yearly" : item.frequency;
+  const dates: Date[] = [];
+
+  if (freq === "weekly") {
+    const payWeekDay =
+      typeof item.pay_week_day === "number" ? ((item.pay_week_day % 7) + 7) % 7 : startDay.getDay();
+    const daysUntil = (payWeekDay - todayDay.getDay() + 7) % 7;
+    const first = new Date(todayDay.getFullYear(), todayDay.getMonth(), todayDay.getDate() + daysUntil, 12, 0, 0);
+    for (let w = 0; w < 3; w++) {
+      const cand = new Date(first.getFullYear(), first.getMonth(), first.getDate() + w * 7, 12, 0, 0);
+      const iso = toYMD(cand);
+      if (iso >= todayISO && iso >= startISO && iso <= endISO) dates.push(cand);
+    }
+    return dates;
+  }
+
+  if (freq === "biweekly") {
+    for (let offset = 0; offset < 3; offset++) {
+      const mDate = new Date(todayDay.getFullYear(), todayDay.getMonth() + offset, 1);
+      const y = mDate.getFullYear();
+      const m = mDate.getMonth();
+      if (!isFixedActiveInMonth(item, y, m)) continue;
+      const daysInM = new Date(y, m + 1, 0).getDate();
+      const rawPayDay = typeof item.pay_day === "number" ? item.pay_day : 1;
+      const baseDay = Math.min(Math.max(1, rawPayDay), daysInM);
+      const d1 = baseDay <= 15 ? baseDay : Math.max(1, baseDay - 15);
+      const d2 = Math.min(d1 + 15, daysInM);
+      for (const d of Array.from(new Set([d1, d2])).sort((a, b) => a - b)) {
+        const cand = new Date(y, m, d, 12, 0, 0);
+        const iso = toYMD(cand);
+        if (iso >= todayISO && iso >= startISO && iso <= endISO) dates.push(cand);
+      }
+    }
+    return dates.slice(0, 2);
+  }
+
+  for (let offset = 0; offset < 14 && dates.length < 2; offset++) {
+    const mDate = new Date(todayDay.getFullYear(), todayDay.getMonth() + offset, 1);
+    const y = mDate.getFullYear();
+    const m = mDate.getMonth();
+    if (!isFixedActiveInMonth(item, y, m)) continue;
+    const daysInM = new Date(y, m + 1, 0).getDate();
+    const rawPayDay = typeof item.pay_day === "number" ? item.pay_day : startDay.getDate();
+    const effDay = Math.min(Math.max(1, rawPayDay), daysInM);
+    const cand = new Date(y, m, effDay, 12, 0, 0);
+    const iso = toYMD(cand);
+    if (iso >= todayISO && iso <= endISO) dates.push(cand);
+  }
+
+  return dates;
+}
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
@@ -37,12 +198,21 @@ Deno.serve(async (req) => {
     rateLimit.set(ip, { count: 1, resetTime: now + RATE_LIMIT_WINDOW_MS });
   }
 
-
   try {
     const FUNCTION_SECRET = Deno.env.get("FUNCTION_SECRET");
-    const authHeader = req.headers.get("x-function-secret") || req.headers.get("authorization")?.replace("Bearer ", "");
+    const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+    const secretHeader = req.headers.get("x-function-secret");
+    const bearerToken = req.headers.get("authorization")?.replace(/^Bearer\s+/i, "");
 
-    if (!FUNCTION_SECRET || authHeader !== FUNCTION_SECRET) {
+    // SEC-003: Permitir tanto FUNCTION_SECRET como SUPABASE_SERVICE_ROLE_KEY (usado por pg_cron)
+    const isAuthorizedBySecret = Boolean(
+      FUNCTION_SECRET && (secretHeader === FUNCTION_SECRET || bearerToken === FUNCTION_SECRET),
+    );
+    const isAuthorizedByServiceRole = Boolean(
+      supabaseServiceKey && bearerToken === supabaseServiceKey,
+    );
+
+    if (!isAuthorizedBySecret && !isAuthorizedByServiceRole) {
       return new Response(JSON.stringify({ error: "Unauthorized" }), {
         status: 401,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -50,16 +220,12 @@ Deno.serve(async (req) => {
     }
 
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
-    const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const vapidPublicKey = Deno.env.get("VAPID_PUBLIC_KEY");
-    if (!vapidPublicKey) {
-      throw new Error("VAPID_PUBLIC_KEY is not set in environment secrets.");
-    }
-    const vapidPrivateKey = Deno.env.get("VAPID_PRIVATE_KEY")!;
+    const vapidPrivateKey = Deno.env.get("VAPID_PRIVATE_KEY");
     const vapidSubject = Deno.env.get("VAPID_SUBJECT") || "mailto:soporte@financepal.com";
 
-    if (!vapidPrivateKey) {
-      throw new Error("VAPID_PRIVATE_KEY is not set in environment secrets.");
+    if (!vapidPublicKey || !vapidPrivateKey) {
+      throw new Error("VAPID_PUBLIC_KEY or VAPID_PRIVATE_KEY is not set in environment secrets.");
     }
 
     webpush.setVapidDetails(vapidSubject, vapidPublicKey, vapidPrivateKey);
@@ -73,107 +239,177 @@ Deno.serve(async (req) => {
 
     if (subError) throw subError;
     if (!subscriptions || subscriptions.length === 0) {
-      return new Response(JSON.stringify({ message: "No active push subscriptions found", sent: 0 }), {
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-        status: 200,
-      });
+      return new Response(
+        JSON.stringify({ message: "No active push subscriptions found", sent: 0 }),
+        {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+          status: 200,
+        },
+      );
     }
 
-    // Agrupar suscripciones por user_id
     const userSubsMap = new Map<string, any[]>();
     for (const sub of subscriptions) {
       if (!userSubsMap.has(sub.user_id)) userSubsMap.set(sub.user_id, []);
       userSubsMap.get(sub.user_id)!.push(sub);
     }
 
-    const today = new Date();
-    const __todayStr = today.toISOString().split("T")[0];
-    const currentDayOfMonth = today.getDate();
-    const currentDayOfWeek = today.getDay(); // 0 = Domingo
-
+    const today = startOfDay(new Date());
     let totalSent = 0;
     let totalFailed = 0;
     const deadSubIds: string[] = [];
 
-    // 2. Procesar recordatorios para cada usuario suscrito
+    // 2. Procesar recordatorios para cada usuario suscrito respetando sus preferencias
     for (const [userId, userSubs] of userSubsMap.entries()) {
-      const notificationsToSend: { title: string; body: string; url: string }[] = [];
+      const { data: settingsRow } = await supabase
+        .from("user_settings")
+        .select("notification_prefs")
+        .eq("user_id", userId)
+        .maybeSingle();
+
+      const prefs = mergePrefs(settingsRow?.notification_prefs);
+      if (!prefs.enabled || !prefs.pushEnabled) {
+        continue;
+      }
+
+      const fmtAmt = (n: number) =>
+        prefs.hideAmountsInNotifications ? "$•••" : `$${Math.round(n).toLocaleString("es-MX")}`;
+
+      const notificationsToSend: { title: string; body: string; url: string; tag: string }[] = [];
 
       // A) Consultar metas del usuario
       const { data: goals } = await supabase
         .from("goals")
-        .select("id, name, target, saved, deadline")
+        .select("id, name, target, saved, deadline, created_at")
         .eq("user_id", userId);
 
       if (goals) {
         for (const g of goals) {
           if (!g.deadline || g.saved >= g.target) continue;
-          const deadlineDate = new Date(g.deadline);
-          const diffDays = Math.ceil((deadlineDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
-          const remaining = g.target - g.saved;
+          const dlDate = parseDateSafe(g.deadline);
+          if (!dlDate) continue;
+          const dlDay = startOfDay(dlDate);
+          const diffDays = daysBetween(today, dlDay);
+          const remaining = Math.max(0, Number(g.target) - Number(g.saved));
 
-          if (diffDays === 7 || diffDays === 3 || diffDays === 1) {
+          // 1) Cercanía de fecha límite
+          if (
+            prefs.goalDeadlineReminders &&
+            diffDays >= 0 &&
+            prefs.upcomingDays.includes(diffDays)
+          ) {
             notificationsToSend.push({
-              title: `Meta próxima: ${g.name}`,
-              body: `Faltan ${diffDays} día(s) para tu fecha límite. Te faltan $${remaining.toLocaleString("es-MX")}.`,
+              title: diffDays === 0 ? `¡Meta vence hoy!: ${g.name}` : `Meta próxima: ${g.name}`,
+              body:
+                diffDays === 0
+                  ? `Hoy es la fecha límite para completar "${g.name}". Te faltan ${fmtAmt(remaining)}.`
+                  : `Faltan ${diffDays} día(s) para tu fecha límite. Te faltan ${fmtAmt(remaining)}.`,
               url: "/metas",
+              tag: `goal_deadline_upcoming_${g.id}_${diffDays}d`,
             });
-          } else if (diffDays === 0) {
-            notificationsToSend.push({
-              title: `¡Meta vence hoy!: ${g.name}`,
-              body: `Hoy es la fecha límite para completar tu meta. Te faltan $${remaining.toLocaleString("es-MX")}.`,
-              url: "/metas",
-            });
-          } else if (diffDays < 0) {
-            notificationsToSend.push({
-              title: `Meta atrasada: ${g.name}`,
-              body: `La fecha límite ya pasó. Aún te faltan $${remaining.toLocaleString("es-MX")}.`,
-              url: "/metas",
-            });
+          }
+
+          // 2) Meta vencida
+          if (prefs.overdueAlert && diffDays < 0) {
+            const daysOverdue = Math.abs(diffDays);
+            if (shouldTriggerRepeat(prefs.overdueRepeat, daysOverdue)) {
+              notificationsToSend.push({
+                title: `Meta vencida: ${g.name}`,
+                body: `La fecha límite ya pasó. Aún te faltan ${fmtAmt(remaining)} para lograrla.`,
+                url: "/metas",
+                tag: `goal_overdue_${g.id}_${toYMD(today)}`,
+              });
+            }
+          }
+
+          // 3) Meta atrasada según el plan lineal (cuando tiene fecha límite futura)
+          if (prefs.behindPaceAlert && diffDays > 0) {
+            const createdDate = parseDateSafe(g.created_at) ?? today;
+            const startDay = startOfDay(createdDate);
+            const totalDays = Math.max(1, daysBetween(startDay, dlDay));
+            const elapsedDays = Math.min(totalDays, Math.max(0, daysBetween(startDay, today)));
+            const ideal = (Number(g.target) * elapsedDays) / totalDays;
+            const actual = Number(g.saved) || 0;
+            const diff = actual - ideal;
+            const tolerance = Math.max(
+              50,
+              Number(g.target) * ((Number(prefs.behindPaceTolerancePct) || 2) / 100),
+            );
+
+            if (diff < -tolerance && shouldTriggerRepeat(prefs.behindPaceRepeat, elapsedDays)) {
+              const deficit = Math.max(0, Math.round(ideal - actual));
+              const perDay = Math.ceil(remaining / Math.max(1, diffDays));
+              notificationsToSend.push({
+                title: `Te estás atrasando: ${g.name}`,
+                body: `Vas ${fmtAmt(deficit)} por debajo del plan. Necesitas ahorrar ${fmtAmt(perDay)}/día para llegar a tiempo.`,
+                url: "/metas",
+                tag: `goal_behind_pace_${g.id}_${toYMD(today)}`,
+              });
+            }
           }
         }
       }
 
-      // B) Consultar pagos fijos del usuario
-      const { data: fixedItems } = await supabase
-        .from("fixed_items")
-        .select("id, concept, amount, type, frequency, pay_day, pay_week_day, active")
-        .eq("user_id", userId)
-        .eq("active", true);
+      // B) Consultar conceptos fijos / recurrentes del usuario (9 frecuencias)
+      if (prefs.fixedItemReminders) {
+        const [{ data: fixedItems }, { data: recentTxs }] = await Promise.all([
+          supabase
+            .from("fixed_items")
+            .select(
+              "id, concept, amount, type, frequency, pay_day, pay_week_day, start_date, end_date, active",
+            )
+            .eq("user_id", userId)
+            .eq("active", true),
+          supabase
+            .from("transactions")
+            .select("id, fixed_id, date")
+            .eq("user_id", userId)
+            .not("fixed_id", "is", null),
+        ]);
 
-      if (fixedItems) {
-        for (const item of fixedItems) {
-          const typeLabel = item.type === "income_fixed" ? "Ingreso" : "Gasto";
-          const amountStr = `$${item.amount.toLocaleString("es-MX")}`;
-
-          if (item.frequency === "monthly" && typeof item.pay_day === "number") {
-            const daysUntil = item.pay_day - currentDayOfMonth;
-            if (daysUntil === 0) {
-              notificationsToSend.push({
-                title: `Pago programado para hoy: ${item.concept}`,
-                body: `${typeLabel} fijo de ${amountStr} programado para hoy.`,
-                url: "/movimientos",
-              });
-            } else if (daysUntil > 0 && daysUntil <= 3) {
-              notificationsToSend.push({
-                title: `Pago próximo: ${item.concept}`,
-                body: `${typeLabel} fijo de ${amountStr} vence en ${daysUntil} día(s).`,
-                url: "/movimientos",
-              });
+        if (fixedItems) {
+          for (const item of fixedItems) {
+            if (
+              (item.type === "expense_fixed" || item.type === "expense_variable") &&
+              !prefs.notifyFixedExpenses
+            ) {
+              continue;
             }
-          } else if (item.frequency === "weekly" && typeof item.pay_week_day === "number") {
-            const daysUntil = (item.pay_week_day - currentDayOfWeek + 7) % 7;
-            if (daysUntil === 0) {
+            if (item.type === "income_fixed" && !prefs.notifyFixedIncomes) continue;
+            if (item.type === "saving_fixed" && !prefs.notifyFixedSavings) continue;
+
+            const typeLabel =
+              item.type === "income_fixed"
+                ? "Ingreso"
+                : item.type === "saving_fixed"
+                  ? "Ahorro"
+                  : "Gasto";
+            const amountStr = fmtAmt(Number(item.amount) || 0);
+            const dueDates = getNextFixedDueDates(item, today);
+
+            for (const dueDate of dueDates) {
+              const dueISO = toYMD(dueDate);
+              const daysUntil = daysBetween(today, dueDate);
+              if (!prefs.fixedUpcomingDays.includes(daysUntil)) continue;
+
+              if (prefs.skipIfAlreadyRecorded && Array.isArray(recentTxs)) {
+                const recorded = recentTxs.some(
+                  (t: any) => t.fixed_id === item.id && String(t.date ?? "").slice(0, 10) === dueISO,
+                );
+                if (recorded) continue;
+              }
+
               notificationsToSend.push({
-                title: `Pago semanal de hoy: ${item.concept}`,
-                body: `${typeLabel} semanal de ${amountStr} para hoy.`,
-                url: "/movimientos",
-              });
-            } else if (daysUntil > 0 && daysUntil <= 2) {
-              notificationsToSend.push({
-                title: `Pago semanal próximo: ${item.concept}`,
-                body: `${typeLabel} semanal de ${amountStr} en ${daysUntil} día(s).`,
-                url: "/movimientos",
+                title:
+                  daysUntil === 0
+                    ? `${typeLabel} programado para hoy: ${item.concept}`
+                    : `${typeLabel} próximo: ${item.concept}`,
+                body:
+                  daysUntil === 0
+                    ? `${typeLabel} recurrente de ${amountStr} programado para hoy.`
+                    : `${typeLabel} recurrente de ${amountStr} ${daysUntil === 1 ? "mañana" : `en ${daysUntil} días`}.`,
+                url: "/ajustes?seccion=fijos",
+                tag: `fixed_item_due_${item.id}_${dueISO}_${daysUntil}d`,
               });
             }
           }
@@ -197,15 +433,17 @@ Deno.serve(async (req) => {
               JSON.stringify({
                 title: notif.title,
                 body: notif.body,
+                tag: notif.tag,
+                silent: !prefs.soundEnabled,
+                vibrate: prefs.vibrationEnabled ? [100, 50, 100] : [],
                 icon: "/icon-192.png",
                 badge: "/icon-192.png",
                 url: notif.url,
-              })
+              }),
             );
             totalSent++;
           } catch (err: any) {
             totalFailed++;
-            // 404 o 410 significa que el usuario revocó permisos o cerró sesión permanentemente
             if (err?.statusCode === 410 || err?.statusCode === 404) {
               deadSubIds.push(sub.id);
             }
@@ -215,7 +453,6 @@ Deno.serve(async (req) => {
       }
     }
 
-    // 3. Limpiar suscripciones inválidas o dadas de baja
     if (deadSubIds.length > 0) {
       await supabase.from("push_subscriptions").delete().in("id", deadSubIds);
     }
@@ -227,7 +464,7 @@ Deno.serve(async (req) => {
         failed: totalFailed,
         cleaned: deadSubIds.length,
       }),
-      { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 200 }
+      { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 200 },
     );
   } catch (error: any) {
     console.error("[send-reminders] Fatal error:", error);
