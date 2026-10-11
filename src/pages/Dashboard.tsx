@@ -1,7 +1,7 @@
 import { useMemo, useState, useEffect, memo, type ReactNode } from "react";
 import { useFinanceData } from "@/hooks/useFinanceData";
 import { fmt, monthlyAmount, MONTHS, isFixedActiveInMonth, iconFor, fmtDate, parseDateLocal, computeBalances, cashTotalFromDenominations } from "@/lib/finance";
-import { Eye, EyeOff, TrendingUp, TrendingDown, PiggyBank, Plus, Bell, BarChart3, Wallet } from "lucide-react";
+import { Eye, EyeOff, TrendingUp, TrendingDown, PiggyBank, Plus, Bell, BarChart3 } from "lucide-react";
 import { Link } from "react-router-dom";
 import { motion } from "@/lib/framer";
 import { MonthSwitcher } from "@/components/app/MonthSwitcher";
@@ -269,7 +269,7 @@ export default function Dashboard() {
     <div>
       <header className="px-5 lg:px-6 pt-5 pb-2 flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <BrandLogo size="sm" showText={false} />
+          <BrandLogo size="sm" withText={false} />
           <div>
             <p className="text-sm font-semibold text-foreground">{greet}</p>
             <p className="text-xs text-muted-foreground">{MONTHS[activeMonth]} {activeYear}</p>

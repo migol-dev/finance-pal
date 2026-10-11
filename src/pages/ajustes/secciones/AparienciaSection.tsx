@@ -1,10 +1,10 @@
 import { memo } from "react";
 import { useFinance } from "@/store/finance-store";
 import { useSystemTheme } from "@/hooks/useSystemTheme";
-import { ThemeMode, AccentColor } from "@/lib/finance";
+import { ThemeMode } from "@/lib/finance";
 import { AjustesHeader } from "../AjustesHeader";
 import { SectionProps } from "../types";
-import { Palette, Sun, Moon, Monitor, Sparkles } from "lucide-react";
+import { Palette, Sun, Moon, Monitor } from "lucide-react";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 

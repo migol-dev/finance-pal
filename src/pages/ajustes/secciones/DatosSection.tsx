@@ -3,16 +3,15 @@ import { useFinance, ExportScopes, ALL_SCOPES, normalizeImportKeys } from "@/sto
 import { useFinanceData } from "@/hooks/useFinanceData";
 import { AjustesHeader } from "../AjustesHeader";
 import { SectionProps } from "../types";
-import { Cloud, CloudOff, Download, Upload, Trash2, Checkbox as CheckboxIcon, Database, Check } from "lucide-react";
+import { Cloud, CloudOff, Download, Upload, Trash2, Check } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "sonner";
 import { Capacitor } from "@capacitor/core";
 import { Filesystem, Directory, Encoding } from "@capacitor/filesystem";
 import { Share } from "@capacitor/share";
-import { isSupabaseEnabled, setSyncEnabled, supabase } from "@/lib/supabase";
+import { isSupabaseEnabled, setSyncEnabled } from "@/lib/supabase";
 import { useAuth } from "@/context/AuthContext";
 import { useQueryClient } from "@tanstack/react-query";
 import { showUserError } from "@/lib/app-error";
@@ -251,7 +250,7 @@ export const DatosSection = memo(function DatosSection({ onBack }: SectionProps)
         return;
       }
       const raw = parsed?.data ?? parsed ?? {};
-      const data = normalizeImportKeys(raw);
+      const data = (normalizeImportKeys(raw) ?? {}) as Record<string, any>;
       const available: Required<ExportScopes> = {
         fixedItems: Array.isArray(data.fixedItems) && data.fixedItems.length >= 0,
         transactions: Array.isArray(data.transactions) && data.transactions.length >= 0,

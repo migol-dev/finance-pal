@@ -11,7 +11,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { User, Pencil, LogOut, Shield, ShieldCheck, ShieldOff, Key, Mail } from "lucide-react";
+import { User, Pencil, LogOut, ShieldCheck, ShieldOff, Key, Mail } from "lucide-react";
 import { toast } from "sonner";
 import { ElegantConfirm } from "@/components/app/ElegantConfirm";
 import { useAuth } from "@/context/AuthContext";
@@ -172,7 +172,7 @@ function AccountSettings() {
       setMfaOpen(false);
       setMfaCode("");
       setMfaEnrolled(true);
-      if (session?.user?.id) audit.mfaEnrolled(session.user.id);
+      if (session?.user?.id) audit.mfaEnabled(session.user.id);
     } catch (e: any) {
       toast.error(e.message || "Código incorrecto");
     } finally {
@@ -188,7 +188,7 @@ function AccountSettings() {
       toast.success("2FA desactivado");
       setMfaEnrolled(false);
       setMfaFactorId(null);
-      if (session?.user?.id) audit.mfaUnenrolled(session.user.id);
+      if (session?.user?.id) audit.mfaDisabled(session.user.id);
     } catch (e: any) {
       toast.error(e.message || "Error al desactivar 2FA");
     }
