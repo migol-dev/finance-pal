@@ -1,311 +1,385 @@
-# Plan de Acción Arquitectónico: Rediseño de Metas y Auditoría Responsiva Integral de la App
+# Plan de Acción Arquitectónico: Corrección de Conceptos Fijos (Desbordamiento de Imágenes, Errores de Consola y Registro Automático de Movimientos Recurrentes)
 
-> **Rol del Documento:** Especificación Arquitectónica y Guía de Implementación para Equipos de Desarrollo / Subagentes.  
-> **Estado:** ✅ FASE DE IMPLEMENTACIÓN Y VERIFICACIÓN COMPLETADA (100% verde en tests y tsc).  
-> **Reglas de Oro:**
-> 1. Todas las vistas consumen exclusivamente la fachada `useFinanceData`.
-> 2. Ninguna llamada directa a Supabase o React Query desde las páginas.
+> **Rol del Documento:** Especificación Arquitectónica y Guía de Implementación para Constructores / Subagentes (`.agent/contract.md`).  
+> **Estado:** ✅ IMPLEMENTADO Y VERIFICADO (Fases 1 a 4 completadas).  
+> **Reglas de Oro (`.agent/rules/architecture.md` & `.agent/contract.md`):**
+> 1. Todas las vistas (`src/pages/**`) consumen exclusivamente la fachada `useFinanceData`.
+> 2. Ninguna llamada directa a Supabase o React Query desde las páginas ni desde los slices de Zustand.
 > 3. Cero errores de TypeScript (`npx tsc --noEmit` código 0).
-> 4. Todas las suites de pruebas deben pasar (`npm test` 100% verde).
-> 5. **No hacer push al repositorio remoto sin orden explícita del usuario**.
+> 4. Todas las suites de pruebas deben pasar (`npm test` 100% verde, incluyendo `src/test/ensureScheduled.test.ts`).
+> 5. Respetar `.agentignore` (no tocar `node_modules/`, `dist/`, `.env*`, etc.).
 
 ---
 
-## 1. Decisiones de Diseño Confirmadas por el Usuario
+## 1. Diagnóstico de Causa Raíz
 
-1. **Acciones de Carpeta en Metas:** Migrar de los 3 botones inline actuales a un **menú contextual `...`** (`DropdownMenu`), liberando más de 70px para el nombre de las carpetas y subcarpetas.
-2. **Carpetas en Móvil (<1024px):** Reemplazar el sidebar estático por una barra de **chips horizontales (`FolderChips`)** con botón para desplegar el árbol jerárquico completo en un **panel inferior (`Drawer`/`Sheet`)**.
-3. **Alcance Responsivo:** Barrido completo de la aplicación (Metas, Dashboard, Anual, Historial, Movimientos, Deudas, Login, Ajustes y Diálogos globales).
-4. **Estilo de Carpeta Activa:** Fondo suave con **barra de acento lateral de 3px** (`border-l-4 border-primary bg-primary/10`), eliminando el bloque cian sobresaturado.
+### Problema 1: Imágenes personalizadas desbordadas en Conceptos Fijos, monto `$0/mes` y mensajes de consola
+
+1. **Desbordamiento de imágenes personalizadas (`192x192px`) en `FijosSection.tsx`:**
+   - En `src/pages/ajustes/secciones/FijosSection.tsx` (L278-L280), cada concepto fijo renderiza:
+     ```tsx
+     <div className="size-11 rounded-2xl bg-muted/70 text-foreground flex items-center justify-center shrink-0">
+       {item.icon ? <IconDisplay icon={item.icon} className="size-5.5" /> : <span>{CATEGORY_EMOJI[item.category] ?? "📄"}</span>}
+     </div>
+     ```
+   - `IconDisplay` (`src/components/app/IconDisplay.tsx` L32) combina `sizeMap[size]` (`"size-11 text-xl"`) con `className` (`"size-5.5"`) mediante `cn()` (`tailwind-merge`).
+   - `tailwind-merge` detecta que `size-11` y `size-5.5` pertenecen al mismo grupo conflictivo (`size-*`), por lo que **elimina `size-11`** y conserva únicamente `size-5.5`.
+   - En **Tailwind CSS v3** (`tailwind.config.ts`), el token `5.5` (al igual que `4.5` y `8.5`) **no existe por defecto en `spacing`**. En consecuencia, la clase `.size-5.5` no genera ninguna regla CSS (`width: auto; height: auto`), y el `<img>` (`data:image/webp` de `192x192px` generado por `IconPicker`) se expande a su tamaño intrínseco desbordando el contenedor padre (que tampoco tenía `overflow-hidden`).
+2. **Cálculo erróneo `($0/mes)` en todas las filas de `FijosSection.tsx`:**
+   - En `FijosSection.tsx` (L271) se invoca `const mAmount = monthlyAmount(item.amount, item.frequency);`, pero la firma real en `src/lib/finance.ts` (L180) es `monthlyAmount(item: FixedItem): number`. Al recibir un `number` en vez del objeto `FixedItem`, `item.frequency` es `undefined`, retorna `undefined`, y `fmt(mAmount)` muestra `$0/mes`.
+3. **Mensajes de la Consola del Navegador:**
+   - **Error SRI en Google Fonts (`index.html` L14):** `<link rel="stylesheet" href="https://fonts.googleapis.com/css2?..." integrity="sha384-H1AC..." crossorigin="anonymous" />` incluye un atributo `integrity` estático. Como Google Fonts genera CSS dinámico según el `User-Agent` y actualiza sus binarios continuamente, el hash `sha384` deja de coincidir (`s1793J9...`) y el navegador bloquea la tipografía.
+   - **Aviso CSP (`script-src-elem` en `54ffdca8-52e8-4bef-9f7f-6211c268945c:19:51`):** Proviene de un script inyectado por una extensión del navegador (`moz-extension://54ffdca8-...`), bloqueado correctamente por la directiva `script-src 'self'` de `vercel.json`. No requiere debilitar la CSP.
+   - **Aviso Cookie `__cf_bm`:** Cookie de protección antibots de Cloudflare (infraestructura de Supabase) rechazada por el navegador en peticiones cross-origin (`fetch`). Es benigna y no afecta la autenticación (que usa `localStorage` + `Bearer` token).
 
 ---
 
-## 2. Mapa de Fases de Ejecución
+### Problema 2: Los conceptos fijos / gastos recurrentes no se registran automáticamente al llegar o pasar su fecha
+
+1. **Desconexión arquitectónica entre React Query (Supabase) y Zustand (`ensureScheduledTransactions`):**
+   - `AppShell.tsx` (L68-L70) invoca `ensureScheduledTransactions()` desde `useFinanceData`.
+   - Sin embargo, `useFinanceData.ts` (L128, L324) delega `ensureScheduledTransactions` directamente a `state.ensureScheduledTransactions` de Zustand (`src/store/finance-store.ts` L142-L197).
+   - Cuando el usuario tiene sesión activa en Supabase (`isSupabase === true`), los conceptos fijos viven en `fixedItemsQuery.data` (React Query) y el store local `s.fixedItems` en Zustand está vacío (`[]`). Por tanto, `for (const f of s.fixedItems)` itera 0 elementos y jamás crea ningún movimiento.
+   - Incluso si existieran en Zustand, `get().addTx(...)` en `finance-store.ts` solo modifica la memoria local sin llamar a `txM.addTransaction.mutateAsync` (por lo que nunca se persiste en Supabase ni actualiza `transactionsQuery.data` que alimenta `Movimientos.tsx`).
+2. **Comparación estricta `===` que ignora fechas ya pasadas:**
+   - En `src/store/finance-store.ts`:
+     - L160 (`weekly`): `if (today.getDay() === f.payWeekDay)`
+     - L163 (`monthly`, etc.): `if (today.getDate() === f.payDay && ...)`
+     - L170 (`one_time`): `if (... && sd.getDate() === today.getDate())`
+     - L175 (`yearly`): `if (sd.getDate() === today.getDate() && ...)`
+   - Si el concepto fijo tenía fecha el día 5, 6 o 10 y el usuario abre la app el día 11 ("aunque la fecha pase"), `today.getDate() === f.payDay` (`11 === 10`) es `false` y el movimiento **jamás se registra**.
+   - Tampoco maneja meses de 28/29/30 días cuando `payDay` es `31` (`Math.min(f.payDay, daysInMonth)`).
+3. **Incompatibilidad de frecuencias (`"annual"` vs `"yearly"`, falta de `"biweekly"`) y límite `payDay <= 28` en Zod:**
+   - `FixedForm` (`FijosSection.tsx` L133-L135) guarda `"biweekly"` (Quincenal) y `"annual"` (Anual), pero `Frequency` (`src/lib/finance.ts` L2), `frequencySchema` (`src/lib/validators.ts` L24) y `sanitizeFixed` (`src/lib/sanitizers.ts` L142) usan `"yearly"` y no incluyen `"biweekly"`.
+   - `fixedItemSchema` (`src/lib/validators.ts` L78, L88) restringe `payDay` a `.max(28)`, mientras que la UI (`FijosSection.tsx` L156) y la base de datos permiten `1..31`, haciendo que `validateAndThrow('fixedItem', nv)` lance excepción para días 29, 30 o 31.
+4. **Bloqueo en el mes de creación por `startDate` oculto en `FixedForm`:**
+   - `FixedForm` (`FijosSection.tsx` L51-L52) inicializa `startDate` con la fecha exacta de hoy (`todayLocal`, ej. `2026-10-11`) y no renderiza el campo en el formulario. Si el usuario crea hoy un concepto mensual con `payDay = 10`, `occISO < startISO` (`"2026-10-10" < "2026-10-11"`) bloquea su registro en el mes actual.
+5. **Fallo de firma en `toggleFixedItemActive` y riesgo de duplicación / doble conteo:**
+   - `toggleFixedItemActive` en `src/services/fixedItems.service.ts` (L163) no recibe `userId`, omitiendo `.eq('user_id', userId)`.
+   - `Anual.tsx` (L46-L52, L90-L94, L120-L125) suma la proyección completa de `fixedItems` sin descontar las transacciones con `t.fixedId === i.id` ya registradas en ese mes, lo que duplicaría los gastos fijos al materializarse como transacciones.
+
+---
+
+## 2. Estructura de Archivos a Modificar / Crear
+
+```text
+index.html                                           # [MODIFICAR] Eliminar atributo integrity estático en Google Fonts
+tailwind.config.ts                                   # [MODIFICAR] Añadir tokens spacing 4.5, 5.5 y 8.5
+src/lib/finance.ts                                   # [MODIFICAR] Añadir Frequency "biweekly", buildScheduledTxId y getDueOccurrencesForFixedItem
+src/lib/validators.ts                                # [MODIFICAR] Añadir "biweekly" a frequencySchema y ampliar payDay a max(31)
+src/lib/sanitizers.ts                                # [MODIFICAR] Normalizar "annual" -> "yearly" y soportar "biweekly" en sanitizeFixed
+src/services/fixedItems.service.ts                   # [MODIFICAR] Normalizar frequency en mapFixedItemFromDb y exigir userId en toggleFixedItemActive
+src/hooks/mutations/useFixedItemMutations.ts         # [MODIFICAR] Pasar userId y resolver nextActive desde React Query / Zustand en toggleFixedItem
+src/store/finance-store.ts                           # [MODIFICAR] Delegar ensureScheduledTransactions a getDueOccurrencesForFixedItem con try/catch
+src/hooks/useFinanceData.ts                          # [MODIFICAR] Reconciliación idempotente de transacciones programadas (Zustand + Supabase)
+src/pages/ajustes/secciones/FijosSection.tsx         # [MODIFICAR] Corregir IconDisplay, monthlyAmount(item), frecuencias, cuenta y fechas en FixedForm
+src/pages/ajustes/secciones/PerfilSection.tsx        # [MODIFICAR] Corregir IconDisplay con size="lg"
+src/components/app/DataConflictDialog.tsx            # [MODIFICAR] Normalizar frequency "annual" -> "yearly" al descargar de la nube
+src/pages/Dashboard.tsx                              # [MODIFICAR] Ajustar cálculo de proyección restante del mes con effectiveDay y biweekly
+src/pages/Anual.tsx                                  # [MODIFICAR] Evitar doble conteo entre fixedItems proyectados y transactions con fixedId
+src/test/ensureScheduled.test.ts                     # [MODIFICAR] Ampliar casos de prueba (fechas pasadas en el mes, quincenal, fin de mes 31, idempotencia)
+```
+
+*(No se requiere instalar dependencias externas nuevas en `package.json`).*
+
+---
+
+## 3. Especificación Técnica Detallada por Fase
 
 ```mermaid
 flowchart TD
-    F1["Fase 1: Capa Base, Primitivas y Sistema de Diseño\n(dialog.tsx, tailwind, safe-date, tokens)"]
-    F2["Fase 2: Rediseño Modular de Metas\n(FolderTree, FolderChips, GoalCard, Detalle)"]
-    F3["Fase 3: Shell, Navegación y Cabeceras\n(Header, BottomNav, MonthSwitcher)"]
-    F4["Fase 4: Panel Financiero y Gráficos\n(SimpleAreaChart, Dashboard, Anual, Historial)"]
-    F5["Fase 5: Operaciones Financieras y Desglose\n(Movimientos, Deudas, DenominationsEditor)"]
-    F6["Fase 6: Autenticación, Ajustes y Modales del Sistema\n(Login, DataConflict, Ajustes Secciones)"]
-    F7["Fase 7: Verificación, Pruebas Automatizadas y Cierre\n(Vitest, TSC, Build)"]
+    F1["Fase 1: UI de Conceptos Fijos, Tailwind Spacing y SRI de Google Fonts\n(tailwind.config.ts, index.html, FijosSection.tsx, PerfilSection.tsx)"]
+    F2["Fase 2: Contratos de Datos, Frecuencias, Validadores y Servicios\n(finance.ts, validators.ts, sanitizers.ts, fixedItems.service.ts, useFixedItemMutations.ts)"]
+    F3["Fase 3: Motor de Auto-Registro Vencido y Sincronización Híbrida\n(finance.ts, finance-store.ts, useFinanceData.ts, Dashboard.tsx, Anual.tsx)"]
+    F4["Fase 4: Pruebas Unitarias y Verificación Integral\n(ensureScheduled.test.ts, vitest, tsc)"]
 
-    F1 --> F2
-    F1 --> F3
-    F1 --> F4
-    F1 --> F5
-    F1 --> F6
-    F2 & F3 & F4 & F5 & F6 --> F7
+    F1 --> F2 --> F3 --> F4
 ```
 
 ---
 
-## 3. Especificación Detallada por Fases
+### FASE 1: Corrección Visual de Imágenes en Conceptos Fijos, Tailwind Spacing y SRI de Google Fonts
 
-### FASE 1: Capa Base, Primitivas de UI y Utilidades del Sistema
-*Objetivo: Sentar los cimientos globales para que ningún diálogo o layout desborde en móviles de 320px–430px.*
+#### 1.1. `tailwind.config.ts`
+- **Dependencias / Imports:** Sin cambios (`import type { Config } from "tailwindcss";`).
+- **Cambios estructurales:**
+  Dentro de `theme.extend`, añadir la escala de `spacing` para soportar las utilidades fraccionarias usadas en el proyecto (`size-4.5`, `size-5.5`, `h-8.5`):
+  ```ts
+  spacing: {
+    "4.5": "1.125rem",
+    "5.5": "1.375rem",
+    "8.5": "2.125rem",
+  },
+  ```
 
-#### 1.1. Diálogo Base (`src/components/ui/dialog.tsx`)
-- **Problema actual (L39, L45):** `DialogContent` siempre inyecta un botón de cierre `X` propio (`DialogPrimitive.Close`) en `absolute right-4 top-4`. Cuando una vista (como Metas) añade su propio botón `X`, se generan **dos X superpuestas**. Además, no cuenta con límite de altura dinámica (`dvh`) ni margen en móviles, tocando los bordes de la pantalla.
-- **Acciones técnicas:**
-  - Agregar prop opcional a `DialogContent`: `hideCloseButton?: boolean`.
-  - Condicionar el renderizado de `DialogPrimitive.Close`: solo si `!hideCloseButton`.
-  - Cambiar el texto `sr-only` de `"Close"` a `"Cerrar"`.
-  - Ampliar el área táctil del botón de cierre por defecto a mínimo 44px (`size-11 flex items-center justify-center`).
-  - Añadir soporte para presentación como *bottom-sheet* en móvil:
-    ```tsx
-    className={cn(
-      "fixed left-[50%] top-[50%] z-50 grid w-[calc(100%-1.5rem)] max-w-lg translate-x-[-50%] translate-y-[-50%] gap-4 border bg-background p-5 sm:p-6 shadow-lg duration-200 max-h-[calc(100dvh-2rem)] overflow-y-auto overscroll-contain sm:rounded-2xl",
-      // Modo bottom-sheet automático en pantallas pequeñas
-      "max-sm:top-auto max-sm:bottom-0 max-sm:left-0 max-sm:right-0 max-sm:translate-x-0 max-sm:translate-y-0 max-sm:w-full max-sm:max-w-full max-sm:rounded-b-none max-sm:rounded-t-3xl max-sm:max-h-[92dvh] max-sm:pb-[max(1.25rem,env(safe-area-inset-bottom))]",
-      className
-    )}
-    ```
+#### 1.2. `index.html`
+- **Cambios estructurales (L14):**
+  Eliminar el atributo `integrity="sha384-H1ACVsBmsAYPm49vCyenLlCMGbcWXkM/76jghv/G+m5n3nLVO9w0MSiIWvgig0pF"` de la etiqueta `<link rel="stylesheet" href="https://fonts.googleapis.com/css2?...">`, manteniendo `crossorigin="anonymous"`.
 
-#### 1.2. Configuración Tailwind y Estilos Globales (`tailwind.config.ts` & `src/index.css`)
-- **Problema actual:** No existe breakpoint para teléfonos pequeños (320px a 420px). Las clases que usan `h-screen` o `h-[90vh]` rompen el scroll cuando el teclado virtual o la barra de navegación del navegador móvil están visibles.
-- **Acciones técnicas:**
-  - En `tailwind.config.ts`, agregar a `screens`:
-    - `xs: "420px"`
-    - `2xs: "360px"`
-  - En `src/index.css`:
-    - Añadir regla utilitaria `.no-scrollbar` y soporte global para safe areas (`safe-bottom`, `safe-top`).
-    - Añadir soporte de tipografía segura para números tabulares en moneda: `.tabular-nums`.
+#### 1.3. `src/pages/ajustes/secciones/FijosSection.tsx` (Renderizado de Tarjetas)
+- **Imports exactos requeridos desde `@/lib/finance`:**
+  ```ts
+  import {
+    FixedItem,
+    ItemType,
+    Frequency,
+    Priority,
+    IconRef,
+    PaymentMethod,
+    Account,
+    CATEGORY_EMOJI,
+    PAYMENT_METHOD_LABEL,
+    PAYMENT_METHOD_EMOJI,
+    FREQ_LABEL,
+    TYPE_LABEL,
+    monthlyAmount,
+    iconFor,
+    fmt,
+  } from "@/lib/finance";
+  ```
+- **Cambios en la lista de conceptos (L270-L293):**
+  1. Corregir llamada a `monthlyAmount`:
+     ```ts
+     const mAmount = monthlyAmount(item);
+     ```
+  2. Reemplazar el `<div className="size-11 ...">` anidado con `<IconDisplay className="size-5.5" />` por el uso directo de `IconDisplay` con `iconFor(item)` (consistente con `Dashboard.tsx` y `Movimientos.tsx`):
+     ```tsx
+     <IconDisplay icon={iconFor(item)} />
+     ```
+  3. Mostrar el indicador de día según la frecuencia (día del mes `item.payDay` o día de la semana `item.payWeekDay`).
 
-#### 1.3. Normalización y Blindaje de Fechas (`src/lib/finance.ts`)
-- **Problema actual (`fmtDate`, L227):** `fmtDate(`${goal.deadline}T12:00:00`)` falla cuando `goal.deadline` ya viene en formato ISO completo (`"2026-05-10T00:00:00.000Z"`), concatenando `T12:00:00` y generando un `Invalid Date`. Al llamar `getDate()`, produce **`NaN/NaN/NaN`**.
-- **Acciones técnicas:**
-  - Blindar `fmtDate(d)`:
-    ```typescript
-    export function fmtDate(d: string | Date | null | undefined): string {
-      if (!d) return "—";
-      const dt = typeof d === "string" ? parseDateLocal(d) : d;
-      if (isNaN(dt.getTime())) return "—";
-      const dd = String(dt.getDate()).padStart(2, "0");
-      const mm = String(dt.getMonth() + 1).padStart(2, "0");
-      const yyyy = String(dt.getFullYear());
-      return `${dd}/${mm}/${yyyy}`;
+#### 1.4. `src/pages/ajustes/secciones/PerfilSection.tsx`
+- **Cambios estructurales (L318-L320):**
+  Reemplazar el contenedor anidado de avatar por `<IconDisplay icon={profile.avatar} size="lg" className="shadow-sm" />` cuando `profile.avatar` esté definido.
+
+---
+
+### FASE 2: Unificación de Frecuencias (`biweekly`, `yearly`), Validadores, Sanitizadores y Servicios
+
+#### 2.1. `src/lib/finance.ts` (Tipos y Diccionarios)
+- **Interfaces y Tipos requeridos:**
+  ```ts
+  export type Frequency =
+    | "monthly"
+    | "biweekly"
+    | "weekly"
+    | "yearly"
+    | "one_time"
+    | "bimonthly"
+    | "quarterly"
+    | "fourmonthly"
+    | "biannual";
+
+  export interface FixedItem {
+    id: string;
+    type: ItemType;
+    category: string;
+    concept: string;
+    amount: number;
+    frequency: Frequency;
+    active: boolean;
+    note?: string;
+    startDate: string;
+    endDate: string;
+    priority: Priority;
+    payDay?: number;     // day of month (1-31) - optional
+    payWeekDay?: number; // day of week (0=Sunday..6=Saturday) - optional
+    icon?: IconRef;
+    paymentMethod?: PaymentMethod;
+    accountId?: string;
+  }
+  ```
+- **Actualización de `FREQ_LABEL`, `monthlyAmount` e `isFixedActiveInMonth`:**
+  - En `FREQ_LABEL`: añadir `biweekly: "Quincenal"`.
+  - En `monthlyAmount(item: FixedItem): number`:
+    - Añadir `case "biweekly": return item.amount * 2;`.
+    - Añadir fallback en `default:` para tratar valores legados `"annual"` como `item.amount / 12` y retornar `0` en caso desconocido (nunca `undefined`).
+  - En `isFixedActiveInMonth(item: FixedItem, year: number, month: number): boolean`:
+    - Tratar `(item.frequency as string) === "annual"` igual que `"yearly"`.
+
+#### 2.2. `src/lib/validators.ts`
+- **Imports exactos:** `import { z } from 'zod';`
+- **Cambios en esquemas:**
+  ```ts
+  export const frequencySchema = z.enum([
+    'monthly',
+    'biweekly',
+    'weekly',
+    'yearly',
+    'one_time',
+    'bimonthly',
+    'quarterly',
+    'fourmonthly',
+    'biannual',
+  ]);
+  ```
+  - En `fixedItemSchema` (L78 y L88): cambiar `.max(28, ...)` a `.max(31, 'Día de pago debe ser entre 1 y 31')`.
+
+#### 2.3. `src/lib/sanitizers.ts` y `src/components/app/DataConflictDialog.tsx`
+- En `sanitizeFixed` (`src/lib/sanitizers.ts` L142-L152):
+  - Incluir `"biweekly"` en la lista `freqs`.
+  - Antes de validar contra `freqs`, normalizar `const rawFreq = raw.frequency === "annual" ? "yearly" : raw.frequency;`.
+- En `DataConflictDialog.tsx` (L80-L86):
+  - Normalizar `frequency: (r.frequency === 'annual' ? 'yearly' : r.frequency) as FixedItem['frequency']` y convertir campos `null` opcionales a `undefined`.
+
+#### 2.4. `src/services/fixedItems.service.ts` y `src/hooks/mutations/useFixedItemMutations.ts`
+- En `src/services/fixedItems.service.ts`:
+  - En `mapFixedItemFromDb(row: FixedItemRow): FixedItem`: normalizar `frequency: (row.frequency === 'annual' ? 'yearly' : row.frequency) as FixedItem['frequency']`.
+  - En `toggleFixedItemActive`:
+    ```ts
+    export async function toggleFixedItemActive(
+      userId: string,
+      id: string,
+      active: boolean,
+    ): Promise<void> {
+      // TODO: Implementar lógica core (.update({ active }).eq('id', id).eq('user_id', userId))
     }
     ```
-  - Crear `parseGoalDeadline(deadline?: string): Date | null` que extraiga `deadline.slice(0, 10)` de forma segura antes de calcular días restantes o proyectar metas.
+- En `src/hooks/mutations/useFixedItemMutations.ts`:
+  - En `toggleFixedItem`:
+    - Resolver el estado objetivo `nextActive` buscando el ítem tanto en `useFinance.getState().fixedItems` como en `queryClient.getQueryData<FixedItem[]>(financeKeys.fixedItems())`.
+    - En modo offline, encolar en `useSyncStore` con `payload: { active: nextActive }`.
+    - En modo online, obtener `userId` mediante `supabase.auth.getUser()` e invocar `toggleFixedItemActive(data.user.id, id, nextActive)`.
 
----
-
-### FASE 2: Rediseño Modular de Metas (`src/pages/metas/`)
-*Objetivo: Descomponer `Metas.tsx` (1,075 líneas), resolver la doble X, eliminar el truncamiento de carpetas y modernizar las tarjetas.*
-
-#### 2.1. Estructura de Nuevos Archivos
-```
-src/pages/metas/
-├── types.ts                    # Interfaces de FolderNode y vistas
-├── FolderTree.tsx              # Árbol jerárquico de carpetas desktop
-├── FolderTreeItem.tsx          # Fila de carpeta con menú contextual '...'
-├── FolderChips.tsx             # Selector horizontal móvil con trigger de Drawer
-├── GoalCompactCard.tsx         # Tarjeta de meta moderna, accesible y responsiva
-├── GoalDetailContent.tsx       # Detalle de meta con soporte 92dvh y 1 sola X
-├── GoalForm.tsx                # Formulario modal de creación/edición de metas
-└── FolderForm.tsx              # Formulario modal de creación/edición de carpetas
-```
-
-#### 2.2. Componente `FolderTreeItem.tsx` (Solución a P2)
-- Reemplazar los 3 botones inline (`FolderPlus`, `Pencil`, `Trash2`) por un único botón disparador de `DropdownMenu` (`size-8 rounded-lg hover:bg-muted` con icono `MoreHorizontal` o `MoreVertical`).
-- Contenedor de la fila con `div` semántico (no `role="button"` con botones anidados). El clic para seleccionar se asigna a un botón transparente interno.
-- Estilo activo: `border-l-4 border-primary bg-primary/10 text-primary font-bold`.
-- El nombre de la carpeta ocupa todo el ancho disponible: `flex-1 min-w-0 font-medium text-sm text-foreground line-clamp-2 break-words text-left`.
-- Sangría controlada: `paddingLeft: 8 + Math.min(level, 3) * 12` px, acompañada de una guía visual sutil `border-l border-border/50`.
-- Chevron con orientación semántica correcta: `ChevronRight` que rota `90deg` al expandir.
-- Opciones del menú contextual `DropdownMenu`:
-  1. *Añadir subcarpeta* (icono `FolderPlus`).
-  2. *Editar nombre e icono* (icono `Pencil`).
-  3. *Eliminar carpeta* (icono `Trash2`, texto rojo, confirmación con `ElegantConfirm`).
-
-#### 2.3. Componente `FolderChips.tsx` para Móviles
-- En pantallas `< lg`, el sidebar vertical se oculta para no empujar las metas.
-- Se renderiza una barra horizontal con scroll suave (`flex items-center gap-2 overflow-x-auto no-scrollbar -mx-4 px-4 py-1.5`).
-- Chips rápidos para: *Todas*, *Sin carpeta* y carpetas principales.
-- Botón al final con icono `FolderTree` rotulado "Todas las carpetas" que abre un `Drawer` inferior (`vaul`) conteniendo el árbol completo interactivo.
-
-#### 2.4. Detalle de Meta (`GoalDetailContent.tsx` - Solución a P1 y P4)
-- En `Metas.tsx`, el `DialogContent` del detalle llevará la prop `hideCloseButton={true}`.
-- Se mantiene únicamente el botón de cierre estilizado integrado en el encabezado de la tarjeta:
-  ```tsx
-  <button
-    type="button"
-    onClick={() => setDetailId(null)}
-    aria-label="Cerrar detalles"
-    className="absolute top-4 right-4 size-11 rounded-full bg-black/30 hover:bg-black/50 text-white flex items-center justify-center backdrop-blur-md z-20 transition active:scale-95"
-  >
-    <X className="size-5" />
-  </button>
+#### 2.5. Formulario `FixedForm` en `src/pages/ajustes/secciones/FijosSection.tsx`
+- **Props e interfaz de `FixedForm`:**
+  ```ts
+  interface FixedFormProps {
+    initial: FixedItem | null;
+    accounts: Account[];
+    onSave: (i: Omit<FixedItem, "id">) => void;
+  }
   ```
-- Fecha límite corregida usando `fmtDate(parseGoalDeadline(goal.deadline))`. Si no hay fecha, muestra `"Sin fecha límite"`.
-- Los montos en el héroe de la tarjeta usan `text-3xl sm:text-4xl font-black tabular-nums break-words flex flex-wrap items-baseline justify-between gap-2`.
+- **Estructura y estado del formulario:**
+  - Normalizar `initial?.frequency` si viene como `"annual"` -> `"yearly"`.
+  - Inicializar `payDay`: `initial?.payDay ? String(initial.payDay) : String(new Date().getDate())`.
+  - Inicializar `payWeekDay`: `initial?.payWeekDay !== undefined ? String(initial.payWeekDay) : String(new Date().getDay())`.
+  - Inicializar `startDate`: para nuevos conceptos, usar el primer día del mes actual (`${new Date().getFullYear()}-${pad(new Date().getMonth() + 1)}-01`) para que las fechas del mes en curso sean elegibles de inmediato.
+  - Añadir estado `accountId` (`initial?.accountId ?? "none"`) y `<Select>` de Cuenta asociada.
+  - Renderizar en el `<Select>` de Frecuencia todas las opciones de `FREQ_LABEL` usando `"yearly"` (nunca `"annual"`).
+  - Renderizar los inputs de `startDate` ("Fecha de inicio") y `endDate` ("Fecha de fin").
 
 ---
 
-### FASE 3: Shell, Navegación y Cabeceras Globales
+### FASE 3: Motor de Registro Automático de Movimientos Recurrentes y Sincronización Híbrida
 
-#### 3.1. `src/components/app/Header.tsx`
-- **Problema (L18, L23):** En anchos de 320px–360px, cuando el título tiene subtítulo o hay 2 botones en la ranura `action` (como en Metas: *Carpeta* + *Nueva*), se produce colisión y desbordamiento.
-- **Acción técnica:**
-  - Título: `text-xl sm:text-2xl font-extrabold tracking-tight truncate text-balance min-w-0`.
-  - Ranura `action`: envolver con `shrink-0 flex items-center gap-1.5 sm:gap-2`.
-  - En los botones de acción secundarios (ej. "Carpeta"), ocultar el texto en móviles pequeños: `<span className="hidden xs:inline">Carpeta</span>`.
+#### 3.1. Funciones Puras de Programación en `src/lib/finance.ts`
+- **Firmas requeridas:**
+  ```ts
+  /**
+   * Genera un UUID v4 determinístico a partir de fixedId y la fecha YYYY-MM-DD (occISO).
+   * Garantiza idempotencia en memoria local y en upserts hacia Supabase/Postgres.
+   */
+  export function buildScheduledTxId(fixedId: string, occISO: string): string {
+    // TODO: Implementar lógica core (hash determinístico formateado como UUID v4 válido)
+  }
 
-#### 3.2. `src/components/app/BottomNav.tsx`
-- **Problema (L9, L24):** El padding inferior estático en algunos dispositivos no respeta la barra gestual de iOS/Android (`safe-bottom`). Las etiquetas de los 5 botones pueden colisionar en 320px si la fuente aumenta.
-- **Acción técnica:**
-  - Agregar `pb-[max(0.75rem,env(safe-area-inset-bottom))]` al contenedor fijo.
-  - Asegurar `min-w-0 truncate` en la etiqueta de texto de cada ítem de navegación (`text-[10px] min-[360px]:text-micro font-semibold`).
+  /**
+   * Evalúa un concepto fijo activo y devuelve las transacciones programadas del periodo actual
+   * cuya fecha de cobro ya llegó o ya pasó (<= today) y que aún no existen en `transactions`.
+   */
+  export function getDueOccurrencesForFixedItem(
+    f: FixedItem,
+    transactions: Transaction[],
+    now?: Date,
+  ): Transaction[] {
+    // TODO: Implementar lógica core:
+    // 1. Verificar f.active y que todayISO <= endISO.
+    // 2. Resolver ocurrencias vencidas (<= today) según f.frequency:
+    //    - "weekly": ocurrencia más reciente del ciclo semanal actual (0..6 días atrás desde today)
+    //      donde occISO >= startISO && occISO <= endISO (mantiene compatibilidad con ensureScheduled.test.ts).
+    //    - "biweekly": si isFixedActiveInMonth, calcular los 2 días quincenales del mes (ajustados a daysInMonth)
+    //      y filtrar aquellos <= today.getDate().
+    //    - "monthly" | "bimonthly" | "quarterly" | "fourmonthly" | "biannual" | "yearly":
+    //      si isFixedActiveInMonth, calcular effectiveDay = Math.min(Math.max(1, f.payDay ?? start.getDate()), daysInMonth)
+    //      y verificar today.getDate() >= effectiveDay.
+    //    - "one_time": si start pertenece al (year, month) actual y today.getDate() >= effectiveDay.
+    // 3. Deduplicar contra `transactions` verificando `t.id === scheduledId` o (`t.fixedId === f.id` y misma fecha local YYYY-MM-DD).
+    // 4. Retornar objetos Transaction con id = buildScheduledTxId(f.id, occISO), sanitizando campos opcionales (undefined en vez de null).
+  }
+  ```
 
-#### 3.3. `src/components/app/MonthSwitcher.tsx`
-- **Problema (L22, L36):** Botones con `size-8` (32px), por debajo de los 44px de accesibilidad. El diálogo modal no cuenta con márgenes de seguridad en teléfonos estrechos.
-- **Acción técnica:**
-  - Aumentar el contenedor a touch targets de mínimo 40px–44px: botones de anterior/siguiente con `size-9 min-[360px]:size-10`.
-  - El modal de selección de periodo usará `DialogContent className="rounded-3xl w-[calc(100%-1.5rem)] max-w-xs p-5"`.
+#### 3.2. `src/store/finance-store.ts`
+- **Imports exactos a añadir desde `@/lib/finance`:** `getDueOccurrencesForFixedItem`
+- **Refactorización de `ensureScheduledTransactions`:**
+  ```ts
+  ensureScheduledTransactions: () => {
+    const s = get();
+    for (const f of s.fixedItems) {
+      try {
+        // TODO: Implementar lógica core: obtener dueTxs = getDueOccurrencesForFixedItem(f, get().transactions)
+        // e insertar cada tx mediante get().addTx(tx)
+      } catch (err) {
+        console.error('[FinanceStore] Error al registrar movimiento programado:', f.id, err);
+      }
+    }
+  },
+  ```
 
----
+#### 3.3. `src/hooks/useFinanceData.ts`
+- **Imports exactos a añadir:**
+  `import { useCallback, useEffect, useMemo, useRef } from 'react';`
+  `import { getDueOccurrencesForFixedItem } from '@/lib/finance';` (además de los tipos existentes).
+- **Deduplicación a nivel de módulo (compartida entre `AppShell` y la página activa):**
+  ```ts
+  const scheduledInFlightKeys = new Set<string>();
+  ```
+- **Reconciliación reactiva (`reconcileScheduledTransactions`):**
+  ```ts
+  const reconcileScheduledTransactions = useCallback(() => {
+    // TODO: Implementar lógica core:
+    // 1. Si isSupabase es true, esperar hasta que fixedItemsQuery.isSuccess && transactionsQuery.isSuccess
+    //    && !fixedItemsQuery.isFetching && !transactionsQuery.isFetching.
+    // 2. Si !isSupabase, delegar en ui.ensureScheduledTransactions().
+    // 3. Si isSupabase, iterar sobre fixedItems, calcular getDueOccurrencesForFixedItem(f, transactions),
+    //    verificar que `${userId}:${tx.id}` no esté en scheduledInFlightKeys, agregarlo al Set y
+    //    despachar txM.addTransaction.mutateAsync(tx).
+  }, [
+    isSupabase,
+    userId,
+    fixedItems,
+    transactions,
+    fixedItemsQuery.isSuccess,
+    fixedItemsQuery.isFetching,
+    transactionsQuery.isSuccess,
+    transactionsQuery.isFetching,
+    txM.addTransaction,
+    ui,
+  ]);
+  ```
+- Ejecutar `reconcileScheduledTransactions()` en un `useEffect` y exponerla como `ensureScheduledTransactions: reconcileScheduledTransactions` en el retorno de `useFinanceData`.
 
-### FASE 4: Panel Financiero y Gráficos (Dashboard, Anual, Historial)
-
-#### 4.1. Gráfico SVG Responsivo (`src/components/ui/SimpleAreaChart.tsx`)
-- **Problema crítico (L42, L103, L148):**
-  1. `w = Math.max(200, width || 600)`: en el primer ciclo de renderizado antes de que el `ResizeObserver` mida el DOM, `width` es 0 y el SVG se dibuja a **600px de ancho fijo**, provocando scroll horizontal involuntario en toda la pantalla.
-  2. Solo escucha `onMouseMove`, ignorando eventos táctiles en smartphones.
-  3. El tooltip no tiene delimitación y desborda hacia la derecha en móviles de 320px–390px.
-- **Acciones técnicas:**
-  - Iniciar ancho seguro: `const w = width || 300;`.
-  - Añadir `viewBox={`0 0 ${w} ${h}`}` y `className="block w-full max-w-full h-auto overflow-hidden"`.
-  - Añadir soporte táctil: enlazar `onPointerMove`, `onPointerDown` y `onPointerLeave`.
-  - Delimitar tooltip: si `hoverIdx > n / 2`, posicionar anclado a la derecha (`right: w - x`) y añadir `max-w-[70vw] z-10 whitespace-nowrap shadow-md`.
-
-#### 4.2. `src/pages/Dashboard.tsx`
-- **Problema (L237, L262, L263):**
-  - Saldo total con `text-4xl`: valores de más de 7 cifras se cortan en 320px.
-  - MiniStats en `grid-cols-3 gap-2`: cada celda queda con menos de 55px útiles, truncando montos a `$12,3...`.
-  - Botones de acción del header con `size-9` (36px).
-- **Acciones técnicas:**
-  - Héroe de saldo: `text-3xl min-[400px]:text-4xl tabular-nums truncate min-w-0`.
-  - MiniStats: `grid grid-cols-1 min-[380px]:grid-cols-3 gap-2`.
-  - Touch targets de botones del header: `size-11 flex items-center justify-center`.
-  - Filas de transacciones recientes: aplicar `shrink-0 whitespace-nowrap tabular-nums` a los montos y `min-w-0 truncate` a los conceptos.
-
-#### 4.3. `src/pages/Anual.tsx`
-- **Problema (L177, L227, L248, L259):** Choque de escalas en gráficos combinados, MiniStats comprimidos y tabla mensual fija con `min-w-[400px]`.
-- **Acciones técnicas:**
-  - MiniStats anuales: `grid-cols-1 min-[420px]:grid-cols-3 gap-2`.
-  - Resumen de deudas: tarjetas en `grid-cols-1 min-[400px]:grid-cols-3`.
-  - Tabla anual: envolver en contenedor con scroll suave `overflow-x-auto no-scrollbar`, celda de mes `sticky left-0 bg-card z-10`.
-
-#### 4.4. `src/pages/Historial.tsx`
-- **Problema (L40, L43, L90):** `h-screen` oculta la parte inferior de la lista tras la barra de navegación del navegador móvil. Botón "Limpiar" colisiona en 320px.
-- **Acciones técnicas:**
-  - Cambiar `h-screen` por `min-h-[100dvh] pb-[calc(7rem+env(safe-area-inset-bottom))]`.
-  - Botón "Limpiar": `<span className="hidden min-[360px]:inline">Limpiar</span>` con `aria-label="Limpiar historial"`.
-  - Elementos de cambios auditados: cambiar `truncate` por `break-words line-clamp-2` para que el nuevo valor sea legible.
-
----
-
-### FASE 5: Operaciones Financieras y Desglose (Movimientos, Deudas, Denominaciones)
-
-#### 5.1. Editor de Desglose de Efectivo (`src/components/ui/DenominationsEditor.tsx`)
-- **Problema crítico (L52–L60):** Cada fila mide más de 376px de ancho fijo (`Input w-28` + `Input w-20` + `select` + `botón`), desbordando por completo los modales en teléfonos de 320px–390px. La cabecera `grid-cols-12` no coincide con las filas inferiores.
-- **Acciones técnicas:**
-  - Reemplazar la fila por una estructura flex/grid responsiva:
-    ```tsx
-    <div className="grid grid-cols-[1fr_5rem_auto] min-[440px]:grid-cols-[7rem_5rem_1fr_auto] gap-2 items-center py-1.5 border-b border-border/50">
-      <Input type="number" inputMode="decimal" placeholder="Valor" className="h-11 w-full min-w-0 text-sm" />
-      <Input type="number" inputMode="numeric" placeholder="Cant." className="h-11 w-full min-w-0 text-sm" />
-      <select className="h-11 w-full min-w-0 rounded-xl bg-muted px-2 text-xs">...</select>
-      <button aria-label="Eliminar denominación" className="size-11 rounded-xl hover:bg-destructive/10 text-destructive flex items-center justify-center">
-        <Trash2 className="size-4" />
-      </button>
-    </div>
-    ```
-  - Botón "Agregar denominación" y Total adaptados con `flex flex-wrap items-center justify-between gap-2`.
-
-#### 5.2. `src/pages/Movimientos.tsx`
-- **Problema (L197, L378, L469):** Filas de transacciones móviles acumulan: icono (40px) + título + monto + papelera (32px) + chevron (32px), dejando menos de 35px para el concepto en 320px. Formularios con `max-h-[90vh]` que se cortan con el teclado.
-- **Acciones técnicas:**
-  - Rediseñar la fila móvil:
-    - Columna izquierda: Icono + Concepto (`min-w-0 truncate`) y categoría/cuenta.
-    - Columna derecha: Monto destacado (`whitespace-nowrap tabular-nums text-sm font-bold`) + Chevron indicador.
-    - La acción destructiva (eliminar) se reubica dentro del detalle expandido o menú contextual para no competir por ancho ni generar toques accidentales.
-  - Formulario de movimientos: `max-h-[90dvh] overflow-y-auto` con botón "Guardar" pegajoso al fondo (`sticky bottom-0 bg-background pt-2 pb-1`).
-  - Inputs con `text-base md:text-sm` para prevenir el zoom automático en iOS Safari.
-
-#### 5.3. `src/pages/Deudas.tsx`
-- **Problema (L72, L220):** SumCards en `grid-cols-3` cortan los números en 320px. Botones de editar y eliminar de cada deuda (`size-8`) están pegados sin separación (riesgo de eliminar por error).
-- **Acciones técnicas:**
-  - SumCards: `grid-cols-1 min-[380px]:grid-cols-3 gap-2`.
-  - Botones de acción por deuda: touch targets `size-10` con separación física `gap-1.5`.
-  - Diálogo de abono a deuda: `max-h-[90dvh] overflow-y-auto`.
+#### 3.4. Consistencia en `src/pages/Dashboard.tsx` y `src/pages/Anual.tsx`
+- En `src/pages/Dashboard.tsx` (L82-L101):
+  - Usar `day > today.getDate()` (con `day = Math.min(i.payDay ?? startDay, daysInMonth)`) en lugar de `i.payDay > today.getDate()`.
+- En `src/pages/Anual.tsx` (L46-L52, L90-L94, L120-L125):
+  - Al sumar las proyecciones de `fixedItems` para cada mes `m`, restar el monto de las transacciones ya registradas en ese mes que tengan `t.fixedId === i.id` (`Math.max(0, monthlyAmount(i) - recordedAmountForFixedInMonth)`), evitando duplicar ingresos/gastos/ahorros fijos que ya se materializaron como transacciones.
 
 ---
 
-### FASE 6: Autenticación, Ajustes y Modales del Sistema
+## 4. Criterios de Aceptación y Plan de Verificación
 
-#### 6.1. `src/pages/Login.tsx`
-- **Problemas críticos:**
-  1. Falta la importación de `toast` (`import { toast } from 'sonner'`), provocando `ReferenceError` si hay error de autenticación.
-  2. `h-screen` y contenedor centrado sin scroll vertical: cuando el teclado virtual se abre en pantallas de 568px de alto, los campos de registro y botones OAuth quedan inaccesibles.
-- **Acciones técnicas:**
-  - Agregar `import { toast } from 'sonner';`.
-  - Cambiar a `min-h-[100dvh] overflow-y-auto items-start sm:items-center py-6 px-4`.
-  - Padding de la tarjeta: `p-5 min-[400px]:p-8`.
-  - Todos los inputs de formulario con `text-base sm:text-sm` (evita zoom forzado en iOS Safari).
+### 4.1. Criterios Funcionales y Visuales
+1. **Imágenes personalizadas en Conceptos Fijos (`FijosSection.tsx`):**
+   - Las imágenes subidas por el usuario se muestran contenidas exactamente dentro de un recuadro de `44x44px` (`size-11 rounded-2xl overflow-hidden object-cover`), sin desbordarse ni superponerse sobre otras tarjetas.
+   - Los filtros superiores mantienen su altura `h-8.5` (`2.125rem`) y los iconos Lucide con `size-4.5` / `size-5.5` tienen dimensiones CSS válidas.
+2. **Cálculo mensual en `FijosSection.tsx`:**
+   - Ningún concepto activo con frecuencia válida muestra `($0/mes)`; se muestra el equivalente mensual real (`$1,900 ($950/mes)` en bimestral, `$3,200 ($3,200/mes)` en mensual, etc.).
+3. **Consola Limpia de Error SRI:**
+   - La hoja de estilos de Google Fonts en `index.html` carga sin error de integridad `sha384`.
+4. **Registro Automático de Conceptos Fijos Vencidos:**
+   - Si un concepto fijo activo tiene un `payDay` (ej. día 5, 6, 10) menor o igual al día actual (`today.getDate() >= effectiveDay`), el movimiento se registra automáticamente en la sección de **Movimientos** con la fecha correspondiente a su día de cobro (`YYYY-MM-DD`), aunque el usuario no haya abierto la aplicación ese día exacto.
+   - Funciona tanto en modo **Local (Zustand)** como con **Sesión Activa en Supabase (React Query)** y al crear o editar un concepto fijo cuya fecha del mes actual ya llegó o pasó.
+   - Cero transacciones duplicadas al recargar la página o cambiar entre pestañas (`Dashboard`, `Movimientos`, `Ajustes`).
 
-#### 6.2. Diálogo de Conflicto de Datos (`src/components/app/DataConflictDialog.tsx`)
-- **Problema (L187, L220):** Diálogo de más de 640px de altura fija dentro de un contenedor no desplazable, bloqueando la pantalla en móviles pequeños. Botones con textos largos que se truncan.
-- **Acciones técnicas:**
-  - Contenedor con `overflow-y-auto max-h-[100dvh] sm:max-h-[90dvh]`.
-  - Botones de selección de estrategia con `h-auto min-h-14 py-3 whitespace-normal text-left`.
-
-#### 6.3. Módulo de Ajustes (`AjustesHub.tsx` & Secciones)
-- **`AjustesHub.tsx`:** Títulos y badges adaptados con `flex-wrap gap-x-2 gap-y-0.5`. Descripciones con `line-clamp-2` en lugar de `truncate`.
-- **`AjustesHeader.tsx`:** Botón "← Ajustes" con área táctil ampliada `h-11 min-w-11 px-3`.
-- **`FijosSection.tsx` & `CuentasSection.tsx`:**
-  - En anchos `<380px`, reestructurar las tarjetas en 2 filas: fila superior para icono + nombre; fila inferior para switches y botones de edición/eliminación (`size-10` o `size-11`). Esto evita que el título se reduzca a 60px.
-- **`PerfilSection.tsx`:** Acción de "Desactivar 2FA" protegida con confirmación modal `ElegantConfirm` para evitar desactivaciones accidentales.
-
----
-
-## 4. Distribución del Equipo de Subagentes
-
-Para cuando se ordene la ejecución, el trabajo se dividirá entre **5 agentes especializados**:
-
-| Agente | Especialidad | Responsabilidad y Archivos Asignados |
-|---|---|---|
-| **Agente 1** | *Core & Design System* | Modificar `dialog.tsx` (prop `hideCloseButton` y modo bottom-sheet), `tailwind.config.ts` (breakpoints `xs`, `2xs`), `index.css` y `src/lib/finance.ts` (`fmtDate` seguro y `parseGoalDeadline`). Ajustar `Header.tsx`, `BottomNav.tsx` y `MonthSwitcher.tsx`. |
-| **Agente 2** | *Metas Specialist* | Descomponer `Metas.tsx` en `src/pages/metas/*` (`FolderTreeItem` con menú `...`, `FolderChips` móvil, `GoalCompactCard`, `GoalDetailContent` con 1 sola X y fecha segura). |
-| **Agente 3** | *Analytics & Charts* | Modificar `SimpleAreaChart.tsx` (ancho inicial seguro, pointer events táctiles y tooltip delimitado), `Dashboard.tsx`, `Anual.tsx` e `Historial.tsx`. |
-| **Agente 4** | *Operations & Cash* | Modificar `DenominationsEditor.tsx` (solucionar desborde de 376px), `Movimientos.tsx` (filas móviles optimizadas y formularios con `dvh`) y `Deudas.tsx`. |
-| **Agente 5** | *Settings & Auth* | Agregar import de `toast` y scroll en `Login.tsx`, adaptar `DataConflictDialog.tsx`, y optimizar tarjetas en `AjustesHub.tsx`, `FijosSection.tsx`, `CuentasSection.tsx` y `PerfilSection.tsx`. |
-
----
-
-## 5. Plan de Verificación y Criterios de Aceptación
-
-### 5.1. Pruebas Automatizadas
-1. **Prueba de Diálogos (`src/test/dialog-close.test.tsx`):**
-   - Verificar que al pasar `hideCloseButton={true}` no se renderiza la X por defecto.
-   - Verificar que los diálogos estándar conservan su botón de cierre accesible.
-2. **Prueba de Metas y Carpetas (`src/test/metas-folders.test.tsx`):**
-   - Verificar que nombres largos de carpeta no se cortan ni colisionan.
-   - Verificar apertura y opciones del menú contextual `...`.
-3. **Prueba de Fechas (`src/test/safe-date.test.ts`):**
-   - Validar fechas ISO completas (`"2026-05-10T00:00:00.000Z"`), fechas cortas (`"2026-05-10"`), fechas vacías e inválidas. Cero `NaN/NaN/NaN`.
-4. **Ejecución total:** `npm test` con **todas las suites en verde**.
-
-### 5.2. Verificación Estática y Compilación
-- `npx tsc --noEmit` debe retornar código de salida 0.
-- `npm run build` debe generar el bundle de producción sin errores.
-
-### 5.3. Matriz de Verificación Visual (Responsiva)
-- **320px (iPhone SE 1ra Gen):** Cero scroll horizontal, cero textos encimados, diálogos completamente legibles.
-- **360px (Android estándar):** Tarjetas de metas, transacciones y filtros alineados con márgenes consistentes.
-- **390px (iPhone 12/13/14):** Experiencia táctil fluida con chips de carpetas y gráficos interactivos.
-- **430px (iPhone Pro Max):** Uso armónico del espacio y grids fluidos.
-- **768px (iPad/Tablet) & 1024px+ (Desktop):** Transición limpia entre chips móviles y sidebar lateral completo.
+### 4.2. Verificación Automatizada y Estática
+1. **Pruebas Unitarias (`npm test`):**
+   - `src/test/ensureScheduled.test.ts` debe pasar al 100%, incluyendo:
+     - Concepto semanal (`weekly`) en el ciclo actual (1 sola transacción generada).
+     - Concepto mensual (`monthly`) cuyo `payDay` fue hace varios días en el mismo mes (se registra con fecha del `payDay`).
+     - Concepto mensual con `payDay = 31` en meses con menos de 31 días.
+     - Concepto quincenal (`biweekly`).
+     - Idempotencia de `buildScheduledTxId` y `ensureScheduledTransactions` al invocarse múltiples veces.
+2. **Chequeo de Tipos y Build:**
+   - `npx tsc --noEmit` debe finalizar con código `0`.
+   - `npm run build` debe compilar sin errores.
