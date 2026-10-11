@@ -1,7 +1,7 @@
 # Plan de Acción Arquitectónico: Sistema Integral de Notificaciones Inteligentes, Personalizables y Autónomas (Web/PWA, Android y Nube)
 
 > **Rol del Documento:** Especificación Arquitectónica, Guía de Implementación y Checklist de Progreso con Checkpoints de Git (`.agent/contract.md`).  
-> **Estado:** 📋 PLANIFICADO (Listo para ejecución por fases).  
+> **Estado:** ✅ COMPLETADO (5/5 Fases y Checkpoints ejecutados y verificados).  
 > **Reglas de Oro (`.agent/rules/architecture.md`, `.agent/contract.md`, `.agent/security_audit.md` & `.agentignore`):**
 > 1. Todas las vistas (`src/pages/**`) y componentes (`src/components/**`) consumen **exclusivamente** la fachada `useFinanceData`. Queda prohibido importar `useFinance`, React Query o `supabase` directamente en vistas o componentes visuales.
 > 2. Nunca mezclar lógica de red en slices de Zustand ni estado global en `src/services/**`.
@@ -688,9 +688,9 @@ flowchart TD
 ---
 
 ### Fase 5: Pruebas Unitarias Exhaustivas y Build de Producción
-- [ ] **5.1.** Crear `src/test/notifications.test.ts` cubriendo sanitización, metas (límites, vencidas, atrasadas según el plan, modo privacidad), recurrentes (9 frecuencias, fin de mes 31, filtros por tipo) y horario silencioso / deduplicación.
-- [ ] **5.2.** Ejecutar verificación completa de tipos, suite de tests y build de producción (`npx tsc --noEmit && npm test && npm run build`).
-- [ ] **🏁 CHECKPOINT 5 (Victoria 5 — Suite de Tests Completa y Build de Producción Verificado):**
+- [x] **5.1.** Crear `src/test/notifications.test.ts` cubriendo sanitización, metas (límites, vencidas, atrasadas según el plan, modo privacidad), recurrentes (9 frecuencias, fin de mes 31, filtros por tipo) y horario silencioso / deduplicación.
+- [x] **5.2.** Ejecutar verificación completa de tipos, suite de tests y build de producción (`npx tsc --noEmit && npm test && npm run build`).
+- [x] **🏁 CHECKPOINT 5 (Victoria 5 — Suite de Tests Completa y Build de Producción Verificado):**
   - **Qué se logró:** Cobertura automatizada completa del sistema de notificaciones y compilación de producción limpia sin errores.
   - **Verificación obligatoria:** `npx tsc --noEmit && npm test && npm run build`
   - **Commit sugerido:** `test(notifications): add unit tests for goal pace alerts, recurring reminders and quiet hours`

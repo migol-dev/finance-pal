@@ -83,4 +83,18 @@ describe("Ajustes Modular Page", () => {
     // Should return to Hub
     expect(await screen.findByText("Categorías de configuración")).toBeInTheDocument();
   });
+
+  it("navigates into Notificaciones section and renders granular customization cards", async () => {
+    renderWithProviders("/ajustes?seccion=notificaciones");
+
+    expect(await screen.findByText("Notificaciones y Avisos")).toBeInTheDocument();
+    expect(screen.getByText("Estado del permiso en este dispositivo")).toBeInTheDocument();
+    expect(screen.getByText("Gastos, Ingresos y Ahorros Recurrentes")).toBeInTheDocument();
+    expect(screen.getByText("Metas de Ahorro: Límites y Ritmo del Plan")).toBeInTheDocument();
+    expect(screen.getByText("Horario de Envío y Modo Silencioso")).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: /Enviar notificación de prueba ahora/i }),
+    ).toBeInTheDocument();
+  });
 });
+
