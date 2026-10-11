@@ -12,7 +12,7 @@
 
 <br/>
 
-[![Version](https://img.shields.io/badge/versión-1.20.2-F43F5E?style=for-the-badge&logo=semantic-release&logoColor=white)](https://github.com/migol-dev/finance-pal/releases)
+[![Version](https://img.shields.io/badge/versión-1.21.0-F43F5E?style=for-the-badge&logo=semantic-release&logoColor=white)](https://github.com/migol-dev/finance-pal/releases)
 [![Platform](https://img.shields.io/badge/Android-nativo-3DDC84?style=for-the-badge&logo=android&logoColor=white)](https://capacitorjs.com/)
 [![Web](https://img.shields.io/badge/Web-Vercel-000000?style=for-the-badge&logo=vercel&logoColor=white)](https://financepal-web.vercel.app)
 [![React](https://img.shields.io/badge/React-18-61DAFB?style=for-the-badge&logo=react&logoColor=white)](https://react.dev/)

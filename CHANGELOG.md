@@ -1,5 +1,24 @@
 # Changelog
 
+## [1.21.0] - 2026-10-11
+
+### Sistema Integral de Notificaciones Inteligentes y Autonomas (Web/PWA, Android y Nube)
+- **Motor autonomo de programacion y entrega (`useNotificationScheduler`)**: Reprogramacion reactiva con debounce ante cambios en metas, conceptos fijos, movimientos o preferencias, evaluacion periodica en segundo plano cada 15 minutos, re-evaluacion al recuperar foco (`visibilitychange`) y registro de deduplicacion en almacenamiento local con TTL de 45 dias.
+- **Alertas de gastos, ingresos y ahorros recurrentes (9 frecuencias)**: Soporte completo para calculo de ocurrencias en frecuencias `monthly`, `biweekly` (quincenal), `weekly`, `bimonthly`, `quarterly`, `fourmonthly`, `biannual`, `yearly` y `one_time`, respetando cierres de mes (dias 29, 30 y 31), filtros independientes por tipo de movimiento, dias de anticipacion configurables (`0` a `60` dias antes) y omision opcional cuando el movimiento ya fue registrado.
+- **Alertas de limites y atraso lineal en Metas de Ahorro**: Calculo matematico real del ritmo esperado vs ahorro acumulado (`expectedGoalAt`, `actualGoalAt`, `statusForGoal`, `paceForGoal`) considerando tanto el saldo inicial como el historial de aportaciones. Incluye alertas por cercania de fecha limite, metas vencidas y atraso respecto al plan con sensibilidad configurable (`2%`, `5%`, `10%`) y frecuencia de repeticion (`daily`, `every_3_days`, `weekly`, `once`).
+- **Solicitud de permisos con gesto de usuario y panel 100% personalizable**: Nuevo banner flotante `NotificationPermissionPrompt` y rediseño completo de `NotificacionesSection` en 6 tarjetas modulares (estado del permiso en tiempo real, canales de entrega local/push/in-app toast, privacidad con ocultacion de montos `$•••`, configuracion granular de recurrentes y metas, horario preferido, desplazamiento inteligente fuera del horario silencioso y boton de prueba inmediata).
+- **Entrega nativa en Android y Service Worker en Web/PWA**: Creacion del recurso vectorial `ic_stat_notification`, canal de alta importancia `finance_pal_reminders`, soporte para Android Doze Mode (`allowWhileIdle: true`), permisos `RECEIVE_BOOT_COMPLETED`, `VIBRATE` y `SCHEDULE_EXACT_ALARM`, y despacho en Web mediante `ServiceWorkerRegistration.showNotification()`.
+- **Sincronizacion de preferencias en Supabase y Edge Function `send-reminders`**: Persistencia de `notification_prefs` en `user_settings` con fallback automatico de columnas, soporte de autenticacion para `pg_cron` y respeto estricto de las preferencias y horario silencioso de cada usuario en envios Web Push.
+
+### Conceptos Fijos y Auto-Registro de Movimientos Recurrentes
+- **Reconciliacion automatica de movimientos programados vencidos (`getDueOccurrencesForFixedItem`)**: Registro idempotente mediante UUID deterministico (`buildScheduledTxId`) tanto en modo local (Zustand) como con sesion activa en Supabase (React Query), garantizando que los cargos o ingresos recurrentes se asienten aunque la aplicacion se abra dias despues de la fecha de cobro.
+- **Unificacion de frecuencias y proyecciones anuales**: Soporte completo de frecuencia quincenal (`biweekly`), normalizacion de `annual` a `yearly`, ampliacion de `payDay` hasta el dia `31` en validadores Zod y prevencion de doble conteo entre proyecciones fijas y transacciones registradas en el balance anual (`Anual.tsx`) y `Dashboard.tsx`.
+- **Correccion visual de iconos personalizados y tipografia**: Incorporacion de tokens fraccionarios (`4.5`, `5.5`, `8.5`) en Tailwind CSS para evitar el desborde de imagenes `192x192px` en `FijosSection.tsx` y `PerfilSection.tsx`, correccion del calculo de monto mensual equivalente (`monthlyAmount`) y eliminacion del hash SRI estatico en Google Fonts (`index.html`).
+
+### Calidad, Arquitectura y Pruebas
+- **Cumplimiento estricto de la fachada `useFinanceData`**: Migracion de `AppShell.tsx`, `AjustesHub.tsx` y `NotificacionesSection.tsx` para consumir exclusivamente `useFinanceData` e hidratacion profunda (`merge`) en Zustand v5.
+- **Suite de pruebas ampliada**: 29 archivos de prueba y 109 tests unitarios y de integracion pasando al 100% (incluyendo las nuevas suites `notifications.test.ts` y `ensureScheduled.test.ts`).
+
 ## [1.20.2] - 2026-10-10
 
 ### ♿ Accesibilidad Universal (WCAG AAA) & GUI Refinada

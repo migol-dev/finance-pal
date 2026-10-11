@@ -26,7 +26,7 @@ export function getCurrentVersion(): string {
     return import.meta.env.VITE_APP_VERSION;
   }
   // Fallback to hardcoded or localStorage
-  return '1.20.2';
+  return '1.21.0';
 }
 
 /**
