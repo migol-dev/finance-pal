@@ -6,7 +6,7 @@
 
 <br/><br/>
 
-# Finance Pal
+# Finance Pal (CORE CODE-BASE)
 
 ### Tu gestor de finanzas personales — 100% privado, 100% tuyo.
 
