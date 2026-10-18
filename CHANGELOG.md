@@ -15,9 +15,11 @@
 - **Unificacion de frecuencias y proyecciones anuales**: Soporte completo de frecuencia quincenal (`biweekly`), normalizacion de `annual` a `yearly`, ampliacion de `payDay` hasta el dia `31` en validadores Zod y prevencion de doble conteo entre proyecciones fijas y transacciones registradas en el balance anual (`Anual.tsx`) y `Dashboard.tsx`.
 - **Correccion visual de iconos personalizados y tipografia**: Incorporacion de tokens fraccionarios (`4.5`, `5.5`, `8.5`) en Tailwind CSS para evitar el desborde de imagenes `192x192px` en `FijosSection.tsx` y `PerfilSection.tsx`, correccion del calculo de monto mensual equivalente (`monthlyAmount`) y eliminacion del hash SRI estatico en Google Fonts (`index.html`).
 
-### Calidad, Arquitectura y Pruebas
-- **Cumplimiento estricto de la fachada `useFinanceData`**: Migracion de `AppShell.tsx`, `AjustesHub.tsx` y `NotificacionesSection.tsx` para consumir exclusivamente `useFinanceData` e hidratacion profunda (`merge`) en Zustand v5.
-- **Suite de pruebas ampliada**: 29 archivos de prueba y 109 tests unitarios y de integracion pasando al 100% (incluyendo las nuevas suites `notifications.test.ts` y `ensureScheduled.test.ts`).
+### Compilacion Android (Signed Release APK), Servicios y Correcciones de UI
+- **Compilacion de APK firmada en Android Studio (AGP 9 / Gradle 9.4 / Windows)**: Implementacion de `WindowsFileUtils` y `ClearWindowsReadOnlyAction` compatibles con Configuration Cache en `android/build.gradle` para eliminar bloqueos por atributos `dos:readonly` en Windows durante `packageRelease`/`bundleRelease`, limpieza de propiedades deprecadas en `android/gradle.properties` y creacion de `res/raw/keep.xml` para preservar `@drawable/ic_stat_notification` y recursos XML de Capacitor frente a R8 (`shrinkResources`).
+- **Estabilidad de servicios de sincronizacion y ajustes**: Resolucion de sobrescritura en el mapeo de preferencias dentro de `settings.service.ts` y limpieza de importaciones no utilizadas en `cloudSync.service.ts` y `finance-store.ts`.
+- **Refinamiento de UI, tipado estricto y auditoria MFA**: Correccion de propiedades del componente `BrandLogo` en `Dashboard.tsx`, actualizacion de llamadas a metodos de auditoria MFA en `PerfilSection.tsx`, mejoras de conversion segura de tipos (`unknown`) en `DatosSection.tsx` y limpieza de iconos en `AparienciaSection.tsx`.
+- **Cumplimiento estricto de la fachada `useFinanceData` y pruebas**: Migracion de `AppShell.tsx`, `AjustesHub.tsx` y `NotificacionesSection.tsx` para consumir exclusivamente `useFinanceData`, hidratacion profunda (`merge`) en Zustand v5 y 29 suites de prueba (109 tests) pasando al 100%.
 
 ## [1.20.2] - 2026-10-10
 
