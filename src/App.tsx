@@ -367,7 +367,8 @@ const NATIVE_AUTH_CALLBACK_URLS = new Set([
 function isAllowedAuthCallbackUrl(url: string): boolean {
   try {
     const parsed = new URL(url);
-    if (NATIVE_AUTH_CALLBACK_URLS.has(url)) return true;
+    const baseUrl = url.split(/[?#]/)[0];
+    if (NATIVE_AUTH_CALLBACK_URLS.has(baseUrl)) return true;
     if (parsed.pathname !== '/auth/callback') return false;
     if (parsed.protocol === 'https:' && parsed.origin === 'https://finance-pal.app') return true;
     return parsed.origin === window.location.origin;
