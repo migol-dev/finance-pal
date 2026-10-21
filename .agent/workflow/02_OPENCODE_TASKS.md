@@ -14,15 +14,15 @@
 | :--- | :--- |
 | **Total de Fases de Auditoría** | `12` (`F0` a `F11`) |
 | **Total de Tareas Planificadas** | `39` (`F0.1` a `F11.4`) |
-| **Tareas Completadas (✅)** | `6` |
+| **Tareas Completadas (✅)** | `12` |
 | **Tareas en Progreso (⏳)** | `0` |
-| **Tareas Bloqueadas / Escaladas a `agy` (⚠️)** | `0` |
-| **Tareas Pendientes (⚪)** | `33` |
-| **Progreso Estimado** | `[███░░░░░░░░░░░░░░░░░] 15% (6/39)` |
-| **Hallazgos Previos a Re-verificar (`SEC-*`)** | `2 / 21` verificados |
-| **Hipótesis Nuevas a Confirmar (`NEW-*`)** | `1 / 12` evaluadas |
-| **Matriz de Pruebas (`T01`–`T25`)** | `3 / 25` ejecutadas |
-| **Último Checkpoint Git** | `CP-00 (769cf9e)` |
+| **Tareas Bloqueadas / Escaladas a `agy` (⚠️)** | `1` |
+| **Tareas Pendientes (⚪)** | `26` |
+| **Progreso Estimado** | `[██████░░░░░░░░░░░░░░] 31% (12/39)` |
+| **Hallazgos Previos a Re-verificar (`SEC-*`)** | `7 / 21` verificados |
+| **Hipótesis Nuevas a Confirmar (`NEW-*`)** | `5 / 12` evaluadas |
+| **Matriz de Pruebas (`T01`–`T25`)** | `7 / 25` ejecutadas |
+| **Último Checkpoint Git** | `CP-01 (0bd74a3)` · F2 en curso |
 | **Fecha/Hora de Inicio** | `2026-10-20` |
 | **Fecha/Hora de Última Actualización** | `2026-10-20` |
 
@@ -60,17 +60,17 @@
 ---
 
 ### 🗄️ Fase F2: Base de Datos, RLS, Vistas, RPC y Storage (`CP-02` — Prioridad `P0` — `T04`–`T08`)
-- [ ] **F2.1 [N0/N1 — NEW-05]:** Extraer el esquema de producción (`npx supabase db dump --schema-only -f .agent/audit/evidence/F2-prod-schema.sql` o vía introspección SQL en Management API `/v1/projects/rjforcrdyfuodsqtopvp/database/query`, verificando ausencia de secretos) y documentar el diff exacto contra `supabase/schema.sql`, `supabase/schema_push_notifications.sql` y `supabase/migrations/` en `.agent/audit/evidence/F2-schema-drift.md`.
+- [✅] **F2.1 [N0/N1 — NEW-05]:** Extraer el esquema de producción (`npx supabase db dump --schema-only -f .agent/audit/evidence/F2-prod-schema.sql` o vía introspección SQL en Management API `/v1/projects/rjforcrdyfuodsqtopvp/database/query`, verificando ausencia de secretos) y documentar el diff exacto contra `supabase/schema.sql`, `supabase/schema_push_notifications.sql` y `supabase/migrations/` en `.agent/audit/evidence/F2-schema-drift.md`.
   - **Evidencia esperada:** `.agent/audit/evidence/F2-prod-schema.sql` y `.agent/audit/evidence/F2-schema-drift.md`. *(Si `opencode` no tiene acceso al token CLI, escalar a `agy` con ⚠️).*
-- [ ] **F2.2 [N1 — T04, T05, NEW-02, SEC-014]:** Ejecutar consulta `SELECT` de catálogo sobre `pg_class` e `information_schema.views` / `role_table_grants` en producción para confirmar: (a) 0 tablas en `public` sin RLS (`T04`), y (b) si las vistas `accounts_safe`, `transactions_safe` y `debt_payments_safe` tienen `security_invoker=true` en `reloptions` o si se ejecutan como `postgres` saltándose el RLS (`NEW-02` / `SEC-014`).
+- [✅] **F2.2 [N1 — T04, T05, NEW-02, SEC-014]:** Ejecutar consulta `SELECT` de catálogo sobre `pg_class` e `information_schema.views` / `role_table_grants` en producción para confirmar: (a) 0 tablas en `public` sin RLS (`T04`), y (b) si las vistas `accounts_safe`, `transactions_safe` y `debt_payments_safe` tienen `security_invoker=true` en `reloptions` o si se ejecutan como `postgres` saltándose el RLS (`NEW-02` / `SEC-014`).
   - **Evidencia esperada:** Resultados SQL en `.agent/audit/evidence/F2-catalog-and-rls.md`.
-- [ ] **F2.3 [N1 — T07, NEW-03, SEC-004]:** Ejecutar consulta `SELECT` sobre `pg_proc` y `has_function_privilege('authenticated', 'public.cleanup_stale_sessions()', 'EXECUTE')` / `anon` en producción, e inspeccionar `prosrc` de `cleanup_stale_sessions()` para confirmar si cualquier usuario `authenticated` puede invocarla y borrar sesiones globalmente (`NEW-03` / `SEC-004`).
+- [✅] **F2.3 [N1 — T07, NEW-03, SEC-004]:** Ejecutar consulta `SELECT` sobre `pg_proc` y `has_function_privilege('authenticated', 'public.cleanup_stale_sessions()', 'EXECUTE')` / `anon` en producción, e inspeccionar `prosrc` de `cleanup_stale_sessions()` para confirmar si cualquier usuario `authenticated` puede invocarla y borrar sesiones globalmente (`NEW-03` / `SEC-004`).
   - **Evidencia esperada:** Sección RPC y privilegios en `.agent/audit/evidence/F2-catalog-and-rls.md`.
-- [ ] **F2.4 [N1 — SEC-011, SEC-016, NEW-04]:** Consultar `pg_policies` en los esquemas `public` y `storage` para verificar: (a) políticas activas de `user_sessions` y `user_settings` (`SEC-011`, `SEC-016`), (b) políticas de `push_subscriptions` y demás tablas, y (c) si alguna política RLS exige `auth.jwt()->>'aal' = 'aal2'` (`NEW-04`).
+- [✅] **F2.4 [N1 — SEC-011, SEC-016, NEW-04]:** Consultar `pg_policies` en los esquemas `public` y `storage` para verificar: (a) políticas activas de `user_sessions` y `user_settings` (`SEC-011`, `SEC-016`), (b) políticas de `push_subscriptions` y demás tablas, y (c) si alguna política RLS exige `auth.jwt()->>'aal' = 'aal2'` (`NEW-04`).
   - **Evidencia esperada:** Volcado completo de `pg_policies` en `.agent/audit/evidence/F2-catalog-and-rls.md`.
-- [ ] **F2.5 [N1/N2 — T06, T08, SEC-007]:** Consultar `storage.buckets` (`receipts`: `public`, `file_size_limit`, `allowed_mime_types`) y `cron.job` (redactando secretos), probar acceso público no autenticado a `/storage/v1/object/public/receipts/...` (`T08`) y documentar la verificación cross-tenant (`T06`).
+- [⚠️] **F2.5 [N1/N2 — T06, T08, SEC-007]:** Consultar `storage.buckets` (`receipts`: `public`, `file_size_limit`, `allowed_mime_types`) y `cron.job` (redactando secretos), probar acceso público no autenticado a `/storage/v1/object/public/receipts/...` (`T08`) y documentar la verificación cross-tenant (`T06`).
   - **Evidencia esperada:** Sección Storage y DAST en `.agent/audit/evidence/F2-catalog-and-rls.md`.
-- [ ] **F2.6 [N1]:** Consultar los hallazgos del Supabase Security Advisor (`/v1/projects/rjforcrdyfuodsqtopvp/advisors/security` o diagnóstico equivalente) y documentarlos en `.agent/audit/evidence/F2-advisor.md`.
+- [✅] **F2.6 [N1]:** Consultar los hallazgos del Supabase Security Advisor (`/v1/projects/rjforcrdyfuodsqtopvp/advisors/security` o diagnóstico equivalente) y documentarlos en `.agent/audit/evidence/F2-advisor.md`.
   - **Evidencia esperada:** `.agent/audit/evidence/F2-advisor.md` (`CP-02`: `docs(audit): F2 RLS, vistas, RPC y storage`).
 
 ---
@@ -171,7 +171,7 @@
 
 | ID Tarea | Archivo / Endpoint | Problema / Bloqueo Detectado | Causa de la Dificultad | Qué debe ejecutar / resolver Antigravity (`agy`) |
 | :--- | :--- | :--- | :--- | :--- |
-| - | - | *Sin bloqueos reportados aún* | - | - |
+| `F2.5` (`T06`) | REST Supabase `/rest/v1/{accounts,transactions,debts,goals,fixed_items,debt_payments,user_settings,user_sessions,push_subscriptions}` + Storage `receipts` | No se pudo ejecutar la prueba dinámica **cross-tenant A→B** (lectura y escritura de filas ficticias entre `audit-a` y `audit-b`) | No existen credenciales de las cuentas de prueba `audit-a`/`audit-b` en esta sesión (no se deben usar cuentas reales). El catálogo `N1` sí confirma RLS activo y políticas `auth.uid() = user_id` en las 10 tablas, vistas `security_invoker=true` y 0 políticas para `anon` | 1) Provisionar `audit-a@…` (con TOTP) y `audit-b@…` con datos ficticios; 2) Ejecutar la matriz CRUD A→B y Storage con JWT de cada cuenta; 3) Confirmar 100% denegado; 4) Eliminar cuentas y datos al cierre (`F11`). Evidencia parcial: `F2-catalog-and-rls.md` §1-5 |
 
 ---
 
@@ -180,7 +180,7 @@
 | # Checkpoint | Fase | Tareas Cubiertas | Mensaje de Commit Esperado | Hash Commit | Estado |
 | :--- | :--- | :--- | :--- | :--- | :--- |
 | `CP-00` | `F0` | `F0.1` – `F0.3` | `docs(audit): F0 entorno, alcance y protocolo de producción` | `769cf9e` | `✅ COMPLETADO` |
-| `CP-01` | `F1` | `F1.1` – `F1.4` | `docs(audit): F1 secretos y dependencias` | `pendiente` | `⚪ PENDIENTE` |
+| `CP-01` | `F1` | `F1.1` – `F1.4` | `docs(audit): F1 secretos y dependencias` | `0bd74a3` | `✅ COMPLETADO` |
 | `CP-02` | `F2` | `F2.1` – `F2.6` | `docs(audit): F2 RLS, vistas, RPC y storage` | `pendiente` | `⚪ PENDIENTE` |
 | `CP-03` | `F3` | `F3.1` – `F3.4` | `docs(audit): F3 auth, MFA y sesiones` | `pendiente` | `⚪ PENDIENTE` |
 | `CP-04` | `F4` | `F4.1` – `F4.3` | `docs(audit): F4 almacenamiento cliente y cifrado` | `pendiente` | `⚪ PENDIENTE` |
@@ -203,19 +203,19 @@
 | `SEC-001` | Zustand en texto plano en `localStorage` | `F4` | ⚠️ Parcial | `⬜ PENDIENTE` | `F4-storage-inventory.md` |
 | `SEC-002` | Clave AES-GCM derivada de secreto en `localStorage` | `F4` | 🔁 Regresión probable | `⬜ PENDIENTE` | `F4-crypto-and-auditlog.md` |
 | `SEC-003` | Edge Function `send-reminders` sin auth / comparación no constante | `F6` | ⚠️ Parcial | `⬜ PENDIENTE` | `F6-edge-push-sw.md` |
-| `SEC-004` | `cleanup_stale_sessions()` `SECURITY DEFINER` | `F2` | ⚠️ / 🔁 | `⬜ PENDIENTE` | `F2-catalog-and-rls.md` |
+| `SEC-004` | `cleanup_stale_sessions()` `SECURITY DEFINER` | `F2` | ⚠️ / 🔁 | `⚠️ PARCIAL — EXECUTE a authenticated; guard roto (siempre deniega)` | `F2-catalog-and-rls.md` |
 | `SEC-005` | IDOR en servicios (`.eq('user_id', ...)`) | `F5` | ✅ por verificar | `⬜ PENDIENTE` | `F5-services-idor-validation.md` |
 | `SEC-006` | Clave `anon` con expiración año 2100 | `F1` | ❓ por verificar | `⚠️ PARCIAL — role=anon, exp 2036 (10 años)`, no 2100 | `F1-supply-chain-and-bundle.md` |
-| `SEC-007` | Recibos en Storage con URL pública vs firmada | `F2` | ✅ por verificar | `⬜ PENDIENTE` | `F2-catalog-and-rls.md` |
+| `SEC-007` | Recibos en Storage con URL pública vs firmada | `F2` | ✅ por verificar | `⚠️ PARCIAL — bucket privado OK; sin file_size_limit ni MIME` | `F2-catalog-and-rls.md` |
 | `SEC-008` | Rate limiting de login sólo en cliente | `F3` | ❌ Abierto | `⬜ PENDIENTE` | `F3-auth-mfa-sessions.md` |
 | `SEC-009` | Hash-chaining del audit log (`djb2` → `SHA-256` sin HMAC) | `F4` | ✅ por verificar | `⬜ PENDIENTE` | `F4-crypto-and-auditlog.md` |
 | `SEC-010` | Takeover de sesión multi-dispositivo sin MFA | `F3` | ❓ por verificar | `⬜ PENDIENTE` | `F3-auth-mfa-sessions.md` |
-| `SEC-011` | Columna `deleted_at` inexistente en RLS de `user_sessions` | `F2` | ✅ por verificar | `⬜ PENDIENTE` | `F2-catalog-and-rls.md` |
+| `SEC-011` | Columna `deleted_at` inexistente en RLS de `user_sessions` | `F2` | ✅ por verificar | `✅ CERRADO — políticas sin deleted_at` | `F2-catalog-and-rls.md` |
 | `SEC-012` | `isValidRedirectUri` permite cualquier `localhost` | `F3` | ❌ Abierto | `⬜ PENDIENTE` | `F3-auth-mfa-sessions.md` |
 | `SEC-013` | Rate limit de Edge Function en memoria de Deno | `F6` | ❌ Abierto | `⬜ PENDIENTE` | `F6-edge-push-sw.md` |
-| `SEC-014` | Políticas RLS sobre vistas SQL (`*_safe`) | `F2` | ❌ Escalado (`NEW-02`) | `⬜ PENDIENTE` | `F2-catalog-and-rls.md` |
+| `SEC-014` | Políticas RLS sobre vistas SQL (`*_safe`) | `F2` | ❌ Escalado (`NEW-02`) | `✅ CERRADO — vistas con security_invoker=true` | `F2-catalog-and-rls.md` |
 | `SEC-015` | Datos no borrados de storage al cerrar sesión | `F4` | ✅ por verificar | `⬜ PENDIENTE` | `F4-storage-inventory.md` |
-| `SEC-016` | RLS de `user_settings` con `policyprefix` inválido | `F2` | ✅ por verificar | `⬜ PENDIENTE` | `F2-catalog-and-rls.md` |
+| `SEC-016` | RLS de `user_settings` con `policyprefix` inválido | `F2` | ✅ por verificar | `✅ CERRADO — 4 políticas correctas` | `F2-catalog-and-rls.md` |
 | `SEC-017` | CORS wildcard `*` en Edge Function | `F6` | ⚠️ Parcial | `⬜ PENDIENTE` | `F6-edge-push-sw.md` |
 | `SEC-018` | `profile.email` persistido en estado de Zustand | `F4` | ❓ por verificar | `⬜ PENDIENTE` | `F4-storage-inventory.md` |
 | `SEC-019` | `userId` / `clientId` en logs de consola | `F10` | ❓ por verificar | `⬜ PENDIENTE` | `F10-privacy-logging-gdpr.md` |
@@ -227,10 +227,10 @@
 | ID | Hipótesis | Fase | Nivel | Veredicto Final | Evidencia |
 | :--- | :--- | :--- | :--- | :--- | :--- |
 | `NEW-01` | Clave AES-GCM derivada de `user.id` (UUID público en JWT) + salt en `localStorage` | `F4` | `N0`/`N2` | `⬜ PENDIENTE` | `F4-crypto-and-auditlog.md` |
-| `NEW-02` | Vistas `accounts_safe`, `transactions_safe`, `debt_payments_safe` sin `security_invoker=true` | `F2` | `N1`/`N2` | `⬜ PENDIENTE` | `F2-catalog-and-rls.md` |
-| `NEW-03` | `cleanup_stale_sessions()` ejecutable por cualquier rol `authenticated` | `F2` | `N1` | `⬜ PENDIENTE` | `F2-catalog-and-rls.md` |
-| `NEW-04` | MFA aplicado sólo en UI; políticas RLS no exigen `aal2` | `F2`/`F3` | `N1`/`N2` | `⬜ PENDIENTE` | `F3-auth-mfa-sessions.md` |
-| `NEW-05` | Desfase entre `supabase/schema.sql` + `migrations/` y el esquema real en producción | `F2` | `N1` | `⬜ PENDIENTE` | `F2-schema-drift.md` |
+| `NEW-02` | Vistas `accounts_safe`, `transactions_safe`, `debt_payments_safe` sin `security_invoker=true` | `F2` | `N1`/`N2` | `✅ DESCARTADO (SEGURO) — las 3 vistas con security_invoker=true` | `F2-catalog-and-rls.md` |
+| `NEW-03` | `cleanup_stale_sessions()` ejecutable por cualquier rol `authenticated` | `F2` | `N1` | `⚠️ CONFIRMADO (privilegio) — mitigado por guard defectuoso` | `F2-catalog-and-rls.md` |
+| `NEW-04` | MFA aplicado sólo en UI; políticas RLS no exigen `aal2` | `F2`/`F3` | `N1`/`N2` | `⚠️ CONFIRMADO (catálogo: 0 políticas aal2)` | `F3-auth-mfa-sessions.md` |
+| `NEW-05` | Desfase entre `supabase/schema.sql` + `migrations/` y el esquema real en producción | `F2` | `N1` | `❌ CONFIRMADO — 12 diferencias; falta notification_prefs` | `F2-schema-drift.md` |
 | `NEW-06` | Android `android:allowBackup="true"` sin `dataExtractionRules` | `F8` | `N0` | `⬜ PENDIENTE` | `F8-android-masvs.md` |
 | `NEW-07` | Supply chain: `esm.sh` flotante en Deno, `npm audit \|\| true` en CI y auto-merge | `F1`/`F9` | `N0` | `⚠️ CONFIRMADO PARCIAL (F1)` — esm.sh `@2` flotante; CI pendiente F9 | `F1` y `F9` |
 | `NEW-08` | Service Worker `public/sw.js`: open redirect en `notificationclick` y `message` sin validar origen | `F6` | `N0` | `⬜ PENDIENTE` | `F6-edge-push-sw.md` |
@@ -246,11 +246,11 @@
 | `T01` Secretos en historial git | `F1` | `N0` | `❌ ABIERTO` | 3 hallazgos gitleaks (1 JWT redactado en `.env` histórico); 0 verificados trufflehog |
 | `T02` CVE en dependencias | `F1` | `N0` | `❌ ABIERTO` | 52 npm (3C/31H); 10 runtime (7H); 81 OSV (3C/30H) |
 | `T03` Secretos / source maps en `dist/` | `F1` | `N0` | `❌ ABIERTO` | Sin secretos ni `.map`; `stats.html` presente en build |
-| `T04` Tablas sin RLS | `F2` | `N1` | `⬜ PENDIENTE` | - |
-| `T05` Vistas sin `security_invoker` | `F2` | `N1`+`N2` | `⬜ PENDIENTE` | - |
-| `T06` CRUD cross-tenant A→B | `F2` | `N1`+`N2` | `⬜ PENDIENTE` | - |
-| `T07` `EXECUTE` de RPC `SECURITY DEFINER` | `F2` | `N1` | `⬜ PENDIENTE` | - |
-| `T08` Storage cross-user / público | `F2` | `N1`+`N2` | `⬜ PENDIENTE` | - |
+| `T04` Tablas sin RLS | `F2` | `N1` | `✅ PASA` | 0/10 tablas sin RLS |
+| `T05` Vistas sin `security_invoker` | `F2` | `N1`+`N2` | `✅ PASA` | 3/3 con security_invoker; anon → [] |
+| `T06` CRUD cross-tenant A→B | `F2` | `N1`+`N2` | `⚠️ ESCALADA` | Sin cuentas audit-a/audit-b; RLS por auth.uid() en catálogo |
+| `T07` `EXECUTE` de RPC `SECURITY DEFINER` | `F2` | `N1` | `❌ FALLA` | authenticated=true; guard roto deniega siempre |
+| `T08` Storage cross-user / público | `F2` | `N1`+`N2` | `✅ PASA (parcial)` | Bucket privado; anon 400; sin límites MIME/tamaño |
 | `T09` REST con token `aal1` en cuenta con MFA | `F3` | `N1`+`N2` | `⬜ PENDIENTE` | - |
 | `T10` Redirect OAuth arbitrario | `F3` | `N0`+`N1` | `⬜ PENDIENTE` | - |
 | `T11` Configuración de Auth | `F3` | `N1` | `⬜ PENDIENTE` | - |
