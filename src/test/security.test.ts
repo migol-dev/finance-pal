@@ -1,5 +1,5 @@
-import { afterAll, beforeEach, describe, expect, it } from "vitest";
-import { rateLimiter, validatePasswordStrength } from "../lib/rate-limiter";
+import { afterAll, beforeEach, describe, expect, it, vi } from "vitest";
+import { checkHibpPwnedPassword, rateLimiter, validatePasswordStrength } from "../lib/rate-limiter";
 
 describe("validatePasswordStrength (SEC-008 / T11)", () => {
   it("rejects passwords shorter than 12 characters", () => {
@@ -70,5 +70,38 @@ describe("rateLimiter auth policy (SEC-008 / T11)", () => {
 
     const afterReset = await rateLimiter.checkLimit("user-c", "auth");
     expect(afterReset.allowed).toBe(true);
+  });
+});
+
+describe("checkHibpPwnedPassword k-Anonymity (SEC-008)", () => {
+  it("flags a password when its SHA-1 suffix appears in the HIBP range response", async () => {
+    const encoded = new TextEncoder().encode("Password123456");
+    const digest = await crypto.subtle.digest("SHA-1", encoded);
+    const sha1Hex = Array.from(new Uint8Array(digest))
+      .map((b) => b.toString(16).padStart(2, "0"))
+      .join("")
+      .toUpperCase();
+    const prefix = sha1Hex.slice(0, 5);
+    const suffix = sha1Hex.slice(5);
+
+    const fetchSpy = vi.spyOn(globalThis, "fetch").mockResolvedValueOnce(
+      new Response(`00000000000000000000000000000000000:0\r\n${suffix}:4821\r\n`, { status: 200 }),
+    );
+
+    const res = await checkHibpPwnedPassword("Password123456");
+    expect(fetchSpy).toHaveBeenCalledWith(
+      `https://api.pwnedpasswords.com/range/${prefix}`,
+      expect.objectContaining({ headers: { "Add-Padding": "true" } }),
+    );
+    expect(res.pwned).toBe(true);
+    expect(res.count).toBe(4821);
+    fetchSpy.mockRestore();
+  });
+
+  it("fails open when offline or HIBP API is unreachable", async () => {
+    const fetchSpy = vi.spyOn(globalThis, "fetch").mockRejectedValueOnce(new Error("Network error"));
+    const res = await checkHibpPwnedPassword("UniquePass987654!");
+    expect(res.pwned).toBe(false);
+    fetchSpy.mockRestore();
   });
 });

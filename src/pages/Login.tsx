@@ -11,7 +11,7 @@ import { Progress } from '@/components/ui/progress';
 import { Browser } from '@capacitor/browser';
 import { Capacitor } from '@capacitor/core';
 import { toast } from 'sonner';
-import { getClientIdentifier, rateLimiter, validatePasswordStrength } from '@/lib/rate-limiter';
+import { checkHibpPwnedPassword, getClientIdentifier, rateLimiter, validatePasswordStrength } from '@/lib/rate-limiter';
 
 const GoogleIcon = () => (
   <svg className="w-5 h-5" viewBox="0 0 24 24">
@@ -139,7 +139,13 @@ async function checkAuthRateLimit(identifier: string): Promise<boolean> {
 
 function PasswordStrengthMeter({ password }: { password: string }) {
   const strength = useMemo(() => calculatePasswordStrength(password), [password]);
-  if (!password) return null;
+  if (!password) {
+    return (
+      <p className="text-[11px] text-muted-foreground mt-1 px-1">
+        Requisitos: <strong>mínimo 12 caracteres</strong>, con mayúsculas, minúsculas y números.
+      </p>
+    );
+  }
   return (
     <div className="space-y-1.5 mt-1">
       <div className="flex items-center justify-between">
@@ -339,6 +345,11 @@ export default function Login() {
           toast.success('Sesión iniciada correctamente');
         }
       } else {
+        const hibp = await checkHibpPwnedPassword(password);
+        if (hibp.pwned) {
+          toast.error(hibp.message ?? 'Esta contraseña ha sido filtrada públicamente. Elige otra diferente.');
+          return;
+        }
         const { error } = await supabase.auth.signUp({ email, password });
         if (error) throw error;
         toast.success('Cuenta creada. Revisa tu correo para verificar.');
@@ -571,7 +582,7 @@ export default function Login() {
               <input
                 id="login-password"
                 type="password"
-                placeholder="Contraseña"
+                placeholder={isLogin ? 'Contraseña' : 'Contraseña (mínimo 12 caracteres)'}
                 className="w-full pl-11 pr-4 py-3 bg-muted/30 border border-border/50 rounded-2xl text-base sm:text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 focus:bg-muted/50 transition-all placeholder:text-muted-foreground/60"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}

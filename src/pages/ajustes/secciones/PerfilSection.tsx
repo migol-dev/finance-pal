@@ -17,7 +17,7 @@ import { ElegantConfirm } from "@/components/app/ElegantConfirm";
 import { useAuth } from "@/context/AuthContext";
 import { supabase, isSupabaseEnabled } from "@/lib/supabase";
 import { audit } from "@/lib/audit-logger";
-import { getClientIdentifier, rateLimiter, validatePasswordStrength } from "@/lib/rate-limiter";
+import { checkHibpPwnedPassword, getClientIdentifier, rateLimiter, validatePasswordStrength } from "@/lib/rate-limiter";
 import { useNavigate } from "react-router-dom";
 
 function ProfileForm({ onSave }: { onSave: (p: { name: string; email?: string; currency: Currency; avatar?: IconRef }) => void }) {
@@ -143,6 +143,12 @@ function AccountSettings() {
     }
 
     setChangingPass(true);
+    const hibp = await checkHibpPwnedPassword(newPass);
+    if (hibp.pwned) {
+      setChangingPass(false);
+      toast.error(hibp.message ?? "Esta contraseña ha sido filtrada públicamente. Elige otra diferente.");
+      return;
+    }
     const { error } = await supabase.auth.updateUser({ password: newPass });
     setChangingPass(false);
     if (error) { toast.error(error.message); return; }
@@ -291,9 +297,14 @@ function AccountSettings() {
 
       <Dialog open={passOpen} onOpenChange={setPassOpen}>
         <DialogContent className="rounded-3xl max-w-sm">
-          <DialogHeader><DialogTitle>Cambiar contraseña</DialogTitle></DialogHeader>
+          <DialogHeader>
+            <DialogTitle>Cambiar contraseña</DialogTitle>
+            <DialogDescription className="text-xs">
+              La nueva contraseña debe tener <strong>mínimo 12 caracteres</strong> e incluir mayúsculas, minúsculas y números.
+            </DialogDescription>
+          </DialogHeader>
           <div className="space-y-3 pt-2">
-            <Input type="password" placeholder="Nueva contraseña (mín. 12 car.)" value={newPass} onChange={(e) => setNewPass(e.target.value)} className="rounded-2xl h-11" minLength={12} />
+            <Input type="password" placeholder="Nueva contraseña (mín. 12 caracteres)" value={newPass} onChange={(e) => setNewPass(e.target.value)} className="rounded-2xl h-11" minLength={12} />
             <Input type="password" placeholder="Confirmar nueva contraseña" value={confirmPass} onChange={(e) => setConfirmPass(e.target.value)} className="rounded-2xl h-11" />
             <Button onClick={handleChangePassword} disabled={changingPass} className="w-full rounded-2xl h-11 gradient-primary text-primary-foreground font-bold">
               {changingPass ? "Actualizando..." : "Actualizar"}

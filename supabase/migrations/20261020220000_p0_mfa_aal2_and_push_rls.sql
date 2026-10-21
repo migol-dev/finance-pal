@@ -111,7 +111,14 @@ CREATE POLICY "Require AAL2 when MFA enabled"
   WITH CHECK (public.is_mfa_compliant());
 
 -- Storage: receipts bucket is the only bucket used by Finance Pal.
-ALTER TABLE storage.objects ENABLE ROW LEVEL SECURITY;
+DO $$
+BEGIN
+  ALTER TABLE storage.objects ENABLE ROW LEVEL SECURITY;
+EXCEPTION WHEN insufficient_privilege THEN
+  -- In Supabase Cloud, storage.objects is owned by supabase_storage_admin and already has RLS enabled.
+  NULL;
+END;
+$$;
 
 DROP POLICY IF EXISTS "Require AAL2 when MFA enabled on storage" ON storage.objects;
 CREATE POLICY "Require AAL2 when MFA enabled on storage"
