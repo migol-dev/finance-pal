@@ -14,15 +14,15 @@
 | :--- | :--- |
 | **Total de Fases de Auditoría** | `12` (`F0` a `F11`) |
 | **Total de Tareas Planificadas** | `39` (`F0.1` a `F11.4`) |
-| **Tareas Completadas (✅)** | `3` |
+| **Tareas Completadas (✅)** | `6` |
 | **Tareas en Progreso (⏳)** | `0` |
 | **Tareas Bloqueadas / Escaladas a `agy` (⚠️)** | `0` |
-| **Tareas Pendientes (⚪)** | `36` |
-| **Progreso Estimado** | `[██░░░░░░░░░░░░░░░░░░] 8% (3/39)` |
-| **Hallazgos Previos a Re-verificar (`SEC-*`)** | `0 / 21` verificados |
-| **Hipótesis Nuevas a Confirmar (`NEW-*`)** | `0 / 12` evaluadas |
-| **Matriz de Pruebas (`T01`–`T25`)** | `0 / 25` ejecutadas |
-| **Último Checkpoint Git** | `ninguno (pendiente CP-00)` |
+| **Tareas Pendientes (⚪)** | `33` |
+| **Progreso Estimado** | `[███░░░░░░░░░░░░░░░░░] 15% (6/39)` |
+| **Hallazgos Previos a Re-verificar (`SEC-*`)** | `2 / 21` verificados |
+| **Hipótesis Nuevas a Confirmar (`NEW-*`)** | `1 / 12` evaluadas |
+| **Matriz de Pruebas (`T01`–`T25`)** | `3 / 25` ejecutadas |
+| **Último Checkpoint Git** | `CP-00 (769cf9e)` |
 | **Fecha/Hora de Inicio** | `2026-10-20` |
 | **Fecha/Hora de Última Actualización** | `2026-10-20` |
 
@@ -48,13 +48,13 @@
 ---
 
 ### 🔐 Fase F1: Secretos, Bundle y Cadena de Suministro (`CP-01` — `T01`, `T02`, `T03`)
-- [ ] **F1.1 [N0 — T01]:** Ejecutar escaneo de secretos en el historial git (`gitleaks detect --source . --log-opts="--all" --redact -r .agent/audit/evidence/F1-gitleaks.json` y `trufflehog git file://. --only-verified --json > .agent/audit/evidence/F1-trufflehog.json`, o búsqueda redactada en historial git si un binario no está instalado). **Prohibido leer `.env*` directamente.**
+- [✅] **F1.1 [N0 — T01]:** Ejecutar escaneo de secretos en el historial git (`gitleaks detect --source . --log-opts="--all" --redact -r .agent/audit/evidence/F1-gitleaks.json` y `trufflehog git file://. --only-verified --json > .agent/audit/evidence/F1-trufflehog.json`, o búsqueda redactada en historial git si un binario no está instalado). **Prohibido leer `.env*` directamente.**
   - **Evidencia esperada:** `.agent/audit/evidence/F1-gitleaks.json` y `.agent/audit/evidence/F1-trufflehog.json`.
-- [ ] **F1.2 [N0 — T02]:** Ejecutar auditoría de vulnerabilidades en dependencias (`npm audit --json > .agent/audit/evidence/F1-npm-audit.json` y `osv-scanner --lockfile=package-lock.json > .agent/audit/evidence/F1-osv.txt` si está instalado).
+- [✅] **F1.2 [N0 — T02]:** Ejecutar auditoría de vulnerabilidades en dependencias (`npm audit --json > .agent/audit/evidence/F1-npm-audit.json` y `osv-scanner --lockfile=package-lock.json > .agent/audit/evidence/F1-osv.txt` si está instalado).
   - **Evidencia esperada:** `.agent/audit/evidence/F1-npm-audit.json` y `.agent/audit/evidence/F1-osv.txt`.
-- [ ] **F1.3 [N0 — T03, SEC-006, SEC-021]:** Ejecutar `npm run build`, verificar que `dist/` no contenga secretos (`service_role`, `VAPID_PRIVATE`, `FUNCTION_SECRET`, `sk_live`, `BEGIN PRIVATE`), comprobar si se generan `dist/assets/*.map` o `dist/stats.html` (`SEC-021`), y decodificar el payload del JWT `anon` embebido en `dist/assets/*.js` para verificar `role=anon`, `iat` y `exp` (`SEC-006`).
+- [✅] **F1.3 [N0 — T03, SEC-006, SEC-021]:** Ejecutar `npm run build`, verificar que `dist/` no contenga secretos (`service_role`, `VAPID_PRIVATE`, `FUNCTION_SECRET`, `sk_live`, `BEGIN PRIVATE`), comprobar si se generan `dist/assets/*.map` o `dist/stats.html` (`SEC-021`), y decodificar el payload del JWT `anon` embebido en `dist/assets/*.js` para verificar `role=anon`, `iat` y `exp` (`SEC-006`).
   - **Evidencia esperada:** Sección de bundle y JWT `anon` en `.agent/audit/evidence/F1-supply-chain-and-bundle.md`.
-- [ ] **F1.4 [N0 — NEW-07]:** Auditar los imports remotos sin fijar en `supabase/functions/send-reminders/index.ts` (`https://esm.sh/@supabase/supabase-js@2`), el uso de credenciales en `scripts/cleanup-receipts.cjs` y `scripts/cleanup-receipts.js`, y la configuración de plugins en `vite.config.ts` (`lovable-tagger`, `visualizer`, `build.sourcemap`).
+- [✅] **F1.4 [N0 — NEW-07]:** Auditar los imports remotos sin fijar en `supabase/functions/send-reminders/index.ts` (`https://esm.sh/@supabase/supabase-js@2`), el uso de credenciales en `scripts/cleanup-receipts.cjs` y `scripts/cleanup-receipts.js`, y la configuración de plugins en `vite.config.ts` (`lovable-tagger`, `visualizer`, `build.sourcemap`).
   - **Evidencia esperada:** `.agent/audit/evidence/F1-supply-chain-and-bundle.md` (`CP-01`: `docs(audit): F1 secretos y dependencias`).
 
 ---
@@ -179,7 +179,7 @@
 
 | # Checkpoint | Fase | Tareas Cubiertas | Mensaje de Commit Esperado | Hash Commit | Estado |
 | :--- | :--- | :--- | :--- | :--- | :--- |
-| `CP-00` | `F0` | `F0.1` – `F0.3` | `docs(audit): F0 entorno, alcance y protocolo de producción` | `pendiente` | `⚪ PENDIENTE` |
+| `CP-00` | `F0` | `F0.1` – `F0.3` | `docs(audit): F0 entorno, alcance y protocolo de producción` | `769cf9e` | `✅ COMPLETADO` |
 | `CP-01` | `F1` | `F1.1` – `F1.4` | `docs(audit): F1 secretos y dependencias` | `pendiente` | `⚪ PENDIENTE` |
 | `CP-02` | `F2` | `F2.1` – `F2.6` | `docs(audit): F2 RLS, vistas, RPC y storage` | `pendiente` | `⚪ PENDIENTE` |
 | `CP-03` | `F3` | `F3.1` – `F3.4` | `docs(audit): F3 auth, MFA y sesiones` | `pendiente` | `⚪ PENDIENTE` |
@@ -205,7 +205,7 @@
 | `SEC-003` | Edge Function `send-reminders` sin auth / comparación no constante | `F6` | ⚠️ Parcial | `⬜ PENDIENTE` | `F6-edge-push-sw.md` |
 | `SEC-004` | `cleanup_stale_sessions()` `SECURITY DEFINER` | `F2` | ⚠️ / 🔁 | `⬜ PENDIENTE` | `F2-catalog-and-rls.md` |
 | `SEC-005` | IDOR en servicios (`.eq('user_id', ...)`) | `F5` | ✅ por verificar | `⬜ PENDIENTE` | `F5-services-idor-validation.md` |
-| `SEC-006` | Clave `anon` con expiración año 2100 | `F1` | ❓ por verificar | `⬜ PENDIENTE` | `F1-supply-chain-and-bundle.md` |
+| `SEC-006` | Clave `anon` con expiración año 2100 | `F1` | ❓ por verificar | `⚠️ PARCIAL — role=anon, exp 2036 (10 años)`, no 2100 | `F1-supply-chain-and-bundle.md` |
 | `SEC-007` | Recibos en Storage con URL pública vs firmada | `F2` | ✅ por verificar | `⬜ PENDIENTE` | `F2-catalog-and-rls.md` |
 | `SEC-008` | Rate limiting de login sólo en cliente | `F3` | ❌ Abierto | `⬜ PENDIENTE` | `F3-auth-mfa-sessions.md` |
 | `SEC-009` | Hash-chaining del audit log (`djb2` → `SHA-256` sin HMAC) | `F4` | ✅ por verificar | `⬜ PENDIENTE` | `F4-crypto-and-auditlog.md` |
@@ -220,7 +220,7 @@
 | `SEC-018` | `profile.email` persistido en estado de Zustand | `F4` | ❓ por verificar | `⬜ PENDIENTE` | `F4-storage-inventory.md` |
 | `SEC-019` | `userId` / `clientId` en logs de consola | `F10` | ❓ por verificar | `⬜ PENDIENTE` | `F10-privacy-logging-gdpr.md` |
 | `SEC-020` | Importación JSON sin límite de tamaño previo al parseo | `F5` | ❓ por verificar | `⬜ PENDIENTE` | `F5-services-idor-validation.md` |
-| `SEC-021` | `dist/stats.html` del bundle analyzer accesible | `F1`/`F9` | ❓ por verificar | `⬜ PENDIENTE` | `F1-supply-chain-and-bundle.md` |
+| `SEC-021` | `dist/stats.html` del bundle analyzer accesible | `F1`/`F9` | ❓ por verificar | `❌ CONFIRMADO (build)` — stats.html 1.26 MB en `dist/` | `F1-supply-chain-and-bundle.md` |
 
 ### 5.2 Checklist de Nuevas Hipótesis de Riesgo (`NEW-01`…`NEW-12`)
 
@@ -232,7 +232,7 @@
 | `NEW-04` | MFA aplicado sólo en UI; políticas RLS no exigen `aal2` | `F2`/`F3` | `N1`/`N2` | `⬜ PENDIENTE` | `F3-auth-mfa-sessions.md` |
 | `NEW-05` | Desfase entre `supabase/schema.sql` + `migrations/` y el esquema real en producción | `F2` | `N1` | `⬜ PENDIENTE` | `F2-schema-drift.md` |
 | `NEW-06` | Android `android:allowBackup="true"` sin `dataExtractionRules` | `F8` | `N0` | `⬜ PENDIENTE` | `F8-android-masvs.md` |
-| `NEW-07` | Supply chain: `esm.sh` flotante en Deno, `npm audit \|\| true` en CI y auto-merge | `F1`/`F9` | `N0` | `⬜ PENDIENTE` | `F1` y `F9` |
+| `NEW-07` | Supply chain: `esm.sh` flotante en Deno, `npm audit \|\| true` en CI y auto-merge | `F1`/`F9` | `N0` | `⚠️ CONFIRMADO PARCIAL (F1)` — esm.sh `@2` flotante; CI pendiente F9 | `F1` y `F9` |
 | `NEW-08` | Service Worker `public/sw.js`: open redirect en `notificationclick` y `message` sin validar origen | `F6` | `N0` | `⬜ PENDIENTE` | `F6-edge-push-sw.md` |
 | `NEW-09` | Notificaciones muestran montos financieros por defecto (`hideAmountsInNotifications=false`) | `F6` | `N0` | `⬜ PENDIENTE` | `F6-edge-push-sw.md` |
 | `NEW-10` | `dangerouslySetInnerHTML` en `src/components/ui/chart.tsx` L70 | `F7` | `N0` | `⬜ PENDIENTE` | `F7-web-xss-csp.md` |
@@ -243,9 +243,9 @@
 
 | Prueba | Fase | Nivel | Estado | Resultado Resumido |
 | :--- | :--- | :--- | :--- | :--- |
-| `T01` Secretos en historial git | `F1` | `N0` | `⬜ PENDIENTE` | - |
-| `T02` CVE en dependencias | `F1` | `N0` | `⬜ PENDIENTE` | - |
-| `T03` Secretos / source maps en `dist/` | `F1` | `N0` | `⬜ PENDIENTE` | - |
+| `T01` Secretos en historial git | `F1` | `N0` | `❌ ABIERTO` | 3 hallazgos gitleaks (1 JWT redactado en `.env` histórico); 0 verificados trufflehog |
+| `T02` CVE en dependencias | `F1` | `N0` | `❌ ABIERTO` | 52 npm (3C/31H); 10 runtime (7H); 81 OSV (3C/30H) |
+| `T03` Secretos / source maps en `dist/` | `F1` | `N0` | `❌ ABIERTO` | Sin secretos ni `.map`; `stats.html` presente en build |
 | `T04` Tablas sin RLS | `F2` | `N1` | `⬜ PENDIENTE` | - |
 | `T05` Vistas sin `security_invoker` | `F2` | `N1`+`N2` | `⬜ PENDIENTE` | - |
 | `T06` CRUD cross-tenant A→B | `F2` | `N1`+`N2` | `⬜ PENDIENTE` | - |

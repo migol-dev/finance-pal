@@ -1,0 +1,92 @@
+Starting filesystem walk for root: /
+Scanned /run/media/migol/Files/Projectos/Aplications/Finance Pal/Finance Pal APP/Finance Pal V1.19.38/finance-pal/package-lock.json file and found 1163 packages
+End status: 0 dirs visited, 1 inodes visited, 1 Extract calls, 298.547473ms elapsed, 298.547862ms wall time
+
+Total 27 packages affected by 81 known vulnerabilities (3 Critical, 30 High, 38 Medium, 8 Low, 2 Unknown) from 1 ecosystem.
+78 vulnerabilities can be fixed.
+
++-------------------------------------+------+-----------+-------------------------------+---------+---------------+-------------------+
+| OSV URL                             | CVSS | ECOSYSTEM | PACKAGE                       | VERSION | FIXED VERSION | SOURCE            |
++-------------------------------------+------+-----------+-------------------------------+---------+---------------+-------------------+
+| https://osv.dev/GHSA-gxm5-99cw-xjw9 | 5.8  | npm       | @fastify/busboy (dev)         | 2.1.1   | 3.2.2         | package-lock.json |
+| https://osv.dev/GHSA-x8mw-p69m-v3mx | 7.5  | npm       | @fastify/busboy (dev)         | 2.1.1   | 3.2.1         | package-lock.json |
+| https://osv.dev/GHSA-82fw-gwwq-j7x9 | 5.9  | npm       | @vitest/mocker (dev)          | 3.2.7   | 4.1.11        | package-lock.json |
+| https://osv.dev/GHSA-2g4f-4pwh-qvx6 | 5.5  | npm       | ajv (dev)                     | 8.6.3   | 8.18.0        | package-lock.json |
+| https://osv.dev/GHSA-6j4f-fj2g-mc7p | 7.5  | npm       | brace-expansion (dev)         | 1.1.18  | 1.1.19        | package-lock.json |
+| https://osv.dev/GHSA-q2hr-2g5m-vwhr | 5.3  | npm       | brace-expansion (dev)         | 1.1.18  | 1.1.21        | package-lock.json |
+| https://osv.dev/GHSA-qhr7-859c-m2p7 | 7.5  | npm       | brace-expansion (dev)         | 1.1.18  | 1.1.20        | package-lock.json |
+| https://osv.dev/GHSA-6j4f-fj2g-mc7p | 7.5  | npm       | brace-expansion               | 2.1.4   | 2.1.5         | package-lock.json |
+| https://osv.dev/GHSA-q2hr-2g5m-vwhr | 5.3  | npm       | brace-expansion               | 2.1.4   | 2.1.7         | package-lock.json |
+| https://osv.dev/GHSA-qhr7-859c-m2p7 | 7.5  | npm       | brace-expansion               | 2.1.4   | 2.1.6         | package-lock.json |
+| https://osv.dev/GHSA-6j4f-fj2g-mc7p | 7.5  | npm       | brace-expansion (dev)         | 5.0.9   | 5.0.10        | package-lock.json |
+| https://osv.dev/GHSA-q2hr-2g5m-vwhr | 5.3  | npm       | brace-expansion (dev)         | 5.0.9   | 5.0.12        | package-lock.json |
+| https://osv.dev/GHSA-qhr7-859c-m2p7 | 7.5  | npm       | brace-expansion (dev)         | 5.0.9   | 5.0.11        | package-lock.json |
+| https://osv.dev/GHSA-vfj7-8cjw-p6xm | 8.7  | npm       | braces                        | 3.0.3   | --            | package-lock.json |
+| https://osv.dev/GHSA-g7r4-m6w7-qqqr | 2.5  | npm       | esbuild (dev)                 | 0.27.7  | 0.28.1        | package-lock.json |
+| https://osv.dev/GHSA-2883-xcg3-v3hh | 7.5  | npm       | js-yaml (dev)                 | 4.1.1   | 4.3.2         | package-lock.json |
+| https://osv.dev/GHSA-52cp-r559-cp3m | 7.5  | npm       | js-yaml (dev)                 | 4.1.1   | 4.3.0         | package-lock.json |
+| https://osv.dev/GHSA-5p4m-2wfm-xmqj | 7.5  | npm       | js-yaml (dev)                 | 4.1.1   | 4.3.1         | package-lock.json |
+| https://osv.dev/GHSA-h67p-54hq-rp68 | 5.3  | npm       | js-yaml (dev)                 | 4.1.1   | 4.2.0         | package-lock.json |
+| https://osv.dev/GHSA-23c5-xmqv-rm74 | 7.5  | npm       | minimatch (dev)               | 10.1.1  | 10.2.3        | package-lock.json |
+| https://osv.dev/GHSA-3ppc-4f35-3m26 | 8.7  | npm       | minimatch (dev)               | 10.1.1  | 10.2.1        | package-lock.json |
+| https://osv.dev/GHSA-7r86-cg39-jmmj | 7.5  | npm       | minimatch (dev)               | 10.1.1  | 10.2.3        | package-lock.json |
+| https://osv.dev/GHSA-9wv6-86v2-598j | 7.7  | npm       | path-to-regexp (dev)          | 6.1.0   | 6.3.0         | package-lock.json |
+| https://osv.dev/GHSA-27v5-c462-wpq7 | 5.9  | npm       | path-to-regexp (dev)          | 8.3.0   | 8.4.0         | package-lock.json |
+| https://osv.dev/GHSA-j3q9-mxjg-w52f | 7.5  | npm       | path-to-regexp (dev)          | 8.3.0   | 8.4.0         | package-lock.json |
+| https://osv.dev/GHSA-rj75-hqrm-r3gf | 5.9  | npm       | postcss-selector-parser (dev) | 6.0.10  | 7.1.6         | package-lock.json |
+| https://osv.dev/GHSA-rj75-hqrm-r3gf | 5.9  | npm       | postcss-selector-parser       | 6.1.2   | 7.1.6         | package-lock.json |
+| https://osv.dev/GHSA-w9m9-85wc-3x92 | 4.3  | npm       | postcss-selector-parser       | 6.1.2   | 6.1.3         | package-lock.json |
+| https://osv.dev/GHSA-337j-9hxr-rhxg | 6.1  | npm       | react-router                  | 6.30.6  | 7.18.0        | package-lock.json |
+| https://osv.dev/GHSA-wrjc-x8rr-h8h6 | 5.1  | npm       | react-router                  | 6.30.6  | 7.18.0        | package-lock.json |
+| https://osv.dev/GHSA-fm4j-4xhm-xpwx |      | npm       | sandbox (dev)                 | 4.4.0   | --            | package-lock.json |
+| https://osv.dev/GHSA-gc25-3vc5-2jf9 |      | npm       | sandbox (dev)                 | 4.4.0   | --            | package-lock.json |
+| https://osv.dev/GHSA-wq5f-xc86-pv6w | 8.9  | npm       | sharp (dev)                   | 0.35.4  | 0.35.5        | package-lock.json |
+| https://osv.dev/GHSA-7w5x-hrqm-74c2 | 8.2  | npm       | smol-toml (dev)               | 1.5.2   | 1.7.1         | package-lock.json |
+| https://osv.dev/GHSA-r4xh-jqrq-34v2 | 5.3  | npm       | smol-toml (dev)               | 1.5.2   | 1.9.0         | package-lock.json |
+| https://osv.dev/GHSA-v3rj-xjv7-4jmq | 5.3  | npm       | smol-toml (dev)               | 1.5.2   | 1.6.1         | package-lock.json |
+| https://osv.dev/GHSA-68fv-2mgg-jv7q | 8.7  | npm       | source-map-js                 | 1.2.1   | 1.2.2         | package-lock.json |
+| https://osv.dev/GHSA-23hp-3jrh-7fpw | 9.2  | npm       | tar (dev)                     | 7.5.11  | 7.5.19        | package-lock.json |
+| https://osv.dev/GHSA-8x88-c5mf-7j5w | 8.7  | npm       | tar (dev)                     | 7.5.11  | 7.5.18        | package-lock.json |
+| https://osv.dev/GHSA-gvwx-54wh-qm9j | 5.3  | npm       | tar (dev)                     | 7.5.11  | 7.5.17        | package-lock.json |
+| https://osv.dev/GHSA-r292-9mhp-454m | 7.5  | npm       | tar (dev)                     | 7.5.11  | 7.5.21        | package-lock.json |
+| https://osv.dev/GHSA-vmf3-w455-68vh | 6.9  | npm       | tar (dev)                     | 7.5.11  | 7.5.16        | package-lock.json |
+| https://osv.dev/GHSA-w8wr-v893-vjvp | 5.3  | npm       | tar (dev)                     | 7.5.11  | 7.5.18        | package-lock.json |
+| https://osv.dev/GHSA-5gmw-xhrv-c9v3 | 9.5  | npm       | tinypool (dev)                | 1.1.1   | 2.1.1         | package-lock.json |
+| https://osv.dev/GHSA-85c8-ppgw-ccpr | 9.5  | npm       | tinypool (dev)                | 1.1.1   | 2.1.2         | package-lock.json |
+| https://osv.dev/GHSA-2mjp-6q6p-2qxm | 6.5  | npm       | undici (dev)                  | 5.28.4  | 6.24.0        | package-lock.json |
+| https://osv.dev/GHSA-35p6-xmwp-9g52 | 3.7  | npm       | undici (dev)                  | 5.28.4  | 6.27.0        | package-lock.json |
+| https://osv.dev/GHSA-4992-7rv2-5pvq | 4.6  | npm       | undici (dev)                  | 5.28.4  | 6.24.0        | package-lock.json |
+| https://osv.dev/GHSA-8xcm-r25x-g524 | 4.8  | npm       | undici (dev)                  | 5.28.4  | 6.28.0        | package-lock.json |
+| https://osv.dev/GHSA-c76h-2ccp-4975 | 6.8  | npm       | undici (dev)                  | 5.28.4  | 5.28.5        | package-lock.json |
+| https://osv.dev/GHSA-cxrh-j4jr-qwg3 | 3.1  | npm       | undici (dev)                  | 5.28.4  | 5.29.0        | package-lock.json |
+| https://osv.dev/GHSA-g8m3-5g58-fq7m | 3.7  | npm       | undici (dev)                  | 5.28.4  | 6.27.0        | package-lock.json |
+| https://osv.dev/GHSA-g9mf-h72j-4rw9 | 5.9  | npm       | undici (dev)                  | 5.28.4  | 6.23.0        | package-lock.json |
+| https://osv.dev/GHSA-m8rv-5g2x-5cg5 | 4.2  | npm       | undici (dev)                  | 5.28.4  | 6.28.0        | package-lock.json |
+| https://osv.dev/GHSA-p88m-4jfj-68fv | 5.9  | npm       | undici (dev)                  | 5.28.4  | 6.27.0        | package-lock.json |
+| https://osv.dev/GHSA-r53p-7pc4-xj5r | 3.7  | npm       | undici (dev)                  | 5.28.4  | 6.28.1        | package-lock.json |
+| https://osv.dev/GHSA-v3r7-h72x-cjcm | 4.8  | npm       | undici (dev)                  | 5.28.4  | 6.28.0        | package-lock.json |
+| https://osv.dev/GHSA-v9p9-hfj2-hcw8 | 7.5  | npm       | undici (dev)                  | 5.28.4  | 6.24.0        | package-lock.json |
+| https://osv.dev/GHSA-vrm6-8vpv-qv8q | 7.5  | npm       | undici (dev)                  | 5.28.4  | 6.24.0        | package-lock.json |
+| https://osv.dev/GHSA-vxpw-j846-p89q | 7.5  | npm       | undici (dev)                  | 5.28.4  | 6.27.0        | package-lock.json |
+| https://osv.dev/GHSA-2mjp-6q6p-2qxm | 6.5  | npm       | undici (dev)                  | 5.29.0  | 6.24.0        | package-lock.json |
+| https://osv.dev/GHSA-35p6-xmwp-9g52 | 3.7  | npm       | undici (dev)                  | 5.29.0  | 6.27.0        | package-lock.json |
+| https://osv.dev/GHSA-4992-7rv2-5pvq | 4.6  | npm       | undici (dev)                  | 5.29.0  | 6.24.0        | package-lock.json |
+| https://osv.dev/GHSA-8xcm-r25x-g524 | 4.8  | npm       | undici (dev)                  | 5.29.0  | 6.28.0        | package-lock.json |
+| https://osv.dev/GHSA-g8m3-5g58-fq7m | 3.7  | npm       | undici (dev)                  | 5.29.0  | 6.27.0        | package-lock.json |
+| https://osv.dev/GHSA-g9mf-h72j-4rw9 | 5.9  | npm       | undici (dev)                  | 5.29.0  | 6.23.0        | package-lock.json |
+| https://osv.dev/GHSA-m8rv-5g2x-5cg5 | 4.2  | npm       | undici (dev)                  | 5.29.0  | 6.28.0        | package-lock.json |
+| https://osv.dev/GHSA-p88m-4jfj-68fv | 5.9  | npm       | undici (dev)                  | 5.29.0  | 6.27.0        | package-lock.json |
+| https://osv.dev/GHSA-r53p-7pc4-xj5r | 3.7  | npm       | undici (dev)                  | 5.29.0  | 6.28.1        | package-lock.json |
+| https://osv.dev/GHSA-v3r7-h72x-cjcm | 4.8  | npm       | undici (dev)                  | 5.29.0  | 6.28.0        | package-lock.json |
+| https://osv.dev/GHSA-v9p9-hfj2-hcw8 | 7.5  | npm       | undici (dev)                  | 5.29.0  | 6.24.0        | package-lock.json |
+| https://osv.dev/GHSA-vrm6-8vpv-qv8q | 7.5  | npm       | undici (dev)                  | 5.29.0  | 6.24.0        | package-lock.json |
+| https://osv.dev/GHSA-vxpw-j846-p89q | 7.5  | npm       | undici (dev)                  | 5.29.0  | 6.27.0        | package-lock.json |
+| https://osv.dev/GHSA-w5hq-g745-h8pq | 7.5  | npm       | uuid (dev)                    | 7.0.3   | 11.1.1        | package-lock.json |
+| https://osv.dev/GHSA-587h-7wmj-h5pm | 7.5  | npm       | vite (dev)                    | 7.3.6   | 7.3.7         | package-lock.json |
+| https://osv.dev/GHSA-698v-4r3x-3vcv | 6.3  | npm       | vite (dev)                    | 7.3.6   | 7.3.7         | package-lock.json |
+| https://osv.dev/GHSA-r825-w8mm-5pxw | 6.3  | npm       | vite (dev)                    | 7.3.6   | 7.3.7         | package-lock.json |
+| https://osv.dev/GHSA-587h-7wmj-h5pm | 7.5  | npm       | vite (dev)                    | 8.2.2   | 8.2.4         | package-lock.json |
+| https://osv.dev/GHSA-698v-4r3x-3vcv | 6.3  | npm       | vite (dev)                    | 8.2.2   | 8.2.4         | package-lock.json |
+| https://osv.dev/GHSA-r825-w8mm-5pxw | 6.3  | npm       | vite (dev)                    | 8.2.2   | 8.2.4         | package-lock.json |
+| https://osv.dev/GHSA-82fw-gwwq-j7x9 | 5.9  | npm       | vitest (dev)                  | 3.2.7   | 4.1.11        | package-lock.json |
++-------------------------------------+------+-----------+-------------------------------+---------+---------------+-------------------+
