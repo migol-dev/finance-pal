@@ -24,9 +24,9 @@
 
 | Checkpoint | Fase | Commit Hash | Estado | Resumen de Cambios |
 | :--- | :--- | :--- | :--- | :--- |
-| `CP-P0-00` | P0-F0: Fix `F5-B` (`TS2554`) + Polyfill IndexedDB Vitest | `[PENDIENTE]` | `[ ]` | `[PENDIENTE]` |
-| `CP-P0-01` | P0-F1: Migración SQL `NEW-04` (`aal2`), `F2-A` y `SEC-004` | `[PENDIENTE]` | `[ ]` | `[PENDIENTE]` |
-| `CP-P0-02` | P0-F2: OAuth PKCE, remoción de `setSession` y `AndroidManifest.xml` (`F8-A`, `SEC-012`) | `[PENDIENTE]` | `[ ]` | `[PENDIENTE]` |
+| `CP-P0-00` | P0-F0: Fix `F5-B` (`TS2554`) + Polyfill IndexedDB Vitest | `1cda516` | `[✅]` | `useReceiptMutations` pasa `userId`; polyfill IndexedDB + fallback Storage en Vitest (9/9 tests). |
+| `CP-P0-01` | P0-F1: Migración SQL `NEW-04` (`aal2`), `F2-A` y `SEC-004` | `43c735f` | `[✅]` | `is_mfa_compliant()` + 10 políticas restrictivas + storage; push UPDATE tenant-scoped; `cleanup_stale_sessions()` service_role. Validado en PG17 efímero. |
+| `CP-P0-02` | P0-F2: OAuth PKCE, remoción de `setSession` y `AndroidManifest.xml` (`F8-A`, `SEC-012`) | `b54e4a2` | `[✅]` | `flowType:'pkce'`; deep link solo canjea `code`; redirect allowlist estricta; `allowBackup=false` + reglas XML; permisos de almacenamiento eliminados. |
 | `CP-P0-03` | P0-F3: Pepper en IndexedDB (`SEC-002`) y migración PBKDF2 (`F4-F`) | `[PENDIENTE]` | `[ ]` | `[PENDIENTE]` |
 | `CP-P0-04` | P0-F4: Purga total en Logout (`SEC-015`, `F4-D`) y máscara PII (`F10-B`) | `[PENDIENTE]` | `[ ]` | `[PENDIENTE]` |
 | `CP-P0-05` | P0-F5: Contraseñas 12+ chars y `rateLimiter` (`SEC-008`) + `graphify update .` | `[PENDIENTE]` | `[ ]` | `[PENDIENTE]` |

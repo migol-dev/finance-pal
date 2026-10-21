@@ -144,7 +144,7 @@ tasks_blocked: 0
 - [✅] `grep -rn "setSession" src/App.tsx` devuelve 0 coincidencias.
 - [✅] `AndroidManifest.xml` tiene `android:allowBackup="false"` y las reglas XML existen.
 - [✅] Commit en rama: `git commit -m "fix(security): P0-F2 enforce OAuth PKCE, remove implicit deep-link setSession, and harden AndroidManifest (F8-A, SEC-012)"`
-- **Hash del Commit `CP-P0-02`**: `[PENDIENTE]`
+- **Hash del Commit `CP-P0-02`**: `b54e4a2`
 
 ---
 
@@ -153,32 +153,32 @@ tasks_blocked: 0
 > **Objetivo**: Impedir que la clave maestra AES-GCM sea derivable únicamente con `user.id` + `salt` público de `localStorage` (`SEC-002` / `NEW-01`), y evitar la corrupción de datos cifrados existentes cuando las iteraciones PBKDF2 suben de `100,000` a `600,000` (`F4-F`).
 > **Especificación**: Ver sección `3.4 Fase P0-F3` de [`01_ARCHITECT_PLAN.md`](file:///run/media/migol/Files/Projectos/Aplications/Finance%20Pal/Finance%20Pal%20APP/Finance%20Pal%20V1.19.38/finance-pal/.agent/workflow/01_ARCHITECT_PLAN.md).
 
-- [ ] **Tarea P0-F3.1 — Implementar Pepper Criptográfico en IndexedDB (`finance-pal-keystore`) y Derivación Dual en `src/lib/encrypted-storage.ts` (`SEC-002` / `NEW-01`)**:
+- [✅] **Tarea P0-F3.1 — Implementar Pepper Criptográfico en IndexedDB (`finance-pal-keystore`) y Derivación Dual en `src/lib/encrypted-storage.ts` (`SEC-002` / `NEW-01`)**:
   - En `src/lib/encrypted-storage.ts`:
     - Crear helper `getOrCreateDevicePepper(userId?: string): Promise<string>` que almacene un secreto aleatorio de 32 bytes (256 bits, CSPRNG `crypto.getRandomValues(new Uint8Array(32))` codificado en base64) en una base IndexedDB dedicada `finance-pal-keystore` (objectStore `keys`, clave `pepper-${userId || 'anon'}`), con caché en memoria durante la sesión.
     - En `getMasterKey(userId?: string, options?: { legacyNoPepper?: boolean; iterationsOverride?: number })`:
       - Por defecto (`legacyNoPepper: false`), derivar la clave PBKDF2 usando como material secreto `${userId || "anonymous-local-user"}:${pepperB64}` en lugar de solo `userId`.
       - Soportar `legacyNoPepper: true` (material secreto `${userId || "anonymous-local-user"}`) únicamente como fallback de lectura en `decryptData()` para migrar de forma transparente los ciphertexts previos al nuevo formato en el siguiente `encryptData()`.
-  - *Evidencia / Resultado*: `[PENDIENTE]`
+  - *Evidencia / Resultado*: `[✅]` Implementado `getOrCreateDevicePepper()` con `crypto.getRandomValues(new Uint8Array(32))` (base64) en IndexedDB `finance-pal-keystore` / objectStore `keys` / clave `pepper-${userId || 'anon'}`, con caché en memoria. `getMasterKey(userId, { legacyNoPepper })` deriva por defecto con `${userId || 'anonymous-local-user'}:${pepper}`; `decryptData()` reintenta con `legacyNoPepper` y migra en el siguiente `encryptData()`.
 
-- [ ] **Tarea P0-F3.2 — Corregir Migración de Iteraciones PBKDF2 sin Corrupción de Datos (`F4-F`)**:
+- [✅] **Tarea P0-F3.2 — Corregir Migración de Iteraciones PBKDF2 sin Corrupción de Datos (`F4-F`)**:
   - En `src/lib/encrypted-storage.ts`:
     - Eliminar el bloque de `getMasterKey()` que borraba `${STORAGE_KEY}-salt` y generaba un salt nuevo cuando `storedIterations < PBKDF2_ITERATIONS` antes de descifrar los datos existentes.
     - Al leer un salt existente en `localStorage`, respetar las iteraciones con las que fue creado (`storedIterations`, o `100000` si no existía `${STORAGE_KEY}-iterations` pero sí existía `${STORAGE_KEY}-salt` legacy) cuando se descifra en fallback, y al cifrar (`encryptData`) asegurar que se use `PBKDF2_ITERATIONS` (`600000`) actualizando `${STORAGE_KEY}-iterations` de forma consistente.
     - Si se requiere rotar el salt al subir iteraciones, hacerlo leyendo primero con la clave anterior o mediante el fallback en `decryptData()`.
-  - *Evidencia / Resultado*: `[PENDIENTE]`
+  - *Evidencia / Resultado*: `[✅]` Eliminado el borrado destructivo de `${STORAGE_KEY}-salt` al detectar `storedIterations < PBKDF2_ITERATIONS`. El descifrado respeta el salt y las iteraciones existentes (`storedIterations` o `100000` legacy); el guardado usa `600000` y actualiza `${STORAGE_KEY}-iterations` de forma consistente. El salt legacy nunca se sobrescribe.
 
-- [ ] **Tarea P0-F3.3 — Ampliar `src/test/encrypted-storage.test.ts` para verificar `SEC-002` y `F4-F`**:
+- [✅] **Tarea P0-F3.3 — Ampliar `src/test/encrypted-storage.test.ts` para verificar `SEC-002` y `F4-F`**:
   - Añadir tests unitarios en `src/test/encrypted-storage.test.ts` que comprueben:
     1. **Mitigación `SEC-002`**: Un atacante que conoce `user.id` y el contenido de `localStorage` (`finance-pal-encrypted-v1-salt` + ciphertext), pero **no** posee el pepper de `IndexedDB` (`finance-pal-keystore`), falla al intentar derivar la clave con `PBKDF2(user.id, salt, 600000)` y `AES-GCM decrypt` lanza error.
     2. **Mitigación `F4-F` (Backward compatibility)**: Un ciphertext cifrado con el esquema legacy (`userId` sin pepper y `100,000` iteraciones) puede ser descifrado por `decryptData(ciphertext, userId)` mediante el fallback transparente, y al volver a cifrar con `encryptData(data, userId)` queda protegido con el nuevo pepper + `600,000` iteraciones.
   - Verificar que `npx vitest run src/test/encrypted-storage.test.ts` pasa al 100%.
-  - *Evidencia / Resultado*: `[PENDIENTE]`
+  - *Evidencia / Resultado*: `[✅]` Añadidos tests `SEC-002` (fallo al derivar con solo `user.id` + salt público) y `F4-F` (descifrado legacy 100k + re-cifrado con pepper/600k, y no sobrescritura del salt legacy). Resultado: **9/9 tests OK** en 2.73s.
 
 ### 🏁 Checkpoint `CP-P0-03`
-- [ ] `npx tsc --noEmit` devuelve `0 errores`.
-- [ ] `npx vitest run src/test/encrypted-storage.test.ts` pasa todos los tests (incluyendo `SEC-002` y `F4-F`).
-- [ ] Commit en rama: `git commit -m "fix(security): P0-F3 add IndexedDB keystore pepper and fix PBKDF2 migration in encrypted-storage (SEC-002, F4-F)"`
+- [✅] `npx tsc --noEmit` devuelve `0 errores`.
+- [✅] `npx vitest run src/test/encrypted-storage.test.ts` pasa todos los tests (incluyendo `SEC-002` y `F4-F`).
+- [✅] Commit en rama: `git commit -m "fix(security): P0-F3 add IndexedDB keystore pepper and fix PBKDF2 migration in encrypted-storage (SEC-002, F4-F)"`
 - **Hash del Commit `CP-P0-03`**: `[PENDIENTE]`
 
 ---
@@ -275,14 +275,14 @@ tasks_blocked: 0
 
 | ID Hallazgo | Descripción | Fase | Archivos Modificados | Verificación (`tsc` / `vitest` / SQL) | Estado Final |
 | :--- | :--- | :--- | :--- | :--- | :--- |
-| **F5-B** | Error `TS2554` en `useReceiptMutations.ts` + polyfill IndexedDB Vitest | P0-F0 | `[PENDIENTE]` | `npx tsc --noEmit` + `vitest` | `[ ]` |
-| **NEW-04** | Enforzamiento backend MFA `aal2` (`is_mfa_compliant()` + `AS RESTRICTIVE` en 10 tablas y `storage.objects`) | P0-F1 | `[PENDIENTE]` | Migración SQL + revisión `agy` en Docker PG17 | `[ ]` |
-| **F2-A** | Fix de hijacking cross-tenant `UPDATE USING (true)` en `push_subscriptions` | P0-F1 | `[PENDIENTE]` | Migración SQL + `schema_push_notifications.sql` | `[ ]` |
-| **SEC-004** | `REVOKE EXECUTE` de `cleanup_stale_sessions()` a `authenticated`/`anon` | P0-F1 | `[PENDIENTE]` | Migración SQL + `schema.sql` | `[ ]` |
-| **F8-A / NEW-06** | OAuth `flowType: 'pkce'`, eliminación de `setSession` implícito en `App.tsx`, `allowBackup="false"` en Android | P0-F2 | `[PENDIENTE]` | `tsc` + inspección de `App.tsx` y `AndroidManifest.xml` | `[ ]` |
-| **SEC-012** | Endurecimiento de `isValidRedirectUri` en `Login.tsx` y limpieza de URL en `AuthCallback.tsx` | P0-F2 | `[PENDIENTE]` | `tsc` + inspección de `Login.tsx` y `AuthCallback.tsx` | `[ ]` |
-| **SEC-002 / NEW-01** | Pepper criptográfico aleatorio de 256 bits en `IndexedDB` (`finance-pal-keystore`) combinado con `user.id` | P0-F3 | `[PENDIENTE]` | `npx vitest run src/test/encrypted-storage.test.ts` | `[ ]` |
-| **F4-F** | Migración de iteraciones PBKDF2 (`100k` → `600k`) sin sobrescribir el salt antes de descifrar | P0-F3 | `[PENDIENTE]` | `npx vitest run src/test/encrypted-storage.test.ts` | `[ ]` |
+| **F5-B** | Error `TS2554` en `useReceiptMutations.ts` + polyfill IndexedDB Vitest | P0-F0 | `useReceiptMutations.ts`, `src/test/indexeddb-polyfill.ts`, `src/test/setup.ts` | `npx tsc --noEmit` OK; `vitest` 9/9 OK | `[✅]` |
+| **NEW-04** | Enforzamiento backend MFA `aal2` (`is_mfa_compliant()` + `AS RESTRICTIVE` en 10 tablas y `storage.objects`) | P0-F1 | `20261020220000_p0_mfa_aal2_and_push_rls.sql`, `schema.sql`, `schema_push_notifications.sql` | Validado en Docker PG17 efímero (11 políticas) | `[✅]` |
+| **F2-A** | Fix de hijacking cross-tenant `UPDATE USING (true)` en `push_subscriptions` | P0-F1 | `20261020220000_p0_mfa_aal2_and_push_rls.sql`, `schema_push_notifications.sql` | Validado en Docker PG17 efímero | `[✅]` |
+| **SEC-004** | `REVOKE EXECUTE` de `cleanup_stale_sessions()` a `authenticated`/`anon` | P0-F1 | `20261020220000_p0_mfa_aal2_and_push_rls.sql`, `schema.sql` | Validado en Docker PG17 efímero | `[✅]` |
+| **F8-A / NEW-06** | OAuth `flowType: 'pkce'`, eliminación de `setSession` implícito en `App.tsx`, `allowBackup="false"` en Android | P0-F2 | `src/lib/supabase.ts`, `src/App.tsx`, `AndroidManifest.xml`, `backup_rules.xml`, `data_extraction_rules.xml` | `tsc` OK + inspección | `[✅]` |
+| **SEC-012** | Endurecimiento de `isValidRedirectUri` en `Login.tsx` y limpieza de URL en `AuthCallback.tsx` | P0-F2 | `src/pages/Login.tsx`, `src/pages/AuthCallback.tsx` | `tsc` OK + inspección | `[✅]` |
+| **SEC-002 / NEW-01** | Pepper criptográfico aleatorio de 256 bits en `IndexedDB` (`finance-pal-keystore`) combinado con `user.id` | P0-F3 | `src/lib/encrypted-storage.ts`, `src/test/encrypted-storage.test.ts` | `npx vitest run src/test/encrypted-storage.test.ts` 9/9 OK | `[✅]` |
+| **F4-F** | Migración de iteraciones PBKDF2 (`100k` → `600k`) sin sobrescribir el salt antes de descifrar | P0-F3 | `src/lib/encrypted-storage.ts`, `src/test/encrypted-storage.test.ts` | `npx vitest run src/test/encrypted-storage.test.ts` 9/9 OK | `[✅]` |
 | **SEC-015 / F4-D** | Purga completa de `localStorage` e `IndexedDB` (`receipts`, `audit`, `keystore`) en `signOut()` | P0-F4 | `[PENDIENTE]` | `npx vitest run src/test/encrypted-storage.test.ts src/test/audit-logger.test.ts` | `[ ]` |
 | **F10-B** | Enmascaramiento de emails (`maskEmail`) en `audit-logger.ts` antes de guardar en IndexedDB | P0-F4 | `[PENDIENTE]` | `npx vitest run src/test/audit-logger.test.ts` | `[ ]` |
 | **SEC-008 / T11** | Contraseñas de 12+ caracteres + complejidad y `rateLimiter` (`auth`) activo en `Login.tsx`, `PerfilSection.tsx` y `supabase/config.toml` | P0-F5 | `[PENDIENTE]` | `npx vitest run src/test/security.test.ts` | `[ ]` |
