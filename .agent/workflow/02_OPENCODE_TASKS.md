@@ -14,15 +14,15 @@
 | :--- | :--- |
 | **Total de Fases de Auditoría** | `12` (`F0` a `F11`) |
 | **Total de Tareas Planificadas** | `39` (`F0.1` a `F11.4`) |
-| **Tareas Completadas (✅)** | `19` |
+| **Tareas Completadas (✅)** | `22` |
 | **Tareas en Progreso (⏳)** | `0` |
 | **Tareas Bloqueadas / Escaladas a `agy` (⚠️)** | `4` |
-| **Tareas Pendientes (⚪)** | `16` |
-| **Progreso Estimado** | `[█████████░░░░░░░░░░░] 49% (19/39)` |
-| **Hallazgos Previos a Re-verificar (`SEC-*`)** | `17 / 21` verificados |
-| **Hipótesis Nuevas a Confirmar (`NEW-*`)** | `6 / 12` evaluadas |
-| **Matriz de Pruebas (`T01`–`T25`)** | `12 / 25` ejecutadas |
-| **Último Checkpoint Git** | `CP-04 (5787bf9)` |
+| **Tareas Pendientes (⚪)** | `13` |
+| **Progreso Estimado** | `[███████████░░░░░░░░░] 56% (22/39)` |
+| **Hallazgos Previos a Re-verificar (`SEC-*`)** | `20 / 21` verificados |
+| **Hipótesis Nuevas a Confirmar (`NEW-*`)** | `8 / 12` evaluadas |
+| **Matriz de Pruebas (`T01`–`T25`)** | `15 / 25` ejecutadas |
+| **Último Checkpoint Git** | `CP-05 (94b6c52)` |
 | **Fecha/Hora de Inicio** | `2026-10-20` |
 | **Fecha/Hora de Última Actualización** | `2026-10-20` |
 
@@ -118,14 +118,17 @@
 ---
 
 ### ⚡ Fase F6: Edge Function, Web Push y Service Worker (`CP-06` — Prioridad `P1` — `T17`–`T19`)
-- [ ] **F6.1 [N0/N1 — T17, SEC-003, SEC-013, SEC-017, NEW-07, NEW-09]:** Auditar `supabase/functions/send-reminders/index.ts`, `supabase/config.toml` y los metadatos de la función en producción (`/v1/projects/rjforcrdyfuodsqtopvp/functions`): revisar `verify_jwt`, validación de `FUNCTION_SECRET`/`SUPABASE_SERVICE_ROLE_KEY`, comparación `===` no constante en tiempo (`SEC-003`), CORS `ALLOWED_ORIGIN || "*"` (`SEC-017`), rate limit en `Map` de memoria evadible vía `x-forwarded-for` (`SEC-013`/`T18`), `@ts-nocheck`, y exposición de montos en notificaciones (`NEW-09`).
+- [✅] **F6.1 [N0/N1 — T17, SEC-003, SEC-013, SEC-017, NEW-07, NEW-09]:** Auditar `supabase/functions/send-reminders/index.ts`, `supabase/config.toml` y los metadatos de la función en producción (`/v1/projects/rjforcrdyfuodsqtopvp/functions`): revisar `verify_jwt`, validación de `FUNCTION_SECRET`/`SUPABASE_SERVICE_ROLE_KEY`, comparación `===` no constante en tiempo (`SEC-003`), CORS `ALLOWED_ORIGIN || "*"` (`SEC-017`), rate limit en `Map` de memoria evadible vía `x-forwarded-for` (`SEC-013`/`T18`), `@ts-nocheck`, y exposición de montos en notificaciones (`NEW-09`).
   - **Evidencia esperada:** Análisis estático y de configuración en `.agent/audit/evidence/F6-edge-push-sw.md`.
-- [ ] **F6.2 [N2 — T17]:** Ejecutar las 2 pruebas no destructivas contra el endpoint de la Edge Function en producción:
+  - **Resultado:** ❌ Paridad rota: producción v4 (239 líneas, 2026-09-27) vs repo (548 líneas). CORS `*` fijo, auth solo `FUNCTION_SECRET`, lógica antigua sin `notification_prefs`. `F6-A`: `FUNCTION_SECRET` vacío (SHA-256 de `""`) y `VAPID_PUBLIC_KEY` ausente → 401/500 siempre; sin `pg_cron` ni scheduler. `SEC-003` parcial, `SEC-013` y `SEC-017` confirmados.
+- [✅] **F6.2 [N2 — T17]:** Ejecutar las 2 pruebas no destructivas contra el endpoint de la Edge Function en producción:
   - `curl -sI -X OPTIONS "https://rjforcrdyfuodsqtopvp.supabase.co/functions/v1/send-reminders" -H "Origin: https://evil.tld"`
   - `curl -sI -X POST "https://rjforcrdyfuodsqtopvp.supabase.co/functions/v1/send-reminders"` (sin credenciales → debe responder `401`).
   - **Evidencia esperada:** Respuestas HTTP en `.agent/audit/evidence/F6-edge-push-sw.md`.
-- [ ] **F6.3 [N0 — T19, NEW-08]:** Auditar `public/sw.js` (L1-110), `src/lib/web-push.ts`, `src/lib/notifications.ts` y `src/hooks/useNotificationScheduler.ts`: verificar si `notificationclick` abre `event.notification.data.url` sin validar mismo origen (`NEW-08`), si el listener `message` valida `event.origin`/`event.source`, cómo gestiona `push_subscriptions` el `user_id` y si el Service Worker cachea rutas de `/rest/v1` o `/auth/v1`.
+  - **Resultado:** ✅ `OPTIONS` → `200` con `access-control-allow-origin: *` (confirma `SEC-017`). `POST` sin credenciales → `401 UNAUTHORIZED_NO_AUTH_HEADER`. Con JWT `anon` público → `401 {"error":"Unauthorized"}` de la función (dos capas).
+- [✅] **F6.3 [N0 — T19, NEW-08]:** Auditar `public/sw.js` (L1-110), `src/lib/web-push.ts`, `src/lib/notifications.ts` y `src/hooks/useNotificationScheduler.ts`: verificar si `notificationclick` abre `event.notification.data.url` sin validar mismo origen (`NEW-08`), si el listener `message` valida `event.origin`/`event.source`, cómo gestiona `push_subscriptions` el `user_id` y si el Service Worker cachea rutas de `/rest/v1` o `/auth/v1`.
   - **Evidencia esperada:** `.agent/audit/evidence/F6-edge-push-sw.md` (`CP-06`: `docs(audit): F6 edge function, push y SW`).
+  - **Resultado:** ❌ `NEW-08` confirmado con PoC `OPEN_REDIRECT_CONFIRMED`; `message` sin `origin`/`source`. `NEW-09` confirmado (montos por defecto; producción los muestra siempre). SW sin handler `fetch` (no cachea API) y sin `pushsubscriptionchange`. `push_subscriptions` UPDATE `USING(true)` permite reasignación si se conoce el endpoint (`F6-C`, Baja).
 
 ---
 
@@ -197,7 +200,7 @@
 | `CP-02` | `F2` | `F2.1` – `F2.6` | `docs(audit): F2 RLS, vistas, RPC y storage` | `a91a215` | `✅ COMPLETADO` |
 | `CP-03` | `F3` | `F3.1` – `F3.4` | `docs(audit): F3 auth, MFA y sesiones` | `dd8ff98` | `✅ COMPLETADO` |
 | `CP-04` | `F4` | `F4.1` – `F4.3` | `docs(audit): F4 almacenamiento cliente y cifrado` | `5787bf9` | `✅ COMPLETADO` |
-| `CP-05` | `F5` | `F5.1` – `F5.3` | `docs(audit): F5 servicios, IDOR y validación` | `pendiente` | `⚪ PENDIENTE` |
+| `CP-05` | `F5` | `F5.1` – `F5.3` | `docs(audit): F5 servicios, IDOR y validación` | `94b6c52` | `✅ COMPLETADO` |
 | `CP-06` | `F6` | `F6.1` – `F6.3` | `docs(audit): F6 edge function, push y SW` | `pendiente` | `⚪ PENDIENTE` |
 | `CP-07` | `F7` | `F7.1` – `F7.3` | `docs(audit): F7 web, XSS y headers` | `pendiente` | `⚪ PENDIENTE` |
 | `CP-08` | `F8` | `F8.1` – `F8.2` | `docs(audit): F8 android y capacitor` | `pendiente` | `⚪ PENDIENTE` |
@@ -215,7 +218,7 @@
 | :--- | :--- | :--- | :--- | :--- | :--- |
 | `SEC-001` | Zustand en texto plano en `localStorage` | `F4` | ⚠️ Parcial | `✅ CERRADO — setItem borra plaintext y cifra; sin fallback` | `F4-storage-inventory.md` §1.1 |
 | `SEC-002` | Clave AES-GCM derivada de secreto en `localStorage` | `F4` | 🔁 Regresión probable | `❌ CONFIRMADO (Media) — clave derivable de user.id + salt público; PoC DECRYPTED_OK` | `F4-crypto-and-auditlog.md` §1.3-1.4 |
-| `SEC-003` | Edge Function `send-reminders` sin auth / comparación no constante | `F6` | ⚠️ Parcial | `⬜ PENDIENTE` | `F6-edge-push-sw.md` |
+| `SEC-003` | Edge Function `send-reminders` sin auth / comparación no constante | `F6` | ⚠️ Parcial | `⚠️ PARCIAL — verify_jwt + secreto; comparación no constante; FUNCTION_SECRET vacío (falla cerrada)` | `F6-edge-push-sw.md` §3-4 |
 | `SEC-004` | `cleanup_stale_sessions()` `SECURITY DEFINER` | `F2` | ⚠️ / 🔁 | `⚠️ PARCIAL — EXECUTE a authenticated; guard roto (siempre deniega)` | `F2-catalog-and-rls.md` |
 | `SEC-005` | IDOR en servicios (`.eq('user_id', ...)`) | `F5` | ✅ por verificar | `⚠️ PARCIAL — 3 escrituras sin filtro; RLS las contiene; Storage sin prefijo` | `F5-services-idor-validation.md` §2-3 |
 | `SEC-006` | Clave `anon` con expiración año 2100 | `F1` | ❓ por verificar | `⚠️ PARCIAL — role=anon, exp 2036 (10 años)`, no 2100 | `F1-supply-chain-and-bundle.md` |
@@ -225,11 +228,11 @@
 | `SEC-010` | Takeover de sesión multi-dispositivo sin MFA | `F3` | ❓ por verificar | `⚠️ CONFIRMADO (diseño) — sin reauth; canal público (DoS); RLS contiene cross-tenant` | `F3-auth-mfa-sessions.md` |
 | `SEC-011` | Columna `deleted_at` inexistente en RLS de `user_sessions` | `F2` | ✅ por verificar | `✅ CERRADO — políticas sin deleted_at` | `F2-catalog-and-rls.md` |
 | `SEC-012` | `isValidRedirectUri` permite cualquier `localhost` | `F3` | ❌ Abierto | `⚠️ CONFIRMADO (parcial) — cliente laxo; allowlist GoTrue bloquea redirect` | `F3-auth-mfa-sessions.md` |
-| `SEC-013` | Rate limit de Edge Function en memoria de Deno | `F6` | ❌ Abierto | `⬜ PENDIENTE` | `F6-edge-push-sw.md` |
+| `SEC-013` | Rate limit de Edge Function en memoria de Deno | `F6` | ❌ Abierto | `❌ CONFIRMADO (Bajo) — Map por isolate; XFF completo y spoofable; sin poda` | `F6-edge-push-sw.md` §6 |
 | `SEC-014` | Políticas RLS sobre vistas SQL (`*_safe`) | `F2` | ❌ Escalado (`NEW-02`) | `✅ CERRADO — vistas con security_invoker=true` | `F2-catalog-and-rls.md` |
 | `SEC-015` | Datos no borrados de storage al cerrar sesión | `F4` | ✅ por verificar | `❌ CONFIRMADO (Alta) — no borra estado/sync/recibos/audit; salt rompe descifrado` | `F4-storage-inventory.md` §2 |
 | `SEC-016` | RLS de `user_settings` con `policyprefix` inválido | `F2` | ✅ por verificar | `✅ CERRADO — 4 políticas correctas` | `F2-catalog-and-rls.md` |
-| `SEC-017` | CORS wildcard `*` en Edge Function | `F6` | ⚠️ Parcial | `⬜ PENDIENTE` | `F6-edge-push-sw.md` |
+| `SEC-017` | CORS wildcard `*` en Edge Function | `F6` | ⚠️ Parcial | `❌ CONFIRMADO (Bajo) — ACAO * fijo en producción; ALLOWED_ORIGIN ausente` | `F6-edge-push-sw.md` §5 |
 | `SEC-018` | `profile.email` persistido en estado de Zustand | `F4` | ❓ por verificar | `❌ CONFIRMADO (Media) — cifrado local, sync JSONB y export por defecto` | `F4-storage-inventory.md` §3 |
 | `SEC-019` | `userId` / `clientId` en logs de consola | `F10` | ❓ por verificar | `⬜ PENDIENTE` | `F10-privacy-logging-gdpr.md` |
 | `SEC-020` | Importación JSON sin límite de tamaño previo al parseo | `F5` | ❓ por verificar | `⚠️ PARCIAL — UI 20 MB; store sin límite ni topes; Zod no aplicado` | `F5-services-idor-validation.md` §4 |
@@ -245,9 +248,9 @@
 | `NEW-04` | MFA aplicado sólo en UI; políticas RLS no exigen `aal2` | `F2`/`F3` | `N1`/`N2` | `❌ CONFIRMADO (crítico) — MFA UI-only; aal1 conserva CRUD` | `F3-auth-mfa-sessions.md` |
 | `NEW-05` | Desfase entre `supabase/schema.sql` + `migrations/` y el esquema real en producción | `F2` | `N1` | `❌ CONFIRMADO — 12 diferencias; falta notification_prefs` | `F2-schema-drift.md` |
 | `NEW-06` | Android `android:allowBackup="true"` sin `dataExtractionRules` | `F8` | `N0` | `⬜ PENDIENTE` | `F8-android-masvs.md` |
-| `NEW-07` | Supply chain: `esm.sh` flotante en Deno, `npm audit \|\| true` en CI y auto-merge | `F1`/`F9` | `N0` | `⚠️ CONFIRMADO PARCIAL (F1)` — esm.sh `@2` flotante; CI pendiente F9 | `F1` y `F9` |
-| `NEW-08` | Service Worker `public/sw.js`: open redirect en `notificationclick` y `message` sin validar origen | `F6` | `N0` | `⬜ PENDIENTE` | `F6-edge-push-sw.md` |
-| `NEW-09` | Notificaciones muestran montos financieros por defecto (`hideAmountsInNotifications=false`) | `F6` | `N0` | `⬜ PENDIENTE` | `F6-edge-push-sw.md` |
+| `NEW-07` | Supply chain: `esm.sh` flotante en Deno, `npm audit \|\| true` en CI y auto-merge | `F1`/`F9` | `N0` | `⚠️ CONFIRMADO PARCIAL (F1/F6)` — esm.sh `@2` resuelto a `2.117.2`; CI pendiente F9 | `F1` y `F6` §2 |
+| `NEW-08` | Service Worker `public/sw.js`: open redirect en `notificationclick` y `message` sin validar origen | `F6` | `N0` | `❌ CONFIRMADO (Media) — PoC OPEN_REDIRECT_CONFIRMED; message sin origin/source` | `F6-edge-push-sw.md` §8 |
+| `NEW-09` | Notificaciones muestran montos financieros por defecto (`hideAmountsInNotifications=false`) | `F6` | `N0` | `❌ CONFIRMADO (Media/Baja) — montos por defecto; producción ignora preferencias` | `F6-edge-push-sw.md` §7 |
 | `NEW-10` | `dangerouslySetInnerHTML` en `src/components/ui/chart.tsx` L70 | `F7` | `N0` | `⬜ PENDIENTE` | `F7-web-xss-csp.md` |
 | `NEW-11` | Debilidades en CSP y desalineación de headers entre `netlify.toml`, `vercel.json` e `index.html` | `F7` | `N0`/Pasivo | `⬜ PENDIENTE` | `F7-web-xss-csp.md` |
 | `NEW-12` | Metadatos versionados en git (`.netlify/state.json`, `graphify-out/`) | `F9` | `N0` | `⬜ PENDIENTE` | `F9-cicd-and-repo-hygiene.md` |
@@ -272,9 +275,9 @@
 | `T14` PoC de descifrado `NEW-01` | `F4` | `N0`+`N2` | `✅ PASA` | `DECRYPTED_OK` con user.id + salt público; clave incorrecta rechazada |
 | `T15` Update/delete sin `user_id` | `F5` | `N0` | `⚠️ PARCIAL` | 3 rutas sin filtro explícito; RLS `auth.uid()=user_id` las contiene; A→B cubierto por `T06` |
 | `T16` Import JSON malicioso | `F5` | `N0` | `⚠️ PARCIAL` | Límite 20 MB solo en UI; import sin Zod; prototype pollution global descartada |
-| `T17` Edge Function: paridad, 401, CORS | `F6` | `N1`+`N2` | `⬜ PENDIENTE` | - |
-| `T18` Rate limit de Edge Function | `F6` | `N0`+`N3` | `⬜ PENDIENTE` | - |
-| `T19` Open redirect del Service Worker | `F6` | `N0` | `⬜ PENDIENTE` | - |
+| `T17` Edge Function: paridad, 401, CORS | `F6` | `N1`+`N2` | `❌ FALLA` | Paridad rota (v4 239 vs repo 548 líneas); 401 sin credenciales ✅; CORS `*` ❌ |
+| `T18` Rate limit de Edge Function | `F6` | `N0`+`N3` | `❌ FALLA (estático)` | Map por isolate; clave XFF completa y spoofable; sin poda; no se ejecutó ráfaga |
+| `T19` Open redirect del Service Worker | `F6` | `N0` | `❌ FALLA` | PoC `OPEN_REDIRECT_CONFIRMED`; `message` sin `origin`/`source` |
 | `T20` SAST React/TS | `F7` | `N0` | `⬜ PENDIENTE` | - |
 | `T21` Headers de producción y CSP | `F7` | `N0`+Pasivo | `⬜ PENDIENTE` | - |
 | `T22` ZAP baseline local | `F7` | Local | `⬜ PENDIENTE` | - |
