@@ -29,7 +29,7 @@
 | `CP-P0-02` | P0-F2: OAuth PKCE, remoción de `setSession` y `AndroidManifest.xml` (`F8-A`, `SEC-012`) | `b54e4a2` | `[✅]` | `flowType:'pkce'`; deep link solo canjea `code`; redirect allowlist estricta; `allowBackup=false` + reglas XML; permisos de almacenamiento eliminados. |
 | `CP-P0-03` | P0-F3: Pepper en IndexedDB (`SEC-002`) y migración PBKDF2 (`F4-F`) | `3e0b1fc` | `[✅]` | Pepper 256-bit en `finance-pal-keystore`; salt per-user; fallback legacy sin sobrescribir salt; 9/9 tests. |
 | `CP-P0-04` | P0-F4: Purga total en Logout (`SEC-015`, `F4-D`) y máscara PII (`F10-B`) | `acf7d29` | `[✅]` | Purga de blobs/recibos/salts/peppers en `signOut`; `clearAuditLogs`; emails enmascarados y tokens redactados; 18/18 tests. |
-| `CP-P0-05` | P0-F5: Contraseñas 12+ chars y `rateLimiter` (`SEC-008`) + `graphify update .` | `[PENDIENTE]` | `[✅]` | Validador 12+ y rate limit `auth` 5/60s en Login/Perfil; `supabase/config.toml` endurecido; 9 tests nuevos; 27/27 suites; 0 leaks; grafo actualizado. |
+| `CP-P0-05` | P0-F5: Contraseñas 12+ chars y `rateLimiter` (`SEC-008`) + `graphify update .` | `4db5131` | `[✅]` | Validador 12+ y rate limit `auth` 5/60s en Login/Perfil; `supabase/config.toml` endurecido; 9 tests nuevos; 27/27 suites; 0 leaks; grafo actualizado. |
 
 ### 1.2 Resultados de Verificación de OpenCode CLI
 

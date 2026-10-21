@@ -267,7 +267,7 @@ tasks_blocked: 0
 - [✅] `graphify update .` ejecutado sin errores.
 - [✅] `03_ANTIGRAVITY_REVIEW.md` actualizado con el resumen de entrega.
 - [✅] Commit final en rama: `git commit -m "fix(security): P0-F5 enforce 12-char passwords, wire auth rate-limiter, and complete P0 remediation sprint (SEC-008)"`
-- **Hash del Commit `CP-P0-05`**: `[PENDIENTE]`
+- **Hash del Commit `CP-P0-05`**: `4db5131`
 
 ---
 
