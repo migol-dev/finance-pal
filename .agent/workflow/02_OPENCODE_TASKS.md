@@ -14,15 +14,15 @@
 | :--- | :--- |
 | **Total de Fases de Auditoría** | `12` (`F0` a `F11`) |
 | **Total de Tareas Planificadas** | `39` (`F0.1` a `F11.4`) |
-| **Tareas Completadas (✅)** | `27` |
+| **Tareas Completadas (✅)** | `29` |
 | **Tareas en Progreso (⏳)** | `0` |
 | **Tareas Bloqueadas / Escaladas a `agy` (⚠️)** | `4` |
-| **Tareas Pendientes (⚪)** | `8` |
-| **Progreso Estimado** | `[██████████████░░░░░░] 69% (27/39)` |
+| **Tareas Pendientes (⚪)** | `6` |
+| **Progreso Estimado** | `[████████████████░░░░░] 74% (29/39)` |
 | **Hallazgos Previos a Re-verificar (`SEC-*`)** | `20 / 21` verificados |
-| **Hipótesis Nuevas a Confirmar (`NEW-*`)** | `11 / 12` evaluadas |
-| **Matriz de Pruebas (`T01`–`T25`)** | `19 / 25` ejecutadas |
-| **Último Checkpoint Git** | `CP-07 (7b8af3e)` |
+| **Hipótesis Nuevas a Confirmar (`NEW-*`)** | `12 / 12` evaluadas |
+| **Matriz de Pruebas (`T01`–`T25`)** | `20 / 25` ejecutadas |
+| **Último Checkpoint Git** | `CP-08 (74f465a)` |
 | **Fecha/Hora de Inicio** | `2026-10-20` |
 | **Fecha/Hora de Última Actualización** | `2026-10-20` |
 
@@ -156,10 +156,12 @@
 ---
 
 ### ⚙️ Fase F9: CI/CD e Higiene del Repositorio (`CP-09` — Prioridad `P2` — `T24`)
-- [ ] **F9.1 [N0 — T24, NEW-07]:** Auditar `.github/workflows/ci.yml`, `.github/workflows/dependabot-auto-merge.yml`, `.github/workflows/bundle-analysis.yml` y `.github/dependabot.yml`: evaluar `npm audit --audit-level=high || true` (no bloqueante), ausencia de bloque `permissions:` de mínimo privilegio, acciones fijadas por tag mutable vs SHA, alcance del auto-merge de Dependabot y exposición de artefactos en `bundle-analysis.yml`.
+- [✅] **F9.1 [N0 — T24, NEW-07]:** Auditar `.github/workflows/ci.yml`, `.github/workflows/dependabot-auto-merge.yml`, `.github/workflows/bundle-analysis.yml` y `.github/dependabot.yml`: evaluar `npm audit --audit-level=high || true` (no bloqueante), ausencia de bloque `permissions:` de mínimo privilegio, acciones fijadas por tag mutable vs SHA, alcance del auto-merge de Dependabot y exposición de artefactos en `bundle-analysis.yml`.
   - **Evidencia esperada:** Análisis de workflows en `.agent/audit/evidence/F9-cicd-and-repo-hygiene.md`.
-- [ ] **F9.2 [N0 — NEW-12]:** Auditar los archivos versionados en el índice git (`git ls-files | grep -Ei "\.netlify|\.vercel|graphify-out|\.env"`) para evaluar la exposición de `.netlify/state.json` y `graphify-out/` (`NEW-12`), y revisar las reglas de `.gitignore` y `.agentignore` (sin leer archivos `.env*`).
+  - **Resultado:** ❌ `T24` FALLA. `F9-A`: `dependabot-auto-merge.yml` da `contents: write`/`pull-requests: write` a todo el workflow, incl. el job `ci` que ejecuta `npm ci` con credenciales persistentes de checkout; `ci.yml`/`bundle-analysis.yml` sin `permissions:`. `F9-B`: `npm audit ... || true` no bloquea (3 críticas/31 altas en F1). `F9-C`: auto-merge patch/minor/security sin audit y con Node 18 (EOL); sin evidencia de required checks. `F9-E`: artifact `bundle-stats` con `dist/stats.html`. Acciones por tag mutable (`@v4`/`@v2`), ninguna por SHA.
+- [✅] **F9.2 [N0 — NEW-12]:** Auditar los archivos versionados en el índice git (`git ls-files | grep -Ei "\.netlify|\.vercel|graphify-out|\.env"`) para evaluar la exposición de `.netlify/state.json` y `graphify-out/` (`NEW-12`), y revisar las reglas de `.gitignore` y `.agentignore` (sin leer archivos `.env*`).
   - **Evidencia esperada:** `.agent/audit/evidence/F9-cicd-and-repo-hygiene.md` (`CP-09`: `docs(audit): F9 ci/cd y repositorio`).
+  - **Resultado:** ❌ `NEW-12` CONFIRMADO (Bajo): `.netlify/state.json` (siteId) y `.netlify/netlify.toml` (ruta local `E:\Projects\...` + CSP antigua con `unsafe-inline`) versionados; 74 archivos de `graphify-out/` (incl. `cache/**` y `.graphify_python` con `/home/migol/...`). `.vercel/` sí ignorado; `.env`, `.env.local`, `.env.production` no versionados. `F9-F`: `.gitignore` anula `!.env.template` con `.env*` final; `.agentignore` exceptúa un `.env.example` inexistente.
 
 ---
 
@@ -208,7 +210,7 @@
 | `CP-05` | `F5` | `F5.1` – `F5.3` | `docs(audit): F5 servicios, IDOR y validación` | `94b6c52` | `✅ COMPLETADO` |
 | `CP-06` | `F6` | `F6.1` – `F6.3` | `docs(audit): F6 edge function, push y SW` | `e19433f` | `✅ COMPLETADO` |
 | `CP-07` | `F7` | `F7.1` – `F7.3` | `docs(audit): F7 web, XSS y headers` | `7b8af3e` | `✅ COMPLETADO` |
-| `CP-08` | `F8` | `F8.1` – `F8.2` | `docs(audit): F8 android y capacitor` | `pendiente` | `⚪ PENDIENTE` |
+| `CP-08` | `F8` | `F8.1` – `F8.2` | `docs(audit): F8 android y capacitor` | `74f465a` | `✅ COMPLETADO` |
 | `CP-09` | `F9` | `F9.1` – `F9.2` | `docs(audit): F9 ci/cd y repositorio` | `pendiente` | `⚪ PENDIENTE` |
 | `CP-10` | `F10` | `F10.1` – `F10.2` | `docs(audit): F10 privacidad y logging` | `pendiente` | `⚪ PENDIENTE` |
 | `CP-11` | `F11` | `F11.1` – `F11.4` | `docs(audit): F11 informe consolidado v2` | `pendiente` | `⚪ PENDIENTE` |
@@ -253,12 +255,12 @@
 | `NEW-04` | MFA aplicado sólo en UI; políticas RLS no exigen `aal2` | `F2`/`F3` | `N1`/`N2` | `❌ CONFIRMADO (crítico) — MFA UI-only; aal1 conserva CRUD` | `F3-auth-mfa-sessions.md` |
 | `NEW-05` | Desfase entre `supabase/schema.sql` + `migrations/` y el esquema real en producción | `F2` | `N1` | `❌ CONFIRMADO — 12 diferencias; falta notification_prefs` | `F2-schema-drift.md` |
 | `NEW-06` | Android `android:allowBackup="true"` sin `dataExtractionRules` | `F8` | `N0` | `❌ CONFIRMADO (Media) — backup incluye files/ y app_webview/ (sesión, salt, IndexedDB); sin reglas de exclusión` | `F8-android-masvs.md` §2.1 |
-| `NEW-07` | Supply chain: `esm.sh` flotante en Deno, `npm audit \|\| true` en CI y auto-merge | `F1`/`F9` | `N0` | `⚠️ CONFIRMADO PARCIAL (F1/F6)` — esm.sh `@2` resuelto a `2.117.2`; CI pendiente F9 | `F1` y `F6` §2 |
+| `NEW-07` | Supply chain: `esm.sh` flotante en Deno, `npm audit \|\| true` en CI y auto-merge | `F1`/`F9` | `N0` | `⚠️ CONFIRMADO PARCIAL (F1/F6/F9)` — esm.sh `@2` → `2.117.2`; `npm audit || true`; auto-merge write; acciones por tag mutable | `F1`, `F6` §2 y `F9-cicd-and-repo-hygiene.md` §2 |
 | `NEW-08` | Service Worker `public/sw.js`: open redirect en `notificationclick` y `message` sin validar origen | `F6` | `N0` | `❌ CONFIRMADO (Media) — PoC OPEN_REDIRECT_CONFIRMED; message sin origin/source` | `F6-edge-push-sw.md` §8 |
 | `NEW-09` | Notificaciones muestran montos financieros por defecto (`hideAmountsInNotifications=false`) | `F6` | `N0` | `❌ CONFIRMADO (Media/Baja) — montos por defecto; producción ignora preferencias` | `F6-edge-push-sw.md` §7 |
 | `NEW-10` | `dangerouslySetInnerHTML` en `src/components/ui/chart.tsx` L70 | `F7` | `N0` | `✅ DESCARTADO — sin llamantes; tree-shaken de dist; sink CSS solo si se reactiva` | `F7-web-xss-csp.md` §3 |
 | `NEW-11` | Debilidades en CSP y desalineación de headers entre `netlify.toml`, `vercel.json` e `index.html` | `F7` | `N0`/Pasivo | `⚠️ CONFIRMADO PARCIAL — CSP fuerte; wildcards/unsafe-inline; sin COOP/CORP/SRI/reporting` | `F7-web-xss-csp.md` §4-5 |
-| `NEW-12` | Metadatos versionados en git (`.netlify/state.json`, `graphify-out/`) | `F9` | `N0` | `⬜ PENDIENTE` | `F9-cicd-and-repo-hygiene.md` |
+| `NEW-12` | Metadatos versionados en git (`.netlify/state.json`, `graphify-out/`) | `F9` | `N0` | `❌ CONFIRMADO (Bajo) — state.json + netlify.toml con ruta local; 74 archivos de graphify-out (cache y .graphify_python); .vercel ignorado` | `F9-cicd-and-repo-hygiene.md` §3 |
 
 ### 5.3 Checklist de Matriz de Pruebas (`T01`–`T25`)
 
@@ -287,7 +289,7 @@
 | `T21` Headers de producción y CSP | `F7` | `N0`+Pasivo | `⚠️ PARCIAL` | CSP/HSTS/XCTO/XFO/Referrer/Permissions OK; faltan COOP/CORP/COEP, object-src, reporting y SRI |
 | `T22` ZAP baseline local | `F7` | Local | `✅ PASA` | 0 FAIL, 5 WARN, 62 PASS; warnings alineados con NEW-11 |
 | `T23` Android Manifest/backup/exported/FileProvider | `F8` | `N0` | `❌ FALLA` | `NEW-06` backup sin reglas; `F8-A` activity exportada + custom scheme + implicit flow; `F8-B` FileProvider amplio; `F8-G` permisos innecesarios; MASVS 1 PASS/10 PARTIAL/8 FAIL/5 N/A |
-| `T24` Endurecimiento de CI/CD | `F9` | `N0` | `⬜ PENDIENTE` | - |
+| `T24` Endurecimiento de CI/CD | `F9` | `N0` | `❌ FALLA` | `F9-A` write token + checkout persistente; `F9-B` audit no bloqueante; `F9-C` auto-merge sin gate; `F9-D` Node 18 EOL; `F9-E` artifact de bundle; acciones por tag mutable |
 | `T25` PII en logs de consola | `F10` | `N0` | `⬜ PENDIENTE` | - |
 
 ---
