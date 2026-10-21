@@ -1,0 +1,17 @@
+---
+source_file: "src/components/app/PillTabs.tsx"
+type: "code"
+community: "Autonomous Notification & Scheduling Engine"
+location: "L14"
+tags:
+  - graphify/code
+  - graphify/EXTRACTED
+  - community/Autonomous_Notification__Scheduling_Engine
+---
+
+# PillTabsProps
+
+## Connections
+- [[PillTabs.tsx]] - `contains` [EXTRACTED]
+
+#graphify/code #graphify/EXTRACTED #community/Autonomous_Notification__Scheduling_Engine
