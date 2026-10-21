@@ -25,7 +25,7 @@ trufflehog git file://. --only-verified --json \
 | # | Regla | Archivo:línea | Commit | Fecha | Entropía | Veredicto |
 | :-: | :--- | :--- | :--- | :--- | :---: | :--- |
 | 1 | `generic-api-key` | `.env.template:15` | `3b6a7552` | 2026-07-22 | 3.82 | ⚠️ Valor tipo API key en plantilla versionada (probable `VITE_SUPABASE_ANON_KEY`) |
-| 2 | `generic-api-key` | `src/lib/encrypted-storage.ts:16` | `4b55ff56` | 2026-07-20 | 3.74 | ✅ **Falso positivo**: `STORAGE_KEY = 'finance-pal-encrypted-v1'` (nombre de clave, no secreto) |
+| 2 | `generic-api-key` | `src/lib/encrypted-storage.ts:16` | `4b55ff56` | 2026-07-20 | 3.74 | ✅ **Falso positivo**: `STORAGE_KEY = '***'` (nombre de clave, no secreto) |
 | 3 | `jwt` | `.env:3` | `3d168652` | 2026-07-20 | 5.59 | ⚠️ **JWT real en el historial** (`.env` estuvo versionado). Valor redactado `***` |
 
 - El archivo `F1-gitleaks.json` se **sanitizó** (`Author`/`Email` → `***`) para eliminar PII del autor.

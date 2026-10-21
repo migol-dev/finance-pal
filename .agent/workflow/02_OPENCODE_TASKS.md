@@ -14,15 +14,15 @@
 | :--- | :--- |
 | **Total de Fases de Auditoría** | `12` (`F0` a `F11`) |
 | **Total de Tareas Planificadas** | `39` (`F0.1` a `F11.4`) |
-| **Tareas Completadas (✅)** | `31` |
+| **Tareas Completadas (✅)** | `35` |
 | **Tareas en Progreso (⏳)** | `0` |
 | **Tareas Bloqueadas / Escaladas a `agy` (⚠️)** | `4` |
-| **Tareas Pendientes (⚪)** | `4` |
-| **Progreso Estimado** | `[█████████████████░░░░] 79% (31/39)` |
+| **Tareas Pendientes (⚪)** | `0` |
+| **Progreso Estimado** | `[███████████████████░░] 90% (35/39)` |
 | **Hallazgos Previos a Re-verificar (`SEC-*`)** | `21 / 21` verificados |
 | **Hipótesis Nuevas a Confirmar (`NEW-*`)** | `12 / 12` evaluadas |
 | **Matriz de Pruebas (`T01`–`T25`)** | `21 / 25` ejecutadas |
-| **Último Checkpoint Git** | `CP-09 (5f55883)` |
+| **Último Checkpoint Git** | `CP-10 (1038fbc)` |
 | **Fecha/Hora de Inicio** | `2026-10-20` |
 | **Fecha/Hora de Última Actualización** | `2026-10-20` |
 
@@ -176,14 +176,18 @@
 ---
 
 ### 📊 Fase F11: Consolidación CVSS v3.1, `.agent/security_audit.md` v2 y Cierre (`CP-11`)
-- [ ] **F11.1 [N0]:** Redactar en `.agent/security_audit.md` la sección **v2 "Re-auditoría Integral 2026-10 — Finance Pal v1.21.0"** (conservando íntegra la auditoría v1 del 2026-09-23 como historial), con el dictamen final, vector **CVSS v3.1**, archivo#línea, nivel (`N0`–`N3`), evidencia enlazada, impacto, recomendación, esfuerzo (`S`/`M`/`L`) y referencia ASVS/MASVS para los **21 hallazgos (`SEC-001`…`SEC-021`)** y las **12 hipótesis (`NEW-01`…`NEW-12`)**.
+- [✅] **F11.1 [N0]:** Redactar en `.agent/security_audit.md` la sección **v2 "Re-auditoría Integral 2026-10 — Finance Pal v1.21.0"** (conservando íntegra la auditoría v1 del 2026-09-23 como historial), con el dictamen final, vector **CVSS v3.1**, archivo#línea, nivel (`N0`–`N3`), evidencia enlazada, impacto, recomendación, esfuerzo (`S`/`M`/`L`) y referencia ASVS/MASVS para los **21 hallazgos (`SEC-001`…`SEC-021`)** y las **12 hipótesis (`NEW-01`…`NEW-12`)**.
   - **Evidencia esperada:** Sección v2 de hallazgos en `.agent/security_audit.md`.
-- [ ] **F11.2 [N0]:** Incluir en `.agent/security_audit.md` v2 la tabla de ejecución completa de la matriz `T01`–`T25`, la matriz de riesgo residual y el **Backlog de Remediación Priorizado (P0 → P1 → P2 → P3)** listo para el siguiente ciclo de construcción.
+  - **Resultado:** ✅ Sección v2 añadida (líneas 995–1306) conservando v1 íntegra. Incluye dictamen (`🔴 ALTO — NO CERTIFICABLE` hasta P0), cobertura, 21 `SEC-*` y 12 `NEW-*` con CVSS 3.1, archivo#línea, nivel, evidencia, impacto, recomendación, esfuerzo y ASVS/MASVS; tabla adicional de hallazgos nuevos `F3`–`F10`.
+- [✅] **F11.2 [N0]:** Incluir en `.agent/security_audit.md` v2 la tabla de ejecución completa de la matriz `T01`–`T25`, la matriz de riesgo residual y el **Backlog de Remediación Priorizado (P0 → P1 → P2 → P3)** listo para el siguiente ciclo de construcción.
   - **Evidencia esperada:** Matriz `T01`–`T25` y Backlog en `.agent/security_audit.md`.
-- [ ] **F11.3 [N0]:** Verificar que ningún archivo bajo `.agent/` contenga secretos, JWT o PII (`gitleaks detect --source .agent --redact` y búsqueda de patrones `sbp_`, `eyJ`), y comprobar que ningún archivo de código fuente (`src/**`, `supabase/**`, `android/**`, `public/**`) fue modificado por la auditoría.
+  - **Resultado:** ✅ Matriz `T01`–`T25` (6 PASS / 9 PARCIAL-ESCALADA / 10 FALLA), matriz de riesgo residual por impacto/probabilidad y backlog de 35 acciones priorizadas P0–P3 con criterio de cierre y esfuerzo. P0: `NEW-04`, `F8-A`, `SEC-002`, `SEC-015`, `SEC-008`.
+- [✅] **F11.3 [N0]:** Verificar que ningún archivo bajo `.agent/` contenga secretos, JWT o PII (`gitleaks detect --source .agent --redact` y búsqueda de patrones `sbp_`, `eyJ`), y comprobar que ningún archivo de código fuente (`src/**`, `supabase/**`, `android/**`, `public/**`) fue modificado por la auditoría.
   - **Evidencia esperada:** Salida limpia de verificación de secretos y `git diff --stat .agent/`.
-- [ ] **F11.4 [N0]:** Ejecutar `graphify update .` para actualizar el grafo de conocimiento y registrar el cierre en `.agent/workflow/02_OPENCODE_TASKS.md` y `.agent/workflow/03_ANTIGRAVITY_REVIEW.md`.
+  - **Resultado:** ✅ `gitleaks dir .agent --redact` → **0 hallazgos**; `rg 'sbp_|eyJ…' .agent` → sin coincidencias. Se redactó el JWT de ejemplo de v1 (`security_audit.md:408`) y un falso positivo `generic-api-key` en `F1-supply-chain-and-bundle.md`. `git log 769cf9e^..HEAD` confirma que `CP-00`…`CP-10` solo tocaron `.agent/` (`ONLY_AGENT_FILES`).
+- [✅] **F11.4 [N0]:** Ejecutar `graphify update .` para actualizar el grafo de conocimiento y registrar el cierre en `.agent/workflow/02_OPENCODE_TASKS.md` y `.agent/workflow/03_ANTIGRAVITY_REVIEW.md`.
   - **Evidencia esperada:** Grafo actualizado (`CP-11`: `docs(audit): F11 informe consolidado v2`).
+  - **Resultado:** ✅ `graphify update .` ejecutado; cierre registrado en `02_OPENCODE_TASKS.md` (35/39, 4 escaladas) y `03_ANTIGRAVITY_REVIEW.md` (entrega `E-F11`, CA-01…CA-08). `CP-11` pendiente de commit final.
 
 ---
 
@@ -214,7 +218,7 @@
 | `CP-07` | `F7` | `F7.1` – `F7.3` | `docs(audit): F7 web, XSS y headers` | `7b8af3e` | `✅ COMPLETADO` |
 | `CP-08` | `F8` | `F8.1` – `F8.2` | `docs(audit): F8 android y capacitor` | `74f465a` | `✅ COMPLETADO` |
 | `CP-09` | `F9` | `F9.1` – `F9.2` | `docs(audit): F9 ci/cd y repositorio` | `5f55883` | `✅ COMPLETADO` |
-| `CP-10` | `F10` | `F10.1` – `F10.2` | `docs(audit): F10 privacidad y logging` | `pendiente` | `⚪ PENDIENTE` |
+| `CP-10` | `F10` | `F10.1` – `F10.2` | `docs(audit): F10 privacidad y logging` | `1038fbc` | `✅ COMPLETADO` |
 | `CP-11` | `F11` | `F11.1` – `F11.4` | `docs(audit): F11 informe consolidado v2` | `pendiente` | `⚪ PENDIENTE` |
 
 ---
@@ -298,7 +302,8 @@
 
 ## 6. Resumen de Entrega para Antigravity Reviewer (`03_ANTIGRAVITY_REVIEW.md`)
 
-- **Estado de Ejecución de Fases (`F0`–`F11`):** `[PENDIENTE]`
-- **Archivos de Evidencia Generados en `.agent/audit/evidence/`:** `[PENDIENTE]`
-- **Verificación de CERO Cambios en Código Fuente (`src/**`, `supabase/**`, `android/**`):** `[PENDIENTE]`
-- **Mensaje de Traspaso a Antigravity (`agy`):** Plan listo y tareas pre-cargadas para iniciar ejecución de Fase 2.
+- **Estado de Ejecución de Fases (`F0`–`F11`):** `✅ COMPLETADO` — 35/39 tareas ✅; 4 escaladas (`T06`, `T09`, `T12`, `T13`); 0 pendientes.
+- **Archivos de Evidencia Generados en `.agent/audit/evidence/`:** `23` archivos (`F0`–`F10`, incluidos dumps, JSON de scanners y PoCs en `.agent/audit/scratch/`).
+- **Verificación de CERO Cambios en Código Fuente (`src/**`, `supabase/**`, `android/**`):** `✅ VERIFICADO` — `CP-00`…`CP-10` solo tocaron `.agent/`.
+- **Verificación de Secretos:** `✅ gitleaks dir .agent --redact` = 0; JWT v1 redactado; sin `sbp_`/JWT en `.agent/`.
+- **Mensaje de Traspaso a Antigravity (`agy`):** Fase 2 completada. Revisar `R-F0`…`R-F11`, resolver las 4 escalaciones dinámicas y firmar el dictamen; el backlog P0–P3 está en `.agent/security_audit.md` §12.9.
