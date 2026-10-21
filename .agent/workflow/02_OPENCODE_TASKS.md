@@ -14,15 +14,15 @@
 | :--- | :--- |
 | **Total de Fases de Auditoría** | `12` (`F0` a `F11`) |
 | **Total de Tareas Planificadas** | `39` (`F0.1` a `F11.4`) |
-| **Tareas Completadas (✅)** | `25` |
+| **Tareas Completadas (✅)** | `27` |
 | **Tareas en Progreso (⏳)** | `0` |
 | **Tareas Bloqueadas / Escaladas a `agy` (⚠️)** | `4` |
-| **Tareas Pendientes (⚪)** | `10` |
-| **Progreso Estimado** | `[█████████████░░░░░░░] 64% (25/39)` |
+| **Tareas Pendientes (⚪)** | `8` |
+| **Progreso Estimado** | `[██████████████░░░░░░] 69% (27/39)` |
 | **Hallazgos Previos a Re-verificar (`SEC-*`)** | `20 / 21` verificados |
-| **Hipótesis Nuevas a Confirmar (`NEW-*`)** | `10 / 12` evaluadas |
-| **Matriz de Pruebas (`T01`–`T25`)** | `18 / 25` ejecutadas |
-| **Último Checkpoint Git** | `CP-06 (e19433f)` |
+| **Hipótesis Nuevas a Confirmar (`NEW-*`)** | `11 / 12` evaluadas |
+| **Matriz de Pruebas (`T01`–`T25`)** | `19 / 25` ejecutadas |
+| **Último Checkpoint Git** | `CP-07 (7b8af3e)` |
 | **Fecha/Hora de Inicio** | `2026-10-20` |
 | **Fecha/Hora de Última Actualización** | `2026-10-20` |
 
@@ -146,10 +146,12 @@
 ---
 
 ### 🤖 Fase F8: Android / Capacitor — Nivel Código Fuente (`CP-08` — Prioridad `P1` — `T23`)
-- [ ] **F8.1 [N0 — T23, NEW-06]:** Auditar `android/app/src/main/AndroidManifest.xml`, `android/app/src/main/res/xml/config.xml` y `android/app/src/main/res/xml/file_paths.xml`: evaluar `android:allowBackup="true"` sin `dataExtractionRules`/`fullBackupContent` (`NEW-06`), actividades/receivers con `android:exported="true"` e `intent-filter`, alcance de directorios expuestos en `FileProvider` y permisos (`READ/WRITE_EXTERNAL_STORAGE`, `SCHEDULE_EXACT_ALARM`, etc.).
+- [✅] **F8.1 [N0 — T23, NEW-06]:** Auditar `android/app/src/main/AndroidManifest.xml`, `android/app/src/main/res/xml/config.xml` y `android/app/src/main/res/xml/file_paths.xml`: evaluar `android:allowBackup="true"` sin `dataExtractionRules`/`fullBackupContent` (`NEW-06`), actividades/receivers con `android:exported="true"` e `intent-filter`, alcance de directorios expuestos en `FileProvider` y permisos (`READ/WRITE_EXTERNAL_STORAGE`, `SCHEDULE_EXACT_ALARM`, etc.).
   - **Evidencia esperada:** Sección Manifest y FileProvider en `.agent/audit/evidence/F8-android-masvs.md`.
-- [ ] **F8.2 [N0 — T23]:** Auditar `android/app/build.gradle`, `android/app/proguard-rules.pro`, `android/variables.gradle`, `capacitor.config.ts` y `android/app/src/main/java/**`: evaluar `minSdkVersion`/`targetSdkVersion`, `server.cleartext`, `minifyEnabled`, `shrinkResources`, ausencia de keystores en git (`git ls-files | grep -Ei "jks|keystore"`), `webContentsDebuggingEnabled` y completar la matriz **OWASP MASVS v2** (`STORAGE`, `CRYPTO`, `AUTH`, `NETWORK`, `PLATFORM`, `CODE`).
+  - **Resultado:** ❌ `NEW-06` confirmado: `allowBackup=true` (L5) sin reglas; el backup por defecto incluye `files/` (recibos/estado cifrado) y `app_webview/` (sesión, salt, IndexedDB). ❌ `F8-A` (Alta): `MainActivity` exportada + custom scheme `app.financepal.com://auth/callback` + OAuth implicit + `setSession` sin validar origen/`state` → interceptación o fijación de sesión. ❌ `F8-B` (Baja): `file_paths.xml` expone `.` en `external-path`/`files-path`/`cache-path`; el plugin `Share` concede URIs sobre esas raíces. ℹ️ `F8-C`: `config.xml` con `access origin="*"` es generado/gitignoreado y no lo consume Capacitor. ⚠️ Permisos `READ_MEDIA_IMAGES` y `READ/WRITE_EXTERNAL_STORAGE` innecesarios (`F8-G`).
+- [✅] **F8.2 [N0 — T23]:** Auditar `android/app/build.gradle`, `android/app/proguard-rules.pro`, `android/variables.gradle`, `capacitor.config.ts` y `android/app/src/main/java/**`: evaluar `minSdkVersion`/`targetSdkVersion`, `server.cleartext`, `minifyEnabled`, `shrinkResources`, ausencia de keystores en git (`git ls-files | grep -Ei "jks|keystore"`), `webContentsDebuggingEnabled` y completar la matriz **OWASP MASVS v2** (`STORAGE`, `CRYPTO`, `AUTH`, `NETWORK`, `PLATFORM`, `CODE`).
   - **Evidencia esperada:** `.agent/audit/evidence/F8-android-masvs.md` (`CP-08`: `docs(audit): F8 android y capacitor`).
+  - **Resultado:** ✅ Matriz MASVS v2 completa (24 controles: 1 PASS, 10 PARTIAL, 8 FAIL, 5 N/A). `minSdk 24`/`target 36`, `minifyEnabled`/`shrinkResources` activos, `proguard-rules.pro` solo comentarios, `cleartext=false`, debugging WebView off en release, sin bridges JS. ⚠️ `F8-D`: sin `signingConfig`, `assembleRelease` genera APK unsigned pese al README; sin keystore versionado. ⚠️ `F8-E`: push nativo sin `google-services.json` y sin llamantes. ❌ `F8-F`: sin `FLAG_SECURE` ni anti-tapjacking.
 
 ---
 
@@ -205,7 +207,7 @@
 | `CP-04` | `F4` | `F4.1` – `F4.3` | `docs(audit): F4 almacenamiento cliente y cifrado` | `5787bf9` | `✅ COMPLETADO` |
 | `CP-05` | `F5` | `F5.1` – `F5.3` | `docs(audit): F5 servicios, IDOR y validación` | `94b6c52` | `✅ COMPLETADO` |
 | `CP-06` | `F6` | `F6.1` – `F6.3` | `docs(audit): F6 edge function, push y SW` | `e19433f` | `✅ COMPLETADO` |
-| `CP-07` | `F7` | `F7.1` – `F7.3` | `docs(audit): F7 web, XSS y headers` | `pendiente` | `⚪ PENDIENTE` |
+| `CP-07` | `F7` | `F7.1` – `F7.3` | `docs(audit): F7 web, XSS y headers` | `7b8af3e` | `✅ COMPLETADO` |
 | `CP-08` | `F8` | `F8.1` – `F8.2` | `docs(audit): F8 android y capacitor` | `pendiente` | `⚪ PENDIENTE` |
 | `CP-09` | `F9` | `F9.1` – `F9.2` | `docs(audit): F9 ci/cd y repositorio` | `pendiente` | `⚪ PENDIENTE` |
 | `CP-10` | `F10` | `F10.1` – `F10.2` | `docs(audit): F10 privacidad y logging` | `pendiente` | `⚪ PENDIENTE` |
@@ -230,7 +232,7 @@
 | `SEC-009` | Hash-chaining del audit log (`djb2` → `SHA-256` sin HMAC) | `F4` | ✅ por verificar | `⚠️ PARCIAL — SHA-256 sí; sin HMAC/anclaje; cadena falsificable (PoC)` | `F4-crypto-and-auditlog.md` §2.3 |
 | `SEC-010` | Takeover de sesión multi-dispositivo sin MFA | `F3` | ❓ por verificar | `⚠️ CONFIRMADO (diseño) — sin reauth; canal público (DoS); RLS contiene cross-tenant` | `F3-auth-mfa-sessions.md` |
 | `SEC-011` | Columna `deleted_at` inexistente en RLS de `user_sessions` | `F2` | ✅ por verificar | `✅ CERRADO — políticas sin deleted_at` | `F2-catalog-and-rls.md` |
-| `SEC-012` | `isValidRedirectUri` permite cualquier `localhost` | `F3` | ❌ Abierto | `⚠️ CONFIRMADO (parcial) — cliente laxo; allowlist GoTrue bloquea redirect` | `F3-auth-mfa-sessions.md` |
+| `SEC-012` | `isValidRedirectUri` permite cualquier `localhost` | `F3` | ❌ Abierto | `⚠️ CONFIRMADO (parcial) — cliente laxo; allowlist GoTrue bloquea redirect; en Android el custom scheme + implicit flow permite interceptación (F8-A)` | `F3-auth-mfa-sessions.md` / `F8-android-masvs.md` §2.2 |
 | `SEC-013` | Rate limit de Edge Function en memoria de Deno | `F6` | ❌ Abierto | `❌ CONFIRMADO (Bajo) — Map por isolate; XFF completo y spoofable; sin poda` | `F6-edge-push-sw.md` §6 |
 | `SEC-014` | Políticas RLS sobre vistas SQL (`*_safe`) | `F2` | ❌ Escalado (`NEW-02`) | `✅ CERRADO — vistas con security_invoker=true` | `F2-catalog-and-rls.md` |
 | `SEC-015` | Datos no borrados de storage al cerrar sesión | `F4` | ✅ por verificar | `❌ CONFIRMADO (Alta) — no borra estado/sync/recibos/audit; salt rompe descifrado` | `F4-storage-inventory.md` §2 |
@@ -250,7 +252,7 @@
 | `NEW-03` | `cleanup_stale_sessions()` ejecutable por cualquier rol `authenticated` | `F2` | `N1` | `⚠️ CONFIRMADO (privilegio) — mitigado por guard defectuoso` | `F2-catalog-and-rls.md` |
 | `NEW-04` | MFA aplicado sólo en UI; políticas RLS no exigen `aal2` | `F2`/`F3` | `N1`/`N2` | `❌ CONFIRMADO (crítico) — MFA UI-only; aal1 conserva CRUD` | `F3-auth-mfa-sessions.md` |
 | `NEW-05` | Desfase entre `supabase/schema.sql` + `migrations/` y el esquema real en producción | `F2` | `N1` | `❌ CONFIRMADO — 12 diferencias; falta notification_prefs` | `F2-schema-drift.md` |
-| `NEW-06` | Android `android:allowBackup="true"` sin `dataExtractionRules` | `F8` | `N0` | `⬜ PENDIENTE` | `F8-android-masvs.md` |
+| `NEW-06` | Android `android:allowBackup="true"` sin `dataExtractionRules` | `F8` | `N0` | `❌ CONFIRMADO (Media) — backup incluye files/ y app_webview/ (sesión, salt, IndexedDB); sin reglas de exclusión` | `F8-android-masvs.md` §2.1 |
 | `NEW-07` | Supply chain: `esm.sh` flotante en Deno, `npm audit \|\| true` en CI y auto-merge | `F1`/`F9` | `N0` | `⚠️ CONFIRMADO PARCIAL (F1/F6)` — esm.sh `@2` resuelto a `2.117.2`; CI pendiente F9 | `F1` y `F6` §2 |
 | `NEW-08` | Service Worker `public/sw.js`: open redirect en `notificationclick` y `message` sin validar origen | `F6` | `N0` | `❌ CONFIRMADO (Media) — PoC OPEN_REDIRECT_CONFIRMED; message sin origin/source` | `F6-edge-push-sw.md` §8 |
 | `NEW-09` | Notificaciones muestran montos financieros por defecto (`hideAmountsInNotifications=false`) | `F6` | `N0` | `❌ CONFIRMADO (Media/Baja) — montos por defecto; producción ignora preferencias` | `F6-edge-push-sw.md` §7 |
@@ -284,7 +286,7 @@
 | `T20` SAST React/TS | `F7` | `N0` | `✅ PASA` | Semgrep 173 reglas/304 archivos; 0 sinks XSS en `src/`; único sink en código muerto |
 | `T21` Headers de producción y CSP | `F7` | `N0`+Pasivo | `⚠️ PARCIAL` | CSP/HSTS/XCTO/XFO/Referrer/Permissions OK; faltan COOP/CORP/COEP, object-src, reporting y SRI |
 | `T22` ZAP baseline local | `F7` | Local | `✅ PASA` | 0 FAIL, 5 WARN, 62 PASS; warnings alineados con NEW-11 |
-| `T23` Android Manifest/backup/exported/FileProvider | `F8` | `N0` | `⬜ PENDIENTE` | - |
+| `T23` Android Manifest/backup/exported/FileProvider | `F8` | `N0` | `❌ FALLA` | `NEW-06` backup sin reglas; `F8-A` activity exportada + custom scheme + implicit flow; `F8-B` FileProvider amplio; `F8-G` permisos innecesarios; MASVS 1 PASS/10 PARTIAL/8 FAIL/5 N/A |
 | `T24` Endurecimiento de CI/CD | `F9` | `N0` | `⬜ PENDIENTE` | - |
 | `T25` PII en logs de consola | `F10` | `N0` | `⬜ PENDIENTE` | - |
 
