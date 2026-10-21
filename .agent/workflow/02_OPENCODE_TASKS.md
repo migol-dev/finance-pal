@@ -14,15 +14,15 @@
 | :--- | :--- |
 | **Total de Fases de Auditoría** | `12` (`F0` a `F11`) |
 | **Total de Tareas Planificadas** | `39` (`F0.1` a `F11.4`) |
-| **Tareas Completadas (✅)** | `22` |
+| **Tareas Completadas (✅)** | `25` |
 | **Tareas en Progreso (⏳)** | `0` |
 | **Tareas Bloqueadas / Escaladas a `agy` (⚠️)** | `4` |
-| **Tareas Pendientes (⚪)** | `13` |
-| **Progreso Estimado** | `[███████████░░░░░░░░░] 56% (22/39)` |
+| **Tareas Pendientes (⚪)** | `10` |
+| **Progreso Estimado** | `[█████████████░░░░░░░] 64% (25/39)` |
 | **Hallazgos Previos a Re-verificar (`SEC-*`)** | `20 / 21` verificados |
-| **Hipótesis Nuevas a Confirmar (`NEW-*`)** | `8 / 12` evaluadas |
-| **Matriz de Pruebas (`T01`–`T25`)** | `15 / 25` ejecutadas |
-| **Último Checkpoint Git** | `CP-05 (94b6c52)` |
+| **Hipótesis Nuevas a Confirmar (`NEW-*`)** | `10 / 12` evaluadas |
+| **Matriz de Pruebas (`T01`–`T25`)** | `18 / 25` ejecutadas |
+| **Último Checkpoint Git** | `CP-06 (e19433f)` |
 | **Fecha/Hora de Inicio** | `2026-10-20` |
 | **Fecha/Hora de Última Actualización** | `2026-10-20` |
 
@@ -133,12 +133,15 @@
 ---
 
 ### 🌐 Fase F7: Plataforma Web, XSS y Headers HTTP (`CP-07` — Prioridad `P2` — `T20`–`T22`)
-- [ ] **F7.1 [N0 — T20]:** Ejecutar escaneo SAST sobre `src/`, `public/` y `supabase/functions/` (`semgrep` si está disponible y/o auditoría exhaustiva de patrones DOM peligrosos: `dangerouslySetInnerHTML`, `innerHTML`, `outerHTML`, `eval(`, `new Function(`, `document.write`, `window.open(`, `target="_blank"`).
+- [✅] **F7.1 [N0 — T20]:** Ejecutar escaneo SAST sobre `src/`, `public/` y `supabase/functions/` (`semgrep` si está disponible y/o auditoría exhaustiva de patrones DOM peligrosos: `dangerouslySetInnerHTML`, `innerHTML`, `outerHTML`, `eval(`, `new Function(`, `document.write`, `window.open(`, `target="_blank"`).
   - **Evidencia esperada:** `.agent/audit/evidence/F7-semgrep.json` y listado analizado en `.agent/audit/evidence/F7-web-xss-csp.md`.
-- [ ] **F7.2 [N0 — NEW-10]:** Consultar el grafo (`graphify path "ChartStyle" "useFinanceData"` / llamadas a `ChartContainer`) y auditar `src/components/ui/chart.tsx` L70 (`dangerouslySetInnerHTML`) para determinar si las claves/colores de `config` son estáticos o pueden ser controlados por datos del usuario.
+  - **Resultado:** ✅ Semgrep Docker (173 reglas, 304 archivos, 11 hallazgos) sin sinks XSS en `src/`; los 11 son Android/CI (F8/F9). Auditoría manual: 0 `innerHTML`/`eval`/`document.write`; `window.open` y `target=_blank` con `noopener`; `normalizeUrl` neutraliza `javascript:`. `T20` ✅.
+- [✅] **F7.2 [N0 — NEW-10]:** Consultar el grafo (`graphify path "ChartStyle" "useFinanceData"` / llamadas a `ChartContainer`) y auditar `src/components/ui/chart.tsx` L70 (`dangerouslySetInnerHTML`) para determinar si las claves/colores de `config` son estáticos o pueden ser controlados por datos del usuario.
   - **Evidencia esperada:** Trazado de flujo de datos de `chart.tsx` en `.agent/audit/evidence/F7-web-xss-csp.md`.
-- [ ] **F7.3 [N0 + Pasivo — T21, T22, NEW-11]:** Comparar los headers de seguridad y directivas CSP en `netlify.toml`, `vercel.json` e `index.html` (`img-src https:`, `style-src 'unsafe-inline'`, `connect-src https://api.github.com` en `src/lib/version-check.ts`, ausencia de `upgrade-insecure-requests`, `object-src 'none'`, `COOP`, `CORP`), y capturar 1 petición `HEAD` pasiva si el dominio público está activo en `.agent/audit/evidence/F7-headers-prod.txt`.
+  - **Resultado:** ✅ `NEW-10` descartado: sin llamantes (`graphify` solo encuentra `ChartContainer→ChartStyle`), `ChartStyle` no se usa fuera del archivo y `data-chart` no aparece en `dist/` (tree-shaken). Riesgo residual de inyección CSS si se reactiva con datos dinámicos.
+- [✅] **F7.3 [N0 + Pasivo — T21, T22, NEW-11]:** Comparar los headers de seguridad y directivas CSP en `netlify.toml`, `vercel.json` e `index.html` (`img-src https:`, `style-src 'unsafe-inline'`, `connect-src https://api.github.com` en `src/lib/version-check.ts`, ausencia de `upgrade-insecure-requests`, `object-src 'none'`, `COOP`, `CORP`), y capturar 1 petición `HEAD` pasiva si el dominio público está activo en `.agent/audit/evidence/F7-headers-prod.txt`.
   - **Evidencia esperada:** `.agent/audit/evidence/F7-headers-prod.txt` y `.agent/audit/evidence/F7-web-xss-csp.md` (`CP-07`: `docs(audit): F7 web, XSS y headers`).
+  - **Resultado:** ⚠️ `NEW-11` parcial: CSP/HSTS/XCTO/XFO/Referrer/Permissions presentes en Netlify, Vercel y producción; faltan COOP/CORP/COEP, `object-src 'none'`, reporting y SRI. `HEAD` pasivo OK (`ACAO: *` informativo). ZAP baseline local: 0 FAIL, 5 WARN, 62 PASS (`T22` ✅). CSP solo por headers → WebView nativa sin CSP (`F7-A`).
 
 ---
 
@@ -201,7 +204,7 @@
 | `CP-03` | `F3` | `F3.1` – `F3.4` | `docs(audit): F3 auth, MFA y sesiones` | `dd8ff98` | `✅ COMPLETADO` |
 | `CP-04` | `F4` | `F4.1` – `F4.3` | `docs(audit): F4 almacenamiento cliente y cifrado` | `5787bf9` | `✅ COMPLETADO` |
 | `CP-05` | `F5` | `F5.1` – `F5.3` | `docs(audit): F5 servicios, IDOR y validación` | `94b6c52` | `✅ COMPLETADO` |
-| `CP-06` | `F6` | `F6.1` – `F6.3` | `docs(audit): F6 edge function, push y SW` | `pendiente` | `⚪ PENDIENTE` |
+| `CP-06` | `F6` | `F6.1` – `F6.3` | `docs(audit): F6 edge function, push y SW` | `e19433f` | `✅ COMPLETADO` |
 | `CP-07` | `F7` | `F7.1` – `F7.3` | `docs(audit): F7 web, XSS y headers` | `pendiente` | `⚪ PENDIENTE` |
 | `CP-08` | `F8` | `F8.1` – `F8.2` | `docs(audit): F8 android y capacitor` | `pendiente` | `⚪ PENDIENTE` |
 | `CP-09` | `F9` | `F9.1` – `F9.2` | `docs(audit): F9 ci/cd y repositorio` | `pendiente` | `⚪ PENDIENTE` |
@@ -251,8 +254,8 @@
 | `NEW-07` | Supply chain: `esm.sh` flotante en Deno, `npm audit \|\| true` en CI y auto-merge | `F1`/`F9` | `N0` | `⚠️ CONFIRMADO PARCIAL (F1/F6)` — esm.sh `@2` resuelto a `2.117.2`; CI pendiente F9 | `F1` y `F6` §2 |
 | `NEW-08` | Service Worker `public/sw.js`: open redirect en `notificationclick` y `message` sin validar origen | `F6` | `N0` | `❌ CONFIRMADO (Media) — PoC OPEN_REDIRECT_CONFIRMED; message sin origin/source` | `F6-edge-push-sw.md` §8 |
 | `NEW-09` | Notificaciones muestran montos financieros por defecto (`hideAmountsInNotifications=false`) | `F6` | `N0` | `❌ CONFIRMADO (Media/Baja) — montos por defecto; producción ignora preferencias` | `F6-edge-push-sw.md` §7 |
-| `NEW-10` | `dangerouslySetInnerHTML` en `src/components/ui/chart.tsx` L70 | `F7` | `N0` | `⬜ PENDIENTE` | `F7-web-xss-csp.md` |
-| `NEW-11` | Debilidades en CSP y desalineación de headers entre `netlify.toml`, `vercel.json` e `index.html` | `F7` | `N0`/Pasivo | `⬜ PENDIENTE` | `F7-web-xss-csp.md` |
+| `NEW-10` | `dangerouslySetInnerHTML` en `src/components/ui/chart.tsx` L70 | `F7` | `N0` | `✅ DESCARTADO — sin llamantes; tree-shaken de dist; sink CSS solo si se reactiva` | `F7-web-xss-csp.md` §3 |
+| `NEW-11` | Debilidades en CSP y desalineación de headers entre `netlify.toml`, `vercel.json` e `index.html` | `F7` | `N0`/Pasivo | `⚠️ CONFIRMADO PARCIAL — CSP fuerte; wildcards/unsafe-inline; sin COOP/CORP/SRI/reporting` | `F7-web-xss-csp.md` §4-5 |
 | `NEW-12` | Metadatos versionados en git (`.netlify/state.json`, `graphify-out/`) | `F9` | `N0` | `⬜ PENDIENTE` | `F9-cicd-and-repo-hygiene.md` |
 
 ### 5.3 Checklist de Matriz de Pruebas (`T01`–`T25`)
@@ -278,9 +281,9 @@
 | `T17` Edge Function: paridad, 401, CORS | `F6` | `N1`+`N2` | `❌ FALLA` | Paridad rota (v4 239 vs repo 548 líneas); 401 sin credenciales ✅; CORS `*` ❌ |
 | `T18` Rate limit de Edge Function | `F6` | `N0`+`N3` | `❌ FALLA (estático)` | Map por isolate; clave XFF completa y spoofable; sin poda; no se ejecutó ráfaga |
 | `T19` Open redirect del Service Worker | `F6` | `N0` | `❌ FALLA` | PoC `OPEN_REDIRECT_CONFIRMED`; `message` sin `origin`/`source` |
-| `T20` SAST React/TS | `F7` | `N0` | `⬜ PENDIENTE` | - |
-| `T21` Headers de producción y CSP | `F7` | `N0`+Pasivo | `⬜ PENDIENTE` | - |
-| `T22` ZAP baseline local | `F7` | Local | `⬜ PENDIENTE` | - |
+| `T20` SAST React/TS | `F7` | `N0` | `✅ PASA` | Semgrep 173 reglas/304 archivos; 0 sinks XSS en `src/`; único sink en código muerto |
+| `T21` Headers de producción y CSP | `F7` | `N0`+Pasivo | `⚠️ PARCIAL` | CSP/HSTS/XCTO/XFO/Referrer/Permissions OK; faltan COOP/CORP/COEP, object-src, reporting y SRI |
+| `T22` ZAP baseline local | `F7` | Local | `✅ PASA` | 0 FAIL, 5 WARN, 62 PASS; warnings alineados con NEW-11 |
 | `T23` Android Manifest/backup/exported/FileProvider | `F8` | `N0` | `⬜ PENDIENTE` | - |
 | `T24` Endurecimiento de CI/CD | `F9` | `N0` | `⬜ PENDIENTE` | - |
 | `T25` PII en logs de consola | `F10` | `N0` | `⬜ PENDIENTE` | - |
