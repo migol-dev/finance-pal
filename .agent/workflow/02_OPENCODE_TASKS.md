@@ -1,310 +1,288 @@
-# 🛠️ Registro de Ejecución y Checkpoints: OpenCode CLI & Subagentes
+# Tablero de Ejecución de Tareas — OpenCode CLI (`02_OPENCODE_TASKS.md`)
 
-> **Fase:** 2 — Ejecución de Auditoría, Recolección de Evidencias y Checkpoints (`F0`–`F11`)  
-> **Agente Ejecutor:** OpenCode CLI (`DeepSeek 4.1 Flash`) + Apoyo de Subagentes `agy` (`Gemini 3.8 Flash / Argon 4`)  
-> **Referencia de Entrada:** `.agent/workflow/01_ARCHITECT_PLAN.md` (y `.agent/task.md`)  
-> **Espacio de Evidencia:** `.agent/audit/evidence/` y `.agent/audit/scratch/` (CERO cambios en `src/**`, `supabase/**`, `android/**`)  
-> **Estado General:** 🟢 COMPLETADO (Fase 2 por OpenCode CLI + Fase 3 de resolución dinámica por Antigravity `agy`)  
+> **Fase:** 2 — Construcción de Código, Pruebas y Checkpoints (`P0-F0` a `P0-F5`)  
+> **Agente Asignado:** OpenCode CLI (`DeepSeek 4.1 Flash`)  
+> **Revisor (`Fase 3`):** Antigravity CLI (`Gemini 3.8 Flash` / `Argon 4`)  
+> **Estado General:** ⚪ EN ESPERA
 
----
+## Estado Global del Sprint
 
-## 1. Panel de Control de Progreso (Progress Dashboard)
-
-| Métrica | Valor |
-| :--- | :--- |
-| **Total de Fases de Auditoría** | `12` (`F0` a `F11`) |
-| **Total de Tareas Planificadas** | `39` (`F0.1` a `F11.4`) |
-| **Tareas Completadas (✅)** | `39` (`35` OpenCode CLI + `4` resueltas por `agy` en Fase 3) |
-| **Tareas en Progreso (⏳)** | `0` |
-| **Tareas Bloqueadas / Escaladas a `agy` (⚠️)** | `0` (`4/4` resueltas en Fase 3) |
-| **Tareas Pendientes (⚪)** | `0` |
-| **Progreso Estimado** | `[████████████████████] 100% (39/39)` |
-| **Hallazgos Previos a Re-verificar (`SEC-*`)** | `21 / 21` verificados |
-| **Hipótesis Nuevas a Confirmar (`NEW-*`)** | `12 / 12` evaluadas |
-| **Matriz de Pruebas (`T01`–`T25`)** | `25 / 25` ejecutadas |
-| **Último Checkpoint Git** | `CP-11 (6ec3c4f) + Cierre Fase 3 (agy)` |
-| **Fecha/Hora de Inicio** | `2026-10-20` |
-| **Fecha/Hora de Última Actualización** | `2026-10-20` |
+```yaml
+sprint_id: "security-remediation-p0-v1.21.1"
+current_phase: "FASE_2_CONSTRUCCION"
+assigned_to: "opencode-cli (DeepSeek 4.1 Flash)"
+reviewer: "antigravity (Gemini 3.8 Flash / Argon 4)"
+branch: "builder/security-audit-v1.21.0"
+last_checkpoint: "NONE"
+tasks_total: 16
+tasks_completed: 0
+tasks_blocked: 0
+```
 
 ---
 
-## 2. Lista Secuencial de Tareas por Fase (`F0`–`F11`)
+## Reglas de Operación para OpenCode CLI en este Archivo
 
-> **Instrucciones de Marcado (compatibles con `handoff.sh status`):**
-> - Usa **únicamente** en las 39 líneas de tarea de esta sección los marcadores:
->   - `Pendiente`: casilla vacía estándar
->   - `En progreso`: reemplaza el marcador de la tarea activa por el icono de reloj de arena entre corchetes (solo 1 a la vez)
->   - `Completada`: reemplaza el marcador por el icono de check verde entre corchetes tras guardar la evidencia
->   - `Bloqueada / Escalada a agy`: reemplaza el marcador por el icono de advertencia entre corchetes y documenta el bloqueo en la **Sección 3 (Escalation Log)**
-
-### 🏁 Fase F0: Preparación, Estructura y Entorno (`CP-00`)
-- [✅] **F0.1 [N0]:** Crear la estructura de directorios `.agent/audit/evidence/` y `.agent/audit/scratch/`.
-  - **Evidencia:** Directorios verificados + `.agent/audit/evidence/F0-environment.md` (§F0.1).
-- [✅] **F0.2 [N0]:** Verificar la disponibilidad de herramientas externas en el sistema (`gitleaks`, `trufflehog`, `semgrep`, `osv-scanner`, `npx supabase`, `docker`, `jq`, `curl`) sin modificar `package.json`.
-  - **Evidencia:** Tabla de herramientas en `.agent/audit/README.md` (§3) y `.agent/audit/evidence/F0-environment.md` (§F0.2). Nota: `semgrep` con Python env roto → workaround Docker/fallback.
-- [✅] **F0.3 [N0/N1]:** Redactar `.agent/audit/README.md` con el alcance de la auditoría v1.21.0, niveles `N0`–`N3`, disponibilidad del Laboratorio Local (Docker sí/no), estado del acceso CLI al proyecto `rjforcrdyfuodsqtopvp` (sin incluir tokens) e identificación del hosting (`netlify.toml` vs `vercel.json`).
-  - **Evidencia esperada:** `.agent/audit/README.md` (`CP-00`: `docs(audit): F0 entorno, alcance y protocolo de producción`).
-
----
-
-### 🔐 Fase F1: Secretos, Bundle y Cadena de Suministro (`CP-01` — `T01`, `T02`, `T03`)
-- [✅] **F1.1 [N0 — T01]:** Ejecutar escaneo de secretos en el historial git (`gitleaks detect --source . --log-opts="--all" --redact -r .agent/audit/evidence/F1-gitleaks.json` y `trufflehog git file://. --only-verified --json > .agent/audit/evidence/F1-trufflehog.json`, o búsqueda redactada en historial git si un binario no está instalado). **Prohibido leer `.env*` directamente.**
-  - **Evidencia esperada:** `.agent/audit/evidence/F1-gitleaks.json` y `.agent/audit/evidence/F1-trufflehog.json`.
-- [✅] **F1.2 [N0 — T02]:** Ejecutar auditoría de vulnerabilidades en dependencias (`npm audit --json > .agent/audit/evidence/F1-npm-audit.json` y `osv-scanner --lockfile=package-lock.json > .agent/audit/evidence/F1-osv.txt` si está instalado).
-  - **Evidencia esperada:** `.agent/audit/evidence/F1-npm-audit.json` y `.agent/audit/evidence/F1-osv.txt`.
-- [✅] **F1.3 [N0 — T03, SEC-006, SEC-021]:** Ejecutar `npm run build`, verificar que `dist/` no contenga secretos (`service_role`, `VAPID_PRIVATE`, `FUNCTION_SECRET`, `sk_live`, `BEGIN PRIVATE`), comprobar si se generan `dist/assets/*.map` o `dist/stats.html` (`SEC-021`), y decodificar el payload del JWT `anon` embebido en `dist/assets/*.js` para verificar `role=anon`, `iat` y `exp` (`SEC-006`).
-  - **Evidencia esperada:** Sección de bundle y JWT `anon` en `.agent/audit/evidence/F1-supply-chain-and-bundle.md`.
-- [✅] **F1.4 [N0 — NEW-07]:** Auditar los imports remotos sin fijar en `supabase/functions/send-reminders/index.ts` (`https://esm.sh/@supabase/supabase-js@2`), el uso de credenciales en `scripts/cleanup-receipts.cjs` y `scripts/cleanup-receipts.js`, y la configuración de plugins en `vite.config.ts` (`lovable-tagger`, `visualizer`, `build.sourcemap`).
-  - **Evidencia esperada:** `.agent/audit/evidence/F1-supply-chain-and-bundle.md` (`CP-01`: `docs(audit): F1 secretos y dependencias`).
+1. **Orden estricto por fases y checkpoints**: Ejecuta desde `P0-F0` hasta `P0-F5` en orden. No avances a la siguiente fase sin haber completado el **Checkpoint (`CP-P0-XX`)** de la fase actual.
+2. **Actualización en tiempo real (compatible con `handoff.sh`)**:
+   - Al arrancar la Fase 2, cambia `> **Estado General:**` arriba a `🟡 EN PROGRESO`.
+   - Al iniciar una tarea, cámbiala de `[ ]` a `[⏳]`.
+   - Al terminar y verificar su comando/criterio de salida, cámbiala a `[✅]` y anota los archivos modificados y el resultado de los tests.
+   - Si encuentras un bloqueo, márcala `[⚠️]` y documéntalo en la sección **"2. Escalaciones y Bloqueos"** de [`03_ANTIGRAVITY_REVIEW.md`](file:///run/media/migol/Files/Projectos/Aplications/Finance%20Pal/Finance%20Pal%20APP/Finance%20Pal%20V1.19.38/finance-pal/.agent/workflow/03_ANTIGRAVITY_REVIEW.md).
+   - Al concluir `CP-P0-05`, cambia `> **Estado General:**` a `🟢 COMPLETADO`.
+3. **Restricciones Estrictas de Seguridad y Producción**:
+   - **Cero secretos en texto plano**; jamás leer ni modificar `.env` o `.env.*`.
+   - **Prohibido modificar `package.json`** o instalar paquetes externos (`npm install`).
+   - **Prohibido ejecutar `npx supabase db push`** contra producción (`rjforcrdyfuodsqtopvp`) en Fase 2; las migraciones SQL se escriben en `supabase/migrations/` y `agy` las validará primero en contenedor efímero PostgreSQL 17 durante la Fase 3.
+   - **Respetar `.agent/rules/architecture.md`**: Nunca romper el fachada `useFinanceData` ni la arquitectura Local-First.
+   - **Graphify**: Al cerrar `P0-F5`, ejecuta `graphify update .` para mantener el grafo AST actualizado.
 
 ---
 
-### 🗄️ Fase F2: Base de Datos, RLS, Vistas, RPC y Storage (`CP-02` — Prioridad `P0` — `T04`–`T08`)
-- [✅] **F2.1 [N0/N1 — NEW-05]:** Extraer el esquema de producción (`npx supabase db dump --schema-only -f .agent/audit/evidence/F2-prod-schema.sql` o vía introspección SQL en Management API `/v1/projects/rjforcrdyfuodsqtopvp/database/query`, verificando ausencia de secretos) y documentar el diff exacto contra `supabase/schema.sql`, `supabase/schema_push_notifications.sql` y `supabase/migrations/` en `.agent/audit/evidence/F2-schema-drift.md`.
-  - **Evidencia esperada:** `.agent/audit/evidence/F2-prod-schema.sql` y `.agent/audit/evidence/F2-schema-drift.md`. *(Si `opencode` no tiene acceso al token CLI, escalar a `agy` con ⚠️).*
-- [✅] **F2.2 [N1 — T04, T05, NEW-02, SEC-014]:** Ejecutar consulta `SELECT` de catálogo sobre `pg_class` e `information_schema.views` / `role_table_grants` en producción para confirmar: (a) 0 tablas en `public` sin RLS (`T04`), y (b) si las vistas `accounts_safe`, `transactions_safe` y `debt_payments_safe` tienen `security_invoker=true` en `reloptions` o si se ejecutan como `postgres` saltándose el RLS (`NEW-02` / `SEC-014`).
-  - **Evidencia esperada:** Resultados SQL en `.agent/audit/evidence/F2-catalog-and-rls.md`.
-- [✅] **F2.3 [N1 — T07, NEW-03, SEC-004]:** Ejecutar consulta `SELECT` sobre `pg_proc` y `has_function_privilege('authenticated', 'public.cleanup_stale_sessions()', 'EXECUTE')` / `anon` en producción, e inspeccionar `prosrc` de `cleanup_stale_sessions()` para confirmar si cualquier usuario `authenticated` puede invocarla y borrar sesiones globalmente (`NEW-03` / `SEC-004`).
-  - **Evidencia esperada:** Sección RPC y privilegios en `.agent/audit/evidence/F2-catalog-and-rls.md`.
-- [✅] **F2.4 [N1 — SEC-011, SEC-016, NEW-04]:** Consultar `pg_policies` en los esquemas `public` y `storage` para verificar: (a) políticas activas de `user_sessions` y `user_settings` (`SEC-011`, `SEC-016`), (b) políticas de `push_subscriptions` y demás tablas, y (c) si alguna política RLS exige `auth.jwt()->>'aal' = 'aal2'` (`NEW-04`).
-  - **Evidencia esperada:** Volcado completo de `pg_policies` en `.agent/audit/evidence/F2-catalog-and-rls.md`.
-- [✅] **F2.5 [N1/N2/N3 — T06, T08, SEC-007]:** Consultar `storage.buckets` (`receipts`: `public`, `file_size_limit`, `allowed_mime_types`) y `cron.job` (redactando secretos), probar acceso público no autenticado a `/storage/v1/object/public/receipts/...` (`T08`) y documentar la verificación cross-tenant (`T06`).
-  - **Evidencia esperada:** Sección Storage y DAST en `.agent/audit/evidence/F2-catalog-and-rls.md` (§5, §7) + `.agent/audit/scratch/poc-t06-t09-t12-output.txt`.
-  - **Resultado:** ✅ `T08` pasa en privacidad; `T06` ejecutada dinámicamente por `agy` en PostgreSQL 17 con `F2-prod-schema.sql`: 9/10 tablas, 3/3 vistas `*_safe` y `storage.objects` aíslan al 100%; ❌ `public.push_subscriptions` falla en `UPDATE` sin `WHERE` (`SET user_id = auth.uid()` secuestra todas las filas ajenas por `USING (true)` — hallazgo `F2-A` CVSS 8.1).
-- [✅] **F2.6 [N1]:** Consultar los hallazgos del Supabase Security Advisor (`/v1/projects/rjforcrdyfuodsqtopvp/advisors/security` o diagnóstico equivalente) y documentarlos en `.agent/audit/evidence/F2-advisor.md`.
-  - **Evidencia esperada:** `.agent/audit/evidence/F2-advisor.md` (`CP-02`: `docs(audit): F2 RLS, vistas, RPC y storage`).
+## FASE P0-F0 — Desbloqueo de Compilación (`F5-B`) y Harness IndexedDB para Vitest
+
+> **Objetivo**: Dejar `npx tsc --noEmit` en `0 errores` y hacer que las suites de seguridad de Vitest (`encrypted-storage.test.ts` y `audit-logger.test.ts`) pasen al 100% sin modificar `package.json` ni `node_modules/`.
+> **Especificación**: Ver sección `3.1 Fase P0-F0` de [`01_ARCHITECT_PLAN.md`](file:///run/media/migol/Files/Projectos/Aplications/Finance%20Pal/Finance%20Pal%20APP/Finance%20Pal%20V1.19.38/finance-pal/.agent/workflow/01_ARCHITECT_PLAN.md).
+
+- [ ] **Tarea P0-F0.1 — Reparar firma de `updateTransaction` en `src/hooks/mutations/useReceiptMutations.ts` (`F5-B`)**:
+  - Inspeccionar `src/hooks/mutations/useReceiptMutations.ts` (líneas ~75–115).
+  - En `useUploadReceiptMutation` (`onMutate` y `onError`), corregir las llamadas a `updateTransaction(transactionId, ...)` para pasar `userId` como primer argumento: `updateTransaction(userId, transactionId, { receiptUrl: ... })` (3 argumentos, acorde a la firma en `src/store/finance-store.ts:361`).
+  - Verificar que `npx tsc --noEmit` devuelve **0 errores**.
+  - *Evidencia / Resultado*: `[PENDIENTE]`
+
+- [ ] **Tarea P0-F0.2 — Crear `src/test/indexeddb-polyfill.ts` y cablearlo en `src/test/setup.ts` y tests de almacenamiento**:
+  - Crear `src/test/indexeddb-polyfill.ts` implementando un polyfill ligero en memoria de `IDBFactory`, `IDBOpenDBRequest`, `IDBDatabase`, `IDBTransaction`, `IDBObjectStore` e `IDBRequest` que soporte `open`, `onupgradeneeded`, `createObjectStore`, `transaction`, `objectStore`, `put`, `get`, `delete`, `getAll`, `clear` y `deleteDatabase`, y lo asigne a `globalThis.indexedDB`.
+  - Importar `import "./indexeddb-polyfill";` al inicio de `src/test/setup.ts`.
+  - En `src/test/encrypted-storage.test.ts` y `src/test/audit-logger.test.ts`, reemplazar `import "fake-indexeddb/auto";` por `import "./indexeddb-polyfill";` (porque `node_modules/fake-indexeddb` carece de `build/esm/` en la instalación local).
+  - Verificar que `npx vitest run src/test/encrypted-storage.test.ts src/test/audit-logger.test.ts` pasa al 100%.
+  - *Evidencia / Resultado*: `[PENDIENTE]`
+
+### 🏁 Checkpoint `CP-P0-00`
+- [ ] `npx tsc --noEmit` devuelve `0 errores`.
+- [ ] `npx vitest run src/test/encrypted-storage.test.ts src/test/audit-logger.test.ts` pasa sin errores.
+- [ ] Commit en rama: `git commit -m "fix(p0-f0): resolve TS2554 in useReceiptMutations and add Vitest IndexedDB polyfill"`
+- **Hash del Commit `CP-P0-00`**: `[PENDIENTE]`
 
 ---
 
-### 🔑 Fase F3: Autenticación, MFA y Sesiones (`CP-03` — Prioridad `P0` — `T09`–`T12`)
-- [✅] **F3.1 [N0/N1/N3 — T09, NEW-04]:** Auditar el flujo MFA en `src/context/AuthContext.tsx`, `src/pages/Login.tsx` y `src/pages/ajustes/secciones/SeguridadSection.tsx` junto con la evidencia de `pg_policies` (`F2.4`) para demostrar si la exigencia de TOTP (`aal2`) es puramente de interfaz (UI-only) y un JWT `aal1` permite leer/escribir directamente en PostgREST.
-  - **Evidencia esperada:** Análisis y prueba `T09` en `.agent/audit/evidence/F3-auth-mfa-sessions.md` (§1.3, §6.1) + `.agent/audit/scratch/poc-t06-t09-t12-output.txt`.
-  - **Resultado:** ❌ `NEW-04` confirmado estática y dinámicamente (`T09`): con factor TOTP `verified` y claim `"aal":"aal1"`, `SELECT`, `INSERT`, `UPDATE`, `DELETE` y `storage.objects` son 100% permitidos.
-- [✅] **F3.2 [N0/N1 — T10, SEC-012]:** Auditar `src/lib/supabase.ts` (`flowType` implícito vs PKCE), `isValidRedirectUri` en `src/pages/Login.tsx` L41-54 (`parsed.hostname === 'localhost'` sin validar puerto ni `pathname === '/auth/callback'`), y `src/pages/AuthCallback.tsx` (manejo de `error_description` y limpieza de URL).
-  - **Evidencia esperada:** Sección OAuth/PKCE en `.agent/audit/evidence/F3-auth-mfa-sessions.md`.
-  - **Resultado:** ⚠️ Parcial: flujo implícito (tokens en fragmento; el SDK limpia el hash) y allowlist cliente laxa; `T10` pasa por la `uri_allow_list` exacta de GoTrue.
-- [✅] **F3.3 [N1 — T11, SEC-008]:** Auditar `supabase/config.toml` y la configuración real de Auth en producción (`/v1/projects/rjforcrdyfuodsqtopvp/config/auth`, redactando cualquier `secret` o API key): longitud mínima de contraseña, protección contra contraseñas filtradas (`HIBP`), confirmación de email, `rate_limit_*`, `jwt_exp` y rotación de refresh tokens; contrastar con `src/lib/rate-limiter.ts` (`SEC-008`).
-  - **Evidencia esperada:** Tabla comparativa ASVS V2 en `.agent/audit/evidence/F3-auth-mfa-sessions.md`.
-  - **Resultado:** ❌ `T11` falla: mínimo 6, HIBP off, sin CAPTCHA/lockout, notificaciones de Auth off y sin recuperación; `rate-limiter` de login no conectado.
-- [✅] **F3.4 [N0/N3 — T12, SEC-010]:** Auditar mensajes de error de login/registro/recuperación en `Login.tsx` (enumeración de cuentas), el flujo `requestTakeover` en `src/hooks/useSessionManager.ts` (`SEC-010`), la baja de MFA en `SeguridadSection.tsx`, el alcance de `signOut` y la existencia/ausencia de borrado total de cuenta en servidor y Storage.
-  - **Evidencia esperada:** `.agent/audit/evidence/F3-auth-mfa-sessions.md` (§4.2, §6.2) (`CP-03`: `docs(audit): F3 auth, MFA y sesiones`).
-  - **Resultado:** ❌ Takeover sin reauth y canal público (DoS) confirmado; `T12` ejecutada dinámicamente por `agy`: RLS bloquea `DELETE` cross-tenant `A -> B` (`rows_deleted=0`), pero permite takeover propio con JWT `aal1` sin MFA (`rows_deleted=1`) y sólo borra la fila en `user_sessions` sin revocar el JWT en GoTrue.
+## FASE P0-F1 — Enforzamiento Backend de MFA `aal2` (`NEW-04`), Fix de Hijacking en `push_subscriptions` (`F2-A`) y Hardening RPC (`SEC-004`)
+
+> **Objetivo**: Cerrar la vulnerabilidad crítica donde un JWT `aal1` tenía acceso total a las 10 tablas y al bucket `receipts` pese a tener MFA activo (`NEW-04`), cerrar el hijacking cross-tenant en `push_subscriptions` (`F2-A`), y revocar ejecución pública de `cleanup_stale_sessions()` (`SEC-004`).
+> **Especificación**: Ver sección `3.2 Fase P0-F1` de [`01_ARCHITECT_PLAN.md`](file:///run/media/migol/Files/Projectos/Aplications/Finance%20Pal/Finance%20Pal%20APP/Finance%20Pal%20V1.19.38/finance-pal/.agent/workflow/01_ARCHITECT_PLAN.md).
+
+- [ ] **Tarea P0-F1.1 — Crear migración SQL `supabase/migrations/20261020220000_p0_mfa_aal2_and_push_rls.sql`**:
+  - Crear la función `public.is_mfa_compliant()` (`RETURNS boolean`, `LANGUAGE plpgsql`, `SECURITY DEFINER`, `STABLE`, `SET search_path = ''`) que:
+    - Verifique si existe algún factor en `auth.mfa_factors` con `user_id = auth.uid()` y `status = 'verified'`.
+    - Si tiene factor verificado, exija `COALESCE(auth.jwt()->>'aal', 'aal1') = 'aal2'`.
+    - Si no tiene factor verificado, devuelva `true`.
+  - Otorgar `GRANT EXECUTE ON FUNCTION public.is_mfa_compliant() TO authenticated;` y `REVOKE EXECUTE ON FUNCTION public.is_mfa_compliant() FROM anon, public;`.
+  - Crear políticas restrictivas (`AS RESTRICTIVE FOR ALL TO authenticated USING (public.is_mfa_compliant()) WITH CHECK (public.is_mfa_compliant())`) llamadas `"Require AAL2 when MFA enabled"` sobre las **10 tablas de `public`**:
+    1. `public.profiles`
+    2. `public.incomes`
+    3. `public.expenses`
+    4. `public.categories`
+    5. `public.budgets`
+    6. `public.goals`
+    7. `public.debts`
+    8. `public.user_Legacy_data`
+    9. `public.push_subscriptions`
+    10. `public.active_sessions`
+  - Crear política restrictiva `"Require AAL2 when MFA enabled on storage"` (`AS RESTRICTIVE FOR ALL TO authenticated USING (bucket_id = 'receipts' AND public.is_mfa_compliant()) WITH CHECK (bucket_id = 'receipts' AND public.is_mfa_compliant())`) sobre `storage.objects`.
+  - Reemplazar la política `"Users can update own push subscriptions"` en `public.push_subscriptions` para usar `USING (auth.uid() = user_id) WITH CHECK (auth.uid() = user_id)` (cerrando `F2-A`).
+  - Revocar ejecución en `public.cleanup_stale_sessions()` a `PUBLIC`, `anon` y `authenticated`, dejando únicamente `GRANT EXECUTE ON FUNCTION public.cleanup_stale_sessions() TO service_role;` (cerrando `SEC-004`).
+  - *Evidencia / Resultado*: `[PENDIENTE]`
+
+- [ ] **Tarea P0-F1.2 — Sincronizar `supabase/schema.sql` y `supabase/schema_push_notifications.sql`**:
+  - Actualizar `supabase/schema.sql` para reflejar la función `public.is_mfa_compliant()`, las políticas restrictivas `AS RESTRICTIVE` y el `REVOKE EXECUTE` de `public.cleanup_stale_sessions()`.
+  - Actualizar `supabase/schema_push_notifications.sql` para corregir `"Users can update own push subscriptions"` (`USING (auth.uid() = user_id) WITH CHECK (auth.uid() = user_id)`) e incluir la política restrictiva `"Require AAL2 when MFA enabled"` en `public.push_subscriptions`.
+  - *Evidencia / Resultado*: `[PENDIENTE]`
+
+### 🏁 Checkpoint `CP-P0-01`
+- [ ] `supabase/migrations/20261020220000_p0_mfa_aal2_and_push_rls.sql` creado y sintácticamente válido.
+- [ ] `supabase/schema.sql` y `supabase/schema_push_notifications.sql` sincronizados.
+- [ ] Ningún `USING (true)` permanece en políticas `UPDATE` de `supabase/`.
+- [ ] Commit en rama: `git commit -m "feat(security): P0-F1 enforce MFA aal2 via restrictive RLS and fix push_subscriptions hijack (NEW-04, F2-A, SEC-004)"`
+- **Hash del Commit `CP-P0-01`**: `[PENDIENTE]`
 
 ---
 
-### 💾 Fase F4: Datos en Reposo del Cliente y Criptografía (`CP-04` — Prioridad `P0` — `T13`, `T14`)
-- [✅] **F4.1 [N0/N2 — T13, SEC-001, SEC-015, SEC-018]:** Auditar `src/store/finance-store.ts` (L290-360), `src/store/slices/settings-slice.ts` y `src/store/sync-store.ts` para verificar si `setItem` ya eliminó la escritura en texto plano (`SEC-001`), si `profile.email` se persiste (`SEC-018`), qué almacenes se limpian en `signOut` (`SEC-015`: `localStorage`, `sessionStorage`, `IndexedDB` `finance-pal-receipts` y `finance-pal-audit`, `Cache Storage`) y si quedan residuos al cambiar de cuenta A→B.
-  - **Evidencia esperada:** `.agent/audit/evidence/F4-storage-inventory.md` (§1–§5) + `.agent/audit/scratch/poc-t13-output.json`.
-  - **Resultado:** ✅ `SEC-001` cerrado; ❌ `SEC-015`, `SEC-018` y `F4-D` confirmados estática y dinámicamente (`T13` ejecutada por `agy` con `poc-t13-logout-storage.mjs`): `signOut()` deja `migol-finanzas-v2`, `sync-queue`, recibos y `audit_log` (con `newEmail` de A legible por B) y borra `finance-pal-encrypted-v1-salt` rompiendo el descifrado posterior.
-- [✅] **F4.2 [N0/N2 — T14, SEC-002, NEW-01]:** Auditar `src/lib/encrypted-storage.ts` (L43-125): analizar `getEncryptionSecret()` (que usa `session.user.id` o `localStorage.getItem('finance-pal-device-secret')`) y `getSalt()` (`localStorage.getItem('finance-pal-encrypted-v1-salt')`). Escribir y ejecutar en Node WebCrypto el script PoC aislado `.agent/audit/scratch/poc-new01-pbkdf2.mjs` que demuestre que con `user.id` (presente en el JWT de `localStorage`) + el salt público en `localStorage` se deriva la clave AES-GCM y se descifra el estado sin ningún secreto externo.
-  - **Evidencia esperada:** `.agent/audit/scratch/poc-new01-pbkdf2.mjs` y resultado de ejecución en `.agent/audit/evidence/F4-crypto-and-auditlog.md`.
-  - **Resultado:** ❌ `SEC-002`/`NEW-01` confirmados (Media); `T14` ✅ `DECRYPTED_OK` y clave incorrecta rechazada. Defecto adicional `F4-F`: el upgrade 100k→600k reescribe el salt sin re-cifrar.
-- [✅] **F4.3 [N0 — SEC-009]:** Auditar `src/lib/audit-logger.ts` (migración de `djb2` a `SHA-256`, ausencia de clave HMAC frente a manipulación local en IndexedDB) y revisar la cobertura de pruebas negativas en `src/test/encrypted-storage.test.ts` y `src/test/audit-logger.test.ts`.
-  - **Evidencia esperada:** `.agent/audit/evidence/F4-crypto-and-auditlog.md` (`CP-04`: `docs(audit): F4 almacenamiento cliente y cifrado`).
-  - **Resultado:** ⚠️ `SEC-009` parcial: SHA-256 correcto pero sin HMAC/anclaje; PoC `poc-sec009-tamper.mjs` reescribe la cadena (`CHAIN_FORGED_OK`). 0 pruebas negativas; `fake-indexeddb` sin `build/esm/` impide ejecutar la suite.
+## FASE P0-F2 — OAuth PKCE Estricto, Saneamiento de Deep Links y Hardening Android (`F8-A`, `SEC-012`, `NEW-06`)
+
+> **Objetivo**: Activar `flowType: 'pkce'`, eliminar la inyección arbitraria de sesión (`setSession`) por deep link en Android (`F8-A`), endurecer `isValidRedirectUri` + limpieza de URL en `AuthCallback` (`SEC-012`), y deshabilitar `allowBackup` + permisos innecesarios en `AndroidManifest.xml`.
+> **Especificación**: Ver sección `3.3 Fase P0-F2` de [`01_ARCHITECT_PLAN.md`](file:///run/media/migol/Files/Projectos/Aplications/Finance%20Pal/Finance%20Pal%20APP/Finance%20Pal%20V1.19.38/finance-pal/.agent/workflow/01_ARCHITECT_PLAN.md).
+
+- [ ] **Tarea P0-F2.1 — Activar `flowType: 'pkce'` en `src/lib/supabase.ts`**:
+  - En `src/lib/supabase.ts`, dentro de `createClient(..., { auth: { ... } })`, añadir `flowType: 'pkce'`.
+  - *Evidencia / Resultado*: `[PENDIENTE]`
+
+- [ ] **Tarea P0-F2.2 — Eliminar flujo implícito `setSession` en `src/App.tsx` (`F8-A` / `NEW-06`)**:
+  - En `src/App.tsx` (listener `CapApp.addListener("appUrlOpen", ...)` alrededor de las líneas 360–415):
+    - Validar que la URL entrante corresponda exclusivamente a `financepal://auth/callback` o `https://finance-pal.app/auth/callback` (o el `window.location.origin` actual en web).
+    - **Eliminar por completo** el bloque que lee `access_token` y `refresh_token` de `hashParams` e invoca `supabase.auth.setSession({ access_token, refresh_token })`.
+    - Permitir únicamente el intercambio PKCE (`const code = searchParams.get("code"); if (code) { await supabase.auth.exchangeCodeForSession(code); ... }`).
+  - *Evidencia / Resultado*: `[PENDIENTE]`
+
+- [ ] **Tarea P0-F2.3 — Endurecer `isValidRedirectUri` en `src/pages/Login.tsx` y limpiar URL en `src/pages/AuthCallback.tsx` (`SEC-012`)**:
+  - En `src/pages/Login.tsx`:
+    - Reemplazar `isValidRedirectUri` para que parsee con `new URL(uri)` y solo acepte:
+      - `parsed.protocol === "financepal:"` cuando `uri.startsWith("financepal://auth/callback")`, o
+      - `parsed.origin === window.location.origin && parsed.pathname === "/auth/callback"`, o
+      - `parsed.origin === "https://finance-pal.app" && parsed.pathname === "/auth/callback"`.
+  - En `src/pages/AuthCallback.tsx`:
+    - Soportar intercambio explícito `code` si está presente o sesión detectada por Supabase PKCE, y limpiar inmediatamente la URL con `window.history.replaceState({}, document.title, window.location.pathname)` antes de redirigir para que ni `code` ni tokens queden en el historial del navegador.
+  - *Evidencia / Resultado*: `[PENDIENTE]`
+
+- [ ] **Tarea P0-F2.4 — Hardening de `android/app/src/main/AndroidManifest.xml` (`F8-A`, `F8-C`, `F8-G`)**:
+  - En `android/app/src/main/AndroidManifest.xml`:
+    - Cambiar `android:allowBackup="true"` a `android:allowBackup="false"` y añadir `android:fullBackupContent="@xml/backup_rules"` y `android:dataExtractionRules="@xml/data_extraction_rules"`.
+    - Eliminar los permisos obsoletos/excesivos `READ_EXTERNAL_STORAGE` y `WRITE_EXTERNAL_STORAGE` (`F8-G`).
+  - Crear `android/app/src/main/res/xml/backup_rules.xml` y `android/app/src/main/res/xml/data_extraction_rules.xml` excluyendo `sharedpref`, `database` y ` root` de backups en nube y transferencias D2D.
+  - *Evidencia / Resultado*: `[PENDIENTE]`
+
+### 🏁 Checkpoint `CP-P0-02`
+- [ ] `npx tsc --noEmit` devuelve `0 errores`.
+- [ ] `grep -rn "setSession" src/App.tsx` devuelve 0 coincidencias.
+- [ ] `AndroidManifest.xml` tiene `android:allowBackup="false"` y las reglas XML existen.
+- [ ] Commit en rama: `git commit -m "fix(security): P0-F2 enforce OAuth PKCE, remove implicit deep-link setSession, and harden AndroidManifest (F8-A, SEC-012)"`
+- **Hash del Commit `CP-P0-02`**: `[PENDIENTE]`
 
 ---
 
-### 🔄 Fase F5: Servicios, IDOR, Validación y Sincronización (`CP-05` — Prioridad `P1` — `T15`, `T16`)
-- [✅] **F5.1 [N0 — T15, SEC-005]:** Ejecutar primero `graphify query "supabase update delete upsert calls in services"` y luego auditar los 9 archivos en `src/services/*.service.ts`, `src/lib/supabase-storage.ts`, `src/lib/web-push.ts` y `src/lib/sync-engine.ts`. Construir la matriz completa de llamadas `.select()`, `.insert()`, `.update()`, `.delete()`, `.upsert()` indicando archivo#línea, si incluye `.eq('user_id', ...)` y el origen del `userId`.
-  - **Evidencia esperada:** Matriz IDOR completa en `.agent/audit/evidence/F5-services-idor-validation.md`.
-  - **Resultado:** ⚠️ `SEC-005` parcial. 60+ llamadas inventariadas; 3 rutas de escritura sin filtro explícito (`goals.addGoalContribution`, `mergeAccounts`, `useSessionManager`) y 2 funciones de Storage sin validar prefijo. RLS `auth.uid() = user_id` las contiene; `T15` parcial y A→B dinámico cubierto por la escalación de `T06`.
-- [✅] **F5.2 [N0 — T16, SEC-020]:** Auditar `importData` en `src/store/finance-store.ts`, `src/lib/migration.ts`, `src/lib/schema-migrations.ts`, `src/lib/validators.ts` y `src/lib/sanitizers.ts`: verificar límite de tamaño antes de `JSON.parse` (`SEC-020`), validación con esquemas Zod por entidad, riesgo de *prototype pollution* en `merge` de Zustand persist y `sanitizeMigratedData`, y opciones `excludePII` en exportación.
-  - **Evidencia esperada:** Sección de importación/validación en `.agent/audit/evidence/F5-services-idor-validation.md`.
-  - **Resultado:** ⚠️ `SEC-020` parcial: UI limita a 20 MB, el store no; sin topes de arrays/profundidad. `F5-A`: `importData` usa sanitizers laxos en vez de Zod (montos negativos, fechas inválidas, strings sin límite). Prototype pollution global descartada; `excludePII` sin UI (confirma `SEC-018`).
-- [✅] **F5.3 [N0]:** Auditar la sincronización y resolución de conflictos (`src/lib/sync-engine.ts`, `src/services/cloudSync.service.ts`, `src/components/app/DataConflictDialog.tsx`, `src/pages/MigracionNube.tsx`) y verificar con `grep -rln "@/lib/supabase" src/pages src/components` qué vistas o componentes invocan a Supabase directamente sin pasar por la fachada `useFinanceData`.
-  - **Evidencia esperada:** `.agent/audit/evidence/F5-services-idor-validation.md` (`CP-05`: `docs(audit): F5 servicios, IDOR y validación`).
-  - **Resultado:** ❌ `F5-B` firma incorrecta en `useReceiptMutations` (`updateTransaction` con 2 args; `tsc` TS2554); `F5-C` `syncAllToCloud` borra y reinserta sin transacción; `F5-D` `DataConflictDialog`/`App.tsx` llaman a Supabase fuera de la fachada. Cola offline con allowlist correcta, pero pierde mutaciones al agotar reintentos.
+## FASE P0-F3 — Rediseño Criptográfico Local (`SEC-002` / `NEW-01`) y Migración PBKDF2 Segura (`F4-F`)
+
+> **Objetivo**: Impedir que la clave maestra AES-GCM sea derivable únicamente con `user.id` + `salt` público de `localStorage` (`SEC-002` / `NEW-01`), y evitar la corrupción de datos cifrados existentes cuando las iteraciones PBKDF2 suben de `100,000` a `600,000` (`F4-F`).
+> **Especificación**: Ver sección `3.4 Fase P0-F3` de [`01_ARCHITECT_PLAN.md`](file:///run/media/migol/Files/Projectos/Aplications/Finance%20Pal/Finance%20Pal%20APP/Finance%20Pal%20V1.19.38/finance-pal/.agent/workflow/01_ARCHITECT_PLAN.md).
+
+- [ ] **Tarea P0-F3.1 — Implementar Pepper Criptográfico en IndexedDB (`finance-pal-keystore`) y Derivación Dual en `src/lib/encrypted-storage.ts` (`SEC-002` / `NEW-01`)**:
+  - En `src/lib/encrypted-storage.ts`:
+    - Crear helper `getOrCreateDevicePepper(userId?: string): Promise<string>` que almacene un secreto aleatorio de 32 bytes (256 bits, CSPRNG `crypto.getRandomValues(new Uint8Array(32))` codificado en base64) en una base IndexedDB dedicada `finance-pal-keystore` (objectStore `keys`, clave `pepper-${userId || 'anon'}`), con caché en memoria durante la sesión.
+    - En `getMasterKey(userId?: string, options?: { legacyNoPepper?: boolean; iterationsOverride?: number })`:
+      - Por defecto (`legacyNoPepper: false`), derivar la clave PBKDF2 usando como material secreto `${userId || "anonymous-local-user"}:${pepperB64}` en lugar de solo `userId`.
+      - Soportar `legacyNoPepper: true` (material secreto `${userId || "anonymous-local-user"}`) únicamente como fallback de lectura en `decryptData()` para migrar de forma transparente los ciphertexts previos al nuevo formato en el siguiente `encryptData()`.
+  - *Evidencia / Resultado*: `[PENDIENTE]`
+
+- [ ] **Tarea P0-F3.2 — Corregir Migración de Iteraciones PBKDF2 sin Corrupción de Datos (`F4-F`)**:
+  - En `src/lib/encrypted-storage.ts`:
+    - Eliminar el bloque de `getMasterKey()` que borraba `${STORAGE_KEY}-salt` y generaba un salt nuevo cuando `storedIterations < PBKDF2_ITERATIONS` antes de descifrar los datos existentes.
+    - Al leer un salt existente en `localStorage`, respetar las iteraciones con las que fue creado (`storedIterations`, o `100000` si no existía `${STORAGE_KEY}-iterations` pero sí existía `${STORAGE_KEY}-salt` legacy) cuando se descifra en fallback, y al cifrar (`encryptData`) asegurar que se use `PBKDF2_ITERATIONS` (`600000`) actualizando `${STORAGE_KEY}-iterations` de forma consistente.
+    - Si se requiere rotar el salt al subir iteraciones, hacerlo leyendo primero con la clave anterior o mediante el fallback en `decryptData()`.
+  - *Evidencia / Resultado*: `[PENDIENTE]`
+
+- [ ] **Tarea P0-F3.3 — Ampliar `src/test/encrypted-storage.test.ts` para verificar `SEC-002` y `F4-F`**:
+  - Añadir tests unitarios en `src/test/encrypted-storage.test.ts` que comprueben:
+    1. **Mitigación `SEC-002`**: Un atacante que conoce `user.id` y el contenido de `localStorage` (`finance-pal-encrypted-v1-salt` + ciphertext), pero **no** posee el pepper de `IndexedDB` (`finance-pal-keystore`), falla al intentar derivar la clave con `PBKDF2(user.id, salt, 600000)` y `AES-GCM decrypt` lanza error.
+    2. **Mitigación `F4-F` (Backward compatibility)**: Un ciphertext cifrado con el esquema legacy (`userId` sin pepper y `100,000` iteraciones) puede ser descifrado por `decryptData(ciphertext, userId)` mediante el fallback transparente, y al volver a cifrar con `encryptData(data, userId)` queda protegido con el nuevo pepper + `600,000` iteraciones.
+  - Verificar que `npx vitest run src/test/encrypted-storage.test.ts` pasa al 100%.
+  - *Evidencia / Resultado*: `[PENDIENTE]`
+
+### 🏁 Checkpoint `CP-P0-03`
+- [ ] `npx tsc --noEmit` devuelve `0 errores`.
+- [ ] `npx vitest run src/test/encrypted-storage.test.ts` pasa todos los tests (incluyendo `SEC-002` y `F4-F`).
+- [ ] Commit en rama: `git commit -m "fix(security): P0-F3 add IndexedDB keystore pepper and fix PBKDF2 migration in encrypted-storage (SEC-002, F4-F)"`
+- **Hash del Commit `CP-P0-03`**: `[PENDIENTE]`
 
 ---
 
-### ⚡ Fase F6: Edge Function, Web Push y Service Worker (`CP-06` — Prioridad `P1` — `T17`–`T19`)
-- [✅] **F6.1 [N0/N1 — T17, SEC-003, SEC-013, SEC-017, NEW-07, NEW-09]:** Auditar `supabase/functions/send-reminders/index.ts`, `supabase/config.toml` y los metadatos de la función en producción (`/v1/projects/rjforcrdyfuodsqtopvp/functions`): revisar `verify_jwt`, validación de `FUNCTION_SECRET`/`SUPABASE_SERVICE_ROLE_KEY`, comparación `===` no constante en tiempo (`SEC-003`), CORS `ALLOWED_ORIGIN || "*"` (`SEC-017`), rate limit en `Map` de memoria evadible vía `x-forwarded-for` (`SEC-013`/`T18`), `@ts-nocheck`, y exposición de montos en notificaciones (`NEW-09`).
-  - **Evidencia esperada:** Análisis estático y de configuración en `.agent/audit/evidence/F6-edge-push-sw.md`.
-  - **Resultado:** ❌ Paridad rota: producción v4 (239 líneas, 2026-09-27) vs repo (548 líneas). CORS `*` fijo, auth solo `FUNCTION_SECRET`, lógica antigua sin `notification_prefs`. `F6-A`: `FUNCTION_SECRET` vacío (SHA-256 de `""`) y `VAPID_PUBLIC_KEY` ausente → 401/500 siempre; sin `pg_cron` ni scheduler. `SEC-003` parcial, `SEC-013` y `SEC-017` confirmados.
-- [✅] **F6.2 [N2 — T17]:** Ejecutar las 2 pruebas no destructivas contra el endpoint de la Edge Function en producción:
-  - `curl -sI -X OPTIONS "https://rjforcrdyfuodsqtopvp.supabase.co/functions/v1/send-reminders" -H "Origin: https://evil.tld"`
-  - `curl -sI -X POST "https://rjforcrdyfuodsqtopvp.supabase.co/functions/v1/send-reminders"` (sin credenciales → debe responder `401`).
-  - **Evidencia esperada:** Respuestas HTTP en `.agent/audit/evidence/F6-edge-push-sw.md`.
-  - **Resultado:** ✅ `OPTIONS` → `200` con `access-control-allow-origin: *` (confirma `SEC-017`). `POST` sin credenciales → `401 UNAUTHORIZED_NO_AUTH_HEADER`. Con JWT `anon` público → `401 {"error":"Unauthorized"}` de la función (dos capas).
-- [✅] **F6.3 [N0 — T19, NEW-08]:** Auditar `public/sw.js` (L1-110), `src/lib/web-push.ts`, `src/lib/notifications.ts` y `src/hooks/useNotificationScheduler.ts`: verificar si `notificationclick` abre `event.notification.data.url` sin validar mismo origen (`NEW-08`), si el listener `message` valida `event.origin`/`event.source`, cómo gestiona `push_subscriptions` el `user_id` y si el Service Worker cachea rutas de `/rest/v1` o `/auth/v1`.
-  - **Evidencia esperada:** `.agent/audit/evidence/F6-edge-push-sw.md` (`CP-06`: `docs(audit): F6 edge function, push y SW`).
-  - **Resultado:** ❌ `NEW-08` confirmado con PoC `OPEN_REDIRECT_CONFIRMED`; `message` sin `origin`/`source`. `NEW-09` confirmado (montos por defecto; producción los muestra siempre). SW sin handler `fetch` (no cachea API) y sin `pushsubscriptionchange`. `push_subscriptions` UPDATE `USING(true)` permite reasignación si se conoce el endpoint (`F6-C`, Baja).
+## FASE P0-F4 — Purga Criptográfica Completa en Logout (`SEC-015`, `F4-D`) y Redacción de PII en Audit Logs (`F10-B`)
+
+> **Objetivo**: Garantizar que al cerrar sesión (`signOut`) no quede absolutamente ningún rastro de transacciones cifradas, cola offline, recibos en IndexedDB ni logs de auditoría en el dispositivo (`SEC-015` / `F4-D`), y que `audit-logger.ts` enmascare correos electrónicos antes de persistir (`F10-B`).
+> **Especificación**: Ver sección `3.5 Fase P0-F4` de [`01_ARCHITECT_PLAN.md`](file:///run/media/migol/Files/Projectos/Aplications/Finance%20Pal/Finance%20Pal%20APP/Finance%20Pal%20V1.19.38/finance-pal/.agent/workflow/01_ARCHITECT_PLAN.md).
+
+- [ ] **Tarea P0-F4.1 — Implementar `clearAllReceipts()` y `purgeAllEncryptedStorage()` en `src/lib/encrypted-storage.ts`**:
+  - Implementar `clearAllReceipts(): Promise<void>` que vacíe el objectStore `receipts` en `finance-pal-receipts`.
+  - Implementar `purgeAllEncryptedStorage(userId?: string): Promise<void>` que:
+    1. Elimine de `localStorage`:
+       - `finance-pal-encrypted-v1` y `finance-pal-encrypted-v1-meta`
+       - `migol-finanzas-v2` y `migol-finanzas-v2-meta`
+       - `finance-pal-sync-queue-encrypted` y `finance-pal-sync-queue-encrypted-meta`
+       - `finance-pal-sync-queue`
+       - `finance-pal-encrypted-v1-salt` y `finance-pal-encrypted-v1-iterations`
+    2. Invoque `clearAllReceipts()`.
+    3. Elimine el pepper en `finance-pal-keystore` (para `userId` y `anon`) y limpie las cachés de claves en memoria (`cachedKey`, `cachedUserId`, etc.).
+  - Actualizar `clearEncryptionKeys()` para que también limpie la caché en memoria sin dejar ciphertexts huérfanos o redirigir a `purgeAllEncryptedStorage()`.
+  - *Evidencia / Resultado*: `[PENDIENTE]`
+
+- [ ] **Tarea P0-F4.2 — Implementar `redactAuditDetails()` y `clearAuditLogs()` en `src/lib/audit-logger.ts` (`F10-B`, `SEC-015`)**:
+  - En `src/lib/audit-logger.ts`:
+    - Crear helper `maskEmail(email: string): string` (ej. `a***@domain.com`) y `redactAuditDetails(details?: Record<string, unknown>): Record<string, unknown> | undefined` que enmascare cualquier propiedad `email`, `newEmail`, `oldEmail` o strings con formato de email dentro de `details` antes de guardar el evento en `IndexedDB` (`finance-pal-audit`).
+    - Aplicar `redactAuditDetails(details)` dentro de `logAuditEvent()`.
+    - Exportar `clearAuditLogs(): Promise<void>` que vacíe el objectStore `logs` en `finance-pal-audit` y también vacíe `inMemoryLogs`.
+  - *Evidencia / Resultado*: `[PENDIENTE]`
+
+- [ ] **Tarea P0-F4.3 — Integrar Purga Total en `src/context/AuthContext.tsx` y Tests de Logout (`T13`)**:
+  - En `src/context/AuthContext.tsx` (`signOut`):
+    - Antes/durante el cierre de sesión, capturar `const currentUserId = user?.id;`.
+    - Invocar `await purgeAllEncryptedStorage(currentUserId)` y `await clearAuditLogs()`.
+    - Eliminar de `localStorage` los identificadores `finance-pal-client-id` y `finance-pal-device-id`, además de cualquier clave `sb-*`.
+    - Ejecutar `sessionStorage.clear()`.
+  - Añadir tests en `src/test/encrypted-storage.test.ts` y `src/test/audit-logger.test.ts` que verifiquen:
+    - Que `purgeAllEncryptedStorage(userId)` borra `finance-pal-encrypted-v1`, `migol-finanzas-v2`, `finance-pal-sync-queue-encrypted`, recibos en IndexedDB y el salt/pepper.
+    - Que `logAuditEvent('AUTH_LOGIN', { email: 'user@example.com' })` persiste el email enmascarado (`u***@example.com`) y que `clearAuditLogs()` deja 0 entradas en `getAuditLogs()`.
+  - *Evidencia / Resultado*: `[PENDIENTE]`
+
+### 🏁 Checkpoint `CP-P0-04`
+- [ ] `npx tsc --noEmit` devuelve `0 errores`.
+- [ ] `npx vitest run src/test/encrypted-storage.test.ts src/test/audit-logger.test.ts` pasa al 100%.
+- [ ] Commit en rama: `git commit -m "fix(security): P0-F4 full storage/IndexedDB purge on logout and PII masking in audit logs (SEC-015, F4-D, F10-B)"`
+- **Hash del Commit `CP-P0-04`**: `[PENDIENTE]`
 
 ---
 
-### 🌐 Fase F7: Plataforma Web, XSS y Headers HTTP (`CP-07` — Prioridad `P2` — `T20`–`T22`)
-- [✅] **F7.1 [N0 — T20]:** Ejecutar escaneo SAST sobre `src/`, `public/` y `supabase/functions/` (`semgrep` si está disponible y/o auditoría exhaustiva de patrones DOM peligrosos: `dangerouslySetInnerHTML`, `innerHTML`, `outerHTML`, `eval(`, `new Function(`, `document.write`, `window.open(`, `target="_blank"`).
-  - **Evidencia esperada:** `.agent/audit/evidence/F7-semgrep.json` y listado analizado en `.agent/audit/evidence/F7-web-xss-csp.md`.
-  - **Resultado:** ✅ Semgrep Docker (173 reglas, 304 archivos, 11 hallazgos) sin sinks XSS en `src/`; los 11 son Android/CI (F8/F9). Auditoría manual: 0 `innerHTML`/`eval`/`document.write`; `window.open` y `target=_blank` con `noopener`; `normalizeUrl` neutraliza `javascript:`. `T20` ✅.
-- [✅] **F7.2 [N0 — NEW-10]:** Consultar el grafo (`graphify path "ChartStyle" "useFinanceData"` / llamadas a `ChartContainer`) y auditar `src/components/ui/chart.tsx` L70 (`dangerouslySetInnerHTML`) para determinar si las claves/colores de `config` son estáticos o pueden ser controlados por datos del usuario.
-  - **Evidencia esperada:** Trazado de flujo de datos de `chart.tsx` en `.agent/audit/evidence/F7-web-xss-csp.md`.
-  - **Resultado:** ✅ `NEW-10` descartado: sin llamantes (`graphify` solo encuentra `ChartContainer→ChartStyle`), `ChartStyle` no se usa fuera del archivo y `data-chart` no aparece en `dist/` (tree-shaken). Riesgo residual de inyección CSS si se reactiva con datos dinámicos.
-- [✅] **F7.3 [N0 + Pasivo — T21, T22, NEW-11]:** Comparar los headers de seguridad y directivas CSP en `netlify.toml`, `vercel.json` e `index.html` (`img-src https:`, `style-src 'unsafe-inline'`, `connect-src https://api.github.com` en `src/lib/version-check.ts`, ausencia de `upgrade-insecure-requests`, `object-src 'none'`, `COOP`, `CORP`), y capturar 1 petición `HEAD` pasiva si el dominio público está activo en `.agent/audit/evidence/F7-headers-prod.txt`.
-  - **Evidencia esperada:** `.agent/audit/evidence/F7-headers-prod.txt` y `.agent/audit/evidence/F7-web-xss-csp.md` (`CP-07`: `docs(audit): F7 web, XSS y headers`).
-  - **Resultado:** ⚠️ `NEW-11` parcial: CSP/HSTS/XCTO/XFO/Referrer/Permissions presentes en Netlify, Vercel y producción; faltan COOP/CORP/COEP, `object-src 'none'`, reporting y SRI. `HEAD` pasivo OK (`ACAO: *` informativo). ZAP baseline local: 0 FAIL, 5 WARN, 62 PASS (`T22` ✅). CSP solo por headers → WebView nativa sin CSP (`F7-A`).
+## FASE P0-F5 — Políticas de Contraseña (12+ chars), Rate Limiting de Auth Activo (`SEC-008` / `T11`) y Cierre de Sprint
+
+> **Objetivo**: Cablear el `rateLimiter` (`auth`: 5 intentos / 60s) que estaba muerto en los flujos de autenticación, exigir contraseñas de mínimo 12 caracteres con complejidad en `Login.tsx`, `PerfilSection.tsx` y `supabase/config.toml`, y ejecutar la validación integral del sprint.
+> **Especificación**: Ver sección `3.6 Fase P0-F5` de [`01_ARCHITECT_PLAN.md`](file:///run/media/migol/Files/Projectos/Aplications/Finance%20Pal/Finance%20Pal%20APP/Finance%20Pal%20V1.19.38/finance-pal/.agent/workflow/01_ARCHITECT_PLAN.md).
+
+- [ ] **Tarea P0-F5.1 — Integrar `rateLimiter` (`auth`) y Política de Contraseña (12+ chars) en `src/pages/Login.tsx` y `src/components/sections/PerfilSection.tsx`**:
+  - Crear o exportar un validador reutilizable `validatePasswordStrength(password: string): { valid: boolean; message?: string }` (por ejemplo en `src/lib/security-utils.ts` o `src/lib/rate-limiter.ts`) que exija:
+    - Longitud mínima de **12 caracteres**.
+    - Al menos una letra minúscula, una letra mayúscula y un dígito o símbolo.
+  - En `src/pages/Login.tsx`:
+    - Antes de invocar `supabase.auth.signInWithPassword`, `supabase.auth.signUp`, `supabase.auth.resetPasswordForEmail` o `supabase.auth.mfa.challengeAndVerify`, verificar `rateLimiter.checkLimit(`auth:${mode}:${email || 'mfa'}`, 'auth')`. Si devuelve `false`, mostrar error de límite de intentos con el tiempo de espera (`rateLimiter.getResetTime(...)`) y abortar la petición.
+    - En registro (`mode === 'register'`), validar la contraseña con `validatePasswordStrength(password)` y actualizar `minLength={12}` en el input.
+  - En `src/components/sections/PerfilSection.tsx`:
+    - En `handleUpdatePassword`, verificar `rateLimiter.checkLimit('auth:password-update', 'auth')` y validar `newPassword` con `validatePasswordStrength(newPassword)` (reemplazando el check de `< 6` caracteres por `< 12` + complejidad).
+    - En `handleUpdateEmail`, verificar `rateLimiter.checkLimit('auth:email-update', 'auth')`.
+  - *Evidencia / Resultado*: `[PENDIENTE]`
+
+- [ ] **Tarea P0-F5.2 — Endurecer `supabase/config.toml` (`SEC-008`)**:
+  - En `supabase/config.toml`:
+    - Actualizar `minimum_password_length = 12`.
+    - Configurar `password_requirements = "lower_upper_letters_digits"`.
+  - *Evidencia / Resultado*: `[PENDIENTE]`
+
+- [ ] **Tarea P0-F5.3 — Validación Integral (`tsc`, `vitest`, `gitleaks`, `graphify update .`) y Hand-off a Antigravity**:
+  - Añadir tests unitarios en `src/test/security.test.ts` para `validatePasswordStrength` (rechaza `< 12` chars, rechaza sin mayúsculas/números, acepta contraseñas fuertes de 12+ chars) y para `rateLimiter.checkLimit(..., 'auth')` (bloquea al 6.º intento en 60s).
+  - Ejecutar `npx tsc --noEmit` → verificar `0 errores`.
+  - Ejecutar `npx vitest run src/test/encrypted-storage.test.ts src/test/audit-logger.test.ts src/test/security.test.ts` → verificar que todos pasan.
+  - Ejecutar `gitleaks dir .agent src supabase android --redact` → verificar `0 leaks`.
+  - Ejecutar `graphify update .` para actualizar el grafo de conocimiento AST.
+  - Completar la **Matriz de Verificación P0** abajo y actualizar la sección **"Resumen de Entrega de OpenCode CLI"** en [`03_ANTIGRAVITY_REVIEW.md`](file:///run/media/migol/Files/Projectos/Aplications/Finance%20Pal/Finance%20Pal%20APP/Finance%20Pal%20V1.19.38/finance-pal/.agent/workflow/03_ANTIGRAVITY_REVIEW.md).
+  - *Evidencia / Resultado*: `[PENDIENTE]`
+
+### 🏁 Checkpoint `CP-P0-05`
+- [ ] `npx tsc --noEmit` devuelve `0 errores`.
+- [ ] `npx vitest run src/test/encrypted-storage.test.ts src/test/audit-logger.test.ts src/test/security.test.ts` pasa al 100%.
+- [ ] `gitleaks dir .agent src supabase android --redact` devuelve `0 leaks`.
+- [ ] `graphify update .` ejecutado sin errores.
+- [ ] `03_ANTIGRAVITY_REVIEW.md` actualizado con el resumen de entrega.
+- [ ] Commit final en rama: `git commit -m "fix(security): P0-F5 enforce 12-char passwords, wire auth rate-limiter, and complete P0 remediation sprint (SEC-008)"`
+- **Hash del Commit `CP-P0-05`**: `[PENDIENTE]`
 
 ---
 
-### 🤖 Fase F8: Android / Capacitor — Nivel Código Fuente (`CP-08` — Prioridad `P1` — `T23`)
-- [✅] **F8.1 [N0 — T23, NEW-06]:** Auditar `android/app/src/main/AndroidManifest.xml`, `android/app/src/main/res/xml/config.xml` y `android/app/src/main/res/xml/file_paths.xml`: evaluar `android:allowBackup="true"` sin `dataExtractionRules`/`fullBackupContent` (`NEW-06`), actividades/receivers con `android:exported="true"` e `intent-filter`, alcance de directorios expuestos en `FileProvider` y permisos (`READ/WRITE_EXTERNAL_STORAGE`, `SCHEDULE_EXACT_ALARM`, etc.).
-  - **Evidencia esperada:** Sección Manifest y FileProvider en `.agent/audit/evidence/F8-android-masvs.md`.
-  - **Resultado:** ❌ `NEW-06` confirmado: `allowBackup=true` (L5) sin reglas; el backup por defecto incluye `files/` (recibos/estado cifrado) y `app_webview/` (sesión, salt, IndexedDB). ❌ `F8-A` (Alta): `MainActivity` exportada + custom scheme `app.financepal.com://auth/callback` + OAuth implicit + `setSession` sin validar origen/`state` → interceptación o fijación de sesión. ❌ `F8-B` (Baja): `file_paths.xml` expone `.` en `external-path`/`files-path`/`cache-path`; el plugin `Share` concede URIs sobre esas raíces. ℹ️ `F8-C`: `config.xml` con `access origin="*"` es generado/gitignoreado y no lo consume Capacitor. ⚠️ Permisos `READ_MEDIA_IMAGES` y `READ/WRITE_EXTERNAL_STORAGE` innecesarios (`F8-G`).
-- [✅] **F8.2 [N0 — T23]:** Auditar `android/app/build.gradle`, `android/app/proguard-rules.pro`, `android/variables.gradle`, `capacitor.config.ts` y `android/app/src/main/java/**`: evaluar `minSdkVersion`/`targetSdkVersion`, `server.cleartext`, `minifyEnabled`, `shrinkResources`, ausencia de keystores en git (`git ls-files | grep -Ei "jks|keystore"`), `webContentsDebuggingEnabled` y completar la matriz **OWASP MASVS v2** (`STORAGE`, `CRYPTO`, `AUTH`, `NETWORK`, `PLATFORM`, `CODE`).
-  - **Evidencia esperada:** `.agent/audit/evidence/F8-android-masvs.md` (`CP-08`: `docs(audit): F8 android y capacitor`).
-  - **Resultado:** ✅ Matriz MASVS v2 completa (24 controles: 1 PASS, 10 PARTIAL, 8 FAIL, 5 N/A). `minSdk 24`/`target 36`, `minifyEnabled`/`shrinkResources` activos, `proguard-rules.pro` solo comentarios, `cleartext=false`, debugging WebView off en release, sin bridges JS. ⚠️ `F8-D`: sin `signingConfig`, `assembleRelease` genera APK unsigned pese al README; sin keystore versionado. ⚠️ `F8-E`: push nativo sin `google-services.json` y sin llamantes. ❌ `F8-F`: sin `FLAG_SECURE` ni anti-tapjacking.
+## Matriz de Verificación del Sprint de Remediación P0
 
----
-
-### ⚙️ Fase F9: CI/CD e Higiene del Repositorio (`CP-09` — Prioridad `P2` — `T24`)
-- [✅] **F9.1 [N0 — T24, NEW-07]:** Auditar `.github/workflows/ci.yml`, `.github/workflows/dependabot-auto-merge.yml`, `.github/workflows/bundle-analysis.yml` y `.github/dependabot.yml`: evaluar `npm audit --audit-level=high || true` (no bloqueante), ausencia de bloque `permissions:` de mínimo privilegio, acciones fijadas por tag mutable vs SHA, alcance del auto-merge de Dependabot y exposición de artefactos en `bundle-analysis.yml`.
-  - **Evidencia esperada:** Análisis de workflows en `.agent/audit/evidence/F9-cicd-and-repo-hygiene.md`.
-  - **Resultado:** ❌ `T24` FALLA. `F9-A`: `dependabot-auto-merge.yml` da `contents: write`/`pull-requests: write` a todo el workflow, incl. el job `ci` que ejecuta `npm ci` con credenciales persistentes de checkout; `ci.yml`/`bundle-analysis.yml` sin `permissions:`. `F9-B`: `npm audit ... || true` no bloquea (3 críticas/31 altas en F1). `F9-C`: auto-merge patch/minor/security sin audit y con Node 18 (EOL); sin evidencia de required checks. `F9-E`: artifact `bundle-stats` con `dist/stats.html`. Acciones por tag mutable (`@v4`/`@v2`), ninguna por SHA.
-- [✅] **F9.2 [N0 — NEW-12]:** Auditar los archivos versionados en el índice git (`git ls-files | grep -Ei "\.netlify|\.vercel|graphify-out|\.env"`) para evaluar la exposición de `.netlify/state.json` y `graphify-out/` (`NEW-12`), y revisar las reglas de `.gitignore` y `.agentignore` (sin leer archivos `.env*`).
-  - **Evidencia esperada:** `.agent/audit/evidence/F9-cicd-and-repo-hygiene.md` (`CP-09`: `docs(audit): F9 ci/cd y repositorio`).
-  - **Resultado:** ❌ `NEW-12` CONFIRMADO (Bajo): `.netlify/state.json` (siteId) y `.netlify/netlify.toml` (ruta local `E:\Projects\...` + CSP antigua con `unsafe-inline`) versionados; 74 archivos de `graphify-out/` (incl. `cache/**` y `.graphify_python` con `/home/migol/...`). `.vercel/` sí ignorado; `.env`, `.env.local`, `.env.production` no versionados. `F9-F`: `.gitignore` anula `!.env.template` con `.env*` final; `.agentignore` exceptúa un `.env.example` inexistente.
-
----
-
-### 🕵️ Fase F10: Privacidad, Logging y Manejo de Errores (`CP-10` — Prioridad `P2` — `T25`)
-- [✅] **F10.1 [N0 — T25, SEC-019]:** Inventariar todas las sentencias `console.log`, `console.error`, `console.warn`, `console.debug` y `logger.*` en `src/` (excluyendo tests), clasificando las que registran `userId`, `clientId`, `email`, montos financieros o objetos `error` crudos de Supabase/PostgREST, y verificar si `vite.config.ts` elimina `console.*` en el build de producción.
-  - **Evidencia esperada:** Tabla de logs y exposición de PII en `.agent/audit/evidence/F10-privacy-logging-gdpr.md`.
-  - **Resultado:** ⚠️ `T25`/`SEC-019` PARCIAL: 92 `console.*` + 7 `logger.*`; sin `email`/montos/`userId` explícitos, pero `sync-engine` registra `clientId` (UUID persistente), se imprimen UUIDs y errores crudos de Supabase. `drop_console=true` deja **8 referencias** `.catch(console.*)` en 5 chunks de `dist/`. `sanitizeForLog` solo trunca, no redacta (`F10-C`).
-- [✅] **F10.2 [N0]:** Auditar `src/lib/app-error.ts`, `src/components/ErrorBoundary.tsx` y `src/lib/web-vitals.ts` (confirmando si envía métricas a terceros) y construir la matriz de privacidad LFPDPPP/GDPR (categorías de datos personales tratados, retención local/nube, portabilidad JSON con `excludePII` y brechas en derecho de supresión/borrado de cuenta).
-  - **Evidencia esperada:** `.agent/audit/evidence/F10-privacy-logging-gdpr.md` (`CP-10`: `docs(audit): F10 privacidad y logging`).
-  - **Resultado:** ❌ `F10-A` (Media): `excludePII` solo omite bancos/email/recibos; no anonimiza montos, descripciones, metas ni deudas, y la UI no expone los flags (email incluido por defecto, `SEC-018`). ❌ `F10-B` (Baja): audit log IndexedDB en claro con `userId`/`newEmail`, 10k entradas, sin purga ni limpieza en logout. ❌ `F10-C` (Baja): `sanitizeForLog` sin redacción. ❌ `F10-D` (Media, cumplimiento): sin borrado de cuenta/nube; `resetAll` solo local y `signOut` deja audit/recibos. ⚠️ `F10-E`: Google Fonts/GitHub/Supabase/hosting reciben IP/UA sin aviso in-app. ✅ `F10-F`: `web-vitals`/`ErrorBoundary` sin telemetría remota. Matriz LFPDPPP/GDPR y derechos ARCO incluidos.
-
----
-
-### 📊 Fase F11: Consolidación CVSS v3.1, `.agent/security_audit.md` v2 y Cierre (`CP-11`)
-- [✅] **F11.1 [N0]:** Redactar en `.agent/security_audit.md` la sección **v2 "Re-auditoría Integral 2026-10 — Finance Pal v1.21.0"** (conservando íntegra la auditoría v1 del 2026-09-23 como historial), con el dictamen final, vector **CVSS v3.1**, archivo#línea, nivel (`N0`–`N3`), evidencia enlazada, impacto, recomendación, esfuerzo (`S`/`M`/`L`) y referencia ASVS/MASVS para los **21 hallazgos (`SEC-001`…`SEC-021`)** y las **12 hipótesis (`NEW-01`…`NEW-12`)**.
-  - **Evidencia esperada:** Sección v2 de hallazgos en `.agent/security_audit.md`.
-  - **Resultado:** ✅ Sección v2 añadida (líneas 999–1306) conservando v1 íntegra. Incluye dictamen (`🔴 ALTO — NO CERTIFICABLE` hasta P0), cobertura, 21 `SEC-*` y 12 `NEW-*` con CVSS 3.1, archivo#línea, nivel, evidencia, impacto, recomendación, esfuerzo y ASVS/MASVS; tabla adicional de hallazgos nuevos `F3`–`F10`.
-- [✅] **F11.2 [N0]:** Incluir en `.agent/security_audit.md` v2 la tabla de ejecución completa de la matriz `T01`–`T25`, la matriz de riesgo residual y el **Backlog de Remediación Priorizado (P0 → P1 → P2 → P3)** listo para el siguiente ciclo de construcción.
-  - **Evidencia esperada:** Matriz `T01`–`T25` y Backlog en `.agent/security_audit.md`.
-  - **Resultado:** ✅ Matriz `T01`–`T25` (6 PASS / 9 PARCIAL-ESCALADA / 10 FALLA), matriz de riesgo residual por impacto/probabilidad y backlog de 35 acciones priorizadas P0–P3 con criterio de cierre y esfuerzo. P0: `NEW-04`, `F8-A`, `SEC-002`, `SEC-015`, `SEC-008`.
-- [✅] **F11.3 [N0]:** Verificar que ningún archivo bajo `.agent/` contenga secretos, JWT o PII (`gitleaks detect --source .agent --redact` y búsqueda de patrones `sbp_`, `eyJ`), y comprobar que ningún archivo de código fuente (`src/**`, `supabase/**`, `android/**`, `public/**`) fue modificado por la auditoría.
-  - **Evidencia esperada:** Salida limpia de verificación de secretos y `git diff --stat .agent/`.
-  - **Resultado:** ✅ `gitleaks dir .agent --redact` → **0 hallazgos**; `rg 'sbp_|eyJ…' .agent` → sin coincidencias. Se redactó el JWT de ejemplo de v1 (`security_audit.md:408`) y un falso positivo `generic-api-key` en `F1-supply-chain-and-bundle.md`. `git log 769cf9e^..HEAD` confirma que `CP-00`…`CP-10` solo tocaron `.agent/` (`ONLY_AGENT_FILES`).
-- [✅] **F11.4 [N0]:** Ejecutar `graphify update .` para actualizar el grafo de conocimiento y registrar el cierre en `.agent/workflow/02_OPENCODE_TASKS.md` y `.agent/workflow/03_ANTIGRAVITY_REVIEW.md`.
-  - **Evidencia esperada:** Grafo actualizado (`CP-11`: `docs(audit): F11 informe consolidado v2`).
-  - **Resultado:** ✅ `graphify update .` ejecutado (2205 nodos, 5676 aristas, 155 comunidades); cierre registrado en `02_OPENCODE_TASKS.md` (35/39, 4 escaladas) y `03_ANTIGRAVITY_REVIEW.md` (entrega `E-F11`, CA-01…CA-08). `CP-11 = 6ec3c4f`.
-
----
-
-## 3. ⚠️ Registro de Bloqueos, Fallos y Dificultades (Escalation Log hacia `agy`)
-
-> **Protocolo Mandatorio:** Si OpenCode CLI encuentra una tarea que requiere acceso `N1`/`N2` a producción que no esté disponible en su sesión, o un análisis multicapa complejo, debe marcar la tarea correspondiente en la Sección 2 con el icono de advertencia entre corchetes y registrarla en esta tabla para que **Antigravity (`agy` — Gemini 3.8 Flash / Argon 4)** la resuelva en Fase 3.
-
-| ID Tarea | Archivo / Endpoint | Problema / Bloqueo Detectado | Causa de la Dificultad | Qué resolvió Antigravity (`agy`) en Fase 3 |
-| :--- | :--- | :--- | :--- | :--- |
-| `F2.5` (`T06`) | REST Supabase `/rest/v1/{accounts,transactions,debts,goals,fixed_items,debt_payments,user_settings,user_sessions,push_subscriptions}` + Storage `receipts` | No se pudo ejecutar la prueba dinámica **cross-tenant A→B** en producción sin crear cuentas ficticias | Protocolo de seguridad de producción (`N1`/`N2` sin tocar datos reales) | `✅ RESUELTO POR AGY`: ejecutado en `postgres:17-alpine` con `F2-prod-schema.sql` (`poc-t06-t09-t12-rls-tests.sql`). 9/10 tablas, 3/3 vistas `*_safe` y `storage.objects` aíslan al 100%; `push_subscriptions` falla en `UPDATE` sin `WHERE` (`F2-A` CVSS 8.1). Evidencia: `F2-catalog-and-rls.md` §7 y `poc-t06-t09-t12-output.txt` |
-| `F3.1` (`T09`) | GoTrue `/auth/v1/token?grant_type=password` + PostgREST `/rest/v1/*` | No se pudo ejecutar el **CRUD con JWT `aal1`** de una cuenta con TOTP verificado en producción | Protocolo de seguridad de producción | `✅ RESUELTO POR AGY`: ejecutado en `postgres:17-alpine` (`poc-t06-t09-t12-rls-tests.sql`) con `audit-a` inscrito en `auth.mfa_factors (verified)` y claim `"aal":"aal1"`. 5/5 operaciones (`SELECT`/`INSERT`/`UPDATE`/`DELETE` + `storage.objects`) permitidas (`NEW-04` confirmado dinámicamente). Evidencia: `F3-auth-mfa-sessions.md` §6.1 |
-| `F3.4` (`T12`) | Realtime `user_sessions:<userId>` + `user_sessions` | No se pudo ejecutar la prueba de **takeover/DoS con dos dispositivos** ni la denegación cross-tenant en producción | Protocolo de seguridad de producción | `✅ RESUELTO POR AGY`: ejecutado en `postgres:17-alpine` (`poc-t06-t09-t12-rls-tests.sql`). `DELETE` cross-tenant `A -> B` por `device_id` bloqueado por RLS (`rows_deleted=0`); takeover propio con JWT `aal1` permitido sin MFA (`rows_deleted=1`). Evidencia: `F3-auth-mfa-sessions.md` §6.2 |
-| `F4.1` (`T13`) | Navegador: `localStorage`, `sessionStorage`, IndexedDB (`finance-pal-receipts`, `finance-pal-audit`), Cache Storage | No se pudo ejecutar el **inventario dinámico pre/post logout** ni el cambio de cuenta A→B en producción | Protocolo de seguridad de producción | `✅ RESUELTO POR AGY`: ejecutado con WebCrypto real en Node 26 (`poc-t13-logout-storage.mjs` → `poc-t13-output.json`). Confirma persistencia huérfana de `migol-finanzas-v2`, `sync-queue`, recibos y `audit_log` (con `newEmail` de A legible por B) y destrucción del salt compartido (`SEC-015`, `F4-D`). Evidencia: `F4-storage-inventory.md` §5 |
-
----
-
-## 4. Registro Histórico de Checkpoints (`CP-00` a `CP-11`)
-
-| # Checkpoint | Fase | Tareas Cubiertas | Mensaje de Commit Esperado | Hash Commit | Estado |
+| ID Hallazgo | Descripción | Fase | Archivos Modificados | Verificación (`tsc` / `vitest` / SQL) | Estado Final |
 | :--- | :--- | :--- | :--- | :--- | :--- |
-| `CP-00` | `F0` | `F0.1` – `F0.3` | `docs(audit): F0 entorno, alcance y protocolo de producción` | `769cf9e` | `✅ COMPLETADO` |
-| `CP-01` | `F1` | `F1.1` – `F1.4` | `docs(audit): F1 secretos y dependencias` | `0bd74a3` | `✅ COMPLETADO` |
-| `CP-02` | `F2` | `F2.1` – `F2.6` | `docs(audit): F2 RLS, vistas, RPC y storage` | `a91a215` | `✅ COMPLETADO` |
-| `CP-03` | `F3` | `F3.1` – `F3.4` | `docs(audit): F3 auth, MFA y sesiones` | `dd8ff98` | `✅ COMPLETADO` |
-| `CP-04` | `F4` | `F4.1` – `F4.3` | `docs(audit): F4 almacenamiento cliente y cifrado` | `5787bf9` | `✅ COMPLETADO` |
-| `CP-05` | `F5` | `F5.1` – `F5.3` | `docs(audit): F5 servicios, IDOR y validación` | `94b6c52` | `✅ COMPLETADO` |
-| `CP-06` | `F6` | `F6.1` – `F6.3` | `docs(audit): F6 edge function, push y SW` | `e19433f` | `✅ COMPLETADO` |
-| `CP-07` | `F7` | `F7.1` – `F7.3` | `docs(audit): F7 web, XSS y headers` | `7b8af3e` | `✅ COMPLETADO` |
-| `CP-08` | `F8` | `F8.1` – `F8.2` | `docs(audit): F8 android y capacitor` | `74f465a` | `✅ COMPLETADO` |
-| `CP-09` | `F9` | `F9.1` – `F9.2` | `docs(audit): F9 ci/cd y repositorio` | `5f55883` | `✅ COMPLETADO` |
-| `CP-10` | `F10` | `F10.1` – `F10.2` | `docs(audit): F10 privacidad y logging` | `1038fbc` | `✅ COMPLETADO` |
-| `CP-11` | `F11` | `F11.1` – `F11.4` | `docs(audit): F11 informe consolidado v2` | `6ec3c4f` | `✅ COMPLETADO` |
-
----
-
-## 5. Checklists Maestras de Seguimiento (`SEC-*`, `NEW-*`, `T01`–`T25`)
-
-### 5.1 Checklist de Hallazgos Previos (`SEC-001`…`SEC-021`)
-
-| ID | Título Corto | Fase | Estado Preliminar | Estado Verificado Final | Evidencia |
-| :--- | :--- | :--- | :--- | :--- | :--- |
-| `SEC-001` | Zustand en texto plano en `localStorage` | `F4` | ⚠️ Parcial | `✅ CERRADO — setItem borra plaintext y cifra; sin fallback` | `F4-storage-inventory.md` §1.1 |
-| `SEC-002` | Clave AES-GCM derivada de secreto en `localStorage` | `F4` | 🔁 Regresión probable | `❌ CONFIRMADO (Media) — clave derivable de user.id + salt público; PoC DECRYPTED_OK` | `F4-crypto-and-auditlog.md` §1.3-1.4 |
-| `SEC-003` | Edge Function `send-reminders` sin auth / comparación no constante | `F6` | ⚠️ Parcial | `⚠️ PARCIAL — verify_jwt + secreto; comparación no constante; FUNCTION_SECRET vacío (falla cerrada)` | `F6-edge-push-sw.md` §3-4 |
-| `SEC-004` | `cleanup_stale_sessions()` `SECURITY DEFINER` | `F2` | ⚠️ / 🔁 | `⚠️ PARCIAL — EXECUTE a authenticated; guard roto (siempre deniega)` | `F2-catalog-and-rls.md` |
-| `SEC-005` | IDOR en servicios (`.eq('user_id', ...)`) | `F5` | ✅ por verificar | `⚠️ PARCIAL — 3 escrituras sin filtro; RLS las contiene; Storage sin prefijo` | `F5-services-idor-validation.md` §2-3 |
-| `SEC-006` | Clave `anon` con expiración año 2100 | `F1` | ❓ por verificar | `⚠️ PARCIAL — role=anon, exp 2036 (10 años)`, no 2100 | `F1-supply-chain-and-bundle.md` |
-| `SEC-007` | Recibos en Storage con URL pública vs firmada | `F2` | ✅ por verificar | `⚠️ PARCIAL — bucket privado OK; sin file_size_limit ni MIME` | `F2-catalog-and-rls.md` |
-| `SEC-008` | Rate limiting de login sólo en cliente | `F3` | ❌ Abierto | `❌ CONFIRMADO (parcial) — limiter no conectado; GoTrue 30/5 min/IP` | `F3-auth-mfa-sessions.md` |
-| `SEC-009` | Hash-chaining del audit log (`djb2` → `SHA-256` sin HMAC) | `F4` | ✅ por verificar | `⚠️ PARCIAL — SHA-256 sí; sin HMAC/anclaje; cadena falsificable (PoC)` | `F4-crypto-and-auditlog.md` §2.3 |
-| `SEC-010` | Takeover de sesión multi-dispositivo sin MFA | `F3` | ❓ por verificar | `⚠️ CONFIRMADO (diseño) — sin reauth; canal público (DoS); RLS contiene cross-tenant` | `F3-auth-mfa-sessions.md` |
-| `SEC-011` | Columna `deleted_at` inexistente en RLS de `user_sessions` | `F2` | ✅ por verificar | `✅ CERRADO — políticas sin deleted_at` | `F2-catalog-and-rls.md` |
-| `SEC-012` | `isValidRedirectUri` permite cualquier `localhost` | `F3` | ❌ Abierto | `⚠️ CONFIRMADO (parcial) — cliente laxo; allowlist GoTrue bloquea redirect; en Android el custom scheme + implicit flow permite interceptación (F8-A)` | `F3-auth-mfa-sessions.md` / `F8-android-masvs.md` §2.2 |
-| `SEC-013` | Rate limit de Edge Function en memoria de Deno | `F6` | ❌ Abierto | `❌ CONFIRMADO (Bajo) — Map por isolate; XFF completo y spoofable; sin poda` | `F6-edge-push-sw.md` §6 |
-| `SEC-014` | Políticas RLS sobre vistas SQL (`*_safe`) | `F2` | ❌ Escalado (`NEW-02`) | `✅ CERRADO — vistas con security_invoker=true` | `F2-catalog-and-rls.md` |
-| `SEC-015` | Datos no borrados de storage al cerrar sesión | `F4` | ✅ por verificar | `❌ CONFIRMADO (Alta) — no borra estado/sync/recibos/audit; salt rompe descifrado` | `F4-storage-inventory.md` §2 |
-| `SEC-016` | RLS de `user_settings` con `policyprefix` inválido | `F2` | ✅ por verificar | `✅ CERRADO — 4 políticas correctas` | `F2-catalog-and-rls.md` |
-| `SEC-017` | CORS wildcard `*` en Edge Function | `F6` | ⚠️ Parcial | `❌ CONFIRMADO (Bajo) — ACAO * fijo en producción; ALLOWED_ORIGIN ausente` | `F6-edge-push-sw.md` §5 |
-| `SEC-018` | `profile.email` persistido en estado de Zustand | `F4` | ❓ por verificar | `❌ CONFIRMADO (Media) — cifrado local, sync JSONB y export por defecto` | `F4-storage-inventory.md` §3 |
-| `SEC-019` | `userId` / `clientId` en logs de consola | `F10` | ❓ por verificar | `⚠️ PARCIAL — 92 console + 7 logger; clientId/UUIDs/errores crudos; 8 refs .catch(console.*) en dist; sin email/montos` | `F10-privacy-logging-gdpr.md` |
-| `SEC-020` | Importación JSON sin límite de tamaño previo al parseo | `F5` | ❓ por verificar | `⚠️ PARCIAL — UI 20 MB; store sin límite ni topes; Zod no aplicado` | `F5-services-idor-validation.md` §4 |
-| `SEC-021` | `dist/stats.html` del bundle analyzer accesible | `F1`/`F9` | ❓ por verificar | `❌ CONFIRMADO (build)` — stats.html 1.26 MB en `dist/` | `F1-supply-chain-and-bundle.md` |
-
-### 5.2 Checklist de Nuevas Hipótesis de Riesgo (`NEW-01`…`NEW-12`)
-
-| ID | Hipótesis | Fase | Nivel | Veredicto Final | Evidencia |
-| :--- | :--- | :--- | :--- | :--- | :--- |
-| `NEW-01` | Clave AES-GCM derivada de `user.id` (UUID público en JWT) + salt en `localStorage` | `F4` | `N0`/`N2` | `❌ CONFIRMADO (Media) — PoC deriva la clave y descifra (DECRYPTED_OK)` | `F4-crypto-and-auditlog.md` §1.3 |
-| `NEW-02` | Vistas `accounts_safe`, `transactions_safe`, `debt_payments_safe` sin `security_invoker=true` | `F2` | `N1`/`N2` | `✅ DESCARTADO (SEGURO) — las 3 vistas con security_invoker=true` | `F2-catalog-and-rls.md` |
-| `NEW-03` | `cleanup_stale_sessions()` ejecutable por cualquier rol `authenticated` | `F2` | `N1` | `⚠️ CONFIRMADO (privilegio) — mitigado por guard defectuoso` | `F2-catalog-and-rls.md` |
-| `NEW-04` | MFA aplicado sólo en UI; políticas RLS no exigen `aal2` | `F2`/`F3` | `N1`/`N2` | `❌ CONFIRMADO (crítico) — MFA UI-only; aal1 conserva CRUD` | `F3-auth-mfa-sessions.md` |
-| `NEW-05` | Desfase entre `supabase/schema.sql` + `migrations/` y el esquema real en producción | `F2` | `N1` | `❌ CONFIRMADO — 12 diferencias; falta notification_prefs` | `F2-schema-drift.md` |
-| `NEW-06` | Android `android:allowBackup="true"` sin `dataExtractionRules` | `F8` | `N0` | `❌ CONFIRMADO (Media) — backup incluye files/ y app_webview/ (sesión, salt, IndexedDB); sin reglas de exclusión` | `F8-android-masvs.md` §2.1 |
-| `NEW-07` | Supply chain: `esm.sh` flotante en Deno, `npm audit \|\| true` en CI y auto-merge | `F1`/`F9` | `N0` | `⚠️ CONFIRMADO PARCIAL (F1/F6/F9)` — esm.sh `@2` → `2.117.2`; `npm audit || true`; auto-merge write; acciones por tag mutable | `F1`, `F6` §2 y `F9-cicd-and-repo-hygiene.md` §2 |
-| `NEW-08` | Service Worker `public/sw.js`: open redirect en `notificationclick` y `message` sin validar origen | `F6` | `N0` | `❌ CONFIRMADO (Media) — PoC OPEN_REDIRECT_CONFIRMED; message sin origin/source` | `F6-edge-push-sw.md` §8 |
-| `NEW-09` | Notificaciones muestran montos financieros por defecto (`hideAmountsInNotifications=false`) | `F6` | `N0` | `❌ CONFIRMADO (Media/Baja) — montos por defecto; producción ignora preferencias` | `F6-edge-push-sw.md` §7 |
-| `NEW-10` | `dangerouslySetInnerHTML` en `src/components/ui/chart.tsx` L70 | `F7` | `N0` | `✅ DESCARTADO — sin llamantes; tree-shaken de dist; sink CSS solo si se reactiva` | `F7-web-xss-csp.md` §3 |
-| `NEW-11` | Debilidades en CSP y desalineación de headers entre `netlify.toml`, `vercel.json` e `index.html` | `F7` | `N0`/Pasivo | `⚠️ CONFIRMADO PARCIAL — CSP fuerte; wildcards/unsafe-inline; sin COOP/CORP/SRI/reporting` | `F7-web-xss-csp.md` §4-5 |
-| `NEW-12` | Metadatos versionados en git (`.netlify/state.json`, `graphify-out/`) | `F9` | `N0` | `❌ CONFIRMADO (Bajo) — state.json + netlify.toml con ruta local; 74 archivos de graphify-out (cache y .graphify_python); .vercel ignorado` | `F9-cicd-and-repo-hygiene.md` §3 |
-
-### 5.3 Checklist de Matriz de Pruebas (`T01`–`T25`)
-
-| Prueba | Fase | Nivel | Estado | Resultado Resumido |
-| :--- | :--- | :--- | :--- | :--- |
-| `T01` Secretos en historial git | `F1` | `N0` | `❌ ABIERTO` | 3 hallazgos gitleaks (1 JWT redactado en `.env` histórico); 0 verificados trufflehog |
-| `T02` CVE en dependencias | `F1` | `N0` | `❌ ABIERTO` | 52 npm (3C/31H); 10 runtime (7H); 81 OSV (3C/30H) |
-| `T03` Secretos / source maps en `dist/` | `F1` | `N0` | `❌ ABIERTO` | Sin secretos ni `.map`; `stats.html` presente en build |
-| `T04` Tablas sin RLS | `F2` | `N1` | `✅ PASA` | 0/10 tablas sin RLS |
-| `T05` Vistas sin `security_invoker` | `F2` | `N1`+`N2` | `✅ PASA` | 3/3 con security_invoker; anon → [] |
-| `T06` CRUD cross-tenant A→B | `F2` | `N1`+`N3` | `❌ FALLA (push_subscriptions) / ✅ PASA (resto)` | 9/10 tablas, 3/3 vistas `*_safe` y `storage.objects` aíslan al 100%; `push_subscriptions` permite secuestro con `UPDATE` sin `WHERE` (`F2-A` CVSS 8.1) |
-| `T07` `EXECUTE` de RPC `SECURITY DEFINER` | `F2` | `N1` | `❌ FALLA` | authenticated=true; guard roto deniega siempre |
-| `T08` Storage cross-user / público | `F2` | `N1`+`N2` | `✅ PASA (parcial)` | Bucket privado; anon 400; sin límites MIME/tamaño |
-| `T09` REST con token `aal1` en cuenta con MFA | `F3` | `N1`+`N3` | `❌ FALLA` | `poc-t06-t09-t12-rls-tests.sql`: con factor TOTP `verified` y claim `aal1`, CRUD + Storage son 100% permitidos (`NEW-04`) |
-| `T10` Redirect OAuth arbitrario | `F3` | `N0`+`N1` | `✅ PASA (con salvedad)` | GoTrue `uri_allow_list` exacta bloquea redirects; cliente laxo y Netlify antiguo como riesgo residual |
-| `T11` Configuración de Auth | `F3` | `N1` | `❌ FALLA` | Mínimo 6, HIBP off, sin CAPTCHA/notificaciones/recuperación/timeout de servidor |
-| `T12` Takeover sin re-autenticación | `F3` | `N0`+`N3` | `⚠️ PARCIAL / FALLA` | `DELETE` cross-tenant `A -> B` bloqueado por RLS (`rows=0`); takeover propio permitido en `aal1` sin MFA (`rows=1`) |
-| `T13` Inventario de storage pre/post logout | `F4` | `N0`+`N2` | `❌ FALLA` | `poc-t13-logout-storage.mjs`: `signOut()` deja `migol-finanzas-v2`, `sync-queue`, recibos y `audit_log` (con `newEmail` legible por B) y destruye el salt (`SEC-015`, `F4-D`) |
-| `T14` PoC de descifrado `NEW-01` | `F4` | `N0`+`N2` | `✅ PASA` | `DECRYPTED_OK` con user.id + salt público; clave incorrecta rechazada |
-| `T15` Update/delete sin `user_id` | `F5` | `N0` | `⚠️ PARCIAL` | 3 rutas sin filtro explícito; RLS `auth.uid()=user_id` las contiene; A→B cubierto por `T06` |
-| `T16` Import JSON malicioso | `F5` | `N0` | `⚠️ PARCIAL` | Límite 20 MB solo en UI; import sin Zod; prototype pollution global descartada |
-| `T17` Edge Function: paridad, 401, CORS | `F6` | `N1`+`N2` | `❌ FALLA` | Paridad rota (v4 239 vs repo 548 líneas); 401 sin credenciales ✅; CORS `*` ❌ |
-| `T18` Rate limit de Edge Function | `F6` | `N0`+`N3` | `❌ FALLA (estático)` | Map por isolate; clave XFF completa y spoofable; sin poda; no se ejecutó ráfaga |
-| `T19` Open redirect del Service Worker | `F6` | `N0` | `❌ FALLA` | PoC `OPEN_REDIRECT_CONFIRMED`; `message` sin `origin`/`source` |
-| `T20` SAST React/TS | `F7` | `N0` | `✅ PASA` | Semgrep 173 reglas/304 archivos; 0 sinks XSS en `src/`; único sink en código muerto |
-| `T21` Headers de producción y CSP | `F7` | `N0`+Pasivo | `⚠️ PARCIAL` | CSP/HSTS/XCTO/XFO/Referrer/Permissions OK; faltan COOP/CORP/COEP, object-src, reporting y SRI |
-| `T22` ZAP baseline local | `F7` | Local | `✅ PASA` | 0 FAIL, 5 WARN, 62 PASS; warnings alineados con NEW-11 |
-| `T23` Android Manifest/backup/exported/FileProvider | `F8` | `N0` | `❌ FALLA` | `NEW-06` backup sin reglas; `F8-A` activity exportada + custom scheme + implicit flow; `F8-B` FileProvider amplio; `F8-G` permisos innecesarios; MASVS 1 PASS/10 PARTIAL/8 FAIL/5 N/A |
-| `T24` Endurecimiento de CI/CD | `F9` | `N0` | `❌ FALLA` | `F9-A` write token + checkout persistente; `F9-B` audit no bloqueante; `F9-C` auto-merge sin gate; `F9-D` Node 18 EOL; `F9-E` artifact de bundle; acciones por tag mutable |
-| `T25` PII en logs de consola | `F10` | `N0` | `⚠️ PARCIAL` | 92 `console.*` + 7 `logger.*`; sin email/montos; `clientId` + UUIDs + errores crudos; `drop_console` deja 8 refs; audit log local con PII |
-
----
-
-## 6. Resumen de Entrega para Antigravity Reviewer (`03_ANTIGRAVITY_REVIEW.md`)
-
-- **Estado de Ejecución de Fases (`F0`–`F11`):** `✅ COMPLETADO` — 39/39 tareas ✅ (`35` OpenCode CLI + `4` resueltas por `agy` en Fase 3); 0 escaladas; 0 pendientes.
-- **Archivos de Evidencia Generados en `.agent/audit/evidence/`:** `23` archivos (`F0`–`F10`, incluidos dumps, JSON de scanners y `6` PoCs/resultados en `.agent/audit/scratch/`).
-- **Verificación de CERO Cambios en Código Fuente (`src/**`, `supabase/**`, `android/**`):** `✅ VERIFICADO` — `CP-00`…`CP-11` y Fase 3 solo tocaron `.agent/` y `graphify-out/`.
-- **Verificación de Secretos:** `✅ gitleaks dir .agent --redact` = 0; JWT v1 redactado; sin `sbp_`/JWT en `.agent/`.
-- **Mensaje de Cierre Final (`agy`):** Fase 2 y Fase 3 completadas al 100%. `12/12` bloques (`R-F0`…`R-F11`) certificados y firmados en `.agent/workflow/03_ANTIGRAVITY_REVIEW.md`; el backlog P0–P3 está listo para el ciclo de remediación en `.agent/security_audit.md` §12.9.
+| **F5-B** | Error `TS2554` en `useReceiptMutations.ts` + polyfill IndexedDB Vitest | P0-F0 | `[PENDIENTE]` | `npx tsc --noEmit` + `vitest` | `[ ]` |
+| **NEW-04** | Enforzamiento backend MFA `aal2` (`is_mfa_compliant()` + `AS RESTRICTIVE` en 10 tablas y `storage.objects`) | P0-F1 | `[PENDIENTE]` | Migración SQL + revisión `agy` en Docker PG17 | `[ ]` |
+| **F2-A** | Fix de hijacking cross-tenant `UPDATE USING (true)` en `push_subscriptions` | P0-F1 | `[PENDIENTE]` | Migración SQL + `schema_push_notifications.sql` | `[ ]` |
+| **SEC-004** | `REVOKE EXECUTE` de `cleanup_stale_sessions()` a `authenticated`/`anon` | P0-F1 | `[PENDIENTE]` | Migración SQL + `schema.sql` | `[ ]` |
+| **F8-A / NEW-06** | OAuth `flowType: 'pkce'`, eliminación de `setSession` implícito en `App.tsx`, `allowBackup="false"` en Android | P0-F2 | `[PENDIENTE]` | `tsc` + inspección de `App.tsx` y `AndroidManifest.xml` | `[ ]` |
+| **SEC-012** | Endurecimiento de `isValidRedirectUri` en `Login.tsx` y limpieza de URL en `AuthCallback.tsx` | P0-F2 | `[PENDIENTE]` | `tsc` + inspección de `Login.tsx` y `AuthCallback.tsx` | `[ ]` |
+| **SEC-002 / NEW-01** | Pepper criptográfico aleatorio de 256 bits en `IndexedDB` (`finance-pal-keystore`) combinado con `user.id` | P0-F3 | `[PENDIENTE]` | `npx vitest run src/test/encrypted-storage.test.ts` | `[ ]` |
+| **F4-F** | Migración de iteraciones PBKDF2 (`100k` → `600k`) sin sobrescribir el salt antes de descifrar | P0-F3 | `[PENDIENTE]` | `npx vitest run src/test/encrypted-storage.test.ts` | `[ ]` |
+| **SEC-015 / F4-D** | Purga completa de `localStorage` e `IndexedDB` (`receipts`, `audit`, `keystore`) en `signOut()` | P0-F4 | `[PENDIENTE]` | `npx vitest run src/test/encrypted-storage.test.ts src/test/audit-logger.test.ts` | `[ ]` |
+| **F10-B** | Enmascaramiento de emails (`maskEmail`) en `audit-logger.ts` antes de guardar en IndexedDB | P0-F4 | `[PENDIENTE]` | `npx vitest run src/test/audit-logger.test.ts` | `[ ]` |
+| **SEC-008 / T11** | Contraseñas de 12+ caracteres + complejidad y `rateLimiter` (`auth`) activo en `Login.tsx`, `PerfilSection.tsx` y `supabase/config.toml` | P0-F5 | `[PENDIENTE]` | `npx vitest run src/test/security.test.ts` | `[ ]` |
