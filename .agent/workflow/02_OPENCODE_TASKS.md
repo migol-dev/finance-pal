@@ -14,15 +14,15 @@
 | :--- | :--- |
 | **Total de Fases de Auditoría** | `12` (`F0` a `F11`) |
 | **Total de Tareas Planificadas** | `39` (`F0.1` a `F11.4`) |
-| **Tareas Completadas (✅)** | `16` |
+| **Tareas Completadas (✅)** | `19` |
 | **Tareas en Progreso (⏳)** | `0` |
 | **Tareas Bloqueadas / Escaladas a `agy` (⚠️)** | `4` |
-| **Tareas Pendientes (⚪)** | `19` |
-| **Progreso Estimado** | `[████████░░░░░░░░░░░░] 41% (16/39)` |
-| **Hallazgos Previos a Re-verificar (`SEC-*`)** | `15 / 21` verificados |
+| **Tareas Pendientes (⚪)** | `16` |
+| **Progreso Estimado** | `[█████████░░░░░░░░░░░] 49% (19/39)` |
+| **Hallazgos Previos a Re-verificar (`SEC-*`)** | `17 / 21` verificados |
 | **Hipótesis Nuevas a Confirmar (`NEW-*`)** | `6 / 12` evaluadas |
-| **Matriz de Pruebas (`T01`–`T25`)** | `10 / 25` ejecutadas |
-| **Último Checkpoint Git** | `CP-03 (dd8ff98)` |
+| **Matriz de Pruebas (`T01`–`T25`)** | `12 / 25` ejecutadas |
+| **Último Checkpoint Git** | `CP-04 (5787bf9)` |
 | **Fecha/Hora de Inicio** | `2026-10-20` |
 | **Fecha/Hora de Última Actualización** | `2026-10-20` |
 
@@ -105,12 +105,15 @@
 ---
 
 ### 🔄 Fase F5: Servicios, IDOR, Validación y Sincronización (`CP-05` — Prioridad `P1` — `T15`, `T16`)
-- [ ] **F5.1 [N0 — T15, SEC-005]:** Ejecutar primero `graphify query "supabase update delete upsert calls in services"` y luego auditar los 9 archivos en `src/services/*.service.ts`, `src/lib/supabase-storage.ts`, `src/lib/web-push.ts` y `src/lib/sync-engine.ts`. Construir la matriz completa de llamadas `.select()`, `.insert()`, `.update()`, `.delete()`, `.upsert()` indicando archivo#línea, si incluye `.eq('user_id', ...)` y el origen del `userId`.
+- [✅] **F5.1 [N0 — T15, SEC-005]:** Ejecutar primero `graphify query "supabase update delete upsert calls in services"` y luego auditar los 9 archivos en `src/services/*.service.ts`, `src/lib/supabase-storage.ts`, `src/lib/web-push.ts` y `src/lib/sync-engine.ts`. Construir la matriz completa de llamadas `.select()`, `.insert()`, `.update()`, `.delete()`, `.upsert()` indicando archivo#línea, si incluye `.eq('user_id', ...)` y el origen del `userId`.
   - **Evidencia esperada:** Matriz IDOR completa en `.agent/audit/evidence/F5-services-idor-validation.md`.
-- [ ] **F5.2 [N0 — T16, SEC-020]:** Auditar `importData` en `src/store/finance-store.ts`, `src/lib/migration.ts`, `src/lib/schema-migrations.ts`, `src/lib/validators.ts` y `src/lib/sanitizers.ts`: verificar límite de tamaño antes de `JSON.parse` (`SEC-020`), validación con esquemas Zod por entidad, riesgo de *prototype pollution* en `merge` de Zustand persist y `sanitizeMigratedData`, y opciones `excludePII` en exportación.
+  - **Resultado:** ⚠️ `SEC-005` parcial. 60+ llamadas inventariadas; 3 rutas de escritura sin filtro explícito (`goals.addGoalContribution`, `mergeAccounts`, `useSessionManager`) y 2 funciones de Storage sin validar prefijo. RLS `auth.uid() = user_id` las contiene; `T15` parcial y A→B dinámico cubierto por la escalación de `T06`.
+- [✅] **F5.2 [N0 — T16, SEC-020]:** Auditar `importData` en `src/store/finance-store.ts`, `src/lib/migration.ts`, `src/lib/schema-migrations.ts`, `src/lib/validators.ts` y `src/lib/sanitizers.ts`: verificar límite de tamaño antes de `JSON.parse` (`SEC-020`), validación con esquemas Zod por entidad, riesgo de *prototype pollution* en `merge` de Zustand persist y `sanitizeMigratedData`, y opciones `excludePII` en exportación.
   - **Evidencia esperada:** Sección de importación/validación en `.agent/audit/evidence/F5-services-idor-validation.md`.
-- [ ] **F5.3 [N0]:** Auditar la sincronización y resolución de conflictos (`src/lib/sync-engine.ts`, `src/services/cloudSync.service.ts`, `src/components/app/DataConflictDialog.tsx`, `src/pages/MigracionNube.tsx`) y verificar con `grep -rln "@/lib/supabase" src/pages src/components` qué vistas o componentes invocan a Supabase directamente sin pasar por la fachada `useFinanceData`.
+  - **Resultado:** ⚠️ `SEC-020` parcial: UI limita a 20 MB, el store no; sin topes de arrays/profundidad. `F5-A`: `importData` usa sanitizers laxos en vez de Zod (montos negativos, fechas inválidas, strings sin límite). Prototype pollution global descartada; `excludePII` sin UI (confirma `SEC-018`).
+- [✅] **F5.3 [N0]:** Auditar la sincronización y resolución de conflictos (`src/lib/sync-engine.ts`, `src/services/cloudSync.service.ts`, `src/components/app/DataConflictDialog.tsx`, `src/pages/MigracionNube.tsx`) y verificar con `grep -rln "@/lib/supabase" src/pages src/components` qué vistas o componentes invocan a Supabase directamente sin pasar por la fachada `useFinanceData`.
   - **Evidencia esperada:** `.agent/audit/evidence/F5-services-idor-validation.md` (`CP-05`: `docs(audit): F5 servicios, IDOR y validación`).
+  - **Resultado:** ❌ `F5-B` firma incorrecta en `useReceiptMutations` (`updateTransaction` con 2 args; `tsc` TS2554); `F5-C` `syncAllToCloud` borra y reinserta sin transacción; `F5-D` `DataConflictDialog`/`App.tsx` llaman a Supabase fuera de la fachada. Cola offline con allowlist correcta, pero pierde mutaciones al agotar reintentos.
 
 ---
 
@@ -193,7 +196,7 @@
 | `CP-01` | `F1` | `F1.1` – `F1.4` | `docs(audit): F1 secretos y dependencias` | `0bd74a3` | `✅ COMPLETADO` |
 | `CP-02` | `F2` | `F2.1` – `F2.6` | `docs(audit): F2 RLS, vistas, RPC y storage` | `a91a215` | `✅ COMPLETADO` |
 | `CP-03` | `F3` | `F3.1` – `F3.4` | `docs(audit): F3 auth, MFA y sesiones` | `dd8ff98` | `✅ COMPLETADO` |
-| `CP-04` | `F4` | `F4.1` – `F4.3` | `docs(audit): F4 almacenamiento cliente y cifrado` | `pendiente` | `⚪ PENDIENTE` |
+| `CP-04` | `F4` | `F4.1` – `F4.3` | `docs(audit): F4 almacenamiento cliente y cifrado` | `5787bf9` | `✅ COMPLETADO` |
 | `CP-05` | `F5` | `F5.1` – `F5.3` | `docs(audit): F5 servicios, IDOR y validación` | `pendiente` | `⚪ PENDIENTE` |
 | `CP-06` | `F6` | `F6.1` – `F6.3` | `docs(audit): F6 edge function, push y SW` | `pendiente` | `⚪ PENDIENTE` |
 | `CP-07` | `F7` | `F7.1` – `F7.3` | `docs(audit): F7 web, XSS y headers` | `pendiente` | `⚪ PENDIENTE` |
@@ -214,7 +217,7 @@
 | `SEC-002` | Clave AES-GCM derivada de secreto en `localStorage` | `F4` | 🔁 Regresión probable | `❌ CONFIRMADO (Media) — clave derivable de user.id + salt público; PoC DECRYPTED_OK` | `F4-crypto-and-auditlog.md` §1.3-1.4 |
 | `SEC-003` | Edge Function `send-reminders` sin auth / comparación no constante | `F6` | ⚠️ Parcial | `⬜ PENDIENTE` | `F6-edge-push-sw.md` |
 | `SEC-004` | `cleanup_stale_sessions()` `SECURITY DEFINER` | `F2` | ⚠️ / 🔁 | `⚠️ PARCIAL — EXECUTE a authenticated; guard roto (siempre deniega)` | `F2-catalog-and-rls.md` |
-| `SEC-005` | IDOR en servicios (`.eq('user_id', ...)`) | `F5` | ✅ por verificar | `⬜ PENDIENTE` | `F5-services-idor-validation.md` |
+| `SEC-005` | IDOR en servicios (`.eq('user_id', ...)`) | `F5` | ✅ por verificar | `⚠️ PARCIAL — 3 escrituras sin filtro; RLS las contiene; Storage sin prefijo` | `F5-services-idor-validation.md` §2-3 |
 | `SEC-006` | Clave `anon` con expiración año 2100 | `F1` | ❓ por verificar | `⚠️ PARCIAL — role=anon, exp 2036 (10 años)`, no 2100 | `F1-supply-chain-and-bundle.md` |
 | `SEC-007` | Recibos en Storage con URL pública vs firmada | `F2` | ✅ por verificar | `⚠️ PARCIAL — bucket privado OK; sin file_size_limit ni MIME` | `F2-catalog-and-rls.md` |
 | `SEC-008` | Rate limiting de login sólo en cliente | `F3` | ❌ Abierto | `❌ CONFIRMADO (parcial) — limiter no conectado; GoTrue 30/5 min/IP` | `F3-auth-mfa-sessions.md` |
@@ -229,7 +232,7 @@
 | `SEC-017` | CORS wildcard `*` en Edge Function | `F6` | ⚠️ Parcial | `⬜ PENDIENTE` | `F6-edge-push-sw.md` |
 | `SEC-018` | `profile.email` persistido en estado de Zustand | `F4` | ❓ por verificar | `❌ CONFIRMADO (Media) — cifrado local, sync JSONB y export por defecto` | `F4-storage-inventory.md` §3 |
 | `SEC-019` | `userId` / `clientId` en logs de consola | `F10` | ❓ por verificar | `⬜ PENDIENTE` | `F10-privacy-logging-gdpr.md` |
-| `SEC-020` | Importación JSON sin límite de tamaño previo al parseo | `F5` | ❓ por verificar | `⬜ PENDIENTE` | `F5-services-idor-validation.md` |
+| `SEC-020` | Importación JSON sin límite de tamaño previo al parseo | `F5` | ❓ por verificar | `⚠️ PARCIAL — UI 20 MB; store sin límite ni topes; Zod no aplicado` | `F5-services-idor-validation.md` §4 |
 | `SEC-021` | `dist/stats.html` del bundle analyzer accesible | `F1`/`F9` | ❓ por verificar | `❌ CONFIRMADO (build)` — stats.html 1.26 MB en `dist/` | `F1-supply-chain-and-bundle.md` |
 
 ### 5.2 Checklist de Nuevas Hipótesis de Riesgo (`NEW-01`…`NEW-12`)
@@ -267,8 +270,8 @@
 | `T12` Takeover sin re-autenticación | `F3` | `N0`+`N2` | `⚠️ ESCALADA` | Takeover sin reauth; canal público (DoS); falta prueba de dos dispositivos |
 | `T13` Inventario de storage pre/post logout | `F4` | `N0`+`N2` | `⚠️ ESCALADA` | Inventario estático completo; falta prueba dinámica pre/post logout y A→B (sin audit-a/audit-b) |
 | `T14` PoC de descifrado `NEW-01` | `F4` | `N0`+`N2` | `✅ PASA` | `DECRYPTED_OK` con user.id + salt público; clave incorrecta rechazada |
-| `T15` Update/delete sin `user_id` | `F5` | `N0` | `⬜ PENDIENTE` | - |
-| `T16` Import JSON malicioso | `F5` | `N0` | `⬜ PENDIENTE` | - |
+| `T15` Update/delete sin `user_id` | `F5` | `N0` | `⚠️ PARCIAL` | 3 rutas sin filtro explícito; RLS `auth.uid()=user_id` las contiene; A→B cubierto por `T06` |
+| `T16` Import JSON malicioso | `F5` | `N0` | `⚠️ PARCIAL` | Límite 20 MB solo en UI; import sin Zod; prototype pollution global descartada |
 | `T17` Edge Function: paridad, 401, CORS | `F6` | `N1`+`N2` | `⬜ PENDIENTE` | - |
 | `T18` Rate limit de Edge Function | `F6` | `N0`+`N3` | `⬜ PENDIENTE` | - |
 | `T19` Open redirect del Service Worker | `F6` | `N0` | `⬜ PENDIENTE` | - |
