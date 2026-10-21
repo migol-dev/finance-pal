@@ -14,15 +14,15 @@
 | :--- | :--- |
 | **Total de Fases de Auditoría** | `12` (`F0` a `F11`) |
 | **Total de Tareas Planificadas** | `39` (`F0.1` a `F11.4`) |
-| **Tareas Completadas (✅)** | `12` |
+| **Tareas Completadas (✅)** | `14` |
 | **Tareas en Progreso (⏳)** | `0` |
-| **Tareas Bloqueadas / Escaladas a `agy` (⚠️)** | `1` |
-| **Tareas Pendientes (⚪)** | `26` |
-| **Progreso Estimado** | `[██████░░░░░░░░░░░░░░] 31% (12/39)` |
-| **Hallazgos Previos a Re-verificar (`SEC-*`)** | `7 / 21` verificados |
+| **Tareas Bloqueadas / Escaladas a `agy` (⚠️)** | `3` |
+| **Tareas Pendientes (⚪)** | `22` |
+| **Progreso Estimado** | `[███████░░░░░░░░░░░░░] 36% (14/39)` |
+| **Hallazgos Previos a Re-verificar (`SEC-*`)** | `10 / 21` verificados |
 | **Hipótesis Nuevas a Confirmar (`NEW-*`)** | `5 / 12` evaluadas |
-| **Matriz de Pruebas (`T01`–`T25`)** | `7 / 25` ejecutadas |
-| **Último Checkpoint Git** | `CP-01 (0bd74a3)` · F2 en curso |
+| **Matriz de Pruebas (`T01`–`T25`)** | `9 / 25` ejecutadas |
+| **Último Checkpoint Git** | `CP-02 (a91a215)` |
 | **Fecha/Hora de Inicio** | `2026-10-20` |
 | **Fecha/Hora de Última Actualización** | `2026-10-20` |
 
@@ -76,14 +76,18 @@
 ---
 
 ### 🔑 Fase F3: Autenticación, MFA y Sesiones (`CP-03` — Prioridad `P0` — `T09`–`T12`)
-- [ ] **F3.1 [N0/N1/N2 — T09, NEW-04]:** Auditar el flujo MFA en `src/context/AuthContext.tsx`, `src/pages/Login.tsx` y `src/pages/ajustes/secciones/SeguridadSection.tsx` junto con la evidencia de `pg_policies` (`F2.4`) para demostrar si la exigencia de TOTP (`aal2`) es puramente de interfaz (UI-only) y un JWT `aal1` permite leer/escribir directamente en PostgREST.
+- [⚠️] **F3.1 [N0/N1/N2 — T09, NEW-04]:** Auditar el flujo MFA en `src/context/AuthContext.tsx`, `src/pages/Login.tsx` y `src/pages/ajustes/secciones/SeguridadSection.tsx` junto con la evidencia de `pg_policies` (`F2.4`) para demostrar si la exigencia de TOTP (`aal2`) es puramente de interfaz (UI-only) y un JWT `aal1` permite leer/escribir directamente en PostgREST.
   - **Evidencia esperada:** Análisis y prueba `T09` en `.agent/audit/evidence/F3-auth-mfa-sessions.md`.
-- [ ] **F3.2 [N0/N1 — T10, SEC-012]:** Auditar `src/lib/supabase.ts` (`flowType` implícito vs PKCE), `isValidRedirectUri` en `src/pages/Login.tsx` L41-54 (`parsed.hostname === 'localhost'` sin validar puerto ni `pathname === '/auth/callback'`), y `src/pages/AuthCallback.tsx` (manejo de `error_description` y limpieza de URL).
+  - **Resultado:** ⚠️ Confirmado estáticamente (0 políticas/funciones con `aal`; `aal1` conserva CRUD). `T09` dinámico escalado por falta de cuenta con TOTP.
+- [✅] **F3.2 [N0/N1 — T10, SEC-012]:** Auditar `src/lib/supabase.ts` (`flowType` implícito vs PKCE), `isValidRedirectUri` en `src/pages/Login.tsx` L41-54 (`parsed.hostname === 'localhost'` sin validar puerto ni `pathname === '/auth/callback'`), y `src/pages/AuthCallback.tsx` (manejo de `error_description` y limpieza de URL).
   - **Evidencia esperada:** Sección OAuth/PKCE en `.agent/audit/evidence/F3-auth-mfa-sessions.md`.
-- [ ] **F3.3 [N1 — T11, SEC-008]:** Auditar `supabase/config.toml` y la configuración real de Auth en producción (`/v1/projects/rjforcrdyfuodsqtopvp/config/auth`, redactando cualquier `secret` o API key): longitud mínima de contraseña, protección contra contraseñas filtradas (`HIBP`), confirmación de email, `rate_limit_*`, `jwt_exp` y rotación de refresh tokens; contrastar con `src/lib/rate-limiter.ts` (`SEC-008`).
+  - **Resultado:** ⚠️ Parcial: flujo implícito, tokens en URL y allowlist cliente laxa; `T10` pasa por la `uri_allow_list` exacta de GoTrue.
+- [✅] **F3.3 [N1 — T11, SEC-008]:** Auditar `supabase/config.toml` y la configuración real de Auth en producción (`/v1/projects/rjforcrdyfuodsqtopvp/config/auth`, redactando cualquier `secret` o API key): longitud mínima de contraseña, protección contra contraseñas filtradas (`HIBP`), confirmación de email, `rate_limit_*`, `jwt_exp` y rotación de refresh tokens; contrastar con `src/lib/rate-limiter.ts` (`SEC-008`).
   - **Evidencia esperada:** Tabla comparativa ASVS V2 en `.agent/audit/evidence/F3-auth-mfa-sessions.md`.
-- [ ] **F3.4 [N0/N2 — T12, SEC-010]:** Auditar mensajes de error de login/registro/recuperación en `Login.tsx` (enumeración de cuentas), el flujo `requestTakeover` en `src/hooks/useSessionManager.ts` (`SEC-010`), la baja de MFA en `SeguridadSection.tsx`, el alcance de `signOut` y la existencia/ausencia de borrado total de cuenta en servidor y Storage.
+  - **Resultado:** ❌ `T11` falla: mínimo 6, HIBP off, sin CAPTCHA/lockout, notificaciones de Auth off y sin recuperación; `rate-limiter` de login no conectado.
+- [⚠️] **F3.4 [N0/N2 — T12, SEC-010]:** Auditar mensajes de error de login/registro/recuperación en `Login.tsx` (enumeración de cuentas), el flujo `requestTakeover` en `src/hooks/useSessionManager.ts` (`SEC-010`), la baja de MFA en `SeguridadSection.tsx`, el alcance de `signOut` y la existencia/ausencia de borrado total de cuenta en servidor y Storage.
   - **Evidencia esperada:** `.agent/audit/evidence/F3-auth-mfa-sessions.md` (`CP-03`: `docs(audit): F3 auth, MFA y sesiones`).
+  - **Resultado:** ⚠️ Takeover sin reauth y canal público (DoS) confirmado; `signOut` global correcto; sin borrado de cuenta servidor/Storage. `T12` dinámico escalado por falta de cuentas/dispositivos.
 
 ---
 
@@ -172,6 +176,8 @@
 | ID Tarea | Archivo / Endpoint | Problema / Bloqueo Detectado | Causa de la Dificultad | Qué debe ejecutar / resolver Antigravity (`agy`) |
 | :--- | :--- | :--- | :--- | :--- |
 | `F2.5` (`T06`) | REST Supabase `/rest/v1/{accounts,transactions,debts,goals,fixed_items,debt_payments,user_settings,user_sessions,push_subscriptions}` + Storage `receipts` | No se pudo ejecutar la prueba dinámica **cross-tenant A→B** (lectura y escritura de filas ficticias entre `audit-a` y `audit-b`) | No existen credenciales de las cuentas de prueba `audit-a`/`audit-b` en esta sesión (no se deben usar cuentas reales). El catálogo `N1` sí confirma RLS activo y políticas `auth.uid() = user_id` en las 10 tablas, vistas `security_invoker=true` y 0 políticas para `anon` | 1) Provisionar `audit-a@…` (con TOTP) y `audit-b@…` con datos ficticios; 2) Ejecutar la matriz CRUD A→B y Storage con JWT de cada cuenta; 3) Confirmar 100% denegado; 4) Eliminar cuentas y datos al cierre (`F11`). Evidencia parcial: `F2-catalog-and-rls.md` §1-5 |
+| `F3.1` (`T09`) | GoTrue `/auth/v1/token?grant_type=password` + PostgREST `/rest/v1/*` | No se pudo ejecutar el **CRUD con JWT `aal1`** de una cuenta con TOTP verificado | No existe una cuenta de prueba con MFA enrolado; crear usuarios reales en producción está fuera de alcance. La conclusión estática es inequívoca: 40 políticas `public`, **0** con `aal`; 0 funciones con `aal` | 1) Provisionar `audit-a` con TOTP verificado y datos ficticios; 2) Login solo con contraseña y guardar el token `aal1`; 3) Ejecutar `GET/POST/PATCH/DELETE` en `transactions` y `storage/v1/object/receipts`; 4) Confirmar `200/201` con `aal1` (vulnerable) y comparar con `aal2`; 5) Borrar cuenta/datos al cierre. Evidencia: `F3-auth-mfa-sessions.md` §1.3 |
+| `F3.4` (`T12`) | Realtime `user_sessions:<userId>` + `user_sessions` | No se pudo ejecutar la prueba de **takeover/DoS con dos dispositivos** ni la denegación cross-tenant | Faltan `audit-a`/`audit-b` y dos clientes con `anon` key. El análisis de código confirma `requestTakeover` sin reauth, canal público y borrado por `device_id` sin `user_id` (RLS lo contiene) | 1) Abrir dos sesiones de `audit-a` (A/B); 2) Suscribir un tercer cliente a `user_sessions:<uuid-A>`; 3) Capturar `deviceId` de A en `new_login`; 4) Enviar `takeover_request` y verificar pause/auto-borrado en A; 5) Confirmar que `audit-b` no puede borrar filas de `audit-a`. Evidencia: `F3-auth-mfa-sessions.md` §4.2 |
 
 ---
 
@@ -181,8 +187,8 @@
 | :--- | :--- | :--- | :--- | :--- | :--- |
 | `CP-00` | `F0` | `F0.1` – `F0.3` | `docs(audit): F0 entorno, alcance y protocolo de producción` | `769cf9e` | `✅ COMPLETADO` |
 | `CP-01` | `F1` | `F1.1` – `F1.4` | `docs(audit): F1 secretos y dependencias` | `0bd74a3` | `✅ COMPLETADO` |
-| `CP-02` | `F2` | `F2.1` – `F2.6` | `docs(audit): F2 RLS, vistas, RPC y storage` | `pendiente` | `⚪ PENDIENTE` |
-| `CP-03` | `F3` | `F3.1` – `F3.4` | `docs(audit): F3 auth, MFA y sesiones` | `pendiente` | `⚪ PENDIENTE` |
+| `CP-02` | `F2` | `F2.1` – `F2.6` | `docs(audit): F2 RLS, vistas, RPC y storage` | `a91a215` | `✅ COMPLETADO` |
+| `CP-03` | `F3` | `F3.1` – `F3.4` | `docs(audit): F3 auth, MFA y sesiones` | `pendiente` | `✅ COMPLETADO` |
 | `CP-04` | `F4` | `F4.1` – `F4.3` | `docs(audit): F4 almacenamiento cliente y cifrado` | `pendiente` | `⚪ PENDIENTE` |
 | `CP-05` | `F5` | `F5.1` – `F5.3` | `docs(audit): F5 servicios, IDOR y validación` | `pendiente` | `⚪ PENDIENTE` |
 | `CP-06` | `F6` | `F6.1` – `F6.3` | `docs(audit): F6 edge function, push y SW` | `pendiente` | `⚪ PENDIENTE` |
@@ -207,11 +213,11 @@
 | `SEC-005` | IDOR en servicios (`.eq('user_id', ...)`) | `F5` | ✅ por verificar | `⬜ PENDIENTE` | `F5-services-idor-validation.md` |
 | `SEC-006` | Clave `anon` con expiración año 2100 | `F1` | ❓ por verificar | `⚠️ PARCIAL — role=anon, exp 2036 (10 años)`, no 2100 | `F1-supply-chain-and-bundle.md` |
 | `SEC-007` | Recibos en Storage con URL pública vs firmada | `F2` | ✅ por verificar | `⚠️ PARCIAL — bucket privado OK; sin file_size_limit ni MIME` | `F2-catalog-and-rls.md` |
-| `SEC-008` | Rate limiting de login sólo en cliente | `F3` | ❌ Abierto | `⬜ PENDIENTE` | `F3-auth-mfa-sessions.md` |
+| `SEC-008` | Rate limiting de login sólo en cliente | `F3` | ❌ Abierto | `❌ CONFIRMADO (parcial) — limiter no conectado; GoTrue 30/5 min/IP` | `F3-auth-mfa-sessions.md` |
 | `SEC-009` | Hash-chaining del audit log (`djb2` → `SHA-256` sin HMAC) | `F4` | ✅ por verificar | `⬜ PENDIENTE` | `F4-crypto-and-auditlog.md` |
-| `SEC-010` | Takeover de sesión multi-dispositivo sin MFA | `F3` | ❓ por verificar | `⬜ PENDIENTE` | `F3-auth-mfa-sessions.md` |
+| `SEC-010` | Takeover de sesión multi-dispositivo sin MFA | `F3` | ❓ por verificar | `⚠️ CONFIRMADO (diseño) — sin reauth; canal público (DoS); RLS contiene cross-tenant` | `F3-auth-mfa-sessions.md` |
 | `SEC-011` | Columna `deleted_at` inexistente en RLS de `user_sessions` | `F2` | ✅ por verificar | `✅ CERRADO — políticas sin deleted_at` | `F2-catalog-and-rls.md` |
-| `SEC-012` | `isValidRedirectUri` permite cualquier `localhost` | `F3` | ❌ Abierto | `⬜ PENDIENTE` | `F3-auth-mfa-sessions.md` |
+| `SEC-012` | `isValidRedirectUri` permite cualquier `localhost` | `F3` | ❌ Abierto | `⚠️ CONFIRMADO (parcial) — cliente laxo; allowlist GoTrue bloquea redirect` | `F3-auth-mfa-sessions.md` |
 | `SEC-013` | Rate limit de Edge Function en memoria de Deno | `F6` | ❌ Abierto | `⬜ PENDIENTE` | `F6-edge-push-sw.md` |
 | `SEC-014` | Políticas RLS sobre vistas SQL (`*_safe`) | `F2` | ❌ Escalado (`NEW-02`) | `✅ CERRADO — vistas con security_invoker=true` | `F2-catalog-and-rls.md` |
 | `SEC-015` | Datos no borrados de storage al cerrar sesión | `F4` | ✅ por verificar | `⬜ PENDIENTE` | `F4-storage-inventory.md` |
@@ -229,7 +235,7 @@
 | `NEW-01` | Clave AES-GCM derivada de `user.id` (UUID público en JWT) + salt en `localStorage` | `F4` | `N0`/`N2` | `⬜ PENDIENTE` | `F4-crypto-and-auditlog.md` |
 | `NEW-02` | Vistas `accounts_safe`, `transactions_safe`, `debt_payments_safe` sin `security_invoker=true` | `F2` | `N1`/`N2` | `✅ DESCARTADO (SEGURO) — las 3 vistas con security_invoker=true` | `F2-catalog-and-rls.md` |
 | `NEW-03` | `cleanup_stale_sessions()` ejecutable por cualquier rol `authenticated` | `F2` | `N1` | `⚠️ CONFIRMADO (privilegio) — mitigado por guard defectuoso` | `F2-catalog-and-rls.md` |
-| `NEW-04` | MFA aplicado sólo en UI; políticas RLS no exigen `aal2` | `F2`/`F3` | `N1`/`N2` | `⚠️ CONFIRMADO (catálogo: 0 políticas aal2)` | `F3-auth-mfa-sessions.md` |
+| `NEW-04` | MFA aplicado sólo en UI; políticas RLS no exigen `aal2` | `F2`/`F3` | `N1`/`N2` | `❌ CONFIRMADO (crítico) — MFA UI-only; aal1 conserva CRUD` | `F3-auth-mfa-sessions.md` |
 | `NEW-05` | Desfase entre `supabase/schema.sql` + `migrations/` y el esquema real en producción | `F2` | `N1` | `❌ CONFIRMADO — 12 diferencias; falta notification_prefs` | `F2-schema-drift.md` |
 | `NEW-06` | Android `android:allowBackup="true"` sin `dataExtractionRules` | `F8` | `N0` | `⬜ PENDIENTE` | `F8-android-masvs.md` |
 | `NEW-07` | Supply chain: `esm.sh` flotante en Deno, `npm audit \|\| true` en CI y auto-merge | `F1`/`F9` | `N0` | `⚠️ CONFIRMADO PARCIAL (F1)` — esm.sh `@2` flotante; CI pendiente F9 | `F1` y `F9` |
@@ -251,10 +257,10 @@
 | `T06` CRUD cross-tenant A→B | `F2` | `N1`+`N2` | `⚠️ ESCALADA` | Sin cuentas audit-a/audit-b; RLS por auth.uid() en catálogo |
 | `T07` `EXECUTE` de RPC `SECURITY DEFINER` | `F2` | `N1` | `❌ FALLA` | authenticated=true; guard roto deniega siempre |
 | `T08` Storage cross-user / público | `F2` | `N1`+`N2` | `✅ PASA (parcial)` | Bucket privado; anon 400; sin límites MIME/tamaño |
-| `T09` REST con token `aal1` en cuenta con MFA | `F3` | `N1`+`N2` | `⬜ PENDIENTE` | - |
-| `T10` Redirect OAuth arbitrario | `F3` | `N0`+`N1` | `⬜ PENDIENTE` | - |
-| `T11` Configuración de Auth | `F3` | `N1` | `⬜ PENDIENTE` | - |
-| `T12` Takeover sin re-autenticación | `F3` | `N0`+`N2` | `⬜ PENDIENTE` | - |
+| `T09` REST con token `aal1` en cuenta con MFA | `F3` | `N1`+`N2` | `⚠️ ESCALADA` | 0 políticas `aal`; `aal1` accede a PostgREST; falta prueba dinámica con `audit-a` |
+| `T10` Redirect OAuth arbitrario | `F3` | `N0`+`N1` | `✅ PASA (con salvedad)` | GoTrue `uri_allow_list` exacta bloquea redirects; cliente laxo y Netlify antiguo como riesgo residual |
+| `T11` Configuración de Auth | `F3` | `N1` | `❌ FALLA` | Mínimo 6, HIBP off, sin CAPTCHA/notificaciones/recuperación/timeout de servidor |
+| `T12` Takeover sin re-autenticación | `F3` | `N0`+`N2` | `⚠️ ESCALADA` | Takeover sin reauth; canal público (DoS); falta prueba de dos dispositivos |
 | `T13` Inventario de storage pre/post logout | `F4` | `N0`+`N2` | `⬜ PENDIENTE` | - |
 | `T14` PoC de descifrado `NEW-01` | `F4` | `N0`+`N2` | `⬜ PENDIENTE` | - |
 | `T15` Update/delete sin `user_id` | `F5` | `N0` | `⬜ PENDIENTE` | - |
