@@ -44,6 +44,46 @@ CREATE POLICY "Users can delete own push subscriptions"
     ON public.push_subscriptions FOR DELETE
     USING (auth.uid() = user_id);
 
+-- P0 NEW-04: a verified MFA factor requires an aal2 JWT.
+CREATE OR REPLACE FUNCTION public.is_mfa_compliant()
+RETURNS boolean
+LANGUAGE plpgsql
+SECURITY DEFINER
+STABLE
+SET search_path = ''
+AS $$
+DECLARE
+  has_verified_factor boolean;
+BEGIN
+  IF auth.uid() IS NULL THEN
+    RETURN false;
+  END IF;
+
+  SELECT EXISTS (
+    SELECT 1
+    FROM auth.mfa_factors mf
+    WHERE mf.user_id = auth.uid()
+      AND mf.status = 'verified'
+  ) INTO has_verified_factor;
+
+  IF has_verified_factor THEN
+    RETURN COALESCE(auth.jwt() ->> 'aal', 'aal1') = 'aal2';
+  END IF;
+
+  RETURN true;
+END;
+$$;
+
+REVOKE ALL ON FUNCTION public.is_mfa_compliant() FROM PUBLIC;
+REVOKE ALL ON FUNCTION public.is_mfa_compliant() FROM anon;
+GRANT EXECUTE ON FUNCTION public.is_mfa_compliant() TO authenticated, service_role;
+
+DROP POLICY IF EXISTS "Require AAL2 when MFA enabled" ON public.push_subscriptions;
+CREATE POLICY "Require AAL2 when MFA enabled"
+    ON public.push_subscriptions AS RESTRICTIVE FOR ALL TO authenticated
+    USING (public.is_mfa_compliant())
+    WITH CHECK (public.is_mfa_compliant());
+
 -- 2. Columna para persistir las preferencias granulares de notificaciones por usuario
 ALTER TABLE public.user_settings
 ADD COLUMN IF NOT EXISTS notification_prefs jsonb DEFAULT NULL;

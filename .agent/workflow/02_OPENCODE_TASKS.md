@@ -61,7 +61,7 @@ tasks_blocked: 0
 - [✅] `npx tsc --noEmit` devuelve `0 errores`.
 - [✅] `npx vitest run src/test/encrypted-storage.test.ts src/test/audit-logger.test.ts` pasa sin errores.
 - [✅] Commit en rama: `git commit -m "fix(p0-f0): resolve TS2554 in useReceiptMutations and add Vitest IndexedDB polyfill"`
-- **Hash del Commit `CP-P0-00`**: `[PENDIENTE]`
+- **Hash del Commit `CP-P0-00`**: `1cda516`
 
 ---
 
@@ -70,7 +70,7 @@ tasks_blocked: 0
 > **Objetivo**: Cerrar la vulnerabilidad crítica donde un JWT `aal1` tenía acceso total a las 10 tablas y al bucket `receipts` pese a tener MFA activo (`NEW-04`), cerrar el hijacking cross-tenant en `push_subscriptions` (`F2-A`), y revocar ejecución pública de `cleanup_stale_sessions()` (`SEC-004`).
 > **Especificación**: Ver sección `3.2 Fase P0-F1` de [`01_ARCHITECT_PLAN.md`](file:///run/media/migol/Files/Projectos/Aplications/Finance%20Pal/Finance%20Pal%20APP/Finance%20Pal%20V1.19.38/finance-pal/.agent/workflow/01_ARCHITECT_PLAN.md).
 
-- [ ] **Tarea P0-F1.1 — Crear migración SQL `supabase/migrations/20261020220000_p0_mfa_aal2_and_push_rls.sql`**:
+- [✅] **Tarea P0-F1.1 — Crear migración SQL `supabase/migrations/20261020220000_p0_mfa_aal2_and_push_rls.sql`**:
   - Crear la función `public.is_mfa_compliant()` (`RETURNS boolean`, `LANGUAGE plpgsql`, `SECURITY DEFINER`, `STABLE`, `SET search_path = ''`) que:
     - Verifique si existe algún factor en `auth.mfa_factors` con `user_id = auth.uid()` y `status = 'verified'`.
     - Si tiene factor verificado, exija `COALESCE(auth.jwt()->>'aal', 'aal1') = 'aal2'`.
@@ -90,18 +90,18 @@ tasks_blocked: 0
   - Crear política restrictiva `"Require AAL2 when MFA enabled on storage"` (`AS RESTRICTIVE FOR ALL TO authenticated USING (bucket_id = 'receipts' AND public.is_mfa_compliant()) WITH CHECK (bucket_id = 'receipts' AND public.is_mfa_compliant())`) sobre `storage.objects`.
   - Reemplazar la política `"Users can update own push subscriptions"` en `public.push_subscriptions` para usar `USING (auth.uid() = user_id) WITH CHECK (auth.uid() = user_id)` (cerrando `F2-A`).
   - Revocar ejecución en `public.cleanup_stale_sessions()` a `PUBLIC`, `anon` y `authenticated`, dejando únicamente `GRANT EXECUTE ON FUNCTION public.cleanup_stale_sessions() TO service_role;` (cerrando `SEC-004`).
-  - *Evidencia / Resultado*: `[PENDIENTE]`
+  - *Evidencia / Resultado*: Migración creada con `public.is_mfa_compliant()` (PL/pgSQL, `SECURITY DEFINER`, `STABLE`, `search_path=''`), 10 políticas `AS RESTRICTIVE` + política restrictiva en `storage.objects` (bucket `receipts`), fix de `"Users can update own push subscriptions"` y `cleanup_stale_sessions()` con guard service_role + `REVOKE` de `PUBLIC/anon/authenticated`. **Nota de reconciliación:** el tablero listaba tablas inexistentes (`profiles`, `incomes`, `expenses`, etc.); se usó el esquema real y el listado de `01_ARCHITECT_PLAN.md` (`accounts`, `fixed_items`, `transactions`, `goals`, `goal_folders`, `debts`, `debt_payments`, `user_sessions`, `user_settings`, `push_subscriptions`). Validado en contenedor efímero PostgreSQL 17: **10/10 políticas de tabla + 1 de storage**, `authenticated_can_cleanup=false`, `service_can_cleanup=true`, `push_update_qual=(auth.uid() = user_id)`.
 
-- [ ] **Tarea P0-F1.2 — Sincronizar `supabase/schema.sql` y `supabase/schema_push_notifications.sql`**:
+- [✅] **Tarea P0-F1.2 — Sincronizar `supabase/schema.sql` y `supabase/schema_push_notifications.sql`**:
   - Actualizar `supabase/schema.sql` para reflejar la función `public.is_mfa_compliant()`, las políticas restrictivas `AS RESTRICTIVE` y el `REVOKE EXECUTE` de `public.cleanup_stale_sessions()`.
   - Actualizar `supabase/schema_push_notifications.sql` para corregir `"Users can update own push subscriptions"` (`USING (auth.uid() = user_id) WITH CHECK (auth.uid() = user_id)`) e incluir la política restrictiva `"Require AAL2 when MFA enabled"` en `public.push_subscriptions`.
-  - *Evidencia / Resultado*: `[PENDIENTE]`
+  - *Evidencia / Resultado*: `supabase/schema.sql` incluye `is_mfa_compliant()`, 9 políticas restrictivas de tablas + política restrictiva de `storage.objects`, `cleanup_stale_sessions()` endurecida con `REVOKE` y los `REVOKE` de mínimo privilegio (`F2-C`). `supabase/schema_push_notifications.sql` incluye `is_mfa_compliant()`, la política restrictiva de `push_subscriptions` y mantiene el `UPDATE` con `USING/WITH CHECK (auth.uid() = user_id)`. `grep` confirma **0** políticas `UPDATE USING (true)`.
 
 ### 🏁 Checkpoint `CP-P0-01`
-- [ ] `supabase/migrations/20261020220000_p0_mfa_aal2_and_push_rls.sql` creado y sintácticamente válido.
-- [ ] `supabase/schema.sql` y `supabase/schema_push_notifications.sql` sincronizados.
-- [ ] Ningún `USING (true)` permanece en políticas `UPDATE` de `supabase/`.
-- [ ] Commit en rama: `git commit -m "feat(security): P0-F1 enforce MFA aal2 via restrictive RLS and fix push_subscriptions hijack (NEW-04, F2-A, SEC-004)"`
+- [✅] `supabase/migrations/20261020220000_p0_mfa_aal2_and_push_rls.sql` creado y sintácticamente válido.
+- [✅] `supabase/schema.sql` y `supabase/schema_push_notifications.sql` sincronizados.
+- [✅] Ningún `USING (true)` permanece en políticas `UPDATE` de `supabase/`.
+- [✅] Commit en rama: `git commit -m "feat(security): P0-F1 enforce MFA aal2 via restrictive RLS and fix push_subscriptions hijack (NEW-04, F2-A, SEC-004)"`
 - **Hash del Commit `CP-P0-01`**: `[PENDIENTE]`
 
 ---
