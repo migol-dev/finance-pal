@@ -1,5 +1,13 @@
-import "fake-indexeddb/auto";
+import "./indexeddb-polyfill";
 import { describe, it, expect, vi, beforeEach } from "vitest";
+
+vi.mock("@/lib/supabase", () => ({
+  supabase: {
+    auth: {
+      getSession: async () => ({ data: { session: null } }),
+    },
+  },
+}));
 
 vi.mock("@capacitor/core", () => ({
   Capacitor: { isNativePlatform: () => false }

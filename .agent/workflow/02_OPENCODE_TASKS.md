@@ -3,7 +3,7 @@
 > **Fase:** 2 — Construcción de Código, Pruebas y Checkpoints (`P0-F0` a `P0-F5`)  
 > **Agente Asignado:** OpenCode CLI (`DeepSeek 4.1 Flash`)  
 > **Revisor (`Fase 3`):** Antigravity CLI (`Gemini 3.8 Flash` / `Argon 4`)  
-> **Estado General:** ⚪ EN ESPERA
+> **Estado General:** 🟡 EN PROGRESO
 
 ## Estado Global del Sprint
 
@@ -44,23 +44,23 @@ tasks_blocked: 0
 > **Objetivo**: Dejar `npx tsc --noEmit` en `0 errores` y hacer que las suites de seguridad de Vitest (`encrypted-storage.test.ts` y `audit-logger.test.ts`) pasen al 100% sin modificar `package.json` ni `node_modules/`.
 > **Especificación**: Ver sección `3.1 Fase P0-F0` de [`01_ARCHITECT_PLAN.md`](file:///run/media/migol/Files/Projectos/Aplications/Finance%20Pal/Finance%20Pal%20APP/Finance%20Pal%20V1.19.38/finance-pal/.agent/workflow/01_ARCHITECT_PLAN.md).
 
-- [ ] **Tarea P0-F0.1 — Reparar firma de `updateTransaction` en `src/hooks/mutations/useReceiptMutations.ts` (`F5-B`)**:
+- [✅] **Tarea P0-F0.1 — Reparar firma de `updateTransaction` en `src/hooks/mutations/useReceiptMutations.ts` (`F5-B`)**:
   - Inspeccionar `src/hooks/mutations/useReceiptMutations.ts` (líneas ~75–115).
   - En `useUploadReceiptMutation` (`onMutate` y `onError`), corregir las llamadas a `updateTransaction(transactionId, ...)` para pasar `userId` como primer argumento: `updateTransaction(userId, transactionId, { receiptUrl: ... })` (3 argumentos, acorde a la firma en `src/store/finance-store.ts:361`).
   - Verificar que `npx tsc --noEmit` devuelve **0 errores**.
-  - *Evidencia / Resultado*: `[PENDIENTE]`
+  - *Evidencia / Resultado*: `src/hooks/mutations/useReceiptMutations.ts` — ambas mutaciones (upload/delete) resuelven `userId` vía `supabase.auth.getUser()` y llaman `updateTransaction(userId, transactionId, patch)`. `npx tsc --noEmit` → **0 errores**.
 
-- [ ] **Tarea P0-F0.2 — Crear `src/test/indexeddb-polyfill.ts` y cablearlo en `src/test/setup.ts` y tests de almacenamiento**:
+- [✅] **Tarea P0-F0.2 — Crear `src/test/indexeddb-polyfill.ts` y cablearlo en `src/test/setup.ts` y tests de almacenamiento**:
   - Crear `src/test/indexeddb-polyfill.ts` implementando un polyfill ligero en memoria de `IDBFactory`, `IDBOpenDBRequest`, `IDBDatabase`, `IDBTransaction`, `IDBObjectStore` e `IDBRequest` que soporte `open`, `onupgradeneeded`, `createObjectStore`, `transaction`, `objectStore`, `put`, `get`, `delete`, `getAll`, `clear` y `deleteDatabase`, y lo asigne a `globalThis.indexedDB`.
   - Importar `import "./indexeddb-polyfill";` al inicio de `src/test/setup.ts`.
   - En `src/test/encrypted-storage.test.ts` y `src/test/audit-logger.test.ts`, reemplazar `import "fake-indexeddb/auto";` por `import "./indexeddb-polyfill";` (porque `node_modules/fake-indexeddb` carece de `build/esm/` en la instalación local).
   - Verificar que `npx vitest run src/test/encrypted-storage.test.ts src/test/audit-logger.test.ts` pasa al 100%.
-  - *Evidencia / Resultado*: `[PENDIENTE]`
+  - *Evidencia / Resultado*: Creado `src/test/indexeddb-polyfill.ts` (open/onupgradeneeded/createObjectStore/createIndex/transactions/put/get/delete/getAll/getAllKeys/clear/deleteDatabase/IDBKeyRange/cursor next-prev). Cableado en `src/test/setup.ts` y ambos tests. Añadido fallback de `localStorage`/`sessionStorage` en setup (Node 26 + jsdom) y mock de `@/lib/supabase` en el test de storage para aislar credenciales. `npx vitest run ...` → **9/9 tests PASS**.
 
 ### 🏁 Checkpoint `CP-P0-00`
-- [ ] `npx tsc --noEmit` devuelve `0 errores`.
-- [ ] `npx vitest run src/test/encrypted-storage.test.ts src/test/audit-logger.test.ts` pasa sin errores.
-- [ ] Commit en rama: `git commit -m "fix(p0-f0): resolve TS2554 in useReceiptMutations and add Vitest IndexedDB polyfill"`
+- [✅] `npx tsc --noEmit` devuelve `0 errores`.
+- [✅] `npx vitest run src/test/encrypted-storage.test.ts src/test/audit-logger.test.ts` pasa sin errores.
+- [✅] Commit en rama: `git commit -m "fix(p0-f0): resolve TS2554 in useReceiptMutations and add Vitest IndexedDB polyfill"`
 - **Hash del Commit `CP-P0-00`**: `[PENDIENTE]`
 
 ---

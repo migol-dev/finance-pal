@@ -1,4 +1,4 @@
-import "fake-indexeddb/auto";
+import "./indexeddb-polyfill";
 import { describe, it, expect, beforeEach } from "vitest";
 import { logAudit, queryAuditLogs, verifyAuditIntegrity, audit } from "../lib/audit-logger";
 

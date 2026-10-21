@@ -1,4 +1,39 @@
 import "@testing-library/jest-dom";
+import "./indexeddb-polyfill";
+
+function createMemoryStorage(): Storage {
+  const entries = new Map<string, string>();
+  return {
+    get length() {
+      return entries.size;
+    },
+    clear: () => entries.clear(),
+    getItem: (key: string) => entries.get(key) ?? null,
+    key: (index: number) => Array.from(entries.keys())[index] ?? null,
+    removeItem: (key: string) => {
+      entries.delete(key);
+    },
+    setItem: (key: string, value: string) => {
+      entries.set(key, String(value));
+    },
+  };
+}
+
+function installStorageFallback(name: "localStorage" | "sessionStorage"): void {
+  try {
+    if (typeof globalThis[name] !== "undefined") return;
+  } catch {
+    // Accessing the Node 26 experimental storage global can throw.
+  }
+  Object.defineProperty(globalThis, name, {
+    value: createMemoryStorage(),
+    writable: true,
+    configurable: true,
+  });
+}
+
+installStorageFallback("localStorage");
+installStorageFallback("sessionStorage");
 
 Object.defineProperty(window, "matchMedia", {
   writable: true,
