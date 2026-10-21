@@ -102,7 +102,7 @@ tasks_blocked: 0
 - [✅] `supabase/schema.sql` y `supabase/schema_push_notifications.sql` sincronizados.
 - [✅] Ningún `USING (true)` permanece en políticas `UPDATE` de `supabase/`.
 - [✅] Commit en rama: `git commit -m "feat(security): P0-F1 enforce MFA aal2 via restrictive RLS and fix push_subscriptions hijack (NEW-04, F2-A, SEC-004)"`
-- **Hash del Commit `CP-P0-01`**: `[PENDIENTE]`
+- **Hash del Commit `CP-P0-01`**: `43c735f`
 
 ---
 
@@ -111,18 +111,18 @@ tasks_blocked: 0
 > **Objetivo**: Activar `flowType: 'pkce'`, eliminar la inyección arbitraria de sesión (`setSession`) por deep link en Android (`F8-A`), endurecer `isValidRedirectUri` + limpieza de URL en `AuthCallback` (`SEC-012`), y deshabilitar `allowBackup` + permisos innecesarios en `AndroidManifest.xml`.
 > **Especificación**: Ver sección `3.3 Fase P0-F2` de [`01_ARCHITECT_PLAN.md`](file:///run/media/migol/Files/Projectos/Aplications/Finance%20Pal/Finance%20Pal%20APP/Finance%20Pal%20V1.19.38/finance-pal/.agent/workflow/01_ARCHITECT_PLAN.md).
 
-- [ ] **Tarea P0-F2.1 — Activar `flowType: 'pkce'` en `src/lib/supabase.ts`**:
+- [✅] **Tarea P0-F2.1 — Activar `flowType: 'pkce'` en `src/lib/supabase.ts`**:
   - En `src/lib/supabase.ts`, dentro de `createClient(..., { auth: { ... } })`, añadir `flowType: 'pkce'`.
-  - *Evidencia / Resultado*: `[PENDIENTE]`
+  - *Evidencia / Resultado*: `src/lib/supabase.ts` configura `flowType: 'pkce'`, `detectSessionInUrl`, `persistSession` y `autoRefreshToken`. `grep flowType` confirma la configuración.
 
-- [ ] **Tarea P0-F2.2 — Eliminar flujo implícito `setSession` en `src/App.tsx` (`F8-A` / `NEW-06`)**:
+- [✅] **Tarea P0-F2.2 — Eliminar flujo implícito `setSession` en `src/App.tsx` (`F8-A` / `NEW-06`)**:
   - En `src/App.tsx` (listener `CapApp.addListener("appUrlOpen", ...)` alrededor de las líneas 360–415):
     - Validar que la URL entrante corresponda exclusivamente a `financepal://auth/callback` o `https://finance-pal.app/auth/callback` (o el `window.location.origin` actual en web).
     - **Eliminar por completo** el bloque que lee `access_token` y `refresh_token` de `hashParams` e invoca `supabase.auth.setSession({ access_token, refresh_token })`.
     - Permitir únicamente el intercambio PKCE (`const code = searchParams.get("code"); if (code) { await supabase.auth.exchangeCodeForSession(code); ... }`).
-  - *Evidencia / Resultado*: `[PENDIENTE]`
+  - *Evidencia / Resultado*: `src/App.tsx` valida la URL contra allowlist exacta (`app.financepal.com://auth/callback`, `financepal://auth/callback`, `https://finance-pal.app/auth/callback`, origen web actual), rechaza URLs con `access_token`/`refresh_token` y solo ejecuta `exchangeCodeForSession(code)`. `grep -c setSession src/App.tsx` → **0**. Se eliminó `extractHashParams`.
 
-- [ ] **Tarea P0-F2.3 — Endurecer `isValidRedirectUri` en `src/pages/Login.tsx` y limpiar URL en `src/pages/AuthCallback.tsx` (`SEC-012`)**:
+- [✅] **Tarea P0-F2.3 — Endurecer `isValidRedirectUri` en `src/pages/Login.tsx` y limpiar URL en `src/pages/AuthCallback.tsx` (`SEC-012`)**:
   - En `src/pages/Login.tsx`:
     - Reemplazar `isValidRedirectUri` para que parsee con `new URL(uri)` y solo acepte:
       - `parsed.protocol === "financepal:"` cuando `uri.startsWith("financepal://auth/callback")`, o
@@ -130,20 +130,20 @@ tasks_blocked: 0
       - `parsed.origin === "https://finance-pal.app" && parsed.pathname === "/auth/callback"`.
   - En `src/pages/AuthCallback.tsx`:
     - Soportar intercambio explícito `code` si está presente o sesión detectada por Supabase PKCE, y limpiar inmediatamente la URL con `window.history.replaceState({}, document.title, window.location.pathname)` antes de redirigir para que ni `code` ni tokens queden en el historial del navegador.
-  - *Evidencia / Resultado*: `[PENDIENTE]`
+  - *Evidencia / Resultado*: `Login.tsx` usa allowlist exacta de esquemas nativos (`app.financepal.com://` y `financepal://`), orígenes web de producción (`finance-pal.app`, `financepal-web.vercel.app`) y origen actual; localhost solo en `DEV` y puertos 5173/8080/3000. `AuthCallback.tsx` rechaza errores/tokens implícitos, canjea `code` PKCE, limpia la URL con `replaceState` antes de redirigir y usa mensajes sanitizados.
 
-- [ ] **Tarea P0-F2.4 — Hardening de `android/app/src/main/AndroidManifest.xml` (`F8-A`, `F8-C`, `F8-G`)**:
+- [✅] **Tarea P0-F2.4 — Hardening de `android/app/src/main/AndroidManifest.xml` (`F8-A`, `F8-C`, `F8-G`)**:
   - En `android/app/src/main/AndroidManifest.xml`:
     - Cambiar `android:allowBackup="true"` a `android:allowBackup="false"` y añadir `android:fullBackupContent="@xml/backup_rules"` y `android:dataExtractionRules="@xml/data_extraction_rules"`.
     - Eliminar los permisos obsoletos/excesivos `READ_EXTERNAL_STORAGE` y `WRITE_EXTERNAL_STORAGE` (`F8-G`).
   - Crear `android/app/src/main/res/xml/backup_rules.xml` y `android/app/src/main/res/xml/data_extraction_rules.xml` excluyendo `sharedpref`, `database` y ` root` de backups en nube y transferencias D2D.
-  - *Evidencia / Resultado*: `[PENDIENTE]`
+  - *Evidencia / Resultado*: `AndroidManifest.xml` define `allowBackup="false"`, `fullBackupContent` y `dataExtractionRules`; se eliminaron `READ_EXTERNAL_STORAGE`, `WRITE_EXTERNAL_STORAGE` y `READ_MEDIA_IMAGES`. Ambos XML excluyen `root`, `file`, `database`, `sharedpref` y `external` en cloud backup y D2D.
 
 ### 🏁 Checkpoint `CP-P0-02`
-- [ ] `npx tsc --noEmit` devuelve `0 errores`.
-- [ ] `grep -rn "setSession" src/App.tsx` devuelve 0 coincidencias.
-- [ ] `AndroidManifest.xml` tiene `android:allowBackup="false"` y las reglas XML existen.
-- [ ] Commit en rama: `git commit -m "fix(security): P0-F2 enforce OAuth PKCE, remove implicit deep-link setSession, and harden AndroidManifest (F8-A, SEC-012)"`
+- [✅] `npx tsc --noEmit` devuelve `0 errores`.
+- [✅] `grep -rn "setSession" src/App.tsx` devuelve 0 coincidencias.
+- [✅] `AndroidManifest.xml` tiene `android:allowBackup="false"` y las reglas XML existen.
+- [✅] Commit en rama: `git commit -m "fix(security): P0-F2 enforce OAuth PKCE, remove implicit deep-link setSession, and harden AndroidManifest (F8-A, SEC-012)"`
 - **Hash del Commit `CP-P0-02`**: `[PENDIENTE]`
 
 ---

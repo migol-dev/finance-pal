@@ -27,27 +27,44 @@ const GitHubIcon = () => (
   </svg>
 );
 
-// OAuth Redirect URI Allowlist - Security: Prevent open redirect attacks
-const OAUTH_REDIRECT_ALLOWLIST = [
-  'app.financepal.com://auth/callback', // Native Android app
-  'https://financepal-web.vercel.app/auth/callback', // Production web/PWA
-  'http://localhost:5173/auth/callback', // Local development (Vite default)
-  'http://localhost:8080/auth/callback', // Local development (legacy)
-  'http://localhost:3000/auth/callback', // Alternative local port
-  'http://127.0.0.1:5173/auth/callback',
-  'http://127.0.0.1:8080/auth/callback',
-  'http://127.0.0.1:3000/auth/callback',
-];
+// OAuth Redirect URI allowlist — exact matches only (prevents open redirects).
+const NATIVE_REDIRECT_URIS = new Set([
+  'app.financepal.com://auth/callback', // Native Android app (registered manifest scheme)
+  'financepal://auth/callback', // Legacy/alternate native scheme
+]);
+
+const WEB_REDIRECT_ORIGINS = new Set([
+  'https://finance-pal.app',
+  'https://financepal-web.vercel.app',
+]);
+
+const DEV_REDIRECT_PORTS = new Set(['5173', '8080', '3000']);
 
 function isValidRedirectUri(uri: string): boolean {
   try {
     const parsed = new URL(uri);
-    // Allow exact matches from allowlist
-    if (OAUTH_REDIRECT_ALLOWLIST.includes(uri)) return true;
-    // Allow any subdomain of financepal.com in production
-    if (parsed.hostname.endsWith('.financepal.com') && parsed.pathname === '/auth/callback') return true;
-    // Allow localhost with any port in development
-    if (parsed.hostname === 'localhost' || parsed.hostname === '127.0.0.1') return true;
+
+    // Custom native schemes must match the exact registered callback.
+    if (NATIVE_REDIRECT_URIS.has(uri)) return true;
+
+    if (parsed.pathname !== '/auth/callback') return false;
+
+    // Production web origins.
+    if (parsed.protocol === 'https:' && WEB_REDIRECT_ORIGINS.has(parsed.origin)) return true;
+
+    // Current web origin (e.g. self-hosted deployment).
+    if (parsed.origin === window.location.origin && parsed.protocol === window.location.protocol) return true;
+
+    // Development only: localhost with the known Vite/legacy ports.
+    if (
+      import.meta.env.DEV &&
+      parsed.protocol === 'http:' &&
+      (parsed.hostname === 'localhost' || parsed.hostname === '127.0.0.1') &&
+      DEV_REDIRECT_PORTS.has(parsed.port)
+    ) {
+      return true;
+    }
+
     return false;
   } catch {
     return false;
