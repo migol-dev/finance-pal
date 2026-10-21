@@ -14,15 +14,15 @@
 | :--- | :--- |
 | **Total de Fases de Auditoría** | `12` (`F0` a `F11`) |
 | **Total de Tareas Planificadas** | `39` (`F0.1` a `F11.4`) |
-| **Tareas Completadas (✅)** | `29` |
+| **Tareas Completadas (✅)** | `31` |
 | **Tareas en Progreso (⏳)** | `0` |
 | **Tareas Bloqueadas / Escaladas a `agy` (⚠️)** | `4` |
-| **Tareas Pendientes (⚪)** | `6` |
-| **Progreso Estimado** | `[████████████████░░░░░] 74% (29/39)` |
-| **Hallazgos Previos a Re-verificar (`SEC-*`)** | `20 / 21` verificados |
+| **Tareas Pendientes (⚪)** | `4` |
+| **Progreso Estimado** | `[█████████████████░░░░] 79% (31/39)` |
+| **Hallazgos Previos a Re-verificar (`SEC-*`)** | `21 / 21` verificados |
 | **Hipótesis Nuevas a Confirmar (`NEW-*`)** | `12 / 12` evaluadas |
-| **Matriz de Pruebas (`T01`–`T25`)** | `20 / 25` ejecutadas |
-| **Último Checkpoint Git** | `CP-08 (74f465a)` |
+| **Matriz de Pruebas (`T01`–`T25`)** | `21 / 25` ejecutadas |
+| **Último Checkpoint Git** | `CP-09 (5f55883)` |
 | **Fecha/Hora de Inicio** | `2026-10-20` |
 | **Fecha/Hora de Última Actualización** | `2026-10-20` |
 
@@ -166,10 +166,12 @@
 ---
 
 ### 🕵️ Fase F10: Privacidad, Logging y Manejo de Errores (`CP-10` — Prioridad `P2` — `T25`)
-- [ ] **F10.1 [N0 — T25, SEC-019]:** Inventariar todas las sentencias `console.log`, `console.error`, `console.warn`, `console.debug` y `logger.*` en `src/` (excluyendo tests), clasificando las que registran `userId`, `clientId`, `email`, montos financieros o objetos `error` crudos de Supabase/PostgREST, y verificar si `vite.config.ts` elimina `console.*` en el build de producción.
+- [✅] **F10.1 [N0 — T25, SEC-019]:** Inventariar todas las sentencias `console.log`, `console.error`, `console.warn`, `console.debug` y `logger.*` en `src/` (excluyendo tests), clasificando las que registran `userId`, `clientId`, `email`, montos financieros o objetos `error` crudos de Supabase/PostgREST, y verificar si `vite.config.ts` elimina `console.*` en el build de producción.
   - **Evidencia esperada:** Tabla de logs y exposición de PII en `.agent/audit/evidence/F10-privacy-logging-gdpr.md`.
-- [ ] **F10.2 [N0]:** Auditar `src/lib/app-error.ts`, `src/components/ErrorBoundary.tsx` y `src/lib/web-vitals.ts` (confirmando si envía métricas a terceros) y construir la matriz de privacidad LFPDPPP/GDPR (categorías de datos personales tratados, retención local/nube, portabilidad JSON con `excludePII` y brechas en derecho de supresión/borrado de cuenta).
+  - **Resultado:** ⚠️ `T25`/`SEC-019` PARCIAL: 92 `console.*` + 7 `logger.*`; sin `email`/montos/`userId` explícitos, pero `sync-engine` registra `clientId` (UUID persistente), se imprimen UUIDs y errores crudos de Supabase. `drop_console=true` deja **8 referencias** `.catch(console.*)` en 5 chunks de `dist/`. `sanitizeForLog` solo trunca, no redacta (`F10-C`).
+- [✅] **F10.2 [N0]:** Auditar `src/lib/app-error.ts`, `src/components/ErrorBoundary.tsx` y `src/lib/web-vitals.ts` (confirmando si envía métricas a terceros) y construir la matriz de privacidad LFPDPPP/GDPR (categorías de datos personales tratados, retención local/nube, portabilidad JSON con `excludePII` y brechas en derecho de supresión/borrado de cuenta).
   - **Evidencia esperada:** `.agent/audit/evidence/F10-privacy-logging-gdpr.md` (`CP-10`: `docs(audit): F10 privacidad y logging`).
+  - **Resultado:** ❌ `F10-A` (Media): `excludePII` solo omite bancos/email/recibos; no anonimiza montos, descripciones, metas ni deudas, y la UI no expone los flags (email incluido por defecto, `SEC-018`). ❌ `F10-B` (Baja): audit log IndexedDB en claro con `userId`/`newEmail`, 10k entradas, sin purga ni limpieza en logout. ❌ `F10-C` (Baja): `sanitizeForLog` sin redacción. ❌ `F10-D` (Media, cumplimiento): sin borrado de cuenta/nube; `resetAll` solo local y `signOut` deja audit/recibos. ⚠️ `F10-E`: Google Fonts/GitHub/Supabase/hosting reciben IP/UA sin aviso in-app. ✅ `F10-F`: `web-vitals`/`ErrorBoundary` sin telemetría remota. Matriz LFPDPPP/GDPR y derechos ARCO incluidos.
 
 ---
 
@@ -211,7 +213,7 @@
 | `CP-06` | `F6` | `F6.1` – `F6.3` | `docs(audit): F6 edge function, push y SW` | `e19433f` | `✅ COMPLETADO` |
 | `CP-07` | `F7` | `F7.1` – `F7.3` | `docs(audit): F7 web, XSS y headers` | `7b8af3e` | `✅ COMPLETADO` |
 | `CP-08` | `F8` | `F8.1` – `F8.2` | `docs(audit): F8 android y capacitor` | `74f465a` | `✅ COMPLETADO` |
-| `CP-09` | `F9` | `F9.1` – `F9.2` | `docs(audit): F9 ci/cd y repositorio` | `pendiente` | `⚪ PENDIENTE` |
+| `CP-09` | `F9` | `F9.1` – `F9.2` | `docs(audit): F9 ci/cd y repositorio` | `5f55883` | `✅ COMPLETADO` |
 | `CP-10` | `F10` | `F10.1` – `F10.2` | `docs(audit): F10 privacidad y logging` | `pendiente` | `⚪ PENDIENTE` |
 | `CP-11` | `F11` | `F11.1` – `F11.4` | `docs(audit): F11 informe consolidado v2` | `pendiente` | `⚪ PENDIENTE` |
 
@@ -241,7 +243,7 @@
 | `SEC-016` | RLS de `user_settings` con `policyprefix` inválido | `F2` | ✅ por verificar | `✅ CERRADO — 4 políticas correctas` | `F2-catalog-and-rls.md` |
 | `SEC-017` | CORS wildcard `*` en Edge Function | `F6` | ⚠️ Parcial | `❌ CONFIRMADO (Bajo) — ACAO * fijo en producción; ALLOWED_ORIGIN ausente` | `F6-edge-push-sw.md` §5 |
 | `SEC-018` | `profile.email` persistido en estado de Zustand | `F4` | ❓ por verificar | `❌ CONFIRMADO (Media) — cifrado local, sync JSONB y export por defecto` | `F4-storage-inventory.md` §3 |
-| `SEC-019` | `userId` / `clientId` en logs de consola | `F10` | ❓ por verificar | `⬜ PENDIENTE` | `F10-privacy-logging-gdpr.md` |
+| `SEC-019` | `userId` / `clientId` en logs de consola | `F10` | ❓ por verificar | `⚠️ PARCIAL — 92 console + 7 logger; clientId/UUIDs/errores crudos; 8 refs .catch(console.*) en dist; sin email/montos` | `F10-privacy-logging-gdpr.md` |
 | `SEC-020` | Importación JSON sin límite de tamaño previo al parseo | `F5` | ❓ por verificar | `⚠️ PARCIAL — UI 20 MB; store sin límite ni topes; Zod no aplicado` | `F5-services-idor-validation.md` §4 |
 | `SEC-021` | `dist/stats.html` del bundle analyzer accesible | `F1`/`F9` | ❓ por verificar | `❌ CONFIRMADO (build)` — stats.html 1.26 MB en `dist/` | `F1-supply-chain-and-bundle.md` |
 
@@ -290,7 +292,7 @@
 | `T22` ZAP baseline local | `F7` | Local | `✅ PASA` | 0 FAIL, 5 WARN, 62 PASS; warnings alineados con NEW-11 |
 | `T23` Android Manifest/backup/exported/FileProvider | `F8` | `N0` | `❌ FALLA` | `NEW-06` backup sin reglas; `F8-A` activity exportada + custom scheme + implicit flow; `F8-B` FileProvider amplio; `F8-G` permisos innecesarios; MASVS 1 PASS/10 PARTIAL/8 FAIL/5 N/A |
 | `T24` Endurecimiento de CI/CD | `F9` | `N0` | `❌ FALLA` | `F9-A` write token + checkout persistente; `F9-B` audit no bloqueante; `F9-C` auto-merge sin gate; `F9-D` Node 18 EOL; `F9-E` artifact de bundle; acciones por tag mutable |
-| `T25` PII en logs de consola | `F10` | `N0` | `⬜ PENDIENTE` | - |
+| `T25` PII en logs de consola | `F10` | `N0` | `⚠️ PARCIAL` | 92 `console.*` + 7 `logger.*`; sin email/montos; `clientId` + UUIDs + errores crudos; `drop_console` deja 8 refs; audit log local con PII |
 
 ---
 
