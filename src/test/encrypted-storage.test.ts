@@ -23,6 +23,7 @@ import {
   encryptData, decryptData, saveEncryptedState, loadEncryptedState, 
   clearEncryptedState, isEncryptionAvailable,
   saveReceipt, loadReceipt, deleteReceipt,
+  clearAllReceipts, purgeAllEncryptedStorage, getOrCreateDevicePepper,
   STORAGE_KEY,
 } from "../lib/encrypted-storage";
 
@@ -214,6 +215,71 @@ describe("encrypted-storage", () => {
       const loaded = await loadReceipt(key);
       
       expect(loaded).toBeUndefined();
+    });
+
+    it("clears every receipt", async () => {
+      await saveReceipt("tx:clear-a", "data:image/png;base64,AAAA");
+      await saveReceipt("tx:clear-b", "data:image/png;base64,BBBB");
+
+      await clearAllReceipts();
+
+      await expect(loadReceipt("tx:clear-a")).resolves.toBeUndefined();
+      await expect(loadReceipt("tx:clear-b")).resolves.toBeUndefined();
+    });
+  });
+
+  describe("F4-D / SEC-015 — logout purge", () => {
+    it("clears a single payload without destroying salts used by other blobs", async () => {
+      const userId = "44444444-4444-4444-8444-444444444444";
+      await saveEncryptedState("main state", STORAGE_KEY, userId);
+      await saveEncryptedState("other state", "migol-finanzas-v2", userId);
+
+      const saltKey = `${STORAGE_KEY}-salt:${userId}`;
+      const saltBefore = localStorage.getItem(saltKey);
+      expect(saltBefore).toBeTruthy();
+
+      await clearEncryptedState("migol-finanzas-v2");
+
+      expect(localStorage.getItem("migol-finanzas-v2")).toBeNull();
+      expect(localStorage.getItem("migol-finanzas-v2-meta")).toBeNull();
+      expect(localStorage.getItem(saltKey)).toBe(saltBefore);
+      await expect(loadEncryptedState(STORAGE_KEY, userId)).resolves.toBe("main state");
+    });
+
+    it("purges every encrypted blob, receipt, salt and pepper on logout", async () => {
+      const userId = "55555555-5555-4555-8555-555555555555";
+      await saveEncryptedState("state-a", STORAGE_KEY, userId);
+      await saveEncryptedState("state-b", "migol-finanzas-v2", userId);
+      await saveEncryptedState("state-c", "finance-pal-sync-queue-encrypted", userId);
+      await saveReceipt("tx:purge", "data:image/png;base64,AAAA");
+
+      localStorage.setItem("finance-pal-sync-queue", "[]");
+      localStorage.setItem(`${STORAGE_KEY}-salt`, JSON.stringify({ salt: "AAAA", iterations: 100000 }));
+      localStorage.setItem(`${STORAGE_KEY}-iterations`, "100000");
+      localStorage.setItem("finance-pal-device-secret", "legacy-secret");
+
+      const pepperBefore = await getOrCreateDevicePepper(userId);
+
+      await purgeAllEncryptedStorage(userId);
+
+      for (const key of [
+        STORAGE_KEY,
+        "migol-finanzas-v2",
+        "finance-pal-sync-queue-encrypted",
+        "finance-pal-sync-queue",
+        `${STORAGE_KEY}-salt`,
+        `${STORAGE_KEY}-iterations`,
+        `${STORAGE_KEY}-salt:${userId}`,
+        "finance-pal-device-secret",
+      ]) {
+        expect(localStorage.getItem(key)).toBeNull();
+      }
+
+      await expect(loadReceipt("tx:purge")).resolves.toBeUndefined();
+      await expect(loadEncryptedState(STORAGE_KEY, userId)).resolves.toBeNull();
+
+      const pepperAfter = await getOrCreateDevicePepper(userId);
+      expect(pepperAfter).not.toBe(pepperBefore);
     });
   });
 });

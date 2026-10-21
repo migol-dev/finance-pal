@@ -20,6 +20,13 @@ async function ensureFilesystem() {
 
 export const STORAGE_KEY = 'finance-pal-encrypted-v1';
 
+/** All encrypted payloads that must be purged on sign-out (SEC-015 / F4-D). */
+export const ALL_ENCRYPTED_STATE_KEYS = [
+  STORAGE_KEY,
+  'migol-finanzas-v2',
+  'finance-pal-sync-queue-encrypted',
+] as const;
+
 // OWASP 2026 recommendation: 600,000 iterations for PBKDF2-SHA256
 // (was 100,000 - increased for stronger key derivation)
 const KEY_DERIVATION_ITERATIONS = 600000;
@@ -110,10 +117,10 @@ function idbPut(db: IDBDatabase, key: string, value: string): Promise<void> {
   });
 }
 
-function idbDelete(db: IDBDatabase, key: string): Promise<void> {
+function idbClear(db: IDBDatabase, storeName: string): Promise<void> {
   return new Promise((resolve, reject) => {
-    const tx = db.transaction(KEYSTORE_STORE, 'readwrite');
-    tx.objectStore(KEYSTORE_STORE).delete(key);
+    const tx = db.transaction(storeName, 'readwrite');
+    tx.objectStore(storeName).clear();
     tx.oncomplete = () => resolve();
     tx.onerror = () => reject(tx.error);
   });
@@ -444,20 +451,108 @@ export async function loadEncryptedState(key: string = STORAGE_KEY, userId?: str
   }
 }
 
-export async function clearEncryptedState(key: string = STORAGE_KEY): Promise<void> {
+function encryptedArtifactKeys(): string[] {
+  const keys = new Set<string>();
+  for (const base of ALL_ENCRYPTED_STATE_KEYS) {
+    keys.add(base);
+    keys.add(`${base}-meta`);
+  }
+  // Plaintext sync queue (legacy) and its metadata.
+  keys.add('finance-pal-sync-queue');
+  keys.add('finance-pal-sync-queue-meta');
+  // Legacy device-bound key material.
+  keys.add('finance-pal-device-secret');
+  return [...keys];
+}
+
+async function removeStoredArtifact(key: string): Promise<void> {
+  // Native builds keep encrypted payloads as files in Directory.Data.
   try {
-    await ensureFilesystem();
     if (isNativePlatform()) {
       await deleteFileNative(key);
-    } else {
+    }
+  } catch {
+    // File may not exist; continue with the remaining keys.
+  }
+
+  try {
+    localStorage.removeItem(key);
+  } catch {
+    // Ignore storage access errors.
+  }
+}
+
+async function clearDevicePeppers(): Promise<void> {
+  try {
+    const db = await openKeystoreDB();
+    try {
+      await idbClear(db, KEYSTORE_STORE);
+    } finally {
+      db.close();
+    }
+  } finally {
+    pepperCache.clear();
+  }
+}
+
+function removeEncryptionSaltMetadata(): void {
+  const keys = new Set<string>([
+    `${STORAGE_KEY}-salt`,
+    `${STORAGE_KEY}-iterations`,
+    `${STORAGE_KEY}-salt:anon`,
+  ]);
+
+  try {
+    for (let i = localStorage.length - 1; i >= 0; i--) {
+      const key = localStorage.key(i);
+      if (key && (key.startsWith(`${STORAGE_KEY}-salt`) || key === `${STORAGE_KEY}-iterations`)) {
+        keys.add(key);
+      }
+    }
+  } catch {
+    // Ignore storage enumeration errors.
+  }
+
+  for (const key of keys) {
+    try {
       localStorage.removeItem(key);
+    } catch {
+      // Ignore storage access errors.
     }
-    if (key === STORAGE_KEY) {
-      const userId = await resolveUserId();
-      localStorage.removeItem(v2SaltStorageKey(userId));
-      localStorage.removeItem(v2SaltStorageKey(undefined));
-      clearKeyCache();
-    }
+  }
+}
+
+/**
+ * SEC-015 / F4-D: purge every encrypted payload, receipt, salt and pepper so
+ * no trace of the previous account survives a sign-out on a shared device.
+ */
+export async function purgeAllEncryptedStorage(_userId?: string): Promise<void> {
+  for (const key of encryptedArtifactKeys()) {
+    await removeStoredArtifact(key);
+  }
+
+  await clearAllReceipts();
+  await clearDevicePeppers();
+
+  // Salts are removed only after every blob has been deleted.
+  removeEncryptionSaltMetadata();
+  clearKeyCache();
+}
+
+/**
+ * Removes a single encrypted payload. When called without a key it delegates
+ * to the full purge; when a specific key is passed only that payload and its
+ * metadata are removed, preserving salts used by other blobs (F4-D).
+ */
+export async function clearEncryptedState(key?: string): Promise<void> {
+  if (!key) {
+    await purgeAllEncryptedStorage();
+    return;
+  }
+
+  try {
+    await removeStoredArtifact(key);
+    await removeStoredArtifact(`${key}-meta`);
   } catch (e) {
     console.error(`Failed to clear encrypted state for ${key}:`, e);
   }
@@ -569,6 +664,20 @@ export async function deleteReceipt(key: string): Promise<void> {
     tx.oncomplete = () => resolve();
     tx.onerror = () => reject(tx.error);
   });
+}
+
+/** Delete every receipt stored in IndexedDB (SEC-015 / F4-D). */
+export async function clearAllReceipts(): Promise<void> {
+  try {
+    const db = await openReceiptDB();
+    try {
+      await idbClear(db, RECEIPT_STORE);
+    } finally {
+      db.close();
+    }
+  } catch (e) {
+    console.error('Failed to clear receipts:', e);
+  }
 }
 
 /**

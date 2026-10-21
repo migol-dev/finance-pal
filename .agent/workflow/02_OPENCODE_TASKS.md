@@ -179,7 +179,7 @@ tasks_blocked: 0
 - [✅] `npx tsc --noEmit` devuelve `0 errores`.
 - [✅] `npx vitest run src/test/encrypted-storage.test.ts` pasa todos los tests (incluyendo `SEC-002` y `F4-F`).
 - [✅] Commit en rama: `git commit -m "fix(security): P0-F3 add IndexedDB keystore pepper and fix PBKDF2 migration in encrypted-storage (SEC-002, F4-F)"`
-- **Hash del Commit `CP-P0-03`**: `[PENDIENTE]`
+- **Hash del Commit `CP-P0-03`**: `3e0b1fc`
 
 ---
 
@@ -188,7 +188,7 @@ tasks_blocked: 0
 > **Objetivo**: Garantizar que al cerrar sesión (`signOut`) no quede absolutamente ningún rastro de transacciones cifradas, cola offline, recibos en IndexedDB ni logs de auditoría en el dispositivo (`SEC-015` / `F4-D`), y que `audit-logger.ts` enmascare correos electrónicos antes de persistir (`F10-B`).
 > **Especificación**: Ver sección `3.5 Fase P0-F4` de [`01_ARCHITECT_PLAN.md`](file:///run/media/migol/Files/Projectos/Aplications/Finance%20Pal/Finance%20Pal%20APP/Finance%20Pal%20V1.19.38/finance-pal/.agent/workflow/01_ARCHITECT_PLAN.md).
 
-- [ ] **Tarea P0-F4.1 — Implementar `clearAllReceipts()` y `purgeAllEncryptedStorage()` en `src/lib/encrypted-storage.ts`**:
+- [✅] **Tarea P0-F4.1 — Implementar `clearAllReceipts()` y `purgeAllEncryptedStorage()` en `src/lib/encrypted-storage.ts`**:
   - Implementar `clearAllReceipts(): Promise<void>` que vacíe el objectStore `receipts` en `finance-pal-receipts`.
   - Implementar `purgeAllEncryptedStorage(userId?: string): Promise<void>` que:
     1. Elimine de `localStorage`:
@@ -200,16 +200,16 @@ tasks_blocked: 0
     2. Invoque `clearAllReceipts()`.
     3. Elimine el pepper en `finance-pal-keystore` (para `userId` y `anon`) y limpie las cachés de claves en memoria (`cachedKey`, `cachedUserId`, etc.).
   - Actualizar `clearEncryptionKeys()` para que también limpie la caché en memoria sin dejar ciphertexts huérfanos o redirigir a `purgeAllEncryptedStorage()`.
-  - *Evidencia / Resultado*: `[PENDIENTE]`
+  - *Evidencia / Resultado*: `[✅]` `clearAllReceipts()` vacía el objectStore `receipts`; `purgeAllEncryptedStorage(userId)` borra los 3 blobs + `-meta`, `finance-pal-sync-queue`, `finance-pal-device-secret`, todos los salts/iterations (incluidos los per-user), recibos, peppers y cachés de claves. `clearEncryptedState()` sin argumentos delega al purge; con clave explícita borra solo esa clave + `-meta` conservando salts (F4-D). No existía `clearEncryptionKeys()` en el código: la limpieza de caché se hace con `clearKeyCache()` + `pepperCache.clear()`.
 
-- [ ] **Tarea P0-F4.2 — Implementar `redactAuditDetails()` y `clearAuditLogs()` en `src/lib/audit-logger.ts` (`F10-B`, `SEC-015`)**:
+- [✅] **Tarea P0-F4.2 — Implementar `redactAuditDetails()` y `clearAuditLogs()` en `src/lib/audit-logger.ts` (`F10-B`, `SEC-015`)**:
   - En `src/lib/audit-logger.ts`:
     - Crear helper `maskEmail(email: string): string` (ej. `a***@domain.com`) y `redactAuditDetails(details?: Record<string, unknown>): Record<string, unknown> | undefined` que enmascare cualquier propiedad `email`, `newEmail`, `oldEmail` o strings con formato de email dentro de `details` antes de guardar el evento en `IndexedDB` (`finance-pal-audit`).
     - Aplicar `redactAuditDetails(details)` dentro de `logAuditEvent()`.
     - Exportar `clearAuditLogs(): Promise<void>` que vacíe el objectStore `logs` en `finance-pal-audit` y también vacíe `inMemoryLogs`.
-  - *Evidencia / Resultado*: `[PENDIENTE]`
+  - *Evidencia / Resultado*: `[✅]` `maskEmail()` produce `u***@domain.com`; `redactAuditDetails()` enmascara emails (incluidos strings anidados) y sustituye `token`, `access_token`, `refresh_token`, `clabe`, `password` y `secret` por `[REDACTED]`; `logAudit()` persiste los detalles ya redactados y calcula el hash sobre ellos. `clearAuditLogs(userId)` borra solo las entradas del usuario y `clearAuditLogs()` vacía el objectStore. No existe caché `inMemoryLogs` en esta implementación.
 
-- [ ] **Tarea P0-F4.3 — Integrar Purga Total en `src/context/AuthContext.tsx` y Tests de Logout (`T13`)**:
+- [✅] **Tarea P0-F4.3 — Integrar Purga Total en `src/context/AuthContext.tsx` y Tests de Logout (`T13`)**:
   - En `src/context/AuthContext.tsx` (`signOut`):
     - Antes/durante el cierre de sesión, capturar `const currentUserId = user?.id;`.
     - Invocar `await purgeAllEncryptedStorage(currentUserId)` y `await clearAuditLogs()`.
@@ -218,12 +218,12 @@ tasks_blocked: 0
   - Añadir tests en `src/test/encrypted-storage.test.ts` y `src/test/audit-logger.test.ts` que verifiquen:
     - Que `purgeAllEncryptedStorage(userId)` borra `finance-pal-encrypted-v1`, `migol-finanzas-v2`, `finance-pal-sync-queue-encrypted`, recibos en IndexedDB y el salt/pepper.
     - Que `logAuditEvent('AUTH_LOGIN', { email: 'user@example.com' })` persiste el email enmascarado (`u***@example.com`) y que `clearAuditLogs()` deja 0 entradas en `getAuditLogs()`.
-  - *Evidencia / Resultado*: `[PENDIENTE]`
+  - *Evidencia / Resultado*: `[✅]` `signOut()` registra `audit.logout` antes de la purga, resetea `useFinance`, vacía la cola de sync, ejecuta `purgeAllEncryptedStorage(userId)` + `clearAuditLogs()`, elimina `finance-pal-client-id`, `finance-pal-device-id` y claves `sb-*`, limpia `sessionStorage` y `queryClient`. Añadidos tests de purge total, `clearAllReceipts`, conservación de salt en borrado selectivo y redacción/borrado de audit logs.
 
 ### 🏁 Checkpoint `CP-P0-04`
-- [ ] `npx tsc --noEmit` devuelve `0 errores`.
-- [ ] `npx vitest run src/test/encrypted-storage.test.ts src/test/audit-logger.test.ts` pasa al 100%.
-- [ ] Commit en rama: `git commit -m "fix(security): P0-F4 full storage/IndexedDB purge on logout and PII masking in audit logs (SEC-015, F4-D, F10-B)"`
+- [✅] `npx tsc --noEmit` devuelve `0 errores`.
+- [✅] `npx vitest run src/test/encrypted-storage.test.ts src/test/audit-logger.test.ts` pasa al 100% (18/18 tests).
+- [✅] Commit en rama: `git commit -m "fix(security): P0-F4 full storage/IndexedDB purge on logout and PII masking in audit logs (SEC-015, F4-D, F10-B)"`
 - **Hash del Commit `CP-P0-04`**: `[PENDIENTE]`
 
 ---
@@ -283,6 +283,6 @@ tasks_blocked: 0
 | **SEC-012** | Endurecimiento de `isValidRedirectUri` en `Login.tsx` y limpieza de URL en `AuthCallback.tsx` | P0-F2 | `src/pages/Login.tsx`, `src/pages/AuthCallback.tsx` | `tsc` OK + inspección | `[✅]` |
 | **SEC-002 / NEW-01** | Pepper criptográfico aleatorio de 256 bits en `IndexedDB` (`finance-pal-keystore`) combinado con `user.id` | P0-F3 | `src/lib/encrypted-storage.ts`, `src/test/encrypted-storage.test.ts` | `npx vitest run src/test/encrypted-storage.test.ts` 9/9 OK | `[✅]` |
 | **F4-F** | Migración de iteraciones PBKDF2 (`100k` → `600k`) sin sobrescribir el salt antes de descifrar | P0-F3 | `src/lib/encrypted-storage.ts`, `src/test/encrypted-storage.test.ts` | `npx vitest run src/test/encrypted-storage.test.ts` 9/9 OK | `[✅]` |
-| **SEC-015 / F4-D** | Purga completa de `localStorage` e `IndexedDB` (`receipts`, `audit`, `keystore`) en `signOut()` | P0-F4 | `[PENDIENTE]` | `npx vitest run src/test/encrypted-storage.test.ts src/test/audit-logger.test.ts` | `[ ]` |
-| **F10-B** | Enmascaramiento de emails (`maskEmail`) en `audit-logger.ts` antes de guardar en IndexedDB | P0-F4 | `[PENDIENTE]` | `npx vitest run src/test/audit-logger.test.ts` | `[ ]` |
+| **SEC-015 / F4-D** | Purga completa de `localStorage` e `IndexedDB` (`receipts`, `audit`, `keystore`) en `signOut()` | P0-F4 | `encrypted-storage.ts`, `audit-logger.ts`, `AuthContext.tsx` | `npx vitest run src/test/encrypted-storage.test.ts src/test/audit-logger.test.ts` 18/18 OK | `[✅]` |
+| **F10-B** | Enmascaramiento de emails (`maskEmail`) en `audit-logger.ts` antes de guardar en IndexedDB | P0-F4 | `audit-logger.ts`, `src/test/audit-logger.test.ts` | `npx vitest run src/test/audit-logger.test.ts` 6/6 OK | `[✅]` |
 | **SEC-008 / T11** | Contraseñas de 12+ caracteres + complejidad y `rateLimiter` (`auth`) activo en `Login.tsx`, `PerfilSection.tsx` y `supabase/config.toml` | P0-F5 | `[PENDIENTE]` | `npx vitest run src/test/security.test.ts` | `[ ]` |
