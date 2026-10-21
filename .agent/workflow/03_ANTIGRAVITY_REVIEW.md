@@ -37,7 +37,7 @@
 
 | ID Revisión | Fase / Evidencia | Foco de la Inspección | Criterio Verificado | Estado |
 | :--- | :--- | :--- | :--- | :--- |
-| `E-F11` | `.agent/security_audit.md` v2 + `CP-00`…`CP-10` | Dictamen, 33 hallazgos, matriz `T01`–`T25`, riesgo residual, backlog P0–P3 y verificación de cierre | Evidencia enlazada, CVSS 3.1, cero cambios en código y 0 secretos en `.agent/` | 📦 **ENTREGADO — PENDIENTE DE FIRMA** |
+| `E-F11` | `.agent/security_audit.md` v2 + `CP-00`…`CP-11` | Dictamen, 33 hallazgos, matriz `T01`–`T25`, riesgo residual, backlog P0–P3 y verificación de cierre | Evidencia enlazada, CVSS 3.1, cero cambios en código y 0 secretos en `.agent/` | 📦 **ENTREGADO — PENDIENTE DE FIRMA** (`CP-11 = 6ec3c4f`) |
 
 ---
 

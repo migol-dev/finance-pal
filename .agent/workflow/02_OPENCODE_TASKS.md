@@ -22,7 +22,7 @@
 | **Hallazgos Previos a Re-verificar (`SEC-*`)** | `21 / 21` verificados |
 | **Hipótesis Nuevas a Confirmar (`NEW-*`)** | `12 / 12` evaluadas |
 | **Matriz de Pruebas (`T01`–`T25`)** | `21 / 25` ejecutadas |
-| **Último Checkpoint Git** | `CP-10 (1038fbc)` |
+| **Último Checkpoint Git** | `CP-11 (6ec3c4f)` |
 | **Fecha/Hora de Inicio** | `2026-10-20` |
 | **Fecha/Hora de Última Actualización** | `2026-10-20` |
 
@@ -178,7 +178,7 @@
 ### 📊 Fase F11: Consolidación CVSS v3.1, `.agent/security_audit.md` v2 y Cierre (`CP-11`)
 - [✅] **F11.1 [N0]:** Redactar en `.agent/security_audit.md` la sección **v2 "Re-auditoría Integral 2026-10 — Finance Pal v1.21.0"** (conservando íntegra la auditoría v1 del 2026-09-23 como historial), con el dictamen final, vector **CVSS v3.1**, archivo#línea, nivel (`N0`–`N3`), evidencia enlazada, impacto, recomendación, esfuerzo (`S`/`M`/`L`) y referencia ASVS/MASVS para los **21 hallazgos (`SEC-001`…`SEC-021`)** y las **12 hipótesis (`NEW-01`…`NEW-12`)**.
   - **Evidencia esperada:** Sección v2 de hallazgos en `.agent/security_audit.md`.
-  - **Resultado:** ✅ Sección v2 añadida (líneas 995–1306) conservando v1 íntegra. Incluye dictamen (`🔴 ALTO — NO CERTIFICABLE` hasta P0), cobertura, 21 `SEC-*` y 12 `NEW-*` con CVSS 3.1, archivo#línea, nivel, evidencia, impacto, recomendación, esfuerzo y ASVS/MASVS; tabla adicional de hallazgos nuevos `F3`–`F10`.
+  - **Resultado:** ✅ Sección v2 añadida (líneas 999–1306) conservando v1 íntegra. Incluye dictamen (`🔴 ALTO — NO CERTIFICABLE` hasta P0), cobertura, 21 `SEC-*` y 12 `NEW-*` con CVSS 3.1, archivo#línea, nivel, evidencia, impacto, recomendación, esfuerzo y ASVS/MASVS; tabla adicional de hallazgos nuevos `F3`–`F10`.
 - [✅] **F11.2 [N0]:** Incluir en `.agent/security_audit.md` v2 la tabla de ejecución completa de la matriz `T01`–`T25`, la matriz de riesgo residual y el **Backlog de Remediación Priorizado (P0 → P1 → P2 → P3)** listo para el siguiente ciclo de construcción.
   - **Evidencia esperada:** Matriz `T01`–`T25` y Backlog en `.agent/security_audit.md`.
   - **Resultado:** ✅ Matriz `T01`–`T25` (6 PASS / 9 PARCIAL-ESCALADA / 10 FALLA), matriz de riesgo residual por impacto/probabilidad y backlog de 35 acciones priorizadas P0–P3 con criterio de cierre y esfuerzo. P0: `NEW-04`, `F8-A`, `SEC-002`, `SEC-015`, `SEC-008`.
@@ -187,7 +187,7 @@
   - **Resultado:** ✅ `gitleaks dir .agent --redact` → **0 hallazgos**; `rg 'sbp_|eyJ…' .agent` → sin coincidencias. Se redactó el JWT de ejemplo de v1 (`security_audit.md:408`) y un falso positivo `generic-api-key` en `F1-supply-chain-and-bundle.md`. `git log 769cf9e^..HEAD` confirma que `CP-00`…`CP-10` solo tocaron `.agent/` (`ONLY_AGENT_FILES`).
 - [✅] **F11.4 [N0]:** Ejecutar `graphify update .` para actualizar el grafo de conocimiento y registrar el cierre en `.agent/workflow/02_OPENCODE_TASKS.md` y `.agent/workflow/03_ANTIGRAVITY_REVIEW.md`.
   - **Evidencia esperada:** Grafo actualizado (`CP-11`: `docs(audit): F11 informe consolidado v2`).
-  - **Resultado:** ✅ `graphify update .` ejecutado; cierre registrado en `02_OPENCODE_TASKS.md` (35/39, 4 escaladas) y `03_ANTIGRAVITY_REVIEW.md` (entrega `E-F11`, CA-01…CA-08). `CP-11` pendiente de commit final.
+  - **Resultado:** ✅ `graphify update .` ejecutado (2205 nodos, 5676 aristas, 155 comunidades); cierre registrado en `02_OPENCODE_TASKS.md` (35/39, 4 escaladas) y `03_ANTIGRAVITY_REVIEW.md` (entrega `E-F11`, CA-01…CA-08). `CP-11 = 6ec3c4f`.
 
 ---
 
@@ -219,7 +219,7 @@
 | `CP-08` | `F8` | `F8.1` – `F8.2` | `docs(audit): F8 android y capacitor` | `74f465a` | `✅ COMPLETADO` |
 | `CP-09` | `F9` | `F9.1` – `F9.2` | `docs(audit): F9 ci/cd y repositorio` | `5f55883` | `✅ COMPLETADO` |
 | `CP-10` | `F10` | `F10.1` – `F10.2` | `docs(audit): F10 privacidad y logging` | `1038fbc` | `✅ COMPLETADO` |
-| `CP-11` | `F11` | `F11.1` – `F11.4` | `docs(audit): F11 informe consolidado v2` | `pendiente` | `⚪ PENDIENTE` |
+| `CP-11` | `F11` | `F11.1` – `F11.4` | `docs(audit): F11 informe consolidado v2` | `6ec3c4f` | `✅ COMPLETADO` |
 
 ---
 
