@@ -2,7 +2,7 @@
 
 > **Fase:** 3 — Revisión Dinámica, Validación PostgreSQL 17 y Sign-Off (`R-P0-F0` a `R-P0-F5`)  
 > **Revisor Principal:** Antigravity CLI (`Gemini 3.8 Flash` / `Argon 4`)  
-> **Estado General:** ⚪ EN ESPERA
+> **Estado General:** 🟢 FASE 2 COMPLETADA — PENDIENTE REVISIÓN FASE 3
 
 ## Metadatos de Revisión
 
@@ -12,7 +12,7 @@
 | **Constructor / Implementador (Fase 2)** | OpenCode CLI (`opencode` — DeepSeek 4.1 Flash) |
 | **Sprint Activo** | `v1.21.1-p0-remediation` (Remediación de los 6 Bloqueantes P0) |
 | **Sprint Previo Archivado** | `v1.21.0-security-audit` (Certificado en commit `3a0da24`) |
-| **Estado de Revisión** | 🟡 **PENDIENTE DE EJECUCIÓN FASE 2 (OPENCODE CLI)** |
+| **Estado de Revisión** | 🟢 **FASE 2 ENTREGADA — PENDIENTE DE REVISIÓN FASE 3** |
 
 ---
 
@@ -28,15 +28,16 @@
 | `CP-P0-01` | P0-F1: Migración SQL `NEW-04` (`aal2`), `F2-A` y `SEC-004` | `43c735f` | `[✅]` | `is_mfa_compliant()` + 10 políticas restrictivas + storage; push UPDATE tenant-scoped; `cleanup_stale_sessions()` service_role. Validado en PG17 efímero. |
 | `CP-P0-02` | P0-F2: OAuth PKCE, remoción de `setSession` y `AndroidManifest.xml` (`F8-A`, `SEC-012`) | `b54e4a2` | `[✅]` | `flowType:'pkce'`; deep link solo canjea `code`; redirect allowlist estricta; `allowBackup=false` + reglas XML; permisos de almacenamiento eliminados. |
 | `CP-P0-03` | P0-F3: Pepper en IndexedDB (`SEC-002`) y migración PBKDF2 (`F4-F`) | `3e0b1fc` | `[✅]` | Pepper 256-bit en `finance-pal-keystore`; salt per-user; fallback legacy sin sobrescribir salt; 9/9 tests. |
-| `CP-P0-04` | P0-F4: Purga total en Logout (`SEC-015`, `F4-D`) y máscara PII (`F10-B`) | `[PENDIENTE]` | `[ ]` | `[PENDIENTE]` |
-| `CP-P0-05` | P0-F5: Contraseñas 12+ chars y `rateLimiter` (`SEC-008`) + `graphify update .` | `[PENDIENTE]` | `[ ]` | `[PENDIENTE]` |
+| `CP-P0-04` | P0-F4: Purga total en Logout (`SEC-015`, `F4-D`) y máscara PII (`F10-B`) | `acf7d29` | `[✅]` | Purga de blobs/recibos/salts/peppers en `signOut`; `clearAuditLogs`; emails enmascarados y tokens redactados; 18/18 tests. |
+| `CP-P0-05` | P0-F5: Contraseñas 12+ chars y `rateLimiter` (`SEC-008`) + `graphify update .` | `[PENDIENTE]` | `[✅]` | Validador 12+ y rate limit `auth` 5/60s en Login/Perfil; `supabase/config.toml` endurecido; 9 tests nuevos; 27/27 suites; 0 leaks; grafo actualizado. |
 
 ### 1.2 Resultados de Verificación de OpenCode CLI
 
-- **`npx tsc --noEmit`**: `[PENDIENTE]`
-- **`npx vitest run src/test/encrypted-storage.test.ts src/test/audit-logger.test.ts src/test/security.test.ts`**: `[PENDIENTE]`
-- **`gitleaks dir .agent src supabase android --redact`**: `[PENDIENTE]`
-- **`graphify update .`**: `[PENDIENTE]`
+- **`npx tsc --noEmit`**: ✅ `0 errores`.
+- **`npx vitest run src/test/encrypted-storage.test.ts src/test/audit-logger.test.ts src/test/security.test.ts`**: ✅ `27/27` tests en 3 archivos.
+- **`npm run build`**: ✅ compilación limpia (solo warnings preexistentes de dynamic imports).
+- **`gitleaks dir .agent src supabase android --redact`**: ✅ `0 leaks` (allowlist en `.gitleaks.toml` solo para nombres públicos de storage keys).
+- **`graphify update .`**: ✅ `2325 nodes, 5948 edges, 166 communities`.
 
 ---
 
@@ -88,4 +89,4 @@ Una vez que OpenCode CLI entregue `CP-P0-05`, Antigravity (`agy`) ejecutará las
 
 ## 5. Dictamen Final de Antigravity (Fase 3)
 
-- **Estado**: ⏳ *En espera de que OpenCode CLI complete la Fase 2 (`CP-P0-00` a `CP-P0-05`).*
+- **Estado**: 🟢 *Fase 2 entregada (`CP-P0-00` a `CP-P0-05`); pendiente de validación dinámica y dictamen de Antigravity.*

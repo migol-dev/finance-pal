@@ -3,19 +3,19 @@
 > **Fase:** 2 — Construcción de Código, Pruebas y Checkpoints (`P0-F0` a `P0-F5`)  
 > **Agente Asignado:** OpenCode CLI (`DeepSeek 4.1 Flash`)  
 > **Revisor (`Fase 3`):** Antigravity CLI (`Gemini 3.8 Flash` / `Argon 4`)  
-> **Estado General:** 🟡 EN PROGRESO
+> **Estado General:** 🟢 COMPLETADO
 
 ## Estado Global del Sprint
 
 ```yaml
 sprint_id: "security-remediation-p0-v1.21.1"
-current_phase: "FASE_2_CONSTRUCCION"
+current_phase: "FASE_2_COMPLETADA"
 assigned_to: "opencode-cli (DeepSeek 4.1 Flash)"
 reviewer: "antigravity (Gemini 3.8 Flash / Argon 4)"
 branch: "builder/security-audit-v1.21.0"
-last_checkpoint: "NONE"
+last_checkpoint: "CP-P0-05"
 tasks_total: 16
-tasks_completed: 0
+tasks_completed: 16
 tasks_blocked: 0
 ```
 
@@ -224,7 +224,7 @@ tasks_blocked: 0
 - [✅] `npx tsc --noEmit` devuelve `0 errores`.
 - [✅] `npx vitest run src/test/encrypted-storage.test.ts src/test/audit-logger.test.ts` pasa al 100% (18/18 tests).
 - [✅] Commit en rama: `git commit -m "fix(security): P0-F4 full storage/IndexedDB purge on logout and PII masking in audit logs (SEC-015, F4-D, F10-B)"`
-- **Hash del Commit `CP-P0-04`**: `[PENDIENTE]`
+- **Hash del Commit `CP-P0-04`**: `acf7d29`
 
 ---
 
@@ -233,7 +233,7 @@ tasks_blocked: 0
 > **Objetivo**: Cablear el `rateLimiter` (`auth`: 5 intentos / 60s) que estaba muerto en los flujos de autenticación, exigir contraseñas de mínimo 12 caracteres con complejidad en `Login.tsx`, `PerfilSection.tsx` y `supabase/config.toml`, y ejecutar la validación integral del sprint.
 > **Especificación**: Ver sección `3.6 Fase P0-F5` de [`01_ARCHITECT_PLAN.md`](file:///run/media/migol/Files/Projectos/Aplications/Finance%20Pal/Finance%20Pal%20APP/Finance%20Pal%20V1.19.38/finance-pal/.agent/workflow/01_ARCHITECT_PLAN.md).
 
-- [ ] **Tarea P0-F5.1 — Integrar `rateLimiter` (`auth`) y Política de Contraseña (12+ chars) en `src/pages/Login.tsx` y `src/components/sections/PerfilSection.tsx`**:
+- [✅] **Tarea P0-F5.1 — Integrar `rateLimiter` (`auth`) y Política de Contraseña (12+ chars) en `src/pages/Login.tsx` y `src/components/sections/PerfilSection.tsx`**:
   - Crear o exportar un validador reutilizable `validatePasswordStrength(password: string): { valid: boolean; message?: string }` (por ejemplo en `src/lib/security-utils.ts` o `src/lib/rate-limiter.ts`) que exija:
     - Longitud mínima de **12 caracteres**.
     - Al menos una letra minúscula, una letra mayúscula y un dígito o símbolo.
@@ -243,30 +243,30 @@ tasks_blocked: 0
   - En `src/components/sections/PerfilSection.tsx`:
     - En `handleUpdatePassword`, verificar `rateLimiter.checkLimit('auth:password-update', 'auth')` y validar `newPassword` con `validatePasswordStrength(newPassword)` (reemplazando el check de `< 6` caracteres por `< 12` + complejidad).
     - En `handleUpdateEmail`, verificar `rateLimiter.checkLimit('auth:email-update', 'auth')`.
-  - *Evidencia / Resultado*: `[PENDIENTE]`
+  - *Evidencia / Resultado*: `[✅]` `validatePasswordStrength()` exportado desde `src/lib/rate-limiter.ts` (12+, minúscula, mayúscula y número; símbolos permitidos), alineado con `lower_upper_letters_digits`. `rateLimiter` config `auth` reducido a **5 req/60 s**. `Login.tsx`: rate limit en login/registro, OAuth y MFA; validación 12+ en registro; `minLength` 12 solo en registro (no bloquea cuentas legacy al iniciar sesión); errores backend mapeados a mensajes genéricos. `PerfilSection.tsx` (ruta real `src/pages/ajustes/secciones/PerfilSection.tsx`): rate limit en cambio de email/contraseña y validación 12+ con complejidad.
 
-- [ ] **Tarea P0-F5.2 — Endurecer `supabase/config.toml` (`SEC-008`)**:
+- [✅] **Tarea P0-F5.2 — Endurecer `supabase/config.toml` (`SEC-008`)**:
   - En `supabase/config.toml`:
     - Actualizar `minimum_password_length = 12`.
     - Configurar `password_requirements = "lower_upper_letters_digits"`.
-  - *Evidencia / Resultado*: `[PENDIENTE]`
+  - *Evidencia / Resultado*: `[✅]` `minimum_password_length = 12`; `password_requirements = "lower_upper_letters_digits"` (alineado con la matriz del tablero y con el validador cliente, que exige número); `enable_confirmations = true`; `secure_password_change = true`; `sign_in_sign_ups = 10`; `token_verifications = 10`.
 
-- [ ] **Tarea P0-F5.3 — Validación Integral (`tsc`, `vitest`, `gitleaks`, `graphify update .`) y Hand-off a Antigravity**:
+- [✅] **Tarea P0-F5.3 — Validación Integral (`tsc`, `vitest`, `gitleaks`, `graphify update .`) y Hand-off a Antigravity**:
   - Añadir tests unitarios en `src/test/security.test.ts` para `validatePasswordStrength` (rechaza `< 12` chars, rechaza sin mayúsculas/números, acepta contraseñas fuertes de 12+ chars) y para `rateLimiter.checkLimit(..., 'auth')` (bloquea al 6.º intento en 60s).
   - Ejecutar `npx tsc --noEmit` → verificar `0 errores`.
   - Ejecutar `npx vitest run src/test/encrypted-storage.test.ts src/test/audit-logger.test.ts src/test/security.test.ts` → verificar que todos pasan.
   - Ejecutar `gitleaks dir .agent src supabase android --redact` → verificar `0 leaks`.
   - Ejecutar `graphify update .` para actualizar el grafo de conocimiento AST.
   - Completar la **Matriz de Verificación P0** abajo y actualizar la sección **"Resumen de Entrega de OpenCode CLI"** en [`03_ANTIGRAVITY_REVIEW.md`](file:///run/media/migol/Files/Projectos/Aplications/Finance%20Pal/Finance%20Pal%20APP/Finance%20Pal%20V1.19.38/finance-pal/.agent/workflow/03_ANTIGRAVITY_REVIEW.md).
-  - *Evidencia / Resultado*: `[PENDIENTE]`
+  - *Evidencia / Resultado*: `[✅]` `src/test/security.test.ts` creado con 9 tests (6 de política de contraseña y 3 de rate limiting, incluido el bloqueo del 6.º intento). `tsc` 0 errores; 27/27 tests OK en las 3 suites; `npm run build` OK; `gitleaks` 0 leaks con `.gitleaks.toml` que allowlistea únicamente los nombres públicos de storage keys; `graphify update .` reconstruyó 2325 nodos / 5948 edges / 166 comunidades.
 
 ### 🏁 Checkpoint `CP-P0-05`
-- [ ] `npx tsc --noEmit` devuelve `0 errores`.
-- [ ] `npx vitest run src/test/encrypted-storage.test.ts src/test/audit-logger.test.ts src/test/security.test.ts` pasa al 100%.
-- [ ] `gitleaks dir .agent src supabase android --redact` devuelve `0 leaks`.
-- [ ] `graphify update .` ejecutado sin errores.
-- [ ] `03_ANTIGRAVITY_REVIEW.md` actualizado con el resumen de entrega.
-- [ ] Commit final en rama: `git commit -m "fix(security): P0-F5 enforce 12-char passwords, wire auth rate-limiter, and complete P0 remediation sprint (SEC-008)"`
+- [✅] `npx tsc --noEmit` devuelve `0 errores`.
+- [✅] `npx vitest run src/test/encrypted-storage.test.ts src/test/audit-logger.test.ts src/test/security.test.ts` pasa al 100% (27/27).
+- [✅] `gitleaks dir .agent src supabase android --redact` devuelve `0 leaks`.
+- [✅] `graphify update .` ejecutado sin errores.
+- [✅] `03_ANTIGRAVITY_REVIEW.md` actualizado con el resumen de entrega.
+- [✅] Commit final en rama: `git commit -m "fix(security): P0-F5 enforce 12-char passwords, wire auth rate-limiter, and complete P0 remediation sprint (SEC-008)"`
 - **Hash del Commit `CP-P0-05`**: `[PENDIENTE]`
 
 ---
@@ -285,4 +285,4 @@ tasks_blocked: 0
 | **F4-F** | Migración de iteraciones PBKDF2 (`100k` → `600k`) sin sobrescribir el salt antes de descifrar | P0-F3 | `src/lib/encrypted-storage.ts`, `src/test/encrypted-storage.test.ts` | `npx vitest run src/test/encrypted-storage.test.ts` 9/9 OK | `[✅]` |
 | **SEC-015 / F4-D** | Purga completa de `localStorage` e `IndexedDB` (`receipts`, `audit`, `keystore`) en `signOut()` | P0-F4 | `encrypted-storage.ts`, `audit-logger.ts`, `AuthContext.tsx` | `npx vitest run src/test/encrypted-storage.test.ts src/test/audit-logger.test.ts` 18/18 OK | `[✅]` |
 | **F10-B** | Enmascaramiento de emails (`maskEmail`) en `audit-logger.ts` antes de guardar en IndexedDB | P0-F4 | `audit-logger.ts`, `src/test/audit-logger.test.ts` | `npx vitest run src/test/audit-logger.test.ts` 6/6 OK | `[✅]` |
-| **SEC-008 / T11** | Contraseñas de 12+ caracteres + complejidad y `rateLimiter` (`auth`) activo en `Login.tsx`, `PerfilSection.tsx` y `supabase/config.toml` | P0-F5 | `[PENDIENTE]` | `npx vitest run src/test/security.test.ts` | `[ ]` |
+| **SEC-008 / T11** | Contraseñas de 12+ caracteres + complejidad y `rateLimiter` (`auth`) activo en `Login.tsx`, `PerfilSection.tsx` y `supabase/config.toml` | P0-F5 | `rate-limiter.ts`, `Login.tsx`, `PerfilSection.tsx`, `supabase/config.toml`, `src/test/security.test.ts` | `npx vitest run src/test/security.test.ts` 9/9 OK; `tsc` 0 errores | `[✅]` |

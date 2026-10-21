@@ -109,20 +109,50 @@ class RateLimiter {
 
 export const rateLimiter = new RateLimiter();
 
-rateLimiter.configure('auth', { maxRequests: 10, windowMs: 60000, keyPrefix: 'auth' });
+rateLimiter.configure('auth', { maxRequests: 5, windowMs: 60000, keyPrefix: 'auth' });
 rateLimiter.configure('sync', { maxRequests: 30, windowMs: 60000, keyPrefix: 'sync' });
 rateLimiter.configure('storage', { maxRequests: 100, windowMs: 60000, keyPrefix: 'storage' });
 rateLimiter.configure('migration', { maxRequests: 5, windowMs: 3600000, keyPrefix: 'migration' });
 rateLimiter.configure('api', { maxRequests: 200, windowMs: 60000, keyPrefix: 'api' });
 rateLimiter.configure('default', { maxRequests: 60, windowMs: 60000, keyPrefix: 'default' });
 
-export function getClientIdentifier(): string {
-  let id = localStorage.getItem('finance-pal-client-id');
-  if (!id) {
-    id = crypto.randomUUID();
-    localStorage.setItem('finance-pal-client-id', id);
+/**
+ * SEC-008 / T11: minimum password policy shared by registration and password
+ * changes. Mirrors `supabase/config.toml`: 12+ chars, lowercase, uppercase and
+ * a digit (symbols are allowed but not mandatory).
+ */
+export function validatePasswordStrength(password: string): { valid: boolean; message?: string } {
+  if (typeof password !== 'string' || password.length < 12) {
+    return { valid: false, message: 'La contraseña debe tener al menos 12 caracteres' };
   }
-  return id;
+  if (!/[a-z]/.test(password)) {
+    return { valid: false, message: 'La contraseña debe incluir al menos una letra minúscula' };
+  }
+  if (!/[A-Z]/.test(password)) {
+    return { valid: false, message: 'La contraseña debe incluir al menos una letra mayúscula' };
+  }
+  if (!/[0-9]/.test(password)) {
+    return { valid: false, message: 'La contraseña debe incluir al menos un número' };
+  }
+  return { valid: true };
+}
+
+let memoryClientId: string | null = null;
+
+export function getClientIdentifier(): string {
+  try {
+    let id = localStorage.getItem('finance-pal-client-id');
+    if (!id) {
+      id = crypto.randomUUID();
+      localStorage.setItem('finance-pal-client-id', id);
+    }
+    return id;
+  } catch {
+    if (!memoryClientId) {
+      memoryClientId = crypto.randomUUID();
+    }
+    return memoryClientId;
+  }
 }
 
 export async function withRateLimit<T>(

@@ -11,6 +11,7 @@ import { Progress } from '@/components/ui/progress';
 import { Browser } from '@capacitor/browser';
 import { Capacitor } from '@capacitor/core';
 import { toast } from 'sonner';
+import { getClientIdentifier, rateLimiter, validatePasswordStrength } from '@/lib/rate-limiter';
 
 const GoogleIcon = () => (
   <svg className="w-5 h-5" viewBox="0 0 24 24">
@@ -95,8 +96,7 @@ function getValidatedRedirectUri(_provider: 'google' | 'github'): string {
 function calculatePasswordStrength(password: string): { score: number; label: string; color: string; feedback: string[] } {
   let score = 0;
   const feedback: string[] = [];
-  if (password.length >= 8) score += 1; else feedback.push('Al menos 8 caracteres');
-  if (password.length >= 12) score += 1;
+  if (password.length >= 12) score += 1; else feedback.push('Al menos 12 caracteres');
   if (/[a-z]/.test(password)) score += 1; else feedback.push('Minúsculas');
   if (/[A-Z]/.test(password)) score += 1; else feedback.push('Mayúsculas');
   if (/[0-9]/.test(password)) score += 1; else feedback.push('Números');
@@ -113,6 +113,28 @@ function calculatePasswordStrength(password: string): { score: number; label: st
     color: colors[Math.min(score, 4)],
     feedback,
   };
+}
+
+/** Never leak raw backend auth errors to the UI (SEC-008). */
+function getSafeAuthError(error: unknown, fallback: string): string {
+  const message = String((error as { message?: unknown })?.message ?? '');
+  if (/invalid login credentials/i.test(message)) return 'Credenciales inválidas';
+  if (/email not confirmed/i.test(message)) return 'Debes confirmar tu correo antes de iniciar sesión';
+  if (/user already registered/i.test(message)) return 'Ya existe una cuenta con este correo';
+  if (/password/i.test(message) && /(weak|short|least|requirement)/i.test(message)) {
+    return 'La contraseña no cumple los requisitos de seguridad';
+  }
+  if (/rate limit|too many requests/i.test(message)) return 'Demasiados intentos. Espera un momento e inténtalo de nuevo';
+  return fallback;
+}
+
+async function checkAuthRateLimit(identifier: string): Promise<boolean> {
+  const limit = await rateLimiter.checkLimit(`${getClientIdentifier()}:${identifier}`, 'auth');
+  if (!limit.allowed) {
+    toast.error(`Demasiados intentos. Espera ${limit.retryAfter ?? 60} segundos.`);
+    return false;
+  }
+  return true;
 }
 
 function PasswordStrengthMeter({ password }: { password: string }) {
@@ -260,6 +282,8 @@ export default function Login() {
   }, [session, mfaRequired]);
 
   const handleOAuth = async (provider: 'google' | 'github') => {
+    if (!(await checkAuthRateLimit(`oauth:${provider}`))) return;
+
     setLoading(true);
     try {
       // Validate redirect URI before initiating OAuth
@@ -284,7 +308,7 @@ export default function Login() {
       }
       setLoading(false);
     } catch (error: any) {
-      toast.error(error.message || `Error al iniciar sesión con ${provider}`);
+      toast.error(getSafeAuthError(error, `Error al iniciar sesión con ${provider}`));
       setLoading(false);
     }
   };
@@ -296,12 +320,15 @@ export default function Login() {
       return;
     }
     if (!isLogin) {
-      const strength = calculatePasswordStrength(password);
-      if (strength.score < 3) {
-        toast.error('La contraseña es demasiado débil. Usa al menos 8 caracteres con mayúsculas, números y símbolos.');
+      const strength = validatePasswordStrength(password);
+      if (!strength.valid) {
+        toast.error(strength.message ?? 'La contraseña no cumple los requisitos de seguridad');
         return;
       }
     }
+
+    if (!(await checkAuthRateLimit(`email:${email.trim().toLowerCase()}`))) return;
+
     setLoading(true);
     try {
       if (isLogin) {
@@ -317,7 +344,7 @@ export default function Login() {
         toast.success('Cuenta creada. Revisa tu correo para verificar.');
       }
     } catch (error: any) {
-      toast.error(error.message || 'Error de autenticación');
+      toast.error(getSafeAuthError(error, 'Error de autenticación'));
     } finally {
       setLoading(false);
     }
@@ -329,6 +356,9 @@ export default function Login() {
       toast.error('Introduce el código de 6 dígitos');
       return;
     }
+
+    if (!(await checkAuthRateLimit(`mfa:${session?.user?.id ?? 'unknown'}`))) return;
+
     setVerifyingMfa(true);
     try {
       let factorId = mfaFactorId;
@@ -354,7 +384,7 @@ export default function Login() {
       await checkMfaStatus();
       toast.success('Autenticación de dos factores verificada');
     } catch (error: any) {
-      toast.error(error.message || 'Código 2FA incorrecto o expirado');
+      toast.error(getSafeAuthError(error, 'Código 2FA incorrecto o expirado'));
     } finally {
       setVerifyingMfa(false);
     }
@@ -547,7 +577,7 @@ export default function Login() {
                 onChange={(e) => setPassword(e.target.value)}
                 autoComplete={isLogin ? 'current-password' : 'new-password'}
                 required
-                minLength={8}
+                minLength={isLogin ? undefined : 12}
               />
             </motion.div>
 

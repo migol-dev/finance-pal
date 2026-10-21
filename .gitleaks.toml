@@ -1,0 +1,15 @@
+# gitleaks configuration
+# Keep the default rule set and allow only well-known public storage key names
+# that the generic-api-key heuristic mistakes for credentials.
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Public local-storage key names and graphify cache checksums (not secrets)"
+regexes = [
+  '''finance-pal-encrypted-v1''',
+  '''migol-finanzas-v2''',
+]
+paths = [
+  '''graphify-out/cache/stat-index\.json$''',
+]
