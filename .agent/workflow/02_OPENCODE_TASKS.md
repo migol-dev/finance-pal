@@ -14,15 +14,15 @@
 | :--- | :--- |
 | **Total de Fases de Auditoría** | `12` (`F0` a `F11`) |
 | **Total de Tareas Planificadas** | `39` (`F0.1` a `F11.4`) |
-| **Tareas Completadas (✅)** | `14` |
+| **Tareas Completadas (✅)** | `16` |
 | **Tareas en Progreso (⏳)** | `0` |
-| **Tareas Bloqueadas / Escaladas a `agy` (⚠️)** | `3` |
-| **Tareas Pendientes (⚪)** | `22` |
-| **Progreso Estimado** | `[███████░░░░░░░░░░░░░] 36% (14/39)` |
-| **Hallazgos Previos a Re-verificar (`SEC-*`)** | `10 / 21` verificados |
-| **Hipótesis Nuevas a Confirmar (`NEW-*`)** | `5 / 12` evaluadas |
-| **Matriz de Pruebas (`T01`–`T25`)** | `9 / 25` ejecutadas |
-| **Último Checkpoint Git** | `CP-02 (a91a215)` |
+| **Tareas Bloqueadas / Escaladas a `agy` (⚠️)** | `4` |
+| **Tareas Pendientes (⚪)** | `19` |
+| **Progreso Estimado** | `[████████░░░░░░░░░░░░] 41% (16/39)` |
+| **Hallazgos Previos a Re-verificar (`SEC-*`)** | `15 / 21` verificados |
+| **Hipótesis Nuevas a Confirmar (`NEW-*`)** | `6 / 12` evaluadas |
+| **Matriz de Pruebas (`T01`–`T25`)** | `10 / 25` ejecutadas |
+| **Último Checkpoint Git** | `CP-03 (dd8ff98)` |
 | **Fecha/Hora de Inicio** | `2026-10-20` |
 | **Fecha/Hora de Última Actualización** | `2026-10-20` |
 
@@ -81,7 +81,7 @@
   - **Resultado:** ⚠️ Confirmado estáticamente (0 políticas/funciones con `aal`; `aal1` conserva CRUD). `T09` dinámico escalado por falta de cuenta con TOTP.
 - [✅] **F3.2 [N0/N1 — T10, SEC-012]:** Auditar `src/lib/supabase.ts` (`flowType` implícito vs PKCE), `isValidRedirectUri` en `src/pages/Login.tsx` L41-54 (`parsed.hostname === 'localhost'` sin validar puerto ni `pathname === '/auth/callback'`), y `src/pages/AuthCallback.tsx` (manejo de `error_description` y limpieza de URL).
   - **Evidencia esperada:** Sección OAuth/PKCE en `.agent/audit/evidence/F3-auth-mfa-sessions.md`.
-  - **Resultado:** ⚠️ Parcial: flujo implícito, tokens en URL y allowlist cliente laxa; `T10` pasa por la `uri_allow_list` exacta de GoTrue.
+  - **Resultado:** ⚠️ Parcial: flujo implícito (tokens en fragmento; el SDK limpia el hash) y allowlist cliente laxa; `T10` pasa por la `uri_allow_list` exacta de GoTrue.
 - [✅] **F3.3 [N1 — T11, SEC-008]:** Auditar `supabase/config.toml` y la configuración real de Auth en producción (`/v1/projects/rjforcrdyfuodsqtopvp/config/auth`, redactando cualquier `secret` o API key): longitud mínima de contraseña, protección contra contraseñas filtradas (`HIBP`), confirmación de email, `rate_limit_*`, `jwt_exp` y rotación de refresh tokens; contrastar con `src/lib/rate-limiter.ts` (`SEC-008`).
   - **Evidencia esperada:** Tabla comparativa ASVS V2 en `.agent/audit/evidence/F3-auth-mfa-sessions.md`.
   - **Resultado:** ❌ `T11` falla: mínimo 6, HIBP off, sin CAPTCHA/lockout, notificaciones de Auth off y sin recuperación; `rate-limiter` de login no conectado.
@@ -92,12 +92,15 @@
 ---
 
 ### 💾 Fase F4: Datos en Reposo del Cliente y Criptografía (`CP-04` — Prioridad `P0` — `T13`, `T14`)
-- [ ] **F4.1 [N0/N2 — T13, SEC-001, SEC-015, SEC-018]:** Auditar `src/store/finance-store.ts` (L290-360), `src/store/slices/settings-slice.ts` y `src/store/sync-store.ts` para verificar si `setItem` ya eliminó la escritura en texto plano (`SEC-001`), si `profile.email` se persiste (`SEC-018`), qué almacenes se limpian en `signOut` (`SEC-015`: `localStorage`, `sessionStorage`, `IndexedDB` `finance-pal-receipts` y `finance-pal-audit`, `Cache Storage`) y si quedan residuos al cambiar de cuenta A→B.
+- [⚠️] **F4.1 [N0/N2 — T13, SEC-001, SEC-015, SEC-018]:** Auditar `src/store/finance-store.ts` (L290-360), `src/store/slices/settings-slice.ts` y `src/store/sync-store.ts` para verificar si `setItem` ya eliminó la escritura en texto plano (`SEC-001`), si `profile.email` se persiste (`SEC-018`), qué almacenes se limpian en `signOut` (`SEC-015`: `localStorage`, `sessionStorage`, `IndexedDB` `finance-pal-receipts` y `finance-pal-audit`, `Cache Storage`) y si quedan residuos al cambiar de cuenta A→B.
   - **Evidencia esperada:** `.agent/audit/evidence/F4-storage-inventory.md`.
-- [ ] **F4.2 [N0/N2 — T14, SEC-002, NEW-01]:** Auditar `src/lib/encrypted-storage.ts` (L43-125): analizar `getEncryptionSecret()` (que usa `session.user.id` o `localStorage.getItem('finance-pal-device-secret')`) y `getSalt()` (`localStorage.getItem('finance-pal-encrypted-v1-salt')`). Escribir y ejecutar en Node WebCrypto el script PoC aislado `.agent/audit/scratch/poc-new01-pbkdf2.mjs` que demuestre que con `user.id` (presente en el JWT de `localStorage`) + el salt público en `localStorage` se deriva la clave AES-GCM y se descifra el estado sin ningún secreto externo.
+  - **Resultado:** ✅ Inventario estático completo: `SEC-001` cerrado; `SEC-015` y `SEC-018` confirmados. ⚠️ `T13` dinámico (pre/post logout y A→B) escalado por falta de `audit-a`/`audit-b`; ver Escalation Log.
+- [✅] **F4.2 [N0/N2 — T14, SEC-002, NEW-01]:** Auditar `src/lib/encrypted-storage.ts` (L43-125): analizar `getEncryptionSecret()` (que usa `session.user.id` o `localStorage.getItem('finance-pal-device-secret')`) y `getSalt()` (`localStorage.getItem('finance-pal-encrypted-v1-salt')`). Escribir y ejecutar en Node WebCrypto el script PoC aislado `.agent/audit/scratch/poc-new01-pbkdf2.mjs` que demuestre que con `user.id` (presente en el JWT de `localStorage`) + el salt público en `localStorage` se deriva la clave AES-GCM y se descifra el estado sin ningún secreto externo.
   - **Evidencia esperada:** `.agent/audit/scratch/poc-new01-pbkdf2.mjs` y resultado de ejecución en `.agent/audit/evidence/F4-crypto-and-auditlog.md`.
-- [ ] **F4.3 [N0 — SEC-009]:** Auditar `src/lib/audit-logger.ts` (migración de `djb2` a `SHA-256`, ausencia de clave HMAC frente a manipulación local en IndexedDB) y revisar la cobertura de pruebas negativas en `src/test/encrypted-storage.test.ts` y `src/test/audit-logger.test.ts`.
+  - **Resultado:** ❌ `SEC-002`/`NEW-01` confirmados (Media); `T14` ✅ `DECRYPTED_OK` y clave incorrecta rechazada. Defecto adicional `F4-F`: el upgrade 100k→600k reescribe el salt sin re-cifrar.
+- [✅] **F4.3 [N0 — SEC-009]:** Auditar `src/lib/audit-logger.ts` (migración de `djb2` a `SHA-256`, ausencia de clave HMAC frente a manipulación local en IndexedDB) y revisar la cobertura de pruebas negativas en `src/test/encrypted-storage.test.ts` y `src/test/audit-logger.test.ts`.
   - **Evidencia esperada:** `.agent/audit/evidence/F4-crypto-and-auditlog.md` (`CP-04`: `docs(audit): F4 almacenamiento cliente y cifrado`).
+  - **Resultado:** ⚠️ `SEC-009` parcial: SHA-256 correcto pero sin HMAC/anclaje; PoC `poc-sec009-tamper.mjs` reescribe la cadena (`CHAIN_FORGED_OK`). 0 pruebas negativas; `fake-indexeddb` sin `build/esm/` impide ejecutar la suite.
 
 ---
 
@@ -178,6 +181,7 @@
 | `F2.5` (`T06`) | REST Supabase `/rest/v1/{accounts,transactions,debts,goals,fixed_items,debt_payments,user_settings,user_sessions,push_subscriptions}` + Storage `receipts` | No se pudo ejecutar la prueba dinámica **cross-tenant A→B** (lectura y escritura de filas ficticias entre `audit-a` y `audit-b`) | No existen credenciales de las cuentas de prueba `audit-a`/`audit-b` en esta sesión (no se deben usar cuentas reales). El catálogo `N1` sí confirma RLS activo y políticas `auth.uid() = user_id` en las 10 tablas, vistas `security_invoker=true` y 0 políticas para `anon` | 1) Provisionar `audit-a@…` (con TOTP) y `audit-b@…` con datos ficticios; 2) Ejecutar la matriz CRUD A→B y Storage con JWT de cada cuenta; 3) Confirmar 100% denegado; 4) Eliminar cuentas y datos al cierre (`F11`). Evidencia parcial: `F2-catalog-and-rls.md` §1-5 |
 | `F3.1` (`T09`) | GoTrue `/auth/v1/token?grant_type=password` + PostgREST `/rest/v1/*` | No se pudo ejecutar el **CRUD con JWT `aal1`** de una cuenta con TOTP verificado | No existe una cuenta de prueba con MFA enrolado; crear usuarios reales en producción está fuera de alcance. La conclusión estática es inequívoca: 40 políticas `public`, **0** con `aal`; 0 funciones con `aal` | 1) Provisionar `audit-a` con TOTP verificado y datos ficticios; 2) Login solo con contraseña y guardar el token `aal1`; 3) Ejecutar `GET/POST/PATCH/DELETE` en `transactions` y `storage/v1/object/receipts`; 4) Confirmar `200/201` con `aal1` (vulnerable) y comparar con `aal2`; 5) Borrar cuenta/datos al cierre. Evidencia: `F3-auth-mfa-sessions.md` §1.3 |
 | `F3.4` (`T12`) | Realtime `user_sessions:<userId>` + `user_sessions` | No se pudo ejecutar la prueba de **takeover/DoS con dos dispositivos** ni la denegación cross-tenant | Faltan `audit-a`/`audit-b` y dos clientes con `anon` key. El análisis de código confirma `requestTakeover` sin reauth, canal público y borrado por `device_id` sin `user_id` (RLS lo contiene) | 1) Abrir dos sesiones de `audit-a` (A/B); 2) Suscribir un tercer cliente a `user_sessions:<uuid-A>`; 3) Capturar `deviceId` de A en `new_login`; 4) Enviar `takeover_request` y verificar pause/auto-borrado en A; 5) Confirmar que `audit-b` no puede borrar filas de `audit-a`. Evidencia: `F3-auth-mfa-sessions.md` §4.2 |
+| `F4.1` (`T13`) | Navegador: `localStorage`, `sessionStorage`, IndexedDB (`finance-pal-receipts`, `finance-pal-audit`), Cache Storage | No se pudo ejecutar el **inventario dinámico pre/post logout** ni el cambio de cuenta A→B | No existen credenciales `audit-a`/`audit-b`; crear usuarios en producción está fuera de alcance. El inventario estático cubre todas las claves y rutas de limpieza, pero no observa el estado real tras `signOut` | 1) Provisionar `audit-a` y `audit-b` con datos ficticios (incl. recibo y `profile.email`); 2) Capturar `Object.keys(localStorage)`, `indexedDB.databases()` y `caches.keys()` antes del logout; 3) Ejecutar `signOut()` desde la UI y repetir el inventario; 4) Verificar que `migol-finanzas-v2`, `finance-pal-sync-queue-encrypted`, `finance-pal-receipts` y `finance-pal-audit` están ausentes/vacíos; 5) Login como B y confirmar que no lee datos ni audit logs de A. Evidencia: `F4-storage-inventory.md` §5 |
 
 ---
 
@@ -188,7 +192,7 @@
 | `CP-00` | `F0` | `F0.1` – `F0.3` | `docs(audit): F0 entorno, alcance y protocolo de producción` | `769cf9e` | `✅ COMPLETADO` |
 | `CP-01` | `F1` | `F1.1` – `F1.4` | `docs(audit): F1 secretos y dependencias` | `0bd74a3` | `✅ COMPLETADO` |
 | `CP-02` | `F2` | `F2.1` – `F2.6` | `docs(audit): F2 RLS, vistas, RPC y storage` | `a91a215` | `✅ COMPLETADO` |
-| `CP-03` | `F3` | `F3.1` – `F3.4` | `docs(audit): F3 auth, MFA y sesiones` | `pendiente` | `✅ COMPLETADO` |
+| `CP-03` | `F3` | `F3.1` – `F3.4` | `docs(audit): F3 auth, MFA y sesiones` | `dd8ff98` | `✅ COMPLETADO` |
 | `CP-04` | `F4` | `F4.1` – `F4.3` | `docs(audit): F4 almacenamiento cliente y cifrado` | `pendiente` | `⚪ PENDIENTE` |
 | `CP-05` | `F5` | `F5.1` – `F5.3` | `docs(audit): F5 servicios, IDOR y validación` | `pendiente` | `⚪ PENDIENTE` |
 | `CP-06` | `F6` | `F6.1` – `F6.3` | `docs(audit): F6 edge function, push y SW` | `pendiente` | `⚪ PENDIENTE` |
@@ -206,24 +210,24 @@
 
 | ID | Título Corto | Fase | Estado Preliminar | Estado Verificado Final | Evidencia |
 | :--- | :--- | :--- | :--- | :--- | :--- |
-| `SEC-001` | Zustand en texto plano en `localStorage` | `F4` | ⚠️ Parcial | `⬜ PENDIENTE` | `F4-storage-inventory.md` |
-| `SEC-002` | Clave AES-GCM derivada de secreto en `localStorage` | `F4` | 🔁 Regresión probable | `⬜ PENDIENTE` | `F4-crypto-and-auditlog.md` |
+| `SEC-001` | Zustand en texto plano en `localStorage` | `F4` | ⚠️ Parcial | `✅ CERRADO — setItem borra plaintext y cifra; sin fallback` | `F4-storage-inventory.md` §1.1 |
+| `SEC-002` | Clave AES-GCM derivada de secreto en `localStorage` | `F4` | 🔁 Regresión probable | `❌ CONFIRMADO (Media) — clave derivable de user.id + salt público; PoC DECRYPTED_OK` | `F4-crypto-and-auditlog.md` §1.3-1.4 |
 | `SEC-003` | Edge Function `send-reminders` sin auth / comparación no constante | `F6` | ⚠️ Parcial | `⬜ PENDIENTE` | `F6-edge-push-sw.md` |
 | `SEC-004` | `cleanup_stale_sessions()` `SECURITY DEFINER` | `F2` | ⚠️ / 🔁 | `⚠️ PARCIAL — EXECUTE a authenticated; guard roto (siempre deniega)` | `F2-catalog-and-rls.md` |
 | `SEC-005` | IDOR en servicios (`.eq('user_id', ...)`) | `F5` | ✅ por verificar | `⬜ PENDIENTE` | `F5-services-idor-validation.md` |
 | `SEC-006` | Clave `anon` con expiración año 2100 | `F1` | ❓ por verificar | `⚠️ PARCIAL — role=anon, exp 2036 (10 años)`, no 2100 | `F1-supply-chain-and-bundle.md` |
 | `SEC-007` | Recibos en Storage con URL pública vs firmada | `F2` | ✅ por verificar | `⚠️ PARCIAL — bucket privado OK; sin file_size_limit ni MIME` | `F2-catalog-and-rls.md` |
 | `SEC-008` | Rate limiting de login sólo en cliente | `F3` | ❌ Abierto | `❌ CONFIRMADO (parcial) — limiter no conectado; GoTrue 30/5 min/IP` | `F3-auth-mfa-sessions.md` |
-| `SEC-009` | Hash-chaining del audit log (`djb2` → `SHA-256` sin HMAC) | `F4` | ✅ por verificar | `⬜ PENDIENTE` | `F4-crypto-and-auditlog.md` |
+| `SEC-009` | Hash-chaining del audit log (`djb2` → `SHA-256` sin HMAC) | `F4` | ✅ por verificar | `⚠️ PARCIAL — SHA-256 sí; sin HMAC/anclaje; cadena falsificable (PoC)` | `F4-crypto-and-auditlog.md` §2.3 |
 | `SEC-010` | Takeover de sesión multi-dispositivo sin MFA | `F3` | ❓ por verificar | `⚠️ CONFIRMADO (diseño) — sin reauth; canal público (DoS); RLS contiene cross-tenant` | `F3-auth-mfa-sessions.md` |
 | `SEC-011` | Columna `deleted_at` inexistente en RLS de `user_sessions` | `F2` | ✅ por verificar | `✅ CERRADO — políticas sin deleted_at` | `F2-catalog-and-rls.md` |
 | `SEC-012` | `isValidRedirectUri` permite cualquier `localhost` | `F3` | ❌ Abierto | `⚠️ CONFIRMADO (parcial) — cliente laxo; allowlist GoTrue bloquea redirect` | `F3-auth-mfa-sessions.md` |
 | `SEC-013` | Rate limit de Edge Function en memoria de Deno | `F6` | ❌ Abierto | `⬜ PENDIENTE` | `F6-edge-push-sw.md` |
 | `SEC-014` | Políticas RLS sobre vistas SQL (`*_safe`) | `F2` | ❌ Escalado (`NEW-02`) | `✅ CERRADO — vistas con security_invoker=true` | `F2-catalog-and-rls.md` |
-| `SEC-015` | Datos no borrados de storage al cerrar sesión | `F4` | ✅ por verificar | `⬜ PENDIENTE` | `F4-storage-inventory.md` |
+| `SEC-015` | Datos no borrados de storage al cerrar sesión | `F4` | ✅ por verificar | `❌ CONFIRMADO (Alta) — no borra estado/sync/recibos/audit; salt rompe descifrado` | `F4-storage-inventory.md` §2 |
 | `SEC-016` | RLS de `user_settings` con `policyprefix` inválido | `F2` | ✅ por verificar | `✅ CERRADO — 4 políticas correctas` | `F2-catalog-and-rls.md` |
 | `SEC-017` | CORS wildcard `*` en Edge Function | `F6` | ⚠️ Parcial | `⬜ PENDIENTE` | `F6-edge-push-sw.md` |
-| `SEC-018` | `profile.email` persistido en estado de Zustand | `F4` | ❓ por verificar | `⬜ PENDIENTE` | `F4-storage-inventory.md` |
+| `SEC-018` | `profile.email` persistido en estado de Zustand | `F4` | ❓ por verificar | `❌ CONFIRMADO (Media) — cifrado local, sync JSONB y export por defecto` | `F4-storage-inventory.md` §3 |
 | `SEC-019` | `userId` / `clientId` en logs de consola | `F10` | ❓ por verificar | `⬜ PENDIENTE` | `F10-privacy-logging-gdpr.md` |
 | `SEC-020` | Importación JSON sin límite de tamaño previo al parseo | `F5` | ❓ por verificar | `⬜ PENDIENTE` | `F5-services-idor-validation.md` |
 | `SEC-021` | `dist/stats.html` del bundle analyzer accesible | `F1`/`F9` | ❓ por verificar | `❌ CONFIRMADO (build)` — stats.html 1.26 MB en `dist/` | `F1-supply-chain-and-bundle.md` |
@@ -232,7 +236,7 @@
 
 | ID | Hipótesis | Fase | Nivel | Veredicto Final | Evidencia |
 | :--- | :--- | :--- | :--- | :--- | :--- |
-| `NEW-01` | Clave AES-GCM derivada de `user.id` (UUID público en JWT) + salt en `localStorage` | `F4` | `N0`/`N2` | `⬜ PENDIENTE` | `F4-crypto-and-auditlog.md` |
+| `NEW-01` | Clave AES-GCM derivada de `user.id` (UUID público en JWT) + salt en `localStorage` | `F4` | `N0`/`N2` | `❌ CONFIRMADO (Media) — PoC deriva la clave y descifra (DECRYPTED_OK)` | `F4-crypto-and-auditlog.md` §1.3 |
 | `NEW-02` | Vistas `accounts_safe`, `transactions_safe`, `debt_payments_safe` sin `security_invoker=true` | `F2` | `N1`/`N2` | `✅ DESCARTADO (SEGURO) — las 3 vistas con security_invoker=true` | `F2-catalog-and-rls.md` |
 | `NEW-03` | `cleanup_stale_sessions()` ejecutable por cualquier rol `authenticated` | `F2` | `N1` | `⚠️ CONFIRMADO (privilegio) — mitigado por guard defectuoso` | `F2-catalog-and-rls.md` |
 | `NEW-04` | MFA aplicado sólo en UI; políticas RLS no exigen `aal2` | `F2`/`F3` | `N1`/`N2` | `❌ CONFIRMADO (crítico) — MFA UI-only; aal1 conserva CRUD` | `F3-auth-mfa-sessions.md` |
@@ -261,8 +265,8 @@
 | `T10` Redirect OAuth arbitrario | `F3` | `N0`+`N1` | `✅ PASA (con salvedad)` | GoTrue `uri_allow_list` exacta bloquea redirects; cliente laxo y Netlify antiguo como riesgo residual |
 | `T11` Configuración de Auth | `F3` | `N1` | `❌ FALLA` | Mínimo 6, HIBP off, sin CAPTCHA/notificaciones/recuperación/timeout de servidor |
 | `T12` Takeover sin re-autenticación | `F3` | `N0`+`N2` | `⚠️ ESCALADA` | Takeover sin reauth; canal público (DoS); falta prueba de dos dispositivos |
-| `T13` Inventario de storage pre/post logout | `F4` | `N0`+`N2` | `⬜ PENDIENTE` | - |
-| `T14` PoC de descifrado `NEW-01` | `F4` | `N0`+`N2` | `⬜ PENDIENTE` | - |
+| `T13` Inventario de storage pre/post logout | `F4` | `N0`+`N2` | `⚠️ ESCALADA` | Inventario estático completo; falta prueba dinámica pre/post logout y A→B (sin audit-a/audit-b) |
+| `T14` PoC de descifrado `NEW-01` | `F4` | `N0`+`N2` | `✅ PASA` | `DECRYPTED_OK` con user.id + salt público; clave incorrecta rechazada |
 | `T15` Update/delete sin `user_id` | `F5` | `N0` | `⬜ PENDIENTE` | - |
 | `T16` Import JSON malicioso | `F5` | `N0` | `⬜ PENDIENTE` | - |
 | `T17` Edge Function: paridad, 401, CORS | `F6` | `N1`+`N2` | `⬜ PENDIENTE` | - |
