@@ -359,15 +359,37 @@ function extractParamFromUrl(url: string, param: string): string | null {
   }
 }
 
-function extractHashParams(url: string): Record<string, string> {
-  const hashIdx = url.indexOf('#');
-  if (hashIdx === -1) return {};
-  const params: Record<string, string> = {};
-  url.substring(hashIdx + 1).split('&').forEach(pair => {
-    const [key, value] = pair.split('=');
-    if (key) params[key] = decodeURIComponent(value || '');
-  });
-  return params;
+const NATIVE_AUTH_CALLBACK_URLS = new Set([
+  'app.financepal.com://auth/callback',
+  'financepal://auth/callback',
+]);
+
+function isAllowedAuthCallbackUrl(url: string): boolean {
+  try {
+    const parsed = new URL(url);
+    const baseUrl = url.split(/[?#]/)[0];
+    if (NATIVE_AUTH_CALLBACK_URLS.has(baseUrl)) return true;
+    if (parsed.pathname !== '/auth/callback') return false;
+    if (parsed.protocol === 'https:' && parsed.origin === 'https://finance-pal.app') return true;
+    return parsed.origin === window.location.origin;
+  } catch {
+    return false;
+  }
+}
+
+function containsImplicitTokens(url: string): boolean {
+  try {
+    const parsed = new URL(url);
+    const hash = parsed.hash.replace(/^#/, '');
+    return (
+      parsed.searchParams.has('access_token') ||
+      parsed.searchParams.has('refresh_token') ||
+      new URLSearchParams(hash).has('access_token') ||
+      new URLSearchParams(hash).has('refresh_token')
+    );
+  } catch {
+    return true;
+  }
 }
 
 const App = () => {
@@ -386,22 +408,18 @@ const App = () => {
     let handle: any;
     CapApp.addListener('appUrlOpen', async (event) => {
       const url = event.url;
-      if (url.startsWith('app.financepal.com://auth/callback')) {
-        // PKCE flow: code in query string
-        const code = extractParamFromUrl(url, 'code');
-        if (code) {
-          const { error } = await supabase.auth.exchangeCodeForSession(code);
-          if (error) console.error('[Auth] PKCE exchange error:', error.message);
-          return;
+      if (!isAllowedAuthCallbackUrl(url) || containsImplicitTokens(url)) {
+        if (containsImplicitTokens(url)) {
+          console.error('[Auth] Rejected implicit OAuth callback with tokens');
         }
-        // Implicit flow: tokens in hash fragment
-        const hashParams = extractHashParams(url);
-        const at = hashParams.access_token;
-        const rt = hashParams.refresh_token;
-        if (at && rt) {
-          const { error } = await supabase.auth.setSession({ access_token: at, refresh_token: rt });
-          if (error) console.error('[Auth] setSession error:', error.message);
-        }
+        return;
+      }
+
+      // PKCE flow only: exchange the authorization code.
+      const code = extractParamFromUrl(url, 'code');
+      if (code) {
+        const { error } = await supabase.auth.exchangeCodeForSession(code);
+        if (error) console.error('[Auth] PKCE exchange error:', error.message);
       }
     }).then(h => { handle = h; });
 

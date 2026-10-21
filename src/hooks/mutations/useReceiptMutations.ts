@@ -78,7 +78,7 @@ export function useReceiptMutations(): ReceiptMutations {
       };
       const result = await uploadReceipt(payload);
 
-      await updateTransaction(input.transactionId, { receipt: result.publicUrl });
+      await updateTransaction(userId, input.transactionId, { receipt: result.publicUrl });
       useFinance.getState().updateTx(input.transactionId, { receipt: result.publicUrl });
 
       return result;
@@ -100,9 +100,13 @@ export function useReceiptMutations(): ReceiptMutations {
       if (!isSupabaseEnabled) {
         throw new Error('Supabase Storage no disponible. Activa la sincronización.');
       }
+      const { data } = await supabase.auth.getUser();
+      const userId = data.user?.id;
+      if (!userId) throw new Error('No user');
+
       await deleteReceipt(input.storagePath);
 
-      await updateTransaction(input.transactionId, { receipt: undefined });
+      await updateTransaction(userId, input.transactionId, { receipt: undefined });
       useFinance.getState().updateTx(input.transactionId, { receipt: undefined });
     },
     onSuccess: () => {

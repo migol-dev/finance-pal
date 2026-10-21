@@ -68,3 +68,14 @@ scratchpad/
 .env.*
 !.env.template
 __pycache__/
+
+# AI Agents & Internal Audit Files
+.agent/
+.agents/
+.gemini/
+.agentignore
+AGENTS.md
+GEMINI.md
+graphify-out/
+PENTEST_CHECKLIST.md
+.netlify/

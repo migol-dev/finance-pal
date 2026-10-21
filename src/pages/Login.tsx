@@ -11,6 +11,7 @@ import { Progress } from '@/components/ui/progress';
 import { Browser } from '@capacitor/browser';
 import { Capacitor } from '@capacitor/core';
 import { toast } from 'sonner';
+import { checkHibpPwnedPassword, getClientIdentifier, rateLimiter, validatePasswordStrength } from '@/lib/rate-limiter';
 
 const GoogleIcon = () => (
   <svg className="w-5 h-5" viewBox="0 0 24 24">
@@ -27,27 +28,44 @@ const GitHubIcon = () => (
   </svg>
 );
 
-// OAuth Redirect URI Allowlist - Security: Prevent open redirect attacks
-const OAUTH_REDIRECT_ALLOWLIST = [
-  'app.financepal.com://auth/callback', // Native Android app
-  'https://financepal-web.vercel.app/auth/callback', // Production web/PWA
-  'http://localhost:5173/auth/callback', // Local development (Vite default)
-  'http://localhost:8080/auth/callback', // Local development (legacy)
-  'http://localhost:3000/auth/callback', // Alternative local port
-  'http://127.0.0.1:5173/auth/callback',
-  'http://127.0.0.1:8080/auth/callback',
-  'http://127.0.0.1:3000/auth/callback',
-];
+// OAuth Redirect URI allowlist — exact matches only (prevents open redirects).
+const NATIVE_REDIRECT_URIS = new Set([
+  'app.financepal.com://auth/callback', // Native Android app (registered manifest scheme)
+  'financepal://auth/callback', // Legacy/alternate native scheme
+]);
+
+const WEB_REDIRECT_ORIGINS = new Set([
+  'https://finance-pal.app',
+  'https://financepal-web.vercel.app',
+]);
+
+const DEV_REDIRECT_PORTS = new Set(['5173', '8080', '3000']);
 
 function isValidRedirectUri(uri: string): boolean {
   try {
     const parsed = new URL(uri);
-    // Allow exact matches from allowlist
-    if (OAUTH_REDIRECT_ALLOWLIST.includes(uri)) return true;
-    // Allow any subdomain of financepal.com in production
-    if (parsed.hostname.endsWith('.financepal.com') && parsed.pathname === '/auth/callback') return true;
-    // Allow localhost with any port in development
-    if (parsed.hostname === 'localhost' || parsed.hostname === '127.0.0.1') return true;
+
+    // Custom native schemes must match the exact registered callback.
+    if (NATIVE_REDIRECT_URIS.has(uri)) return true;
+
+    if (parsed.pathname !== '/auth/callback') return false;
+
+    // Production web origins.
+    if (parsed.protocol === 'https:' && WEB_REDIRECT_ORIGINS.has(parsed.origin)) return true;
+
+    // Current web origin (e.g. self-hosted deployment).
+    if (parsed.origin === window.location.origin && parsed.protocol === window.location.protocol) return true;
+
+    // Development only: localhost with the known Vite/legacy ports.
+    if (
+      import.meta.env.DEV &&
+      parsed.protocol === 'http:' &&
+      (parsed.hostname === 'localhost' || parsed.hostname === '127.0.0.1') &&
+      DEV_REDIRECT_PORTS.has(parsed.port)
+    ) {
+      return true;
+    }
+
     return false;
   } catch {
     return false;
@@ -78,8 +96,7 @@ function getValidatedRedirectUri(_provider: 'google' | 'github'): string {
 function calculatePasswordStrength(password: string): { score: number; label: string; color: string; feedback: string[] } {
   let score = 0;
   const feedback: string[] = [];
-  if (password.length >= 8) score += 1; else feedback.push('Al menos 8 caracteres');
-  if (password.length >= 12) score += 1;
+  if (password.length >= 12) score += 1; else feedback.push('Al menos 12 caracteres');
   if (/[a-z]/.test(password)) score += 1; else feedback.push('Minúsculas');
   if (/[A-Z]/.test(password)) score += 1; else feedback.push('Mayúsculas');
   if (/[0-9]/.test(password)) score += 1; else feedback.push('Números');
@@ -98,9 +115,37 @@ function calculatePasswordStrength(password: string): { score: number; label: st
   };
 }
 
+/** Never leak raw backend auth errors to the UI (SEC-008). */
+function getSafeAuthError(error: unknown, fallback: string): string {
+  const message = String((error as { message?: unknown })?.message ?? '');
+  if (/invalid login credentials/i.test(message)) return 'Credenciales inválidas';
+  if (/email not confirmed/i.test(message)) return 'Debes confirmar tu correo antes de iniciar sesión';
+  if (/user already registered/i.test(message)) return 'Ya existe una cuenta con este correo';
+  if (/password/i.test(message) && /(weak|short|least|requirement)/i.test(message)) {
+    return 'La contraseña no cumple los requisitos de seguridad';
+  }
+  if (/rate limit|too many requests/i.test(message)) return 'Demasiados intentos. Espera un momento e inténtalo de nuevo';
+  return fallback;
+}
+
+async function checkAuthRateLimit(identifier: string): Promise<boolean> {
+  const limit = await rateLimiter.checkLimit(`${getClientIdentifier()}:${identifier}`, 'auth');
+  if (!limit.allowed) {
+    toast.error(`Demasiados intentos. Espera ${limit.retryAfter ?? 60} segundos.`);
+    return false;
+  }
+  return true;
+}
+
 function PasswordStrengthMeter({ password }: { password: string }) {
   const strength = useMemo(() => calculatePasswordStrength(password), [password]);
-  if (!password) return null;
+  if (!password) {
+    return (
+      <p className="text-[11px] text-muted-foreground mt-1 px-1">
+        Requisitos: <strong>mínimo 12 caracteres</strong>, con mayúsculas, minúsculas y números.
+      </p>
+    );
+  }
   return (
     <div className="space-y-1.5 mt-1">
       <div className="flex items-center justify-between">
@@ -243,6 +288,8 @@ export default function Login() {
   }, [session, mfaRequired]);
 
   const handleOAuth = async (provider: 'google' | 'github') => {
+    if (!(await checkAuthRateLimit(`oauth:${provider}`))) return;
+
     setLoading(true);
     try {
       // Validate redirect URI before initiating OAuth
@@ -267,7 +314,7 @@ export default function Login() {
       }
       setLoading(false);
     } catch (error: any) {
-      toast.error(error.message || `Error al iniciar sesión con ${provider}`);
+      toast.error(getSafeAuthError(error, `Error al iniciar sesión con ${provider}`));
       setLoading(false);
     }
   };
@@ -279,12 +326,15 @@ export default function Login() {
       return;
     }
     if (!isLogin) {
-      const strength = calculatePasswordStrength(password);
-      if (strength.score < 3) {
-        toast.error('La contraseña es demasiado débil. Usa al menos 8 caracteres con mayúsculas, números y símbolos.');
+      const strength = validatePasswordStrength(password);
+      if (!strength.valid) {
+        toast.error(strength.message ?? 'La contraseña no cumple los requisitos de seguridad');
         return;
       }
     }
+
+    if (!(await checkAuthRateLimit(`email:${email.trim().toLowerCase()}`))) return;
+
     setLoading(true);
     try {
       if (isLogin) {
@@ -295,12 +345,17 @@ export default function Login() {
           toast.success('Sesión iniciada correctamente');
         }
       } else {
+        const hibp = await checkHibpPwnedPassword(password);
+        if (hibp.pwned) {
+          toast.error(hibp.message ?? 'Esta contraseña ha sido filtrada públicamente. Elige otra diferente.');
+          return;
+        }
         const { error } = await supabase.auth.signUp({ email, password });
         if (error) throw error;
         toast.success('Cuenta creada. Revisa tu correo para verificar.');
       }
     } catch (error: any) {
-      toast.error(error.message || 'Error de autenticación');
+      toast.error(getSafeAuthError(error, 'Error de autenticación'));
     } finally {
       setLoading(false);
     }
@@ -312,6 +367,9 @@ export default function Login() {
       toast.error('Introduce el código de 6 dígitos');
       return;
     }
+
+    if (!(await checkAuthRateLimit(`mfa:${session?.user?.id ?? 'unknown'}`))) return;
+
     setVerifyingMfa(true);
     try {
       let factorId = mfaFactorId;
@@ -337,7 +395,7 @@ export default function Login() {
       await checkMfaStatus();
       toast.success('Autenticación de dos factores verificada');
     } catch (error: any) {
-      toast.error(error.message || 'Código 2FA incorrecto o expirado');
+      toast.error(getSafeAuthError(error, 'Código 2FA incorrecto o expirado'));
     } finally {
       setVerifyingMfa(false);
     }
@@ -524,13 +582,13 @@ export default function Login() {
               <input
                 id="login-password"
                 type="password"
-                placeholder="Contraseña"
+                placeholder={isLogin ? 'Contraseña' : 'Contraseña (mínimo 12 caracteres)'}
                 className="w-full pl-11 pr-4 py-3 bg-muted/30 border border-border/50 rounded-2xl text-base sm:text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 focus:bg-muted/50 transition-all placeholder:text-muted-foreground/60"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 autoComplete={isLogin ? 'current-password' : 'new-password'}
                 required
-                minLength={8}
+                minLength={isLogin ? undefined : 12}
               />
             </motion.div>
 

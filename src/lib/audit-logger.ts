@@ -51,6 +51,80 @@ const AUDIT_STORE = 'audit_log';
 const MAX_AUDIT_ENTRIES = 10000;
 const GENESIS_HASH = '0'.repeat(64);
 
+const EMAIL_PATTERN = /[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/gi;
+const REDACTED = '[REDACTED]';
+const SENSITIVE_DETAIL_KEYS = new Set([
+  'email',
+  'newemail',
+  'oldemail',
+  'token',
+  'access_token',
+  'refresh_token',
+  'clabe',
+  'password',
+  'secret',
+]);
+
+/**
+ * F10-B: mask an email while keeping enough context for support/forensics,
+ * e.g. `user@example.com` -> `u***@example.com`.
+ */
+export function maskEmail(email: string): string {
+  const value = email.trim();
+  const at = value.lastIndexOf('@');
+
+  if (at <= 0) {
+    return value.length <= 1 ? '***' : `${value[0]}***`;
+  }
+
+  const local = value.slice(0, at);
+  const domain = value.slice(at + 1);
+  return `${local.slice(0, 1)}***@${domain}`;
+}
+
+function redactString(value: string): string {
+  return value.replace(EMAIL_PATTERN, (match) => maskEmail(match));
+}
+
+function redactValue(value: unknown, key?: string): unknown {
+  if (typeof value === 'string') {
+    const normalizedKey = key?.toLowerCase();
+    if (normalizedKey && SENSITIVE_DETAIL_KEYS.has(normalizedKey)) {
+      return normalizedKey.includes('email') ? maskEmail(value) : REDACTED;
+    }
+    return redactString(value);
+  }
+
+  if (Array.isArray(value)) {
+    return value.map((item) => redactValue(item));
+  }
+
+  if (value && typeof value === 'object') {
+    return Object.fromEntries(
+      Object.entries(value as Record<string, unknown>).map(([childKey, childValue]) => [
+        childKey,
+        redactValue(childValue, childKey),
+      ]),
+    );
+  }
+
+  return value;
+}
+
+/**
+ * F10-B: redact PII/secrets from audit details before hashing and persisting.
+ * Emails are masked; tokens, passwords and CLABEs are fully redacted.
+ */
+export function redactAuditDetails(
+  details?: Record<string, unknown>,
+): Record<string, unknown> | undefined {
+  if (!details) return undefined;
+
+  return Object.fromEntries(
+    Object.entries(details).map(([key, value]) => [key, redactValue(value, key)]),
+  );
+}
+
 async function openAuditDB(): Promise<IDBDatabase> {
   return new Promise((resolve, reject) => {
     const req = indexedDB.open(AUDIT_DB, 1);
@@ -112,9 +186,11 @@ export async function logAudit(entry: Omit<AuditEntry, 'id' | 'timestamp' | 'pre
     const prevHash = await getLastEntryHash();
     const id = crypto.randomUUID();
     const timestamp = new Date().toISOString();
-    
+    const details = redactAuditDetails(entry.details) ?? {};
+
     const fullEntry: AuditEntry = {
       ...entry,
+      details,
       id,
       timestamp,
       prevHash,
@@ -182,6 +258,44 @@ export async function queryAuditLogs(options?: {
     };
     req.onerror = () => reject(req.error);
   });
+}
+
+/**
+ * SEC-015 / F10-B: delete a user's audit entries, or the whole store when no
+ * user id is supplied (e.g. on device sign-out).
+ */
+export async function clearAuditLogs(userId?: string): Promise<void> {
+  try {
+    const db = await openAuditDB();
+    try {
+      await new Promise<void>((resolve, reject) => {
+        const tx = db.transaction(AUDIT_STORE, 'readwrite');
+        const store = tx.objectStore(AUDIT_STORE);
+
+        if (!userId) {
+          store.clear();
+        } else {
+          const req = store.getAll();
+          req.onsuccess = () => {
+            for (const entry of req.result as AuditEntry[]) {
+              if (entry.userId === userId) {
+                store.delete(entry.id);
+              }
+            }
+          };
+          req.onerror = () => reject(req.error);
+        }
+
+        tx.oncomplete = () => resolve();
+        tx.onerror = () => reject(tx.error);
+        tx.onabort = () => reject(tx.error);
+      });
+    } finally {
+      db.close();
+    }
+  } catch (e) {
+    console.error('Failed to clear audit logs:', e);
+  }
 }
 
 /**

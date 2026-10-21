@@ -237,6 +237,78 @@ BEGIN
 END $$;
 
 -- =========================================
+-- P0 REMEDIATION — MFA aal2 ENFORCEMENT (NEW-04)
+-- =========================================
+-- A verified MFA factor requires an aal2 JWT. Users without MFA keep aal1.
+CREATE OR REPLACE FUNCTION public.is_mfa_compliant()
+RETURNS boolean
+LANGUAGE plpgsql
+SECURITY DEFINER
+STABLE
+SET search_path = ''
+AS $$
+DECLARE
+  has_verified_factor boolean;
+BEGIN
+  IF auth.uid() IS NULL THEN
+    RETURN false;
+  END IF;
+
+  SELECT EXISTS (
+    SELECT 1
+    FROM auth.mfa_factors mf
+    WHERE mf.user_id = auth.uid()
+      AND mf.status = 'verified'
+  ) INTO has_verified_factor;
+
+  IF has_verified_factor THEN
+    RETURN COALESCE(auth.jwt() ->> 'aal', 'aal1') = 'aal2';
+  END IF;
+
+  RETURN true;
+END;
+$$;
+
+REVOKE ALL ON FUNCTION public.is_mfa_compliant() FROM PUBLIC;
+REVOKE ALL ON FUNCTION public.is_mfa_compliant() FROM anon;
+GRANT EXECUTE ON FUNCTION public.is_mfa_compliant() TO authenticated, service_role;
+
+DROP POLICY IF EXISTS "Require AAL2 when MFA enabled" ON public.accounts;
+CREATE POLICY "Require AAL2 when MFA enabled" ON public.accounts AS RESTRICTIVE FOR ALL TO authenticated USING (public.is_mfa_compliant()) WITH CHECK (public.is_mfa_compliant());
+
+DROP POLICY IF EXISTS "Require AAL2 when MFA enabled" ON public.fixed_items;
+CREATE POLICY "Require AAL2 when MFA enabled" ON public.fixed_items AS RESTRICTIVE FOR ALL TO authenticated USING (public.is_mfa_compliant()) WITH CHECK (public.is_mfa_compliant());
+
+DROP POLICY IF EXISTS "Require AAL2 when MFA enabled" ON public.transactions;
+CREATE POLICY "Require AAL2 when MFA enabled" ON public.transactions AS RESTRICTIVE FOR ALL TO authenticated USING (public.is_mfa_compliant()) WITH CHECK (public.is_mfa_compliant());
+
+DROP POLICY IF EXISTS "Require AAL2 when MFA enabled" ON public.goals;
+CREATE POLICY "Require AAL2 when MFA enabled" ON public.goals AS RESTRICTIVE FOR ALL TO authenticated USING (public.is_mfa_compliant()) WITH CHECK (public.is_mfa_compliant());
+
+DROP POLICY IF EXISTS "Require AAL2 when MFA enabled" ON public.goal_folders;
+CREATE POLICY "Require AAL2 when MFA enabled" ON public.goal_folders AS RESTRICTIVE FOR ALL TO authenticated USING (public.is_mfa_compliant()) WITH CHECK (public.is_mfa_compliant());
+
+DROP POLICY IF EXISTS "Require AAL2 when MFA enabled" ON public.debts;
+CREATE POLICY "Require AAL2 when MFA enabled" ON public.debts AS RESTRICTIVE FOR ALL TO authenticated USING (public.is_mfa_compliant()) WITH CHECK (public.is_mfa_compliant());
+
+DROP POLICY IF EXISTS "Require AAL2 when MFA enabled" ON public.debt_payments;
+CREATE POLICY "Require AAL2 when MFA enabled" ON public.debt_payments AS RESTRICTIVE FOR ALL TO authenticated USING (public.is_mfa_compliant()) WITH CHECK (public.is_mfa_compliant());
+
+DROP POLICY IF EXISTS "Require AAL2 when MFA enabled" ON public.user_sessions;
+CREATE POLICY "Require AAL2 when MFA enabled" ON public.user_sessions AS RESTRICTIVE FOR ALL TO authenticated USING (public.is_mfa_compliant()) WITH CHECK (public.is_mfa_compliant());
+
+DROP POLICY IF EXISTS "Require AAL2 when MFA enabled" ON public.user_settings;
+CREATE POLICY "Require AAL2 when MFA enabled" ON public.user_settings AS RESTRICTIVE FOR ALL TO authenticated USING (public.is_mfa_compliant()) WITH CHECK (public.is_mfa_compliant());
+
+-- Storage: the receipts bucket is the only bucket used by Finance Pal.
+ALTER TABLE storage.objects ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Require AAL2 when MFA enabled on storage" ON storage.objects;
+CREATE POLICY "Require AAL2 when MFA enabled on storage"
+  ON storage.objects AS RESTRICTIVE FOR ALL TO authenticated
+  USING (bucket_id = 'receipts' AND public.is_mfa_compliant())
+  WITH CHECK (bucket_id = 'receipts' AND public.is_mfa_compliant());
+
+-- =========================================
 -- VISTAS DE SEGURIDAD (Column-Level Security)
 -- =========================================
 -- Estas vistas ocultan columnas sensibles (clabe, bank, holder_name, external_payee)
@@ -297,7 +369,7 @@ CREATE INDEX IF NOT EXISTS idx_user_sessions_user_id ON user_sessions(user_id);
 -- Nota: pg_cron requiere extensión, puede no estar disponible en todos los planes
 -- Esta función se puede llamar manualmente o desde el frontend
 
-CREATE OR REPLACE FUNCTION cleanup_stale_sessions()
+CREATE OR REPLACE FUNCTION public.cleanup_stale_sessions()
 RETURNS integer
 LANGUAGE plpgsql
 SECURITY DEFINER
@@ -306,13 +378,30 @@ AS $$
 DECLARE
   deleted_count integer;
 BEGIN
-  DELETE FROM user_sessions
+  IF COALESCE(current_setting('request.jwt.claims', true)::jsonb ->> 'role', session_user) <> 'service_role'
+     AND session_user <> 'postgres' THEN
+    RAISE EXCEPTION 'Access denied: service_role required';
+  END IF;
+
+  DELETE FROM public.user_sessions
   WHERE last_seen_at < NOW() - INTERVAL '2 minutes'
     AND created_at < NOW() - INTERVAL '2 minutes';
+
   GET DIAGNOSTICS deleted_count = ROW_COUNT;
   RETURN deleted_count;
 END;
 $$;
+
+REVOKE ALL ON FUNCTION public.cleanup_stale_sessions() FROM PUBLIC;
+REVOKE ALL ON FUNCTION public.cleanup_stale_sessions() FROM anon;
+REVOKE ALL ON FUNCTION public.cleanup_stale_sessions() FROM authenticated;
+GRANT EXECUTE ON FUNCTION public.cleanup_stale_sessions() TO service_role;
+
+-- =========================================
+-- P0 REMEDIATION — LEAST PRIVILEGE (F2-C)
+-- =========================================
+REVOKE TRUNCATE, REFERENCES, TRIGGER ON ALL TABLES IN SCHEMA public FROM anon, authenticated;
+REVOKE ALL ON ALL TABLES IN SCHEMA public FROM anon;
 -- =========================================
 -- WS5: SOFT DELETES
 -- =========================================

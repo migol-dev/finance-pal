@@ -17,6 +17,7 @@ import { ElegantConfirm } from "@/components/app/ElegantConfirm";
 import { useAuth } from "@/context/AuthContext";
 import { supabase, isSupabaseEnabled } from "@/lib/supabase";
 import { audit } from "@/lib/audit-logger";
+import { checkHibpPwnedPassword, getClientIdentifier, rateLimiter, validatePasswordStrength } from "@/lib/rate-limiter";
 import { useNavigate } from "react-router-dom";
 
 function ProfileForm({ onSave }: { onSave: (p: { name: string; email?: string; currency: Currency; avatar?: IconRef }) => void }) {
@@ -107,6 +108,16 @@ function AccountSettings() {
 
   const handleChangeEmail = async () => {
     if (!newEmail || !newEmail.includes("@")) { toast.error("Correo inválido"); return; }
+
+    const limit = await rateLimiter.checkLimit(
+      `${session?.user?.id ?? getClientIdentifier()}:email-update`,
+      "auth",
+    );
+    if (!limit.allowed) {
+      toast.error(`Demasiados intentos. Espera ${limit.retryAfter ?? 60} segundos.`);
+      return;
+    }
+
     setChangingEmail(true);
     const { error } = await supabase.auth.updateUser({ email: newEmail });
     setChangingEmail(false);
@@ -118,9 +129,26 @@ function AccountSettings() {
   };
 
   const handleChangePassword = async () => {
-    if (!newPass || newPass.length < 6) { toast.error("La contraseña debe tener al menos 6 caracteres"); return; }
+    const strength = validatePasswordStrength(newPass);
+    if (!strength.valid) { toast.error(strength.message ?? "La contraseña no cumple los requisitos de seguridad"); return; }
     if (newPass !== confirmPass) { toast.error("Las contraseñas no coinciden"); return; }
+
+    const limit = await rateLimiter.checkLimit(
+      `${session?.user?.id ?? getClientIdentifier()}:password-update`,
+      "auth",
+    );
+    if (!limit.allowed) {
+      toast.error(`Demasiados intentos. Espera ${limit.retryAfter ?? 60} segundos.`);
+      return;
+    }
+
     setChangingPass(true);
+    const hibp = await checkHibpPwnedPassword(newPass);
+    if (hibp.pwned) {
+      setChangingPass(false);
+      toast.error(hibp.message ?? "Esta contraseña ha sido filtrada públicamente. Elige otra diferente.");
+      return;
+    }
     const { error } = await supabase.auth.updateUser({ password: newPass });
     setChangingPass(false);
     if (error) { toast.error(error.message); return; }
@@ -269,9 +297,14 @@ function AccountSettings() {
 
       <Dialog open={passOpen} onOpenChange={setPassOpen}>
         <DialogContent className="rounded-3xl max-w-sm">
-          <DialogHeader><DialogTitle>Cambiar contraseña</DialogTitle></DialogHeader>
+          <DialogHeader>
+            <DialogTitle>Cambiar contraseña</DialogTitle>
+            <DialogDescription className="text-xs">
+              La nueva contraseña debe tener <strong>mínimo 12 caracteres</strong> e incluir mayúsculas, minúsculas y números.
+            </DialogDescription>
+          </DialogHeader>
           <div className="space-y-3 pt-2">
-            <Input type="password" placeholder="Nueva contraseña (mín 6 car.)" value={newPass} onChange={(e) => setNewPass(e.target.value)} className="rounded-2xl h-11" />
+            <Input type="password" placeholder="Nueva contraseña (mín. 12 caracteres)" value={newPass} onChange={(e) => setNewPass(e.target.value)} className="rounded-2xl h-11" minLength={12} />
             <Input type="password" placeholder="Confirmar nueva contraseña" value={confirmPass} onChange={(e) => setConfirmPass(e.target.value)} className="rounded-2xl h-11" />
             <Button onClick={handleChangePassword} disabled={changingPass} className="w-full rounded-2xl h-11 gradient-primary text-primary-foreground font-bold">
               {changingPass ? "Actualizando..." : "Actualizar"}

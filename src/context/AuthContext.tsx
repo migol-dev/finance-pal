@@ -3,10 +3,10 @@ import { Session, User } from '@supabase/supabase-js';
 import { supabase, isSupabaseEnabled } from '@/lib/supabase';
 import { toast } from 'sonner';
 import { ErrorCodes, logger } from '@/lib/app-error';
-import { audit } from '@/lib/audit-logger';
+import { audit, clearAuditLogs } from '@/lib/audit-logger';
 import { useFinance } from '@/store/finance-store';
 import { useSyncStore } from '@/store/sync-store';
-import { clearEncryptedState } from '@/lib/encrypted-storage';
+import { purgeAllEncryptedStorage } from '@/lib/encrypted-storage';
 import { queryClient } from '@/lib/queryClient';
 
 interface AuthContextType {
@@ -71,7 +71,12 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     const userId = session?.user?.id;
     if (inactivityTimer.current) clearTimeout(inactivityTimer.current);
     if (refreshTimer.current) clearTimeout(refreshTimer.current);
-    
+
+    // Audit the logout before the local audit trail is purged (F10-B / SEC-015).
+    if (userId) {
+      await audit.logout(userId, { reason: 'manual' });
+    }
+
     if (isSupabaseEnabled) {
       try {
         await supabase.auth.signOut();
@@ -91,17 +96,36 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       accounts: [],
     });
     useSyncStore.getState().clearQueue();
-    await clearEncryptedState();
+
+    // SEC-015 / F4-D: no encrypted payload, receipt, salt or pepper survives logout.
+    await purgeAllEncryptedStorage(userId);
+    await clearAuditLogs();
+
+    // Prevent cross-account correlation through persistent client identifiers.
+    try {
+      localStorage.removeItem('finance-pal-client-id');
+      localStorage.removeItem('finance-pal-device-id');
+      for (let i = localStorage.length - 1; i >= 0; i--) {
+        const key = localStorage.key(i);
+        if (key?.startsWith('sb-')) {
+          localStorage.removeItem(key);
+        }
+      }
+    } catch {
+      // Ignore storage access errors during logout.
+    }
+
+    try {
+      sessionStorage.clear();
+    } catch {
+      // Ignore storage access errors during logout.
+    }
+
     queryClient.clear();
     
     setSession(null);
     setUser(null);
     setMfaRequired(false);
-    
-    // Audit log: user logout
-    if (userId) {
-      audit.logout(userId, { reason: 'manual' });
-    }
   }, [session]);
 
   // Set refs after defining functions
