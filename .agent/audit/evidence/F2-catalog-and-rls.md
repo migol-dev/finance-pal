@@ -178,7 +178,7 @@ select ... from cron.job;
 | :--- | :---: | :--- | :---: |
 | `T04` Tablas sin RLS | `N1` | 0 / 10 sin RLS | ✅ PASA |
 | `T05` Vistas sin `security_invoker` | `N1`+`N2` | 3 / 3 con `security_invoker=true`; anon → `[]` | ✅ PASA |
-| `T06` CRUD cross-tenant A→B | `N1`+`N2` | No ejecutada: **sin cuentas `audit-a`/`audit-b`**; catálogo muestra aislamiento por `auth.uid()` | ⚠️ ESCALADA |
+| `T06` CRUD cross-tenant A→B | `N1`+`N3` | Ejecutada en PostgreSQL 17 con `F2-prod-schema.sql` (`poc-t06-t09-t12-rls-tests.sql`): 9/10 tablas, 3/3 vistas `*_safe` y `storage.objects` aíslan al 100%; **`push_subscriptions` FALLA en `UPDATE` sin `WHERE`** (`SET user_id = auth.uid()` secuestra todas las filas de otros usuarios por `USING (true)`) | ❌ FALLA (`push_subscriptions`) / ✅ PASA (resto) |
 | `T07` `EXECUTE` de RPC `SECURITY DEFINER` | `N1` | `authenticated=true`; guard siempre lanza (bug) | ❌ FALLA (privilegio) |
 | `T08` Storage cross-user / público | `N1`+`N2` | Bucket privado; anon → 400; sin cuota/MIME | ✅ PASA (parcial) |
 
@@ -249,9 +249,42 @@ select ... from cron.job;
 | `SEC-011` | RLS `user_sessions` con `deleted_at` inexistente | ✅ **CERRADO** | — | — | `pg_policies` |
 | `SEC-016` | RLS `user_settings` con prefijo inválido | ✅ **CERRADO** | — | — | `pg_policies` |
 | `SEC-007` | Bucket `receipts`: privado pero sin límites | ⚠️ **PARCIAL** | 🟡 BAJA | `CVSS:3.1/AV:N/AC:L/PR:L/UI:N/S:U/C:N/I:N/A:L` → **4.3** | `storage.buckets` |
-| `NEW-04` | RLS no exige `aal2` | ⚠️ **CONFIRMADO (catálogo)** | 🟠 ALTA (se evalúa en F3) | — | `pg_policies` (0 con `aal`) |
-| — | `push_subscriptions` UPDATE con `USING(true)` | ⚠️ **ABIERTO (bajo)** | 🟡 BAJA | `CVSS:3.1/AV:N/AC:H/PR:L/UI:N/S:U/C:L/I:L/A:N` → **4.2** | `pg_policies` |
-| — | Vistas “safe” exponen columnas sensibles (`clabe`, `bank`, `holder_name`, `external_payee`) | ⚠️ **DRIFT** | 🟡 BAJA | — | `pg_get_viewdef` / dump L94-167, 275-293 |
-| — | `GRANT ALL` a `anon`/`authenticated` (incluye `TRUNCATE`, `TRIGGER`, `REFERENCES`) | ⚠️ **ABIERTO (bajo)** | 🟡 BAJA | — | `information_schema.role_table_grants` |
+| `NEW-04` | RLS no exige `aal2` | ❌ **CONFIRMADO** | 🔴 ALTA | `CVSS:3.1/AV:N/AC:L/PR:L/UI:N/S:U/C:H/I:H/A:N` → **8.1** | `pg_policies` (0 con `aal`) + `T09` |
+| `F2-A` | `push_subscriptions` UPDATE con `USING(true)` permite secuestro cross-tenant sin `WHERE` | ❌ **CONFIRMADO DINÁMICAMENTE** | 🔴 ALTA | `CVSS:3.1/AV:N/AC:L/PR:L/UI:N/S:U/C:H/I:H/A:N` → **8.1** | `pg_policies` / dump L621 + `T06` |
+| `F2-B` | Vistas “safe” exponen columnas sensibles (`clabe`, `bank`, `holder_name`, `external_payee`) | ⚠️ **DRIFT** | 🟡 BAJA | — | `pg_get_viewdef` / dump L94-167, 275-293 |
+| `F2-C` | `GRANT ALL` a `anon`/`authenticated` (incluye `TRUNCATE`, `TRIGGER`, `REFERENCES`) | ⚠️ **ABIERTO (bajo)** | 🟡 BAJA | — | `information_schema.role_table_grants` |
 
-> `T06` queda **escalada a `agy`** por ausencia de cuentas `audit-a`/`audit-b` (ver Escalation Log). La evidencia `N1` (RLS + vistas invoker + 0 políticas anon) es consistente con aislamiento correcto, pero no sustituye la prueba dinámica A→B.
+---
+
+## 7. Resolución Dinámica Fase 3 por Antigravity (`agy`) — `T06` (`F2.5`)
+
+> **Método (`N3` Laboratorio Local aislable con esquema exacto de producción):** Para evitar crear cuentas o datos sintéticos en la base de producción (`rjforcrdyfuodsqtopvp`), se levantó un contenedor efímero `postgres:17-alpine`, se cargó íntegramente `.agent/audit/evidence/F2-prod-schema.sql` junto con las 9 políticas de `storage.objects` (`.agent/audit/scratch/poc-t06-t09-t12-rls-init.sql`) y se ejecutó `.agent/audit/scratch/poc-t06-t09-t12-rls-tests.sql` con dos usuarios sintéticos:
+> - `audit-a`: `11111111-1111-4111-8111-11111111111a` (`ROLE authenticated`, sesión activa en `request.jwt.claims`).
+> - `audit-b`: `22222222-2222-4222-8222-22222222222b` (propietario de 1 fila en cada una de las 10 tablas `public` y 1 objeto en `storage.objects`).
+
+### Resultados de las 48 aserciones cross-tenant (`T06`, salida en `.agent/audit/scratch/poc-t06-t09-t12-output.txt`)
+
+1. **`SELECT` cross-tenant (`audit-a` consulta filas de `audit-b`):**
+   - **10/10 tablas `public`** (`accounts`, `debts`, `debt_payments`, `fixed_items`, `goal_folders`, `goals`, `push_subscriptions`, `transactions`, `user_sessions`, `user_settings`): `own >= 1`, `other = 0` → ✅ **PASS (BLOQUEADO)**.
+   - **3/3 vistas `*_safe`** (`accounts_safe`, `debt_payments_safe`, `transactions_safe` con `security_invoker=true`): `own = 1`, `other = 0` → ✅ **PASS (BLOQUEADO)**.
+   - **`storage.objects`** (`bucket_id = 'receipts'`): `own = 1`, `other = 0` → ✅ **PASS (BLOQUEADO)**.
+2. **`INSERT` cross-tenant (`audit-a` intenta insertar con `user_id = audit-b` o carpeta `audit-b/...`):**
+   - **10/10 tablas `public` + `storage.objects`**: todas lanzan `SQLSTATE 42501` (`new row violates row-level security policy`) → ✅ **PASS (BLOQUEADO)**.
+3. **`DELETE` cross-tenant (`audit-a` intenta borrar filas de `audit-b`):**
+   - **10/10 tablas `public` + `storage.objects`**: `rows = 0` en todas → ✅ **PASS (BLOQUEADO)**.
+4. **`UPDATE` cross-tenant (`audit-a` intenta modificar filas de `audit-b`):**
+   - **9/10 tablas `public` + `storage.objects`**: `rows = 0` → ✅ **PASS (BLOQUEADO)**.
+   - **Hallazgo crítico en `public.push_subscriptions` (`F2-A` elevado de Baja a Alta, CVSS 8.1):**
+     - La política en producción (`F2-prod-schema.sql:621`) es:
+       ```sql
+       CREATE POLICY "Users can update own push subscriptions"
+         ON "public"."push_subscriptions"
+         FOR UPDATE USING (true) WITH CHECK (("auth"."uid"() = "user_id"));
+       ```
+     - Cuando el `UPDATE` incluye una cláusula `WHERE` que lee columnas (`WHERE user_id = ...`), PostgreSQL aplica además la política `SELECT` (`auth.uid() = user_id`), devolviendo `rows = 0`.
+     - **Sin embargo**, cuando un atacante autenticado ejecuta un `UPDATE` **sin cláusula `WHERE`** (o sin leer columnas de la tabla):
+       ```sql
+       UPDATE public.push_subscriptions SET user_id = auth.uid();
+       ```
+       PostgreSQL evalúa únicamente `UPDATE USING (true)` (que coincide con **todas** las filas de todos los usuarios) y luego verifica `WITH CHECK (auth.uid() = user_id)` sobre la fila resultante, lo cual **pasa** porque el atacante asignó su propio `user_id`. En la prueba dinámica (`poc-t06-t09-t12-output.txt:66`), `audit-a` actualizó `rows = 2` (la suya + la de `audit-b`), apropiándose de todas las suscripciones push de la base de datos y pudiendo leer enseguida los `endpoint`, `p256dh`, `auth` y `user_agent` de todos los usuarios mediante `SELECT * FROM public.push_subscriptions`.
+     - **Remediación obligatoria (P0/P1):** reemplazar `USING (true)` por `USING (auth.uid() = user_id)` en la política `UPDATE` de `public.push_subscriptions`.

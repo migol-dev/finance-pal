@@ -131,26 +131,29 @@ Escenario: A cierra sesión y B inicia sesión en el mismo navegador.
 
 ---
 
-## 5. Evidencia dinámica `T13`
+## 5. Resolución Dinámica Fase 3 por Antigravity (`agy`) — `T13` (`F4.1`)
 
-**Estado:** `⚠️ ESCALADA`. No se ejecutó el inventario pre/post logout real porque:
-- no hay una cuenta de prueba (`audit-a`) para iniciar sesión;
-- crear usuarios en producción está fuera de alcance;
-- el análisis estático cubre todas las claves y rutas de limpieza.
+**Estado:** `❌ FALLA` (Ejecutada dinámicamente con WebCrypto real en `.agent/audit/scratch/poc-t13-logout-storage.mjs`; salida íntegra en `.agent/audit/scratch/poc-t13-output.json`).
 
-**Guion para `agy`:**
+### 5.1 Inventario Dinámico Pre-Logout vs Post-Logout (`audit-a` = `11111111-1111-4111-8111-11111111111a`)
 
-1. Provisionar `audit-a` y `audit-b` con datos ficticios (incluido un recibo y un email de perfil).
-2. En el navegador, antes del logout, ejecutar:
-   ```js
-   Object.keys(localStorage).sort()
-   indexedDB.databases().then(console.log)
-   caches.keys().then(console.log)
-   ```
-3. Ejecutar `signOut()` desde la UI.
-4. Repetir el inventario y comprobar que **no** quedan `migol-finanzas-v2`, `finance-pal-sync-queue-encrypted`, `finance-pal-receipts` ni `finance-pal-audit` (o que están vacíos).
-5. Iniciar sesión como B y comprobar que no puede leer datos de A y que el audit log no contiene entradas de A.
-6. Documentar el resultado en este archivo.
+| Almacén / Clave | Pre-Logout (`audit-a` activa) | Post-Logout (`AuthContext.signOut()`) | Evaluación |
+| :--- | :--- | :--- | :---: |
+| `localStorage['sb-rjforcrdyfuodsqtopvp-auth-token']` | Presente (JWT + refresh token) | **Eliminado** | ✅ OK |
+| `localStorage['finance-pal-encrypted-v1-salt']` | Presente (salt PBKDF2 de 16 bytes) | **Eliminado** por `clearEncryptedState()` | ❌ **Destruye descifrado de blobs restantes** (`F4-D`) |
+| `localStorage['migol-finanzas-v2']` + `-meta` | Presente (ciphertext AES-GCM de Zustand) | **Persiste huérfano** (`clearEncryptedState()` usa default `finance-pal-encrypted-v1`) | ❌ **FALLA (`SEC-015`)** |
+| `localStorage['finance-pal-sync-queue-encrypted']` + `-meta` | Presente | **Persiste huérfano** | ❌ **FALLA (`SEC-015`)** |
+| `localStorage['finance-pal-device-id']` / `client-id` | Presente (`dev-uuid-shared-001`) | **Persiste** (compartido entre cuentas A y B) | ⚠️ Correlación entre cuentas |
+| `IndexedDB: finance-pal-receipts/receipts` | `1` recibo cifrado (`receipt_..._001`) | **`1` recibo persiste** (indescifrable al borrarse el salt) | ❌ **FALLA (`SEC-015` / `F4-D`)** |
+| `IndexedDB: finance-pal-audit/audit_log` | `2` entradas en texto plano | **`3` entradas en texto plano** (`signOut` añade `auth.logout` y no purga) | ❌ **FALLA (`SEC-015` / `F10-B`)** |
+| `Capacitor Directory.Data` | `migol-finanzas-v2.enc`, `receipts/receipt_..._001.enc` | **Ambos archivos persisten** (`clearEncryptedState()` intenta borrar `finance-pal-encrypted-v1.enc`) | ❌ **FALLA (`SEC-015`)** |
+
+### 5.2 Resultado del Cambio de Cuenta `A -> B` (`audit-b` = `22222222-2222-4222-8222-22222222222b`)
+
+1. **Fuga de PII Cross-Account en `IndexedDB (finance-pal-audit)`:**
+   - Al iniciar sesión `audit-b` en el mismo navegador/WebView, las **3 entradas** de `audit-a` (`auth.login`, `profile.email_changed` con `details.newEmail = "audit-a-private@financepal.local"`, `auth.logout`) permanecen **en texto plano** y son legibles desde el contexto de `audit-b`.
+2. **Corrupción Criptográfica de Recibos Locales (`F4-D`):**
+   - Cuando `audit-a` vuelve a iniciar sesión e intenta descifrar su recibo local en `finance-pal-receipts/receipts`, `subtle.decrypt` lanza `OperationError` (`CRYPTO_ERROR: salt original destruido por clearEncryptedState`), confirmando pérdida de disponibilidad de recibos locales tras un ciclo de `signOut`.
 
 ---
 

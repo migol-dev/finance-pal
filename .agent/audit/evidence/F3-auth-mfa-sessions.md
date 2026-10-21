@@ -410,10 +410,10 @@ Búsqueda en `src/` y `supabase/`:
 
 | Prueba | Estado | Resultado |
 | :--- | :--- | :--- |
-| `T09` REST con token `aal1` en cuenta con MFA | ⚠️ **ESCALADA** (estático concluyente) | 0 políticas `aal`; `aal1` accede a PostgREST; falta prueba dinámica con `audit-a` |
+| `T09` REST con token `aal1` en cuenta con MFA | ❌ **FALLA** (ejecutada dinámicamente `N3`) | `poc-t06-t09-t12-rls-tests.sql`: con factor TOTP `verified` y claim `"aal":"aal1"`, `SELECT`, `INSERT`, `UPDATE`, `DELETE` y lectura de `storage.objects` son 100% permitidos (`NEW-04` confirmado) |
 | `T10` Redirect OAuth arbitrario | ✅ **PASA** (con salvedad) | GoTrue rechaza redirects fuera de `uri_allow_list`; cliente laxo y Netlify antiguo como riesgo residual |
 | `T11` Configuración de Auth | ❌ **FALLA** | Mínimo 6, HIBP off, sin CAPTCHA, sin notificaciones, sin recuperación, sin timeout servidor |
-| `T12` Takeover sin re-autenticación | ⚠️ **ESCALADA** (estático concluyente) | `requestTakeover` sin reauth; canal público; falta prueba de dos dispositivos |
+| `T12` Takeover sin re-autenticación | ⚠️ **PARCIAL / FALLA** (ejecutada dinámicamente `N3`) | `DELETE` cross-tenant `A -> B` por `device_id` bloqueado por RLS (`rows_deleted=0`); takeover propio permitido en `aal1` sin MFA (`rows_deleted=1`) y sólo borra la fila en `user_sessions` sin revocar el JWT en GoTrue |
 
 ### 5.4 Trazabilidad de comandos
 
@@ -437,14 +437,28 @@ rg -n "supabase.channel|takeover_request|from\('user_sessions'\).delete" src/hoo
 
 ---
 
-## 6. Escalamientos abiertos para `agy`
+## 6. Resolución Dinámica Fase 3 por Antigravity (`agy`) — `T09` (`F3.1`) y `T12` (`F3.4`)
 
-| Tarea | Prueba | Motivo | Acción solicitada |
-| :--- | :--- | :--- | :--- |
-| `F3.1` | `T09` | No hay cuenta con TOTP verificado; no se deben usar cuentas reales | Provisionar `audit-a` con TOTP, ejecutar §1.3 y confirmar `200` con `aal1`; comparar con `aal2`; borrar la cuenta al cierre |
-| `F3.4` | `T12` | No hay dos dispositivos/cuentas para el takeover | Provisionar `audit-a`/`audit-b`, ejecutar §4.2; verificar DoS y denegación cross-tenant; borrar cuentas al cierre |
+> **Método (`N3` Laboratorio Local con Esquema de Producción `F2-prod-schema.sql`):** Ejecutado sobre `postgres:17-alpine` mediante `.agent/audit/scratch/poc-t06-t09-t12-rls-tests.sql` (salida en `.agent/audit/scratch/poc-t06-t09-t12-output.txt`).
 
-> Ambos escalamientos son **solo de prueba dinámica**: la conclusión estática ya está sustentada por el catálogo (`0` políticas `aal`) y por el código de GoTrue. No bloquean la remediación de `NEW-04`.
+### 6.1 Resultado Dinámico `T09` (`NEW-04` — Bypass de MFA con JWT `aal1`)
+
+Con `audit-a` (`11111111-1111-4111-8111-11111111111a`) inscrito en `auth.mfa_factors` (`factor_type = 'totp'`, `status = 'verified'`) y `request.jwt.claims = '{"sub":"11111111-1111-4111-8111-11111111111a","role":"authenticated","aal":"aal1"}'` (exactamente el token emitido tras `signInWithPassword` antes de `mfa.challengeAndVerify`):
+
+| Operación | Objetivo | Resultado esperado con MFA restrictivo | Resultado real obtenido | Veredicto |
+| :--- | :--- | :--- | :--- | :---: |
+| `SELECT` con JWT `aal1` | `public.transactions` | `0` filas (`BLOCKED`) | `rows = 1 (aal = aal1)` | ❌ **FAIL (`NEW-04` CONFIRMADO)** |
+| `INSERT` con JWT `aal1` | `public.transactions` | `RLS 42501` | `rows_inserted = 1` | ❌ **FAIL (`NEW-04` CONFIRMADO)** |
+| `UPDATE` con JWT `aal1` | `public.accounts` | `rows = 0` | `rows_updated = 1` (`initial_balance = 999999`) | ❌ **FAIL (`NEW-04` CONFIRMADO)** |
+| `DELETE` con JWT `aal1` | `public.transactions` | `rows = 0` | `rows_deleted = 1` | ❌ **FAIL (`NEW-04` CONFIRMADO)** |
+| `SELECT` con JWT `aal1` | `storage.objects` (`receipts`) | `rows = 0` | `rows = 1` | ❌ **FAIL (`NEW-04` CONFIRMADO)** |
+
+### 6.2 Resultado Dinámico `T12` (`SEC-010` — Takeover de `user_sessions`)
+
+| Escenario | Sentencia equivalente a `useSessionManager.ts:72` | Resultado esperado | Resultado real obtenido | Veredicto |
+| :--- | :--- | :--- | :--- | :---: |
+| **Takeover Cross-Tenant (`A -> B`)** | `DELETE FROM public.user_sessions WHERE device_id = 'device-b-primary'` (ejecutado con JWT de `audit-a`, sin `.eq('user_id', ...)`) | `rows_deleted = 0` | `rows_deleted = 0` | ✅ **PASS (RLS bloquea takeover ajeno)** |
+| **Takeover Propio en `aal1` (sin MFA)** | `DELETE FROM public.user_sessions WHERE device_id = 'device-a-other'` (ejecutado con JWT `aal1` de `audit-a`) | `rows_deleted = 0` (exigir `aal2`) | `rows_deleted = 1` | ❌ **FAIL (Takeover permitido en `aal1` y sólo borra fila en tabla sin revocar JWT en GoTrue)** |
 
 ---
 
