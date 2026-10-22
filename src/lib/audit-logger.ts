@@ -20,6 +20,7 @@ type AuditAction =
   | 'auth.logout' 
   | 'auth.mfa_enabled' 
   | 'auth.mfa_disabled' 
+  | 'auth.mfa_verified'
   | 'auth.password_changed' 
   | 'auth.email_changed'
   | 'data.export'
@@ -369,6 +370,9 @@ export const audit = {
   
   mfaDisabled: (userId: string, details: Record<string, unknown> = {}) => 
     logAudit({ userId, action: 'auth.mfa_disabled', resource: 'mfa', details }),
+  
+  mfaVerified: (userId: string, details: Record<string, unknown> = {}) => 
+    logAudit({ userId, action: 'auth.mfa_verified', resource: 'mfa', details }),
   
   passwordChanged: (userId: string, details: Record<string, unknown> = {}) => 
     logAudit({ userId, action: 'auth.password_changed', resource: 'credentials', details }),

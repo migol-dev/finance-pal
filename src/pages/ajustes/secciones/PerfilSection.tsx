@@ -15,7 +15,8 @@ import { User, Pencil, LogOut, ShieldCheck, ShieldOff, Key, Mail } from "lucide-
 import { toast } from "sonner";
 import { ElegantConfirm } from "@/components/app/ElegantConfirm";
 import { useAuth } from "@/context/AuthContext";
-import { supabase, isSupabaseEnabled } from "@/lib/supabase";
+import { supabase, isSupabaseEnabled, supabaseUrl, supabaseAnonKey } from "@/lib/supabase";
+import { createClient } from "@supabase/supabase-js";
 import { audit } from "@/lib/audit-logger";
 import { checkHibpPwnedPassword, getClientIdentifier, rateLimiter, validatePasswordStrength } from "@/lib/rate-limiter";
 import { useNavigate } from "react-router-dom";
@@ -70,7 +71,7 @@ function ProfileForm({ onSave }: { onSave: (p: { name: string; email?: string; c
 }
 
 function AccountSettings() {
-  const { session, signOut } = useAuth();
+  const { session, signOut, refreshSession, checkMfaStatus: checkAuthMfa } = useAuth();
   const navigate = useNavigate();
   const [emailOpen, setEmailOpen] = useState(false);
   const [passOpen, setPassOpen] = useState(false);
@@ -87,7 +88,11 @@ function AccountSettings() {
   const [changingPass, setChangingPass] = useState(false);
   const [enrollingMfa, setEnrollingMfa] = useState(false);
   const [verifyingMfa, setVerifyingMfa] = useState(false);
-  const [unenrollConfirmOpen, setUnenrollConfirmOpen] = useState(false);
+  const [unenrollOpen, setUnenrollOpen] = useState(false);
+  const [unenrollCode, setUnenrollCode] = useState("");
+  const [unenrollPassword, setUnenrollPassword] = useState("");
+  const [unenrollMethod, setUnenrollMethod] = useState<"totp" | "password">("totp");
+  const [unenrollingMfa, setUnenrollingMfa] = useState(false);
 
   const checkMfaStatus = useCallback(async () => {
     if (!session) return;
@@ -162,6 +167,20 @@ function AccountSettings() {
   const handleEnrollMfa = async () => {
     setEnrollingMfa(true);
     try {
+      // Clean up any unverified factors left from abandoned enrollments
+      try {
+        const { data: factorList } = await supabase.auth.mfa.listFactors();
+        if (factorList?.all) {
+          for (const f of factorList.all) {
+            if (f.status === "unverified") {
+              await supabase.auth.mfa.unenroll({ factorId: f.id });
+            }
+          }
+        }
+      } catch (cleanupErr) {
+        console.warn("Error cleaning up unverified factors:", cleanupErr);
+      }
+
       const { data, error } = await supabase.auth.mfa.enroll({
         factorType: "totp",
         issuer: "Finance Pal",
@@ -184,6 +203,16 @@ function AccountSettings() {
   const handleVerifyMfa = async () => {
     if (!mfaCode || mfaCode.length !== 6) { toast.error("Código de 6 dígitos requerido"); return; }
     if (!mfaFactorId) { toast.error("Factor ID no disponible"); return; }
+
+    const limit = await rateLimiter.checkLimit(
+      `${session?.user?.id ?? getClientIdentifier()}:mfa-verify`,
+      "auth",
+    );
+    if (!limit.allowed) {
+      toast.error(`Demasiados intentos. Espera ${limit.retryAfter ?? 60} segundos.`);
+      return;
+    }
+
     setVerifyingMfa(true);
     try {
       const { data: challengeData, error: challengeError } = await supabase.auth.mfa.challenge({ factorId: mfaFactorId });
@@ -195,6 +224,10 @@ function AccountSettings() {
         code: mfaCode,
       });
       if (error) throw error;
+
+      await refreshSession();
+      await checkAuthMfa();
+      await checkMfaStatus();
 
       toast.success("¡Autenticación en dos pasos activada!");
       setMfaOpen(false);
@@ -209,16 +242,97 @@ function AccountSettings() {
   };
 
   const handleUnenrollMfa = async () => {
-    if (!mfaFactorId) return;
+    let factorId = mfaFactorId;
+    if (!factorId) {
+      try {
+        const { data: factorList } = await supabase.auth.mfa.listFactors();
+        const totp = factorList?.all?.find((f: any) => f.factor_type === "totp" && f.status === "verified");
+        if (totp) {
+          factorId = totp.id;
+          setMfaFactorId(totp.id);
+        }
+      } catch (err) {
+        console.warn("Failed to fetch factor ID fallback:", err);
+      }
+    }
+
+    if (!factorId) {
+      toast.error("Factor ID no disponible");
+      return;
+    }
+
+    const limit = await rateLimiter.checkLimit(
+      `${session?.user?.id ?? getClientIdentifier()}:mfa-unenroll`,
+      "auth",
+    );
+    if (!limit.allowed) {
+      toast.error(`Demasiados intentos. Espera ${limit.retryAfter ?? 60} segundos.`);
+      return;
+    }
+
+    setUnenrollingMfa(true);
     try {
-      const { error } = await supabase.auth.mfa.unenroll({ factorId: mfaFactorId });
+      if (unenrollMethod === "totp") {
+        if (!unenrollCode || unenrollCode.length !== 6) {
+          toast.error("Ingresa el código 2FA de 6 dígitos");
+          setUnenrollingMfa(false);
+          return;
+        }
+        const { data: challengeData, error: challengeError } = await supabase.auth.mfa.challenge({ factorId });
+        if (challengeError) throw challengeError;
+
+        const { error: verifyError } = await supabase.auth.mfa.verify({
+          factorId,
+          challengeId: challengeData.id,
+          code: unenrollCode,
+        });
+        if (verifyError) throw verifyError;
+      } else {
+        if (!unenrollPassword) {
+          toast.error("Ingresa tu contraseña actual");
+          setUnenrollingMfa(false);
+          return;
+        }
+        if (!session?.user?.email) {
+          toast.error("Correo de usuario no disponible");
+          setUnenrollingMfa(false);
+          return;
+        }
+
+        // Use an isolated ephemeral client to verify password without downgrading
+        // or replacing the current AAL2 session in localStorage/memory
+        const tempClient = createClient(supabaseUrl, supabaseAnonKey, {
+          auth: {
+            persistSession: false,
+            autoRefreshToken: false,
+            detectSessionInUrl: false,
+          },
+        });
+        const { error: passError } = await tempClient.auth.signInWithPassword({
+          email: session.user.email,
+          password: unenrollPassword,
+        });
+        if (passError) throw new Error("Contraseña actual incorrecta");
+      }
+
+      const { error } = await supabase.auth.mfa.unenroll({ factorId });
       if (error) throw error;
+
+      await refreshSession();
+      await checkAuthMfa();
+      await checkMfaStatus();
+
       toast.success("2FA desactivado");
       setMfaEnrolled(false);
       setMfaFactorId(null);
+      setUnenrollOpen(false);
+      setUnenrollCode("");
+      setUnenrollPassword("");
       if (session?.user?.id) audit.mfaDisabled(session.user.id);
     } catch (e: any) {
-      toast.error(e.message || "Error al desactivar 2FA");
+      toast.error(e.message || "Verificación fallida al desactivar 2FA");
+    } finally {
+      setUnenrollingMfa(false);
     }
   };
 
@@ -255,7 +369,7 @@ function AccountSettings() {
           <Key className="size-3.5 mr-1.5" /> Cambiar contraseña
         </Button>
         {mfaEnrolled ? (
-          <Button variant="outline" size="sm" onClick={() => setUnenrollConfirmOpen(true)} className="rounded-xl text-xs h-9 text-destructive hover:text-destructive">
+          <Button variant="outline" size="sm" onClick={() => setUnenrollOpen(true)} className="rounded-xl text-xs h-9 text-destructive hover:text-destructive">
             <ShieldOff className="size-3.5 mr-1.5" /> Desactivar 2FA
           </Button>
         ) : (
@@ -268,19 +382,83 @@ function AccountSettings() {
         </Button>
       </div>
 
-      <ElegantConfirm
-        open={unenrollConfirmOpen}
-        onOpenChange={setUnenrollConfirmOpen}
-        title="¿Desactivar autenticación 2FA?"
-        description="Tu cuenta será menos segura si desactivas la verificación en dos pasos. Podrás volver a activarla cuando quieras."
-        onConfirm={async () => {
-          await handleUnenrollMfa();
-          setUnenrollConfirmOpen(false);
-        }}
-        icon={ShieldOff}
-        iconColor="bg-destructive"
-        confirmText="Sí, desactivar 2FA"
-      />
+      <Dialog open={unenrollOpen} onOpenChange={setUnenrollOpen}>
+        <DialogContent className="rounded-3xl max-w-sm">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-destructive">
+              <ShieldOff className="size-5" /> Desactivar 2FA
+            </DialogTitle>
+            <DialogDescription className="text-xs">
+              Por seguridad, verifica tu identidad para confirmar la desactivación del segundo factor.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4 pt-2">
+            <div className="flex rounded-xl bg-muted p-1 text-xs">
+              <button
+                type="button"
+                onClick={() => setUnenrollMethod("totp")}
+                className={`flex-1 py-1.5 rounded-lg font-medium transition-all ${unenrollMethod === "totp" ? "bg-card text-foreground shadow-sm" : "text-muted-foreground"}`}
+              >
+                Código 2FA
+              </button>
+              <button
+                type="button"
+                onClick={() => setUnenrollMethod("password")}
+                className={`flex-1 py-1.5 rounded-lg font-medium transition-all ${unenrollMethod === "password" ? "bg-card text-foreground shadow-sm" : "text-muted-foreground"}`}
+              >
+                Contraseña
+              </button>
+            </div>
+
+            {unenrollMethod === "totp" ? (
+              <div className="space-y-1.5">
+                <Label className="text-xs">Código de autenticación (6 dígitos)</Label>
+                <Input
+                  placeholder="123456"
+                  value={unenrollCode}
+                  onChange={(e) => setUnenrollCode(e.target.value.replace(/\D/g, ''))}
+                  maxLength={6}
+                  className="rounded-2xl h-11 text-center font-mono tracking-widest text-lg"
+                  autoFocus
+                />
+              </div>
+            ) : (
+              <div className="space-y-1.5">
+                <Label className="text-xs">Contraseña actual</Label>
+                <Input
+                  type="password"
+                  placeholder="Tu contraseña actual"
+                  value={unenrollPassword}
+                  onChange={(e) => setUnenrollPassword(e.target.value)}
+                  className="rounded-2xl h-11"
+                  autoFocus
+                />
+              </div>
+            )}
+
+            <div className="flex gap-2 pt-1">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => { setUnenrollOpen(false); setUnenrollCode(""); setUnenrollPassword(""); }}
+                className="flex-1 rounded-2xl h-11"
+              >
+                Cancelar
+              </Button>
+              <Button
+                type="button"
+                variant="destructive"
+                onClick={handleUnenrollMfa}
+                disabled={unenrollingMfa || (unenrollMethod === "totp" ? unenrollCode.length !== 6 : !unenrollPassword)}
+                className="flex-1 rounded-2xl h-11 font-bold"
+              >
+                {unenrollingMfa ? "Verificando..." : "Desactivar"}
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       {/* Dialogs */}
       <Dialog open={emailOpen} onOpenChange={setEmailOpen}>
