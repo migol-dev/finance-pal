@@ -12,6 +12,7 @@ import { Browser } from '@capacitor/browser';
 import { Capacitor } from '@capacitor/core';
 import { toast } from 'sonner';
 import { checkHibpPwnedPassword, getClientIdentifier, rateLimiter, validatePasswordStrength } from '@/lib/rate-limiter';
+import { audit } from '@/lib/audit-logger';
 
 const GoogleIcon = () => (
   <svg className="w-5 h-5" viewBox="0 0 24 24">
@@ -240,7 +241,7 @@ function AnimatedBackground() {
 }
 
 export default function Login() {
-  const { session, mfaRequired, signOut, checkMfaStatus } = useAuth();
+  const { session, mfaRequired, signOut, checkMfaStatus, refreshSession } = useAuth();
   const { resolvedTheme } = useSystemTheme();
   const accentColor = useFinance((s) => s.appSettings.accentColor);
   const [isLogin, setIsLogin] = useState(true);
@@ -392,7 +393,12 @@ export default function Login() {
       });
       if (verifyError) throw verifyError;
 
+      await refreshSession();
       await checkMfaStatus();
+      if (session?.user?.id) {
+        audit.mfaVerified(session.user.id, { factorId });
+        audit.login(session.user.id, { provider: session.user.app_metadata?.provider ?? 'email', aal: 'aal2' });
+      }
       toast.success('Autenticación de dos factores verificada');
     } catch (error: any) {
       toast.error(getSafeAuthError(error, 'Código 2FA incorrecto o expirado'));

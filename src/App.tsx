@@ -141,8 +141,17 @@ function AuthGuard() {
   const checkingCloudRef = useRef(false);
   const resolveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  // Reset checkingCloudRef when session changes or when mfaRequired is true
+  React.useEffect(() => {
+    if (!session?.user?.id || mfaRequired) {
+      checkingCloudRef.current = false;
+      setCloudHasData(null);
+    }
+  }, [session?.user?.id, mfaRequired]);
+
   // Safety timeout to prevent infinite loading
   React.useEffect(() => {
+    if (mfaRequired || !session?.user?.id) return;
     if (!resolved && hasLocalData()) {
       resolveTimeoutRef.current = setTimeout(() => {
         console.warn('[AuthGuard] Conflict resolution timeout - forcing resolve');
@@ -153,10 +162,10 @@ function AuthGuard() {
     return () => {
       if (resolveTimeoutRef.current) clearTimeout(resolveTimeoutRef.current);
     };
-  }, [resolved, hasLocalData, cloudHasData]);
+  }, [resolved, hasLocalData, cloudHasData, mfaRequired, session?.user?.id]);
 
   React.useEffect(() => {
-    if (!session?.user?.id) return;
+    if (!session?.user?.id || mfaRequired) return;
     cloudSync.loadSettingsFromCloud.mutateAsync().catch(() => {});
     if (checkingCloudRef.current) return;
     checkingCloudRef.current = true;
@@ -180,11 +189,11 @@ function AuthGuard() {
         // or just let it time out and resolve.
         setCloudHasData(true);
       });
-  }, [session?.user?.id]);
+  }, [session?.user?.id, mfaRequired]);
 
   // Auto-resolve conflict when we know cloud state
   React.useEffect(() => {
-    if (!session?.user?.id || cloudHasData === null || resolved) return;
+    if (!session?.user?.id || mfaRequired || cloudHasData === null || resolved) return;
     if (hasLocalData() && !cloudHasData) {
       // Only local data exists → auto-upload
       setConflictResolved();
@@ -211,11 +220,11 @@ function AuthGuard() {
       setResolved(true);
     }
     // Both have data → dialog will show (no action needed)
-  }, [session?.user?.id, cloudHasData, hasLocalData, resolved, navigate, set]);
+  }, [session?.user?.id, mfaRequired, cloudHasData, hasLocalData, resolved, navigate, set]);
 
   // Background startup sync for multi-device harmony
   React.useEffect(() => {
-    if (!session?.user?.id || !cloudHasData) return;
+    if (!session?.user?.id || mfaRequired || !cloudHasData) return;
     
     // If the local device has NO pending offline mutations, it's 100% safe to 
     // overwrite local data with cloud data, ensuring we get the latest changes
@@ -226,7 +235,7 @@ function AuthGuard() {
         console.log('[StartupSync] Successfully fetched latest data from cloud');
       });
     }
-  }, [session?.user?.id, cloudHasData]);
+  }, [session?.user?.id, mfaRequired, cloudHasData]);
 
   if (isSupabaseEnabled) {
     if (loading) {

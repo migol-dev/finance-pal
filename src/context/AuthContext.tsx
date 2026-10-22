@@ -139,9 +139,9 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       const { data, error } = await supabase.auth.refreshSession();
       if (error) throw error;
       if (data.session) {
+        await checkMfaStatus();
         setSession(data.session);
         setUser(data.session.user);
-        await checkMfaStatus();
         scheduleTokenRefreshRef.current?.();
       }
     } catch (e) {
@@ -196,13 +196,15 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     }
 
     supabase.auth.getSession().then(async ({ data: { session } }) => {
-      setSession(session);
-      setUser(session?.user ?? null);
       if (session) {
         await checkMfaStatus();
         resetInactivityTimerRef.current?.();
         scheduleTokenRefreshRef.current?.();
+      } else {
+        setMfaRequired(false);
       }
+      setSession(session);
+      setUser(session?.user ?? null);
       setLoading(false);
     }).catch((e) => {
       logger.error('Failed to get session', ErrorCodes.AUTH_SESSION_EXPIRED, { error: e });
@@ -213,22 +215,32 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       const isNewSession = event === 'SIGNED_IN' && session;
       const isSignOut = event === 'SIGNED_OUT';
       
-      setSession(session);
-      setUser(session?.user ?? null);
-      
       if (isNewSession) {
-        await checkMfaStatus();
+        // Evaluate MFA requirement BEFORE publishing session into state so AuthGuard
+        // and useSessionManager never see an AAL1 session with mfaRequired === false.
+        const needsMfa = await checkMfaStatus();
+        setSession(session);
+        setUser(session?.user ?? null);
         resetInactivityTimerRef.current?.();
         scheduleTokenRefreshRef.current?.();
         
-        // Audit log: user login
-        if (session?.user?.id) {
-          audit.login(session.user.id, { provider: session.user.app_metadata?.provider ?? 'email' });
+        // Audit log: user login only if 2FA is not pending and session is aal1
+        // (aal2 logins are audited via Login.tsx handleMfaSubmit with audit.mfaVerified + audit.login)
+        if (session?.user?.id && !needsMfa) {
+          const aal = (session.user.app_metadata?.aal as string) || 'aal1';
+          if (aal === 'aal1') {
+            audit.login(session.user.id, { provider: session.user.app_metadata?.provider ?? 'email', aal: 'aal1' });
+          }
         }
       } else if (isSignOut) {
+        setSession(null);
+        setUser(null);
         setMfaRequired(false);
         if (inactivityTimer.current) clearTimeout(inactivityTimer.current);
         if (refreshTimer.current) clearTimeout(refreshTimer.current);
+      } else {
+        setSession(session);
+        setUser(session?.user ?? null);
       }
     });
 

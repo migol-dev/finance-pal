@@ -41,7 +41,7 @@ export type SessionState =
   | 'paused';         // Session terminated / paused
 
 export function useSessionManager() {
-  const { session, loading } = useAuth();
+  const { session, loading, mfaRequired } = useAuth();
   const [sessionState, setSessionState] = useState<SessionState>('active');
   const [otherDevice, setOtherDevice] = useState<{ id: string, name: string } | null>(null);
   const deviceId = getDeviceId();
@@ -79,7 +79,7 @@ export function useSessionManager() {
   }, [otherDevice, deviceId]);
 
   useEffect(() => {
-    if (!isSupabaseEnabled || loading || !session?.user?.id) return;
+    if (!isSupabaseEnabled || loading || !session?.user?.id || mfaRequired) return;
 
     const userId = session.user.id;
     const deviceName = getDeviceName();
@@ -258,7 +258,7 @@ export function useSessionManager() {
       supabase.removeChannel(channel);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [loading, session?.user?.id, sessionState]);
+  }, [loading, session?.user?.id, sessionState, mfaRequired]);
 
   return { sessionState, otherDevice, resume, requestTakeover };
 }
