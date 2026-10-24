@@ -5,6 +5,7 @@ import { useQuickTxModal } from "@/store/ui-quick-tx-store";
 import { BottomNavV2 } from "@/components/app/BottomNavV2";
 import { DesktopSidebarV2 } from "@/components/app/DesktopSidebarV2";
 import { CommandPalette } from "@/components/app/CommandPalette";
+import { QuickTransactionSheet } from "@/components/app/QuickTransactionSheet";
 import { AppShell } from "@/components/app/AppShell";
 import { useFinance } from "@/store/finance-store";
 
@@ -17,6 +18,9 @@ class MockResizeObserver {
 global.ResizeObserver = MockResizeObserver as unknown as typeof ResizeObserver;
 window.HTMLElement.prototype.scrollIntoView = vi.fn();
 
+export const mockAddTx = vi.fn().mockResolvedValue(undefined);
+export const mockAddTransaction = vi.fn().mockResolvedValue(undefined);
+
 // Mock de useFinanceData
 vi.mock("@/hooks/useFinanceData", () => ({
   useFinanceData: () => ({
@@ -27,7 +31,8 @@ vi.mock("@/hooks/useFinanceData", () => ({
     goals: [],
     fixedItems: [],
     setActive: vi.fn(),
-    addTransaction: vi.fn().mockResolvedValue(undefined),
+    addTx: mockAddTx,
+    addTransaction: mockAddTransaction,
     cloudSync: { loadSettingsFromCloud: vi.fn() },
     isOnline: true,
   }),
@@ -39,6 +44,7 @@ vi.mock("@/lib/supabase", () => ({
 
 describe("Sprint 2 Navigation & AppShell v2 Suite", () => {
   beforeEach(() => {
+    vi.clearAllMocks();
     act(() => {
       useQuickTxModal.getState().closeQuickTx();
       useFinance.getState().setUIVersion("v2");
@@ -146,6 +152,89 @@ describe("Sprint 2 Navigation & AppShell v2 Suite", () => {
       act(() => {
         fireEvent.click(quickItem);
       });
+      expect(useQuickTxModal.getState().isOpen).toBe(true);
+    });
+
+    it("toggles open state with Cmd+K / Ctrl+K keyboard shortcut", () => {
+      const handleOpenChange = vi.fn();
+      render(
+        <MemoryRouter>
+          <CommandPalette open={false} onOpenChange={handleOpenChange} />
+        </MemoryRouter>
+      );
+
+      act(() => {
+        window.dispatchEvent(new KeyboardEvent("keydown", { key: "k", metaKey: true, bubbles: true }));
+      });
+      expect(handleOpenChange).toHaveBeenCalledWith(true);
+    });
+  });
+
+  describe("QuickTransactionSheet", () => {
+    it("renders drawer elements when open and submits valid transaction", async () => {
+      act(() => {
+        useQuickTxModal.getState().openQuickTx("expense");
+      });
+
+      render(
+        <MemoryRouter>
+          <QuickTransactionSheet />
+        </MemoryRouter>
+      );
+
+      expect(screen.getByText("Registro Rápido de Movimiento")).toBeInTheDocument();
+      expect(screen.getByPlaceholderText("0.00")).toBeInTheDocument();
+      expect(screen.getByPlaceholderText(/Ej\. Supermercado/)).toBeInTheDocument();
+      expect(screen.getByPlaceholderText("Detalle extra")).toBeInTheDocument();
+
+      const amountInput = screen.getByPlaceholderText("0.00");
+      const conceptInput = screen.getByPlaceholderText(/Ej\. Supermercado/);
+      const noteInput = screen.getByPlaceholderText("Detalle extra");
+
+      act(() => {
+        fireEvent.change(amountInput, { target: { value: "150.50" } });
+        fireEvent.change(conceptInput, { target: { value: "Cena familiar" } });
+        fireEvent.change(noteInput, { target: { value: "Pago con tarjeta" } });
+      });
+
+      const submitBtn = screen.getByRole("button", { name: /Guardar Gasto/i });
+      await act(async () => {
+        fireEvent.click(submitBtn);
+      });
+
+      expect(mockAddTransaction).toHaveBeenCalledTimes(1);
+      const callArg = mockAddTransaction.mock.calls[0][0];
+      expect(callArg.amount).toBe(150.5);
+      expect(callArg.concept).toBe("Cena familiar");
+      expect(callArg.note).toBe("Pago con tarjeta");
+      expect(callArg.type).toBe("expense");
+      expect(callArg.accountId).toBe("acc-1");
+      expect(useQuickTxModal.getState().isOpen).toBe(false);
+    });
+
+    it("prevents submission and displays warning if amount is invalid", async () => {
+      act(() => {
+        useQuickTxModal.getState().openQuickTx("expense");
+      });
+
+      render(
+        <MemoryRouter>
+          <QuickTransactionSheet />
+        </MemoryRouter>
+      );
+
+      const conceptInput = screen.getByPlaceholderText(/Ej\. Supermercado/);
+      act(() => {
+        fireEvent.change(conceptInput, { target: { value: "Café" } });
+      });
+
+      const submitBtn = screen.getByRole("button", { name: /Guardar Gasto/i });
+      await act(async () => {
+        fireEvent.click(submitBtn);
+      });
+
+      // No debe llamar a mockAddTransaction porque el monto está vacío
+      expect(mockAddTransaction).not.toHaveBeenCalled();
       expect(useQuickTxModal.getState().isOpen).toBe(true);
     });
   });

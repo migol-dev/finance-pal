@@ -348,6 +348,10 @@ export function useFinanceData() {
       const payload = { ...t, id: generateSecureId() } as Transaction;
       return txM.addTransaction.mutateAsync(payload);
     },
+    addTransaction: (t: Omit<Transaction, 'id'>) => {
+      const payload = { ...t, id: generateSecureId() } as Transaction;
+      return txM.addTransaction.mutateAsync(payload);
+    },
     updateTx: (id: string, p: Partial<Transaction>) =>
       txM.updateTransaction.mutateAsync({ id, patch: p }),
     removeTx: (id: string) => txM.removeTransaction.mutateAsync(id),

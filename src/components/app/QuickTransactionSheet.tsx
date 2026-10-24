@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, memo } from "react";
+import { useState, useEffect, useMemo, useRef, memo } from "react";
 import { toast } from "sonner";
 import { ArrowDownLeft, ArrowUpRight, Check, X } from "lucide-react";
 import {
@@ -20,11 +20,14 @@ import { cn } from "@/lib/utils";
 
 export const QuickTransactionSheet = memo(function QuickTransactionSheet() {
   const { isOpen, closeQuickTx, defaultType } = useQuickTxModal();
-  const { addTransaction, accounts } = useFinanceData();
+  const { addTx, addTransaction, accounts } = useFinanceData();
+  const saveTx = addTransaction ?? addTx;
 
+  const prevOpenRef = useRef(false);
   const [type, setType] = useState<"expense" | "income">(defaultType);
   const [concept, setConcept] = useState("");
   const [amount, setAmount] = useState("");
+  const [note, setNote] = useState("");
   const [category, setCategory] = useState("Otros");
   const [accountId, setAccountId] = useState<string>("");
 
@@ -32,18 +35,22 @@ export const QuickTransactionSheet = memo(function QuickTransactionSheet() {
   const today = `${new Date().getFullYear()}-${pad(new Date().getMonth() + 1)}-${pad(new Date().getDate())}`;
   const [date, setDate] = useState(today);
 
-  // Sincronizar tipo por defecto cada vez que se abre
+  // Sincronizar tipo por defecto únicamente en la transición a abierto
   useEffect(() => {
-    if (isOpen) {
+    if (isOpen && !prevOpenRef.current) {
       setType(defaultType);
       setConcept("");
       setAmount("");
+      setNote("");
       setCategory(defaultType === "income" ? "Salario" : "Alimentación");
       setDate(today);
       if (accounts && accounts.length > 0) {
         setAccountId(accounts[0].id);
+      } else {
+        setAccountId("");
       }
     }
+    prevOpenRef.current = isOpen;
   }, [isOpen, defaultType, accounts, today]);
 
   const categories = useMemo(() => Object.keys(CATEGORY_EMOJI), []);
@@ -61,17 +68,26 @@ export const QuickTransactionSheet = memo(function QuickTransactionSheet() {
     }
 
     try {
+      let txDate = new Date();
+      if (date) {
+        const parsed = new Date(`${date}T12:00:00`);
+        if (!isNaN(parsed.getTime())) {
+          txDate = parsed;
+        }
+      }
+
       const payload: Omit<Transaction, "id"> = {
         type,
         concept: concept.trim(),
         amount: parsedAmount,
         category,
-        date: new Date(`${date}T12:00:00`).toISOString(),
-        accountId: accountId || (accounts?.[0]?.id ?? "default"),
+        date: txDate.toISOString(),
+        accountId: accountId || accounts?.[0]?.id || undefined,
         paymentMethod: "transfer",
+        note: note.trim() || undefined,
       };
 
-      await addTransaction(payload);
+      await saveTx(payload);
       toast.success(type === "expense" ? "Gasto registrado con éxito" : "Ingreso registrado con éxito");
       closeQuickTx();
     } catch {
@@ -220,17 +236,32 @@ export const QuickTransactionSheet = memo(function QuickTransactionSheet() {
             </div>
           </div>
 
-          {/* Fecha */}
-          <div className="space-y-1">
-            <label className="text-[11px] font-semibold text-muted-foreground tracking-wide uppercase">
-              Fecha
-            </label>
-            <Input
-              type="date"
-              value={date}
-              onChange={(e) => setDate(e.target.value)}
-              className="h-10 text-xs font-mono-tabular bg-background/50 border-border"
-            />
+          {/* Fecha y Nota Opcional */}
+          <div className="grid grid-cols-2 gap-2.5">
+            <div className="space-y-1">
+              <label className="text-[11px] font-semibold text-muted-foreground tracking-wide uppercase">
+                Fecha
+              </label>
+              <Input
+                type="date"
+                value={date}
+                onChange={(e) => setDate(e.target.value)}
+                className="h-10 text-xs font-mono-tabular bg-background/50 border-border"
+              />
+            </div>
+
+            <div className="space-y-1">
+              <label className="text-[11px] font-semibold text-muted-foreground tracking-wide uppercase">
+                Nota (Opcional)
+              </label>
+              <Input
+                type="text"
+                placeholder="Detalle extra"
+                value={note}
+                onChange={(e) => setNote(e.target.value)}
+                className="h-10 text-xs bg-background/50 border-border"
+              />
+            </div>
           </div>
 
           <DrawerFooter className="px-0 pt-3 pb-0">

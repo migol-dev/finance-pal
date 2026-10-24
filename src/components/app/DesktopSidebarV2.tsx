@@ -223,13 +223,13 @@ export const DesktopSidebarV2 = memo(function DesktopSidebarV2() {
           </div>
         )}
 
-        <div className="flex items-center justify-between pt-1">
+        <div className={cn("pt-1", isCollapsed ? "flex flex-col items-center gap-1.5" : "flex items-center justify-between")}>
           <button
             type="button"
             onClick={toggleTheme}
             className={cn(
               "flex items-center gap-2 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors text-xs font-medium py-1.5 px-2",
-              isCollapsed ? "w-full justify-center px-0" : ""
+              isCollapsed ? "size-9 justify-center p-0" : ""
             )}
             title={`Tema: ${themeLabel}`}
             aria-label={`Cambiar tema: actualmente ${themeLabel}`}
@@ -242,7 +242,7 @@ export const DesktopSidebarV2 = memo(function DesktopSidebarV2() {
             <button
               type="button"
               onClick={() => setIsCollapsed(false)}
-              className="mt-1 size-8 w-full rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted/60 flex items-center justify-center transition-colors"
+              className="size-9 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted/60 flex items-center justify-center transition-colors"
               aria-label="Expandir barra lateral"
               title="Expandir barra lateral"
             >
