@@ -84,12 +84,13 @@
 | # Checkpoint | Hash Commit | Tareas Cubiertas | Resultado Build / Test | Resumen de Cambios |
 | :--- | :--- | :--- | :--- | :--- |
 | `CP-S4-01` | `3f0d1c4` | `F4.1 - F4.6` | `PASS (tsc + vitest 207/207 + lint)` | `Implementación completa de Sprint 4 (MovimientosV2 Warm Editorial Wealth, despachador dual en Movimientos.tsx, MovimientosClassic.tsx, Master-Detail 7/5 en PC, Drawer vaul en móvil, suite de tests y actualización de grafo)` |
+| `CP-S4-02` | `667c106` | `Review & Fixes` | `PASS (tsc + vitest 211/211 + lint)` | `Eliminación de abonos y préstamos de deuda con removeDebt/removeDebtPayment, soporte de rangos temporales fuera del mes activo, validación de fechas contra RangeError, validación de cuentas origen/destino en traspasos, e integración de IconPicker y comprobantes` |
 
 ---
 
 ## 5. Resumen de Entrega de Fase 2 (Construcción Concluida)
 
 - **Estado de Compilación Local (`npx tsc --noEmit`):** `PASS (0 errores)`
-- **Resultado de Tests (`npx vitest run`):** `PASS (207/207 passing, 35 archivos de prueba, 100%)`
+- **Resultado de Tests (`npx vitest run`):** `PASS (211/211 passing, 35 archivos de prueba, 100%)`
 - **Resultado de Linter (`npm run lint`):** `PASS (0 errores, 0 warnings en código nuevo)`
-- **Grafo de Conocimiento (`graphify`):** Actualizado (`1964 nodos, 5719 aristas, 138 comunidades`)
+- **Grafo de Conocimiento (`graphify`):** Actualizado (`1966 nodos, 5725 aristas, 135 comunidades`)

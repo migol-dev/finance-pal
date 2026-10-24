@@ -1734,15 +1734,15 @@
     "semantic_hash": ""
   },
   ".agent/workflow/01_ARCHITECT_PLAN.md": {
-    "mtime": 1792884058.439822,
-    "seen": 1792884710.5775633,
+    "mtime": 1792884777.6326296,
+    "seen": 1792885688.3954082,
     "ast_hash": "26564f1caad4329203b5d41fef081246",
     "semantic_hash": ""
   },
   ".agent/workflow/02_OPENCODE_TASKS.md": {
-    "mtime": 1792884083.3808794,
-    "seen": 1792884710.5775652,
-    "ast_hash": "ce44df86388246760a6c24e32556f6bd",
+    "mtime": 1792884777.6326296,
+    "seen": 1792885688.3954115,
+    "ast_hash": "eb96121b56aceb0bb9f8e6be2fd72d41",
     "semantic_hash": ""
   },
   ".agent/workflow/03_ANTIGRAVITY_REVIEW.md": {
@@ -1938,9 +1938,9 @@
     "semantic_hash": ""
   },
   "src/components/movimientos/MovimientosV2.tsx": {
-    "mtime": 1792884666.1503356,
-    "seen": 1792884710.5771825,
-    "ast_hash": "9e160fa1ea0bdd77e298ac710881e959",
+    "mtime": 1792885555.2935698,
+    "seen": 1792885688.3942616,
+    "ast_hash": "b3223d2072e1c86ad7a642cfb24516d3",
     "semantic_hash": ""
   },
   "src/pages/MovimientosClassic.tsx": {
@@ -1950,9 +1950,9 @@
     "semantic_hash": ""
   },
   "src/test/ui-version-movimientos.test.tsx": {
-    "mtime": 1792884575.470099,
-    "seen": 1792884710.577517,
-    "ast_hash": "2da9a89602378e5ae83b82fe10a289f8",
+    "mtime": 1792885580.9906158,
+    "seen": 1792885688.3952928,
+    "ast_hash": "41ee2ea4337bf59f99e7451ec0ffbed4",
     "semantic_hash": ""
   }
 }
