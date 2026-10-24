@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState, useCallback } from "react";
 import { useSearchParams, useNavigate } from "react-router-dom";
 import { useFinanceData } from "@/hooks/useFinanceData";
 import {
@@ -19,6 +19,7 @@ import {
 import { Header } from "@/components/app/Header";
 import { MonthSwitcher } from "@/components/app/MonthSwitcher";
 import { IconDisplay } from "@/components/app/IconDisplay";
+import { IconPicker } from "@/components/app/IconPicker";
 import { ElegantConfirm } from "@/components/app/ElegantConfirm";
 import {
   Search,
@@ -102,6 +103,8 @@ export function MovimientosV2() {
     addTx,
     updateTx,
     removeTx,
+    removeDebt,
+    removeDebtPayment,
     activeYear,
     activeMonth,
     debts,
@@ -133,7 +136,7 @@ export function MovimientosV2() {
   const [newDefaultType, setNewDefaultType] = useState<TxType>("expense");
 
   // Confirmación de eliminación
-  const [deleteConfirm, setDeleteConfirm] = useState<Transaction | null>(null);
+  const [deleteConfirm, setDeleteConfirm] = useState<MovimientoRow | null>(null);
 
   // Sincronización desde URL params
   useEffect(() => {
@@ -180,7 +183,7 @@ export function MovimientosV2() {
     setParams(np, { replace: true });
   }, [filter, accountFilter, categoryFilter, query, datePreset, dateFrom, dateTo, syncFiltersToURL, setParams]);
 
-  // Transacciones regulares del mes
+  // Transacciones regulares del mes activo
   const inMonth = useMemo(() => {
     return transactions.filter((t) => {
       const d = parseDateLocal(t.date);
@@ -188,50 +191,60 @@ export function MovimientosV2() {
     });
   }, [transactions, activeYear, activeMonth]);
 
-  // Filas virtuales de deudas
-  const debtRows: MovimientoRow[] = useMemo(() => {
-    const rows: MovimientoRow[] = [];
-    debts.forEach((d) => {
-      const dd = parseDateLocal(d.date);
-      if (dd.getFullYear() === activeYear && dd.getMonth() === activeMonth) {
-        rows.push({
-          id: `debt-${d.id}`,
-          type: "expense",
-          category: "Deudas",
-          concept: `Préstamo a ${d.person}`,
-          amount: d.amount,
-          date: d.date,
-          note: d.concept,
-          icon: d.icon,
-          accountId: d.accountId,
-          _virtual: true,
-          _debtId: d.id,
-        });
-      }
-      d.payments.forEach((p: DebtPayment) => {
-        const pd = parseDateLocal(p.date);
-        if (pd.getFullYear() === activeYear && pd.getMonth() === activeMonth) {
+  // Generador de filas virtuales de deudas
+  const buildDebtRows = useCallback(
+    (onlyMonth: boolean) => {
+      const rows: MovimientoRow[] = [];
+      debts.forEach((d) => {
+        const dd = parseDateLocal(d.date);
+        if (!onlyMonth || (dd.getFullYear() === activeYear && dd.getMonth() === activeMonth)) {
           rows.push({
-            id: `pay-${d.id}-${p.id}`,
-            type: "income",
+            id: `debt-${d.id}`,
+            type: "expense",
             category: "Deudas",
-            concept: `Abono a ${d.person}`,
-            amount: p.amount,
-            date: p.date,
-            note: p.note,
+            concept: `Préstamo a ${d.person}`,
+            amount: d.amount,
+            date: d.date,
+            note: d.concept,
             icon: d.icon,
-            paymentMethod: p.paymentMethod,
-            accountId: p.accountId,
+            accountId: d.accountId,
             _virtual: true,
             _debtId: d.id,
           });
         }
+        d.payments.forEach((p: DebtPayment) => {
+          const pd = parseDateLocal(p.date);
+          if (!onlyMonth || (pd.getFullYear() === activeYear && pd.getMonth() === activeMonth)) {
+            rows.push({
+              id: `pay-${d.id}-${p.id}`,
+              type: "income",
+              category: "Deudas",
+              concept: `Abono a ${d.person}`,
+              amount: p.amount,
+              date: p.date,
+              note: p.note,
+              icon: d.icon,
+              paymentMethod: p.paymentMethod,
+              accountId: p.accountId,
+              _virtual: true,
+              _debtId: d.id,
+            });
+          }
+        });
       });
-    });
-    return rows;
-  }, [debts, activeYear, activeMonth]);
+      return rows;
+    },
+    [debts, activeYear, activeMonth]
+  );
 
-  const allRows: MovimientoRow[] = useMemo(() => [...inMonth.map((t) => t as MovimientoRow), ...debtRows], [inMonth, debtRows]);
+  // Si datePreset es "all", restringir al mes activo de la cabecera.
+  // Si datePreset es específico (hoy, ayer, 7d, 30d, personalizado), buscar sobre el universo completo de fechas.
+  const allRows: MovimientoRow[] = useMemo(() => {
+    if (datePreset === "all") {
+      return [...inMonth.map((t) => t as MovimientoRow), ...buildDebtRows(true)];
+    }
+    return [...transactions.map((t) => t as MovimientoRow), ...buildDebtRows(false)];
+  }, [datePreset, inMonth, transactions, buildDebtRows]);
 
   // Filtrado de movimientos
   const filtered = useMemo(() => {
@@ -261,8 +274,10 @@ export function MovimientosV2() {
         startDate = dateOnly(s);
         endDate = dateOnly(today);
       } else if (datePreset === "custom" && dateFrom) {
-        startDate = dateOnly(parseDateLocal(dateFrom));
-        endDate = dateTo ? dateOnly(parseDateLocal(dateTo)) : startDate;
+        const d1 = dateOnly(parseDateLocal(dateFrom));
+        const d2 = dateTo ? dateOnly(parseDateLocal(dateTo)) : d1;
+        startDate = d1 <= d2 ? d1 : d2;
+        endDate = d1 <= d2 ? d2 : d1;
       }
     }
 
@@ -278,6 +293,8 @@ export function MovimientosV2() {
         return (
           (t.concept || "").toLowerCase().includes(q) ||
           (t.category || "").toLowerCase().includes(q) ||
+          (t.note || "").toLowerCase().includes(q) ||
+          (t.externalPayee?.name || "").toLowerCase().includes(q) ||
           pmLabel.toLowerCase().includes(q)
         );
       })
@@ -500,6 +517,7 @@ export function MovimientosV2() {
             <span className="text-xs text-muted-foreground">Desde:</span>
             <Input
               type="date"
+              aria-label="Fecha desde"
               value={dateFrom}
               onChange={(e) => setDateFrom(e.target.value)}
               className="h-8 w-36 text-xs rounded-lg"
@@ -507,6 +525,7 @@ export function MovimientosV2() {
             <span className="text-xs text-muted-foreground">Hasta:</span>
             <Input
               type="date"
+              aria-label="Fecha hasta"
               value={dateTo}
               onChange={(e) => setDateTo(e.target.value)}
               className="h-8 w-36 text-xs rounded-lg"
@@ -755,13 +774,13 @@ export function MovimientosV2() {
                       toast.success("Movimiento actualizado");
                     }}
                     onCancel={() => setIsEditingSelected(false)}
-                    onDelete={() => setDeleteConfirm(selectedRow as Transaction)}
+                    onDelete={() => setDeleteConfirm(selectedRow)}
                   />
                 ) : (
                   <TransactionDetailView
                     row={selectedRow}
                     accounts={accounts}
-                    onDelete={() => setDeleteConfirm(selectedRow as Transaction)}
+                    onDelete={() => setDeleteConfirm(selectedRow)}
                   />
                 )}
               </div>
@@ -836,7 +855,7 @@ export function MovimientosV2() {
                   onCancel={() => setIsEditingSelected(false)}
                   onDelete={() => {
                     setIsMobileDrawerOpen(false);
-                    setDeleteConfirm(selectedRow as Transaction);
+                    setDeleteConfirm(selectedRow);
                   }}
                 />
               ) : (
@@ -846,8 +865,9 @@ export function MovimientosV2() {
                     accounts={accounts}
                     onDelete={() => {
                       setIsMobileDrawerOpen(false);
-                      setDeleteConfirm(selectedRow as Transaction);
+                      setDeleteConfirm(selectedRow);
                     }}
+                    onCloseDrawer={() => setIsMobileDrawerOpen(false)}
                   />
                   {!selectedRow._virtual && (
                     <Button
@@ -915,7 +935,17 @@ export function MovimientosV2() {
         destructive
         onConfirm={() => {
           if (deleteConfirm) {
-            removeTx(deleteConfirm.id);
+            if (deleteConfirm._virtual) {
+              const debtId = deleteConfirm._debtId;
+              if (deleteConfirm.id.startsWith("pay-")) {
+                const paymentId = deleteConfirm.id.replace(`pay-${debtId}-`, "");
+                removeDebtPayment(debtId, paymentId);
+              } else if (deleteConfirm.id.startsWith("debt-")) {
+                removeDebt(debtId);
+              }
+            } else {
+              removeTx(deleteConfirm.id);
+            }
             if (selectedId === deleteConfirm.id) {
               setSelectedId(null);
             }
@@ -935,10 +965,12 @@ function TransactionDetailView({
   row,
   accounts,
   onDelete,
+  onCloseDrawer,
 }: {
   row: MovimientoRow;
   accounts: Account[];
   onDelete: () => void;
+  onCloseDrawer?: () => void;
 }) {
   const navigate = useNavigate();
   const acct = accounts.find((a) => a.id === row.accountId);
@@ -1052,7 +1084,10 @@ function TransactionDetailView({
           <Button
             size="sm"
             variant="outline"
-            onClick={() => navigate(`/deudas?id=${row._debtId}`)}
+            onClick={() => {
+              if (onCloseDrawer) onCloseDrawer();
+              navigate(`/deudas?id=${row._debtId}`);
+            }}
             className="w-full text-xs gap-1 border-purple-300 dark:border-purple-700 text-purple-700 dark:text-purple-300"
           >
             <ExternalLink className="size-3" />
@@ -1061,20 +1096,22 @@ function TransactionDetailView({
         </div>
       )}
 
-      {/* Botón de Eliminación (Sólo transacciones reales) */}
-      {!isVirtual && (
-        <div className="pt-2">
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={onDelete}
-            className="w-full text-xs text-rose-600 hover:text-rose-700 hover:bg-rose-50 dark:hover:bg-rose-950/30 rounded-lg gap-1.5"
-          >
-            <Trash2 className="size-3.5" strokeWidth={1.5} />
-            Eliminar movimiento
-          </Button>
-        </div>
-      )}
+      {/* Botón de Eliminación (Transacciones reales o deudas virtuales) */}
+      <div className="pt-2">
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={onDelete}
+          className="w-full text-xs text-rose-600 hover:text-rose-700 hover:bg-rose-50 dark:hover:bg-rose-950/30 rounded-lg gap-1.5"
+        >
+          <Trash2 className="size-3.5" strokeWidth={1.5} />
+          {row._virtual
+            ? row.id.startsWith("pay-")
+              ? "Eliminar abono de deuda"
+              : "Eliminar préstamo"
+            : "Eliminar movimiento"}
+        </Button>
+      </div>
     </div>
   );
 }
@@ -1104,6 +1141,11 @@ function TransactionEditForm({
   const [transferToAccountId, setTransferToAccountId] = useState(transaction.transferToAccountId ?? "");
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>(transaction.paymentMethod ?? "card");
   const [note, setNote] = useState(transaction.note ?? "");
+  const [icon, setIcon] = useState<IconRef | undefined>(transaction.icon);
+  const [receipt, setReceipt] = useState<string | undefined>(transaction.receipt);
+
+  const cashAccount = accounts.find((a: Account) => a.type === "cash");
+  const bankAccounts = accounts.filter((a: Account) => a.type !== "cash");
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -1116,20 +1158,43 @@ function TransactionEditForm({
       toast.error("El concepto es obligatorio");
       return;
     }
+    if (!date) {
+      toast.error("Selecciona una fecha válida");
+      return;
+    }
+    const dateObj = new Date(`${date}T12:00:00`);
+    if (isNaN(dateObj.getTime())) {
+      toast.error("Fecha inválida");
+      return;
+    }
+    if (type === "transfer") {
+      if (!accountId) {
+        toast.error("Selecciona la cuenta origen");
+        return;
+      }
+      if (!transferToAccountId) {
+        toast.error("Selecciona la cuenta destino");
+        return;
+      }
+      if (accountId === transferToAccountId) {
+        toast.error("La cuenta origen y destino no pueden ser la misma");
+        return;
+      }
+    }
 
     onSave({
       type,
       concept: concept.trim(),
       amount: parsedAmount,
       category,
-      date: new Date(`${date}T12:00:00`).toISOString(),
+      date: dateObj.toISOString(),
       accountId: accountId || undefined,
       transferToAccountId: type === "transfer" ? transferToAccountId : undefined,
       paymentMethod,
       note: note.trim() || undefined,
-      icon: transaction.icon,
+      icon,
       externalPayee: transaction.externalPayee,
-      receipt: transaction.receipt,
+      receipt,
     });
   };
 
@@ -1151,6 +1216,11 @@ function TransactionEditForm({
             {tab.label}
           </button>
         ))}
+      </div>
+
+      {/* Selector de Icono / Emoji */}
+      <div className="flex justify-center py-1">
+        <IconPicker value={icon} onChange={setIcon} />
       </div>
 
       <div>
@@ -1205,7 +1275,7 @@ function TransactionEditForm({
         </div>
 
         <div>
-          <Label className="text-[11px]">Cuenta</Label>
+          <Label className="text-[11px]">Cuenta {type === "transfer" ? "origen" : ""}</Label>
           <Select value={accountId} onValueChange={setAccountId}>
             <SelectTrigger className="h-8 text-xs rounded-lg mt-1">
               <SelectValue placeholder="Selecciona" />
@@ -1242,7 +1312,18 @@ function TransactionEditForm({
       ) : (
         <div>
           <Label className="text-[11px]">Método de pago</Label>
-          <Select value={paymentMethod} onValueChange={(v) => setPaymentMethod(v as PaymentMethod)}>
+          <Select
+            value={paymentMethod}
+            onValueChange={(v) => {
+              const m = v as PaymentMethod;
+              setPaymentMethod(m);
+              if (m === "cash" && cashAccount) {
+                setAccountId(cashAccount.id);
+              } else if ((m === "card" || m === "transfer") && accountId === cashAccount?.id) {
+                if (bankAccounts[0]) setAccountId(bankAccounts[0].id);
+              }
+            }}
+          >
             <SelectTrigger className="h-8 text-xs rounded-lg mt-1">
               <SelectValue />
             </SelectTrigger>
@@ -1265,6 +1346,42 @@ function TransactionEditForm({
           className="h-8 text-xs rounded-lg mt-1"
           placeholder="Detalles adicionales..."
         />
+      </div>
+
+      {/* Comprobante */}
+      <div>
+        <Label className="text-[11px]">Comprobante (opcional)</Label>
+        <Input
+          type="file"
+          accept="image/*"
+          onChange={(e) => {
+            const file = e.target.files?.[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = () => {
+              setReceipt(typeof reader.result === "string" ? reader.result : undefined);
+            };
+            reader.readAsDataURL(file);
+          }}
+          className="h-8 text-xs rounded-lg mt-1 file:mr-2 file:py-0.5 file:px-2 file:rounded-md file:border-0 file:text-xs file:bg-muted"
+        />
+        {receipt && (
+          <div className="relative mt-1.5 inline-block">
+            <img
+              src={receipt}
+              alt="Comprobante"
+              className="rounded-lg max-h-24 object-contain bg-black/5 dark:bg-white/5 p-1"
+            />
+            <button
+              type="button"
+              onClick={() => setReceipt(undefined)}
+              className="absolute top-1 right-1 size-5 rounded-full bg-black/70 text-white flex items-center justify-center text-xs hover:bg-black"
+              title="Quitar comprobante"
+            >
+              <X className="size-3" />
+            </button>
+          </div>
+        )}
       </div>
 
       <div className="flex items-center justify-between pt-2">
@@ -1323,6 +1440,11 @@ function TransactionCreateForm({
   const [transferToAccountId, setTransferToAccountId] = useState(accounts[1]?.id ?? "");
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("card");
   const [note, setNote] = useState("");
+  const [icon, setIcon] = useState<IconRef | undefined>(undefined);
+  const [receipt, setReceipt] = useState<string | undefined>(undefined);
+
+  const cashAccount = accounts.find((a: Account) => a.type === "cash");
+  const bankAccounts = accounts.filter((a: Account) => a.type !== "cash");
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -1335,17 +1457,42 @@ function TransactionCreateForm({
       toast.error("El concepto es obligatorio");
       return;
     }
+    if (!date) {
+      toast.error("Selecciona una fecha válida");
+      return;
+    }
+    const dateObj = new Date(`${date}T12:00:00`);
+    if (isNaN(dateObj.getTime())) {
+      toast.error("Fecha inválida");
+      return;
+    }
+    if (type === "transfer") {
+      if (!accountId) {
+        toast.error("Selecciona la cuenta origen");
+        return;
+      }
+      if (!transferToAccountId) {
+        toast.error("Selecciona la cuenta destino");
+        return;
+      }
+      if (accountId === transferToAccountId) {
+        toast.error("La cuenta origen y destino no pueden ser la misma");
+        return;
+      }
+    }
 
     onSave({
       type,
       concept: concept.trim(),
       amount: parsedAmount,
       category,
-      date: new Date(`${date}T12:00:00`).toISOString(),
+      date: dateObj.toISOString(),
       accountId: accountId || undefined,
       transferToAccountId: type === "transfer" ? transferToAccountId : undefined,
       paymentMethod,
       note: note.trim() || undefined,
+      icon,
+      receipt,
     });
   };
 
@@ -1372,6 +1519,11 @@ function TransactionCreateForm({
             {tab.label}
           </button>
         ))}
+      </div>
+
+      {/* Selector de Icono / Emoji */}
+      <div className="flex justify-center py-1">
+        <IconPicker value={icon} onChange={setIcon} />
       </div>
 
       <div>
@@ -1464,7 +1616,18 @@ function TransactionCreateForm({
       ) : (
         <div>
           <Label className="text-xs">Método de pago</Label>
-          <Select value={paymentMethod} onValueChange={(v) => setPaymentMethod(v as PaymentMethod)}>
+          <Select
+            value={paymentMethod}
+            onValueChange={(v) => {
+              const m = v as PaymentMethod;
+              setPaymentMethod(m);
+              if (m === "cash" && cashAccount) {
+                setAccountId(cashAccount.id);
+              } else if ((m === "card" || m === "transfer") && accountId === cashAccount?.id) {
+                if (bankAccounts[0]) setAccountId(bankAccounts[0].id);
+              }
+            }}
+          >
             <SelectTrigger className="h-9 text-xs rounded-lg mt-1">
               <SelectValue />
             </SelectTrigger>
@@ -1487,6 +1650,42 @@ function TransactionCreateForm({
           className="h-9 text-xs rounded-lg mt-1"
           placeholder="Añade un detalle o referencia..."
         />
+      </div>
+
+      {/* Comprobante */}
+      <div>
+        <Label className="text-xs">Comprobante (opcional)</Label>
+        <Input
+          type="file"
+          accept="image/*"
+          onChange={(e) => {
+            const file = e.target.files?.[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = () => {
+              setReceipt(typeof reader.result === "string" ? reader.result : undefined);
+            };
+            reader.readAsDataURL(file);
+          }}
+          className="h-9 text-xs rounded-lg mt-1 file:mr-2 file:py-1 file:px-2 file:rounded-md file:border-0 file:text-xs file:bg-muted"
+        />
+        {receipt && (
+          <div className="relative mt-2 inline-block">
+            <img
+              src={receipt}
+              alt="Comprobante"
+              className="rounded-lg max-h-24 object-contain bg-black/5 dark:bg-white/5 p-1"
+            />
+            <button
+              type="button"
+              onClick={() => setReceipt(undefined)}
+              className="absolute top-1 right-1 size-5 rounded-full bg-black/70 text-white flex items-center justify-center text-xs hover:bg-black"
+              title="Quitar comprobante"
+            >
+              <X className="size-3" />
+            </button>
+          </div>
+        )}
       </div>
 
       <div className="flex justify-end gap-2 pt-3">

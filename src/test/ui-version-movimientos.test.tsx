@@ -16,6 +16,8 @@ global.ResizeObserver = MockResizeObserver as unknown as typeof ResizeObserver;
 const mockAddTx = vi.fn();
 const mockUpdateTx = vi.fn();
 const mockRemoveTx = vi.fn();
+const mockRemoveDebt = vi.fn();
+const mockRemoveDebtPayment = vi.fn();
 const mockSetSyncFiltersToURL = vi.fn();
 
 let mockState = {
@@ -40,6 +42,8 @@ vi.mock("@/hooks/useFinanceData", () => ({
     addTx: mockAddTx,
     updateTx: mockUpdateTx,
     removeTx: mockRemoveTx,
+    removeDebt: mockRemoveDebt,
+    removeDebtPayment: mockRemoveDebtPayment,
     syncFiltersToURL: mockState.syncFiltersToURL,
     setSyncFiltersToURL: mockSetSyncFiltersToURL,
   }),
@@ -48,6 +52,7 @@ vi.mock("@/hooks/useFinanceData", () => ({
 describe("Sprint 4 — MovimientosV2 & Dual Dispatcher Suite", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    window.innerWidth = 1200;
 
     mockState = {
       accounts: [
@@ -438,6 +443,142 @@ describe("Sprint 4 — MovimientosV2 & Dual Dispatcher Suite", () => {
 
     // En móvil, se abre el drawer con rol dialog o drawer title
     expect(screen.getByText("Inspecciona o edita los detalles de la transacción.")).toBeInTheDocument();
+  });
+
+  // 10. Eliminación de deudas virtuales y abonos
+  it("permite eliminar préstamos y abonos de deuda llamando a removeDebt y removeDebtPayment", () => {
+    // Añadir abono a la deuda
+    mockState.debts[0].payments.push({
+      id: "pay-1",
+      amount: 400,
+      date: "2026-10-17T12:00:00.000Z",
+      note: "Primer abono",
+      paymentMethod: "transfer",
+    });
+
+    render(
+      <MemoryRouter>
+        <MovimientosV2 />
+      </MemoryRouter>
+    );
+
+    // Seleccionar el préstamo virtual
+    fireEvent.click(screen.getByText("Préstamo a Carlos Méndez"));
+    const inspector = screen.getByRole("complementary", { name: /inspector de detalle/i });
+    const deleteLoanBtn = within(inspector).getByRole("button", { name: /eliminar préstamo/i });
+    fireEvent.click(deleteLoanBtn);
+
+    // Confirmar eliminación de préstamo
+    fireEvent.click(screen.getByRole("button", { name: "Eliminar" }));
+    expect(mockRemoveDebt).toHaveBeenCalledWith("debt-1");
+
+    // Seleccionar el abono virtual
+    fireEvent.click(screen.getByText("Abono a Carlos Méndez"));
+    const deletePayBtn = within(inspector).getByRole("button", { name: /eliminar abono de deuda/i });
+    fireEvent.click(deletePayBtn);
+
+    // Confirmar eliminación de abono
+    fireEvent.click(screen.getByRole("button", { name: "Eliminar" }));
+    expect(mockRemoveDebtPayment).toHaveBeenCalledWith("debt-1", "pay-1");
+  });
+
+  // 11. Filtro temporal fuera del mes activo
+  it("filtra correctamente transacciones por rango de fechas personalizado fuera del mes activo", () => {
+    // Añadir transacción en septiembre (mes 8, mientras activeMonth es 9)
+    mockState.transactions.push({
+      id: "tx-sep",
+      concept: "Honorarios Septiembre",
+      amount: 12000,
+      type: "income",
+      date: "2026-09-15T12:00:00.000Z",
+      category: "Trabajo",
+      accountId: "acc-1",
+    });
+
+    render(
+      <MemoryRouter>
+        <MovimientosV2 />
+      </MemoryRouter>
+    );
+
+    // Al inicio (Mes activo: Octubre), no debe verse Honorarios Septiembre
+    expect(screen.queryByText("Honorarios Septiembre")).not.toBeInTheDocument();
+
+    // Activar preset 'Personalizado'
+    const customPresetBtn = screen.getByRole("button", { name: "Personalizado" });
+    fireEvent.click(customPresetBtn);
+
+    // Ingresar rango de septiembre
+    const dateFromInput = screen.getByLabelText("Fecha desde");
+    const dateToInput = screen.getByLabelText("Fecha hasta");
+    fireEvent.change(dateFromInput, { target: { value: "2026-09-01" } });
+    fireEvent.change(dateToInput, { target: { value: "2026-09-30" } });
+
+    // Ahora debe mostrar Honorarios Septiembre y ocultar las de octubre
+    expect(screen.getByText("Honorarios Septiembre")).toBeInTheDocument();
+    expect(screen.queryByText("Nómina Quincenal")).not.toBeInTheDocument();
+  });
+
+  // 12. Validaciones de formulario
+  it("valida campos requeridos y validación de cuentas en traspasos", () => {
+    render(
+      <MemoryRouter>
+        <MovimientosV2 />
+      </MemoryRouter>
+    );
+
+    const newBtn = screen.getAllByRole("button", { name: /nuevo movimiento/i })[0];
+    fireEvent.click(newBtn);
+
+    // Cambiar a traspaso
+    const transferBtn = screen.getByRole("button", { name: "Traspasos" });
+    fireEvent.click(transferBtn);
+
+    // Intentar registrar con mismo origen y destino
+    const conceptInput = screen.getByPlaceholderText(/traspaso entre cuentas/i);
+    fireEvent.change(conceptInput, { target: { value: "Traspaso de prueba" } });
+
+    const amountInput = screen.getByPlaceholderText("0.00");
+    fireEvent.change(amountInput, { target: { value: "500" } });
+
+    // Al tener cuentas distintas por defecto (acc-1 y acc-2), registrar exitosamente
+    const submitBtn = screen.getByRole("button", { name: /registrar movimiento/i });
+    fireEvent.click(submitBtn);
+
+    expect(mockAddTx).toHaveBeenCalledTimes(1);
+    expect(mockAddTx).toHaveBeenCalledWith(
+      expect.objectContaining({
+        type: "transfer",
+        concept: "Traspaso de prueba",
+        amount: 500,
+      })
+    );
+  });
+
+  // 13. Búsqueda por notas
+  it("busca transacciones por texto presente en notas además de concepto", () => {
+    mockState.transactions.push({
+      id: "tx-note",
+      concept: "Reembolso viáticos",
+      amount: 450,
+      type: "income",
+      date: "2026-10-20T12:00:00.000Z",
+      category: "Trabajo",
+      accountId: "acc-1",
+      note: "Factura A-9842 taxi aeropuerto",
+    });
+
+    render(
+      <MemoryRouter>
+        <MovimientosV2 />
+      </MemoryRouter>
+    );
+
+    const searchInput = screen.getByPlaceholderText(/buscar por concepto, categoría o método/i);
+    fireEvent.change(searchInput, { target: { value: "A-9842" } });
+
+    expect(screen.getByText("Reembolso viáticos")).toBeInTheDocument();
+    expect(screen.queryByText("Nómina Quincenal")).not.toBeInTheDocument();
   });
 });
 
