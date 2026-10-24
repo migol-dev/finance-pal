@@ -4,6 +4,7 @@ import {
     UserProfile,
     AppSettings,
     AccentColor,
+    UIVersion,
     NotificationPreferences,
     AccessibilitySettings,
     ChangeLogEntry,
@@ -25,6 +26,8 @@ export interface SettingsSlice {
     toggleTheme: () => void;
     setProfile: (p: Partial<UserProfile>) => void;
     setSyncFiltersToURL: (v: boolean) => void;
+    setUIVersion: (v: UIVersion) => void;
+    toggleUIVersion: () => void;
     setAccentColor: (color: AccentColor) => void;
     setCompactMode: (compact: boolean) => void;
     setGlassEffect: (glass: boolean) => void;
@@ -48,7 +51,8 @@ export const createSettingsSlice: StateCreator<
     theme: 'system',
     profile: { name: '', currency: 'MXN' },
     appSettings: {
-        accentColor: 'blue',
+        uiVersion: 'v2',
+        accentColor: 'emerald',
         compactMode: false,
         glassEffect: true,
         conflictResolved: false,
@@ -73,6 +77,17 @@ export const createSettingsSlice: StateCreator<
     },
 
     setSyncFiltersToURL: (v) => set({ syncFiltersToURL: v }),
+
+    setUIVersion: (uiVersion) =>
+        set((s) => ({ appSettings: { ...s.appSettings, uiVersion } })),
+
+    toggleUIVersion: () =>
+        set((s) => ({
+            appSettings: {
+                ...s.appSettings,
+                uiVersion: (s.appSettings.uiVersion ?? 'v2') === 'v2' ? 'classic' : 'v2',
+            },
+        })),
 
     setAccentColor: (color) =>
         set((s) => ({ appSettings: { ...s.appSettings, accentColor: color } })),
