@@ -2,6 +2,10 @@ import { ReactNode, useEffect, useRef, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { BottomNav } from "./BottomNav";
 import { DesktopSidebar } from "./DesktopSidebar";
+import { BottomNavV2 } from "./BottomNavV2";
+import { DesktopSidebarV2 } from "./DesktopSidebarV2";
+import { CommandPalette } from "./CommandPalette";
+import { QuickTransactionSheet } from "./QuickTransactionSheet";
 import { useFinanceData } from "@/hooks/useFinanceData";
 import { useSystemTheme } from "@/hooks/useSystemTheme";
 import { useNotificationScheduler } from "@/hooks/useNotificationScheduler";
@@ -198,7 +202,7 @@ export function AppShell({ children }: { children: ReactNode }) {
     <div className="min-h-screen bg-background text-foreground">
       {booting && <SplashScreen />}
       <div className="lg:flex lg:h-screen lg:overflow-hidden">
-        <DesktopSidebar />
+        {uiVersion === "v2" ? <DesktopSidebarV2 /> : <DesktopSidebar />}
         <main
           onTouchStart={onTouchStart}
           onTouchEnd={onTouchEnd}
@@ -210,7 +214,15 @@ export function AppShell({ children }: { children: ReactNode }) {
         </main>
       </div>
       <NotificationPermissionPrompt />
-      <BottomNav />
+      {uiVersion === "v2" ? (
+        <>
+          <BottomNavV2 />
+          <CommandPalette />
+          <QuickTransactionSheet />
+        </>
+      ) : (
+        <BottomNav />
+      )}
       <DesignCompareToggle />
     </div>
   );

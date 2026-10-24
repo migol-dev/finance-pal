@@ -234,7 +234,7 @@ exports[`UI Snapshots > renders Dashboard snapshot 1`] = `
               <defs>
                 <lineargradient
                   gradientUnits="userSpaceOnUse"
-                  id="fp-v2-coin-static"
+                  id="fp-v2-coin-r0"
                   x1="20"
                   x2="32"
                   y1="12"
@@ -266,7 +266,7 @@ exports[`UI Snapshots > renders Dashboard snapshot 1`] = `
               <circle
                 cx="25.5"
                 cy="17"
-                fill="url(#fp-v2-coin-static)"
+                fill="url(#fp-v2-coin-r0)"
                 r="3.6"
               />
               <circle

@@ -1,40 +1,40 @@
-# Graph Report - builder  (2026-10-24)
+# Graph Report - finance-pal  (2026-10-24)
 
 ## Corpus Check
-- 270 files · ~479,062 words
+- 271 files · ~482,096 words
 - Verdict: corpus is large enough that graph structure adds value.
-- Unclassified: 34 file(s) not represented in the graph (top: .xml 14, (none) 7, .toml 4)
+- Unclassified: 33 file(s) not represented in the graph (top: .xml 14, (none) 6, .toml 4)
 
 ## Summary
-- 1917 nodes · 5377 edges · 140 communities (88 shown, 52 thin omitted)
-- Extraction: 98% EXTRACTED · 2% INFERRED · 0% AMBIGUOUS · INFERRED: 87 edges (avg confidence: 0.9)
+- 1929 nodes · 5394 edges · 135 communities (83 shown, 52 thin omitted)
+- Extraction: 98% EXTRACTED · 2% INFERRED · 0% AMBIGUOUS · INFERRED: 88 edges (avg confidence: 0.9)
 - Token cost: 0 input · 0 output
 
 ## Graph Freshness
-- Built from commit: `1c320e2b`
+- Built from commit: `72943fff`
 - Run `git rev-parse HEAD` and compare to check if the graph is stale.
 - Run `graphify update .` after code changes (no API cost).
 
 ## Community Hubs (Navigation)
-- useFinanceData
-- finance-store.ts
+- Button
+- lucide-react
 - Autonomous Notification & Scheduling Engine
 - Core Dependencies & Third-Party Packages
 - notifications.ts
 - Autonomous Notification & Scheduling Engine
-- useNotificationScheduler.ts
+- finance.ts
 - class-variance-authority
 - Cloud Sync & Offline State Engine
 - Navigation Shell & Responsive Drawers
-- Savings Goals & Folder Organization
+- Metas.tsx
 - Build Configuration & Tooling Infrastructure
 - encrypted-storage.ts
 - Brand Identity & Accent Palettes
 - Interactive Toast Notification System
 - Autonomous Notification & Scheduling Engine
-- Core Dependencies & Third-Party Packages
+- react
 - supabase.ts
-- Account
+- finance-store.ts
 - Brand Identity & Accent Palettes
 - Debt Management & Loan Tracking
 - Navigation Shell & Responsive Drawers
@@ -43,8 +43,8 @@
 - Build Configuration & Tooling Infrastructure
 - Supabase Authentication & Security Context
 - version-check.ts
-- sanitizers.ts
-- schema-migrations.ts
+- Movimientos.tsx
+- GoalDetailContent.tsx
 - Savings Goals & Folder Organization
 - Core Dependencies & Third-Party Packages
 - Schema Validation & Domain Rules
@@ -54,7 +54,7 @@
 - app-error.ts
 - Build Configuration & Tooling Infrastructure
 - chart.tsx
-- BrandLogo.tsx
+- transactions.service.ts
 - Core Dependencies & Third-Party Packages
 - mfa-auth.test.ts
 - accounts.service.ts
@@ -67,7 +67,7 @@
 - Build Configuration & Tooling Infrastructure
 - Core Dependencies & Third-Party Packages
 - accent-palette.ts
-- recharts
+- FolderChips.tsx
 - rate-limiter.ts
 - scroll-area.tsx
 - 📐 Arquitectura & Plan Maestro: Rediseño Integral Finance Pal v2 (Sprint 1: Fundación Dual, Identidad Warm Editorial & Logo FP Animado)
@@ -79,7 +79,7 @@
 - 🛠️ Registro de Ejecución y Checkpoints: Constructor CLI (`02_OPENCODE_TASKS.md`)
 - 🔍 Registro de Revisión, Auditoría y Cierre: Antigravity CLI (`03_ANTIGRAVITY_REVIEW.md`)
 - Login.tsx
-- breadcrumb.tsx
+- 📐 Arquitectura & Plan Maestro: [PENDIENTE DE ASIGNAR TAREA]
 - 📐 Arquitectura & Plan Maestro: [NOMBRE_DE_LA_CARACTERÍSTICA]
 - Build Configuration & Tooling Infrastructure
 - dependabot.yml Subsystem
@@ -90,10 +90,10 @@
 - PENTEST_CHECKLIST.md Subsystem
 - robots.txt Subsystem
 - generate-font-sri.js
-- input-otp.tsx
+- @capacitor/core
 - architecture.md
-- accordion.tsx
-- setup.ts
+- useSessionManager.ts
+- cleanup-receipts.js
 - web-vitals.ts
 - 📐 Arquitectura & Plan Maestro: [NOMBRE_DE_LA_CARACTERÍSTICA]
 - generate-font-sri.js
@@ -102,20 +102,14 @@
 - 🛠️ Registro de Ejecución y Checkpoints: OpenCode CLI
 - sheet.tsx
 - find-unused-deps.cjs
+- Directivas Principales
 - ⚡ Guía Paso a Paso: Ciclo Completo de una Tarea
 - 🔍 Registro de Revisión, Auditoría y Cierre: Antigravity CLI
 - 🔐 Auditoría de Seguridad y Privacidad — Finance Pal
-- Plan de Mitigación Accionable
 - ZAP Scanning Report
-- 🛡️ Auditoría Integral de Seguridad y Privacidad — Finance Pal v1.21.0
-- worktree-manager.sh
 - SyncIndicator.tsx
 - 2. `F3.2` — OAuth, PKCE, redirects y callback (`T10`, `SEC-012`)
 - 🧪 Evidencia F0 — Preparación, Estructura y Verificación de Entorno
-- 🤖 Prompt de Sistema / Rol: Antigravity Revisor, Auditor Lead y Finalizador (Fase 3)
-- Área 6: Seguridad de la Plataforma y Configuración
-- Reference
-- Tablero de Ejecución de Tareas — OpenCode CLI (`02_OPENCODE_TASKS.md`)
 - MigracionNube.tsx
 - [ Cross-Origin-Opener-Policy Header Missing or Invalid ](https://www.zaproxy.org/docs/alerts/90004/)
 - capacitor.config.ts
@@ -128,7 +122,7 @@
 1. `cn()` - 255 edges
 2. `react` - 102 edges
 3. `useFinance` - 92 edges
-4. `useFinanceData()` - 67 edges
+4. `useFinanceData()` - 68 edges
 5. `Button` - 63 edges
 6. `AppError` - 62 edges
 7. `lucide-react` - 61 edges
@@ -137,8 +131,8 @@
 10. `useAuth()` - 33 edges
 
 ## Surprising Connections (you probably didn't know these)
-- `12.1 Dictamen ejecutivo` --references--> `MainActivity`  [INFERRED]
-  .agent/security_audit.md → android/app/src/main/java/app/financepal/com/MainActivity.java
+- `2. Alineación Arquitectónica (Finance Pal Local-First)` --references--> `useFinanceData()`  [INFERRED]
+  .agent/workflow/01_ARCHITECT_PLAN.md → src/hooks/useFinanceData.ts
 - `3. Alineación Arquitectónica (Finance Pal Local-First)` --references--> `useFinanceData()`  [INFERRED]
   .agent/workflow/01_ARCHITECT_PLAN.md → src/hooks/useFinanceData.ts
 - `6. Verificación de Criterios de Aceptación (Sign-off)` --references--> `useFinanceData()`  [INFERRED]
@@ -151,67 +145,63 @@
 ## Import Cycles
 - None detected.
 
-## Hyperedges (group relationships)
-- **Local-First Architecture Triad (Zustand + React Query + Facade)** — agent_rules_architecture_local_first_architecture, agent_rules_architecture_state_synchronization_facade, src_hooks_usefinancedata_usefinancedata, src_store_finance_store_usefinance [EXTRACTED 1.00]
-- **Continuous Security and Quality Assurance Gate** — pentest_checklist_pentest_security_scope, github_workflows_ci_ci_build_and_test_pipeline, changelog_notification_scheduler_engine [INFERRED 0.85]
+## Communities (135 total, 52 thin omitted)
 
-## Communities (140 total, 52 thin omitted)
+### Community 0 - "Button"
+Cohesion: 0.19
+Nodes (32): react-easy-crop, sonner, AccessibilitySettings, Props, IconPicker(), Props, Button, DenominationsEditor() (+24 more)
 
-### Community 0 - "useFinanceData"
-Cohesion: 0.05
-Nodes (159): Finance Pal Core Product Spec, lucide-react, react, react-easy-crop, sonner, AccessibilitySettings, ElegantConfirm(), ElegantConfirmProps (+151 more)
-
-### Community 1 - "finance-store.ts"
+### Community 1 - "lucide-react"
 Cohesion: 0.10
-Nodes (25): @capacitor/core, @capacitor/filesystem, vitest, DesignCompareToggle, SplashScreen, buildScheduledTxId(), DEFAULT_ACCESSIBILITY_SETTINGS, getDueOccurrencesForFixedItem() (+17 more)
+Nodes (31): lucide-react, Checkbox, Switch, cancelAllLocalNotifications(), sendTestNotification(), normalizeImportKeys(), setSyncEnabled(), Ajustes (+23 more)
 
 ### Community 2 - "Autonomous Notification & Scheduling Engine"
 Cohesion: 0.03
 Nodes (68): dependencies, @capacitor/app, @capacitor/browser, @capacitor/core, @capacitor/filesystem, @capacitor/local-notifications, @capacitor/network, @capacitor/push-notifications (+60 more)
 
 ### Community 3 - "Core Dependencies & Third-Party Packages"
-Cohesion: 0.07
-Nodes (46): @radix-ui/react-context-menu, @radix-ui/react-menubar, @radix-ui/react-tabs, ContextMenuCheckboxItem, ContextMenuContent, ContextMenuItem, ContextMenuLabel, ContextMenuRadioItem (+38 more)
+Cohesion: 0.06
+Nodes (53): @radix-ui/react-context-menu, @radix-ui/react-dropdown-menu, @radix-ui/react-menubar, @radix-ui/react-slot, react-resizable-panels, Breadcrumb, BreadcrumbEllipsis(), BreadcrumbItem (+45 more)
 
 ### Community 4 - "notifications.ts"
-Cohesion: 0.13
-Nodes (33): DEFAULT_NOTIFICATION_PREFS, ANDROID_CHANNEL_ID, applyPreferredTimeAndQuietHours(), buildRepeatWindowKey(), cancelAllLocalNotifications(), cancelLocalNotification(), clearDeliveredNotificationsLog(), computeFixedItemNotifications() (+25 more)
+Cohesion: 0.08
+Nodes (50): @capacitor/local-notifications, @capacitor/push-notifications, isRecentlyDismissed(), NotificationPermissionPrompt(), listeners, notifySchedulerListeners(), SharedSchedulerState, sharedState (+42 more)
 
 ### Community 5 - "Autonomous Notification & Scheduling Engine"
 Cohesion: 0.05
-Nodes (45): name, private, type, version, autoprefixer, @capacitor/android, @capacitor/app, @capacitor/local-notifications (+37 more)
+Nodes (43): name, private, type, version, autoprefixer, @capacitor/android, @capacitor/app, @capacitor/share (+35 more)
 
-### Community 6 - "useNotificationScheduler.ts"
-Cohesion: 0.22
-Nodes (16): isRecentlyDismissed(), NotificationPermissionPrompt(), listeners, notifySchedulerListeners(), SharedSchedulerState, sharedState, useNotificationScheduler(), NotificationPermissionState (+8 more)
+### Community 6 - "finance.ts"
+Cohesion: 0.09
+Nodes (33): buildScheduledTxId(), CATEGORY_EMOJI, ColorBlindMode, emojiFor(), FixedOccurrenceInfo, FREQ_LABEL, Frequency, getDueOccurrencesForFixedItem() (+25 more)
 
 ### Community 7 - "class-variance-authority"
-Cohesion: 0.10
-Nodes (24): getDeviceId(), getDeviceName(), SessionState, useSessionManager(), logger, abortControllers, ALLOWED_TABLES, getUserLock() (+16 more)
+Cohesion: 0.16
+Nodes (16): logger, abortControllers, ALLOWED_TABLES, getUserLock(), processingLocks, processSyncQueue(), setAbortController(), setupSyncListener() (+8 more)
 
 ### Community 8 - "Cloud Sync & Offline State Engine"
-Cohesion: 0.09
-Nodes (30): next-themes, react-dom, @tanstack/query-async-storage-persister, @tanstack/react-query-persist-client, Ajustes, AnimatedRoutes(), Anual, App() (+22 more)
+Cohesion: 0.12
+Nodes (25): @tanstack/query-async-storage-persister, Ajustes, AnimatedRoutes(), Anual, App(), AuthCallback, AuthGuard(), containsImplicitTokens() (+17 more)
 
 ### Community 9 - "Navigation Shell & Responsive Drawers"
 Cohesion: 0.07
 Nodes (29): Separator, SidebarContent, SidebarContext, SidebarFooter, SidebarGroup, SidebarGroupAction, SidebarGroupContent, SidebarGroupLabel (+21 more)
 
-### Community 10 - "Savings Goals & Folder Organization"
-Cohesion: 0.12
-Nodes (26): vaul, Drawer(), DrawerContent, DrawerDescription, DrawerFooter(), DrawerHeader(), DrawerOverlay, DrawerTitle (+18 more)
+### Community 10 - "Metas.tsx"
+Cohesion: 0.10
+Nodes (31): Props, Header, IconDisplay, UpdateNotificationProps, DropdownMenuContent, DropdownMenuItem, Goal, GoalFolder (+23 more)
 
 ### Community 11 - "Build Configuration & Tooling Infrastructure"
 Cohesion: 0.06
 Nodes (33): devDependencies, autoprefixer, @capacitor/android, @capacitor/cli, cross-env, cssnano, eslint, @eslint/js (+25 more)
 
 ### Community 12 - "encrypted-storage.ts"
-Cohesion: 0.09
-Nodes (45): ALL_ENCRYPTED_STATE_KEYS, base64ToBytes(), bytesToBase64(), clearAllReceipts(), clearDevicePeppers(), clearEncryptedState(), clearKeyCache(), decryptData() (+37 more)
+Cohesion: 0.08
+Nodes (50): ALL_ENCRYPTED_STATE_KEYS, base64ToBytes(), bytesToBase64(), clearAllReceipts(), clearDevicePeppers(), clearEncryptedState(), clearKeyCache(), decryptData() (+42 more)
 
 ### Community 13 - "Brand Identity & Accent Palettes"
-Cohesion: 0.24
-Nodes (11): react-router-dom, applyAccentVars(), AppShell(), SWIPE_ROUTES, BottomNav, DesktopSidebar, NavItem, navItems (+3 more)
+Cohesion: 0.18
+Nodes (15): react-router-dom, applyAccentVars(), AppShell(), SWIPE_ROUTES, BottomNav, BrandLogo, BrandLogoProps, SIZE_MAP (+7 more)
 
 ### Community 14 - "Interactive Toast Notification System"
 Cohesion: 0.12
@@ -219,27 +209,27 @@ Nodes (25): @radix-ui/react-toast, Toast, ToastAction, ToastActionElement, Toast
 
 ### Community 15 - "Autonomous Notification & Scheduling Engine"
 Cohesion: 0.07
-Nodes (32): zod, AccountType, ChangeAction, ChangeEntity, NotificationRepeatFrequency, accountSchema, accountTypeSchema, changeActionSchema (+24 more)
+Nodes (32): zod, AccountType, ChangeAction, ChangeEntity, accountSchema, accountTypeSchema, changeActionSchema, changeEntitySchema (+24 more)
 
-### Community 16 - "Core Dependencies & Third-Party Packages"
-Cohesion: 0.07
-Nodes (19): @radix-ui/react-avatar, @radix-ui/react-hover-card, @radix-ui/react-popover, @radix-ui/react-radio-group, react-resizable-panels, StatPill, NavLink, NavLinkCompatProps (+11 more)
+### Community 16 - "react"
+Cohesion: 0.06
+Nodes (30): input-otp, @radix-ui/react-accordion, @radix-ui/react-avatar, @radix-ui/react-hover-card, @radix-ui/react-popover, @radix-ui/react-radio-group, @radix-ui/react-tabs, react (+22 more)
 
 ### Community 17 - "supabase.ts"
-Cohesion: 0.19
-Nodes (17): @supabase/supabase-js, @tanstack/react-query, DataConflictDialog(), Props, AuthContext, AuthContextType, useAuth(), useFixedItemsQuery() (+9 more)
+Cohesion: 0.13
+Nodes (28): @supabase/supabase-js, @tanstack/react-query, AuthContext, AuthContextType, useAuth(), useAccountsQuery(), useDebtsQuery(), useFixedItemsQuery() (+20 more)
 
-### Community 18 - "Account"
-Cohesion: 0.15
-Nodes (26): zustand, AccountMutations, TransactionMutations, deleteReceipt(), extractReceiptsToIndexedDB(), saveReceipt(), Account, ChangeLogEntry (+18 more)
+### Community 18 - "finance-store.ts"
+Cohesion: 0.08
+Nodes (71): Sprint 1 — Fundación Dual (`uiVersion`), Paleta Warm Editorial, Logo FP Vectorial & SplashScreen Animado, @capacitor/filesystem, vitest, zustand, DesignCompareToggle, SplashScreen, UiSelection, extractReceiptsToIndexedDB() (+63 more)
 
 ### Community 19 - "Brand Identity & Accent Palettes"
 Cohesion: 0.10
 Nodes (22): @radix-ui/react-alert-dialog, react-day-picker, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter(), AlertDialogHeader() (+14 more)
 
 ### Community 20 - "Debt Management & Loan Tracking"
-Cohesion: 0.12
-Nodes (29): Vistas de Seguridad (Column-Level Security), AddDebtPaymentInput, DebtMutations, isOffline(), RemoveDebtPaymentInput, useDebtMutations(), useAccountsQuery(), useDebtsQuery() (+21 more)
+Cohesion: 0.20
+Nodes (19): AddDebtPaymentInput, DebtMutations, isOffline(), RemoveDebtPaymentInput, useDebtMutations(), Debt, DebtPayment, DebtInsertPayload (+11 more)
 
 ### Community 21 - "Navigation Shell & Responsive Drawers"
 Cohesion: 0.18
@@ -247,7 +237,7 @@ Nodes (11): cmdk, Command, CommandDialog(), CommandDialogProps, CommandEmpty, Co
 
 ### Community 22 - "Autonomous Notification & Scheduling Engine"
 Cohesion: 0.16
-Nodes (29): CloudSyncMutations, useCloudSyncMutations(), scheduledInFlightKeys, AccentColor, AccessibilitySettings, AppSettings, NotificationPreferences, ThemeMode (+21 more)
+Nodes (28): CloudSyncMutations, useCloudSyncMutations(), scheduledInFlightKeys, NotificationPreferences, ThemeMode, UserProfile, mapAccountFromDb(), CloudSettings (+20 more)
 
 ### Community 24 - "Build Configuration & Tooling Infrastructure"
 Cohesion: 0.10
@@ -259,19 +249,19 @@ Nodes (15): class-variance-authority, @radix-ui/react-toggle, @radix-ui/react-to
 
 ### Community 26 - "version-check.ts"
 Cohesion: 0.21
-Nodes (15): UpdateNotification(), check(), useUpdateToast(), check(), checkForUpdates(), compareVersions(), dismissVersion(), fetchLatestTag() (+7 more)
+Nodes (14): UpdateNotification(), check(), useUpdateToast(), check(), checkForUpdates(), compareVersions(), dismissVersion(), fetchLatestTag() (+6 more)
 
-### Community 27 - "sanitizers.ts"
-Cohesion: 0.39
-Nodes (17): inSet(), isBool(), isNum(), isObj(), isStr(), isValidUUID(), migrateImported(), normalizeImportKeys() (+9 more)
+### Community 27 - "Movimientos.tsx"
+Cohesion: 0.18
+Nodes (28): Finance Pal Core Product Spec, ElegantConfirm(), ElegantConfirmProps, MonthSwitcher, DialogContent, DialogContentProps, DialogDescription, DialogHeader() (+20 more)
 
-### Community 28 - "schema-migrations.ts"
-Cohesion: 0.27
-Nodes (9): Currency, CURRENT_SCHEMA_VERSION, getDefaultAppSettings(), mergeLocalCloudData(), migrateData(), MigrationContext, MigrationResult, migrations (+1 more)
+### Community 28 - "GoalDetailContent.tsx"
+Cohesion: 0.21
+Nodes (27): Series, SimpleAreaChart(), Slider, actualGoalAt(), daysBetween(), expectedGoalAt(), fmt2(), fmtDate() (+19 more)
 
 ### Community 29 - "Savings Goals & Folder Organization"
-Cohesion: 0.38
-Nodes (9): isOffline(), useGoalFolderMutations(), deleteGoalFolder(), GoalFolderUpdatePayload, insertGoalFolder(), reorderGoalFolders(), toInsertPayload(), toUpdatePayload() (+1 more)
+Cohesion: 0.26
+Nodes (12): GoalFolderMutations, isOffline(), useGoalFolderMutations(), deleteGoalFolder(), GoalFolderInsertPayload, GoalFolderRow, GoalFolderUpdatePayload, insertGoalFolder() (+4 more)
 
 ### Community 30 - "Core Dependencies & Third-Party Packages"
 Cohesion: 0.11
@@ -282,32 +272,32 @@ Cohesion: 0.12
 Nodes (16): aliases, components, hooks, lib, ui, utils, rsc, $schema (+8 more)
 
 ### Community 32 - "App Version Check & Update Toast"
-Cohesion: 0.28
-Nodes (13): FixedItemMutations, isOffline(), useFixedItemMutations(), FixedItem, deleteFixedItem(), FixedItemInsertPayload, FixedItemRow, FixedItemUpdatePayload (+5 more)
+Cohesion: 0.26
+Nodes (14): FixedItemMutations, isOffline(), useFixedItemMutations(), FixedItem, supabase, deleteFixedItem(), FixedItemInsertPayload, FixedItemRow (+6 more)
 
 ### Community 33 - "Session Lifecycle & Device Management"
 Cohesion: 0.18
 Nodes (11): corsHeaders, daysBetween(), DEFAULT_PREFS, getNextFixedDueDates(), isDateInQuietHours(), isFixedActiveInMonth(), parseDateSafe(), parseTimeHHMM() (+3 more)
 
 ### Community 34 - "Savings Goals & Folder Organization"
-Cohesion: 0.19
-Nodes (16): ContributeToGoalInput, GoalMutations, isOffline(), useGoalMutations(), addGoalContribution(), deleteGoal(), fetchGoals(), GoalContributionInput (+8 more)
+Cohesion: 0.20
+Nodes (15): ContributeToGoalInput, GoalMutations, isOffline(), useGoalMutations(), addGoalContribution(), deleteGoal(), GoalContributionInput, GoalContributionRow (+7 more)
 
 ### Community 35 - "app-error.ts"
 Cohesion: 0.22
-Nodes (7): ErrorCode, errorFromUnknown(), ErrorSeverity, LogEntry, LogLevel, logs, showUserError()
+Nodes (8): ErrorCode, errorFromUnknown(), ErrorSeverity, handleError(), LogEntry, LogLevel, logs, showUserError()
 
 ### Community 36 - "Build Configuration & Tooling Infrastructure"
 Cohesion: 0.12
 Nodes (15): compilerOptions, allowImportingTsExtensions, isolatedModules, lib, module, moduleDetection, moduleResolution, noEmit (+7 more)
 
 ### Community 37 - "chart.tsx"
-Cohesion: 0.27
-Nodes (10): ChartConfig, ChartContainer, ChartContext, ChartContextProps, ChartLegendContent, ChartStyle(), ChartTooltipContent, getPayloadConfigFromPayload() (+2 more)
+Cohesion: 0.18
+Nodes (12): recharts, ChartConfig, ChartContainer, ChartContext, ChartContextProps, ChartLegendContent, ChartStyle(), ChartTooltipContent (+4 more)
 
-### Community 38 - "BrandLogo.tsx"
-Cohesion: 0.31
-Nodes (7): 6. Plan de Ejecución Secuencial para el Constructor (`agy` — Gemini 3.8 Flash), Fase F1: Fundación Dual, Identidad Warm Editorial & Logo Animado, BrandLogo, BrandLogoProps, SIZE_MAP, UIVersion, NotFound()
+### Community 38 - "transactions.service.ts"
+Cohesion: 0.27
+Nodes (11): isOffline(), TransactionMutations, useTransactionMutations(), deleteTransaction(), insertTransaction(), toInsertPayload(), toUpdatePayload(), TransactionInsertPayload (+3 more)
 
 ### Community 39 - "Core Dependencies & Third-Party Packages"
 Cohesion: 0.17
@@ -318,20 +308,20 @@ Cohesion: 0.22
 Nodes (18): 12.10 Certificación del Sprint de Remediación P0 (`v1.21.1-p0-remediation` — 2026-10-20), audit, AuditAction, AuditEntry, clearAuditLogs(), computeHash(), exportAuditLogs(), GENESIS_HASH (+10 more)
 
 ### Community 42 - "ref_path"
-Cohesion: 0.18
-Nodes (9): lovable-tagger, rollup-plugin-visualizer, vite, @vitejs/plugin-react-swc, exists(), main(), path, usage() (+1 more)
+Cohesion: 0.25
+Nodes (5): lovable-tagger, rollup-plugin-visualizer, vite, @vitejs/plugin-react-swc, packageJson
 
 ### Community 43 - "Core Dependencies & Third-Party Packages"
 Cohesion: 0.19
 Nodes (12): @radix-ui/react-label, react-hook-form, FormControl, FormDescription, FormFieldContext, FormFieldContextValue, FormItem, FormItemContext (+4 more)
 
 ### Community 44 - "useFinanceData.ts"
-Cohesion: 0.18
-Nodes (18): DeleteReceiptForTransactionInput, ReceiptMutations, UploadReceiptForTransactionInput, useReceiptMutations(), isOffline(), useTransactionMutations(), dataUrlToBlob(), deleteReceipt() (+10 more)
+Cohesion: 0.30
+Nodes (10): DeleteReceiptForTransactionInput, ReceiptMutations, UploadReceiptForTransactionInput, useReceiptMutations(), dataUrlToBlob(), deleteReceipt(), getReceiptSignedUrl(), ReceiptUploadInput (+2 more)
 
 ### Community 46 - "App Version Check & Update Toast"
-Cohesion: 0.28
-Nodes (11): isOffline(), useAccountMutations(), supabase, AccountInsertPayload, AccountRow, AccountUpdatePayload, deleteAccount(), insertAccount() (+3 more)
+Cohesion: 0.27
+Nodes (11): AccountMutations, isOffline(), useAccountMutations(), AccountInsertPayload, AccountRow, AccountUpdatePayload, deleteAccount(), insertAccount() (+3 more)
 
 ### Community 47 - "PillTabs.tsx"
 Cohesion: 0.43
@@ -346,8 +336,12 @@ Cohesion: 0.28
 Nodes (8): @radix-ui/react-navigation-menu, NavigationMenu, NavigationMenuContent, NavigationMenuIndicator, NavigationMenuList, NavigationMenuTrigger, navigationMenuTriggerStyle, NavigationMenuViewport
 
 ### Community 50 - "accent-palette.ts"
-Cohesion: 0.43
-Nodes (5): ACCENT_PALETTES, ACCENT_PALETTES_V2, AccentColor, AccentPalette, getAccentPalette()
+Cohesion: 0.31
+Nodes (7): 6. Plan de Ejecución Secuencial para el Constructor (`agy` — Gemini 3.8 Flash), Fase F1: Fundación Dual, Identidad Warm Editorial & Logo Animado, ACCENT_PALETTES, ACCENT_PALETTES_V2, AccentColor, AccentPalette, getAccentPalette()
+
+### Community 51 - "FolderChips.tsx"
+Cohesion: 0.33
+Nodes (9): vaul, Drawer(), DrawerContent, DrawerDescription, DrawerFooter(), DrawerHeader(), DrawerOverlay, DrawerTitle (+1 more)
 
 ### Community 52 - "rate-limiter.ts"
 Cohesion: 0.27
@@ -370,48 +364,48 @@ Cohesion: 0.67
 Nodes (3): @radix-ui/react-scroll-area, ScrollArea, ScrollBar
 
 ### Community 57 - "useFinanceData"
-Cohesion: 0.10
-Nodes (14): State Synchronization Facade, Directivas Principales, 🤖 Prompt de Sistema / Rol: Antigravity Arquitecto & Orquestador (Fase 1), Directivas Principales, 🤖 Prompt de Sistema / Rol: Constructor & Ejecutor (Fase 2 — Antigravity CLI con Gemini 3.8 Flash), Context and Knowledge Protocol (Mandatory for all Agents), Autonomous Notification Scheduler Engine, Context and Knowledge Protocol (Mandatory for Antigravity & Gemini Agents) (+6 more)
+Cohesion: 0.14
+Nodes (8): State Synchronization Facade, 4. ⏳ Cosas que se van a revisar (Backlog de Revisión — Sprint 1), Directivas Principales, 🤖 Prompt de Sistema / Rol: Antigravity Arquitecto & Orquestador (Fase 1), Context and Knowledge Protocol (Mandatory for all Agents), Autonomous Notification Scheduler Engine, Context and Knowledge Protocol (Mandatory for Antigravity & Gemini Agents), useFinanceData()
 
 ### Community 61 - "🛠️ Registro de Ejecución y Checkpoints: Constructor CLI (`02_OPENCODE_TASKS.md`)"
-Cohesion: 0.22
-Nodes (8): 1. Panel de Control de Progreso (Progress Dashboard), 2. Lista de Tareas Detallada y Estado de Ejecución, 3. ⚠️ Registro de Bloqueos, Fallos y Dificultades (Escalation Log), 4. Registro Histórico de Checkpoints (Commits), 5. Resumen de Entrega para Antigravity Reviewer, 🛠️ Registro de Ejecución y Checkpoints: Constructor CLI (`02_OPENCODE_TASKS.md`), Sprint 1 — Fundación Dual (`uiVersion`), Paleta Warm Editorial, Logo FP Vectorial & SplashScreen Animado, UiSelection
+Cohesion: 0.43
+Nodes (7): 1. Panel de Control de Progreso (Progress Dashboard), 2. Lista de Tareas Detallada y Estado de Ejecución, 3. ⚠️ Registro de Bloqueos, Fallos y Dificultades (Escalation Log), 4. Registro Histórico de Checkpoints (Commits), 5. Resumen de Entrega para Antigravity Reviewer, 🛠️ Registro de Ejecución y Checkpoints: Constructor CLI (`02_OPENCODE_TASKS.md`), 🛠️ Registro de Ejecución y Checkpoints: OpenCode CLI (`02_OPENCODE_TASKS.md`)
 
 ### Community 62 - "🔍 Registro de Revisión, Auditoría y Cierre: Antigravity CLI (`03_ANTIGRAVITY_REVIEW.md`)"
 Cohesion: 0.22
-Nodes (8): 1. Panel de Control de la Revisión, 2. 🔍 Cosas que se están revisando actualmente (In Progress), 3. ✅ Cosas que ya se revisaron (Audited & Closed), 4. ⏳ Cosas que se van a revisar (Backlog de Revisión — Sprint 1), 5. 🛠️ Tareas y Lógica Completadas por Antigravity (Escalaciones Resueltas), 6. Verificación de Criterios de Aceptación (Sign-off), 7. Dictamen Final y Recomendación de Fusión (Merge), 🔍 Registro de Revisión, Auditoría y Cierre: Antigravity CLI (`03_ANTIGRAVITY_REVIEW.md`)
+Nodes (8): 1. Panel de Control de la Revisión, 2. 🔍 Cosas que se están revisando actualmente (In Progress), 3. ✅ Cosas que ya se revisaron (Audited & Closed), 4. ⏳ Cosas que se van a revisar (Backlog de Revisión), 5. 🛠️ Tareas y Lógica Completadas por Antigravity (Escalaciones Resueltas), 6. Verificación de Criterios de Aceptación (Sign-off), 7. Dictamen Final y Recomendación de Fusión (Merge), 🔍 Registro de Revisión, Auditoría y Cierre: Antigravity CLI (`03_ANTIGRAVITY_REVIEW.md`)
 
 ### Community 63 - "Login.tsx"
-Cohesion: 0.18
-Nodes (16): Resumen de Hallazgos por Severidad, 🟡 SEC-012 — MEDIO: `isValidRedirectUri` permite cualquier `localhost`, @capacitor/browser, AnimatedBackground(), calculatePasswordStrength(), DEV_REDIRECT_PORTS, FloatingParticles(), getSafeAuthError() (+8 more)
+Cohesion: 0.16
+Nodes (18): Resumen de Hallazgos por Severidad, 🟡 SEC-012 — MEDIO: `isValidRedirectUri` permite cualquier `localhost`, @capacitor/browser, @radix-ui/react-progress, Progress, AnimatedBackground(), calculatePasswordStrength(), DEV_REDIRECT_PORTS (+10 more)
 
-### Community 64 - "breadcrumb.tsx"
-Cohesion: 0.22
-Nodes (8): @radix-ui/react-slot, Breadcrumb, BreadcrumbEllipsis(), BreadcrumbItem, BreadcrumbLink, BreadcrumbList, BreadcrumbPage, BreadcrumbSeparator()
+### Community 64 - "📐 Arquitectura & Plan Maestro: [PENDIENTE DE ASIGNAR TAREA]"
+Cohesion: 0.25
+Nodes (8): 1. Resumen Ejecutivo y Objetivos, 2. Alineación Arquitectónica (Finance Pal Local-First), 3. Mapa de Archivos e Impacto, 4. Tipos, Interfaces y Contratos de Datos, 5. Plan de Ejecución Secuencial para OpenCode CLI (DeepSeek 4.1 Flash), 6. Criterios de Aceptación y Checklist de Calidad, 📐 Arquitectura & Plan Maestro: [PENDIENTE DE ASIGNAR TAREA], Fase F0: Preparación
 
 ### Community 65 - "📐 Arquitectura & Plan Maestro: [NOMBRE_DE_LA_CARACTERÍSTICA]"
 Cohesion: 0.06
-Nodes (13): cloneValue(), compareKeys(), FakeCursor, FakeDatabase, FakeIDBFactory, FakeIDBKeyRange, FakeIndex, FakeObjectStore (+5 more)
+Nodes (17): @testing-library/jest-dom, cloneValue(), compareKeys(), FakeCursor, FakeDatabase, FakeIDBFactory, FakeIDBKeyRange, FakeIndex (+9 more)
 
 ### Community 75 - "generate-font-sri.js"
 Cohesion: 0.29
 Nodes (3): __dirname, __filename, INDEX_HTML_PATH
 
-### Community 76 - "input-otp.tsx"
-Cohesion: 0.33
-Nodes (5): input-otp, InputOTP, InputOTPGroup, InputOTPSeparator, InputOTPSlot
+### Community 76 - "@capacitor/core"
+Cohesion: 0.25
+Nodes (5): @capacitor/core, next-themes, react-dom, Toaster(), ToasterProps
 
 ### Community 101 - "architecture.md"
 Cohesion: 0.40
 Nodes (3): Antigravity Architect Role Contract, Local-First Architecture Pattern, Virtual Debt Transactions Engine
 
-### Community 102 - "accordion.tsx"
-Cohesion: 0.40
-Nodes (4): @radix-ui/react-accordion, AccordionContent, AccordionItem, AccordionTrigger
+### Community 102 - "useSessionManager.ts"
+Cohesion: 0.53
+Nodes (4): getDeviceId(), getDeviceName(), SessionState, useSessionManager()
 
-### Community 103 - "setup.ts"
-Cohesion: 0.50
-Nodes (4): @testing-library/jest-dom, createMemoryStorage(), FIXED_NOW, installStorageFallback()
+### Community 103 - "cleanup-receipts.js"
+Cohesion: 0.60
+Nodes (4): exists(), main(), path, usage()
 
 ### Community 104 - "web-vitals.ts"
 Cohesion: 0.67
@@ -445,6 +439,10 @@ Nodes (10): @radix-ui/react-dialog, SheetContent, SheetContentProps, SheetDescri
 Cohesion: 0.43
 Nodes (6): fs, main(), path, readFileSafe(), readRoots(), walk()
 
+### Community 112 - "Directivas Principales"
+Cohesion: 0.67
+Nodes (3): Directivas Principales, 🤖 Prompt de Sistema / Rol: Constructor & Ejecutor (Fase 2 — Antigravity CLI con Gemini 3.8 Flash), 🤖 Prompt de Sistema / Rol: OpenCode Constructor & Ejecutor (Fase 2)
+
 ### Community 114 - "⚡ Guía Paso a Paso: Ciclo Completo de una Tarea"
 Cohesion: 0.15
 Nodes (8): 🛠️ Comandos Rápidos, 📁 Estructura del Directorio `.agent/workflow/`, 🔄 Flujo de Trabajo Colaborativo: Antigravity ↔ OpenCode, ⚡ Guía Paso a Paso: Ciclo Completo de una Tarea, Paso 1: Planificación (Antigravity CLI — Gemini 3.8 Flash / Argon 4), Paso 2: Configuración del Worktree & Construcción (OpenCode CLI — DeepSeek 4.1 Flash), Paso 3: Revisión y Cierre (Antigravity CLI — Gemini 3.8 Flash / Argon 4), Paso 4: Limpieza y Merge
@@ -453,29 +451,17 @@ Nodes (8): 🛠️ Comandos Rápidos, 📁 Estructura del Directorio `.agent/wor
 Cohesion: 0.22
 Nodes (8): 1. Panel de Control de la Revisión, 2. 🔍 Cosas que se están revisando actualmente (In Progress), 3. ✅ Cosas que ya se revisaron (Audited & Closed), 4. ⏳ Cosas que se van a revisar (Backlog de Revisión), 5. 🛠️ Tareas y Lógica Completadas por Antigravity (Lo que quedó pendiente), 6. Verificación de Criterios de Aceptación (Sign-off), 7. Dictamen Final y Recomendación de Fusión (Merge), 🔍 Registro de Revisión, Auditoría y Cierre: Antigravity CLI
 
-### Community 119 - "🔐 Auditoría de Seguridad y Privacidad — Finance Pal"
-Cohesion: 0.29
-Nodes (7): Análisis del Cliente Supabase, 🔐 Auditoría de Seguridad y Privacidad — Finance Pal, Controles de Seguridad Positivos Detectados, Matriz de Riesgo Residual, Resumen Ejecutivo, Tabla de Contenidos, Área 1: Datos en Tránsito
-
-### Community 120 - "Plan de Mitigación Accionable"
-Cohesion: 0.25
-Nodes (8): Plan de Mitigación Accionable, 🔴 PRIORIDAD 1: Críticos (Semana 1), 🟢 PRIORIDAD 4: Bajos (Backlog), SEC-001 — Inmediato: Borrar texto plano de localStorage existente, SEC-001 y SEC-002 — Rediseño del modelo de persistencia cifrada, SEC-014 — Añadir headers COOP/COEP al netlify.toml, SEC-015 — Excluir email del estado persistido, SEC-018 — Límite de tamaño en importación JSON
+### Community 120 - "🔐 Auditoría de Seguridad y Privacidad — Finance Pal"
+Cohesion: 0.04
+Nodes (48): Almacenamiento del JWT de Sesión, Análisis de Inyección SQL / NoSQL, Análisis de XSS, Análisis del Audit Logger (IndexedDB), Análisis del Cliente Supabase, Análisis del Flujo de Autenticación, Análisis del IndexedDB (Recibos), 🔐 Auditoría de Seguridad y Privacidad — Finance Pal (+40 more)
 
 ### Community 121 - "ZAP Scanning Report"
 Cohesion: 0.46
 Nodes (7): cmd_create(), cmd_list(), cmd_remove(), cmd_status(), cmd_sync(), worktree-manager.sh script, show_help()
 
-### Community 123 - "🛡️ Auditoría Integral de Seguridad y Privacidad — Finance Pal v1.21.0"
-Cohesion: 0.33
-Nodes (6): Almacenamiento del JWT de Sesión, Análisis del Flujo de Autenticación, 🟠 SEC-006 — ALTO: Clave ANON de Supabase comprometida en `.env` local, 🟡 SEC-008 — MEDIO: Rate limiting del Login es Client-Side (bypasseable), 🟡 SEC-010 — MEDIO: Takeover de sesión multi-dispositivo sin confirmación MFA, Área 4: Autenticación y Manejo de Tokens JWT
-
-### Community 127 - "worktree-manager.sh"
-Cohesion: 0.29
-Nodes (7): Análisis del Audit Logger (IndexedDB), Análisis del IndexedDB (Recibos), 🔴 SEC-001 — CRÍTICO: Estado Zustand persistido en TEXTO PLANO en localStorage como almacenamiento PRIMARIO, 🔴 SEC-002 — CRÍTICO: La clave de cifrado AES-GCM se deriva de un secreto almacenado en texto plano en localStorage, 🟡 SEC-009 — MEDIO: Hash de audit log usa djb2 (hash de 32 bits, no criptográfico), SEC-015 — BAJO: Email del perfil persistido en estado de Zustand, Área 3: Datos en Reposo — Cliente (Zustand / Storage)
-
 ### Community 128 - "SyncIndicator.tsx"
-Cohesion: 0.40
-Nodes (5): Análisis del Schema SQL, 🔴 SEC-004 — ALTO: Función `SECURITY DEFINER` sin restricción de invocador, 🔴 SEC-011 — MEDIO: Condición `deleted_at IS NULL` en políticas de tablas sin esa columna, Tablas y Estado de RLS, Área 2: Datos en Reposo — Servidor (RLS y DB)
+Cohesion: 0.33
+Nodes (6): Análisis del Schema SQL, 🔴 SEC-004 — ALTO: Función `SECURITY DEFINER` sin restricción de invocador, 🔴 SEC-011 — MEDIO: Condición `deleted_at IS NULL` en políticas de tablas sin esa columna, Tablas y Estado de RLS, Vistas de Seguridad (Column-Level Security), Área 2: Datos en Reposo — Servidor (RLS y DB)
 
 ### Community 129 - "2. `F3.2` — OAuth, PKCE, redirects y callback (`T10`, `SEC-012`)"
 Cohesion: 0.67
@@ -485,49 +471,33 @@ Nodes (5): cmd_next(), cmd_prompt(), cmd_status(), handoff.sh script, show_help(
 Cohesion: 0.47
 Nodes (3): idx_push_subs_endpoint, idx_push_subs_user_id, public.push_subscriptions
 
-### Community 134 - "🤖 Prompt de Sistema / Rol: Antigravity Revisor, Auditor Lead y Finalizador (Fase 3)"
-Cohesion: 0.40
-Nodes (5): Análisis de Inyección SQL / NoSQL, Análisis de XSS, 🟠 SEC-005 — ALTO: IDOR Potencial en Servicios de Update/Delete, SEC-018 — BAJO: Importación JSON sin límite de tamaño previo al parse, Área 5: IDOR, Inyección y Lógica de Aplicación
-
-### Community 135 - "Área 6: Seguridad de la Plataforma y Configuración"
-Cohesion: 0.40
-Nodes (5): Headers de Seguridad — Netlify, 🟠 SEC-003 — ALTO: CORS Wildcard en Edge Function sin Autenticación de Llamante, 🟡 SEC-007 — MEDIO: URLs de Recibos en Storage No Firmadas (Públicas), SEC-016 — BAJO: Datos sensibles en logs de consola, Área 6: Seguridad de la Plataforma y Configuración
-
-### Community 136 - "Reference"
-Cohesion: 0.40
-Nodes (5): 🟠 PRIORIDAD 2: Altos (Semana 2), SEC-003 — Asegurar la Edge Function send-reminders, SEC-004 — Restringir SECURITY DEFINER a llamadas autenticadas, SEC-005 — Añadir filtro `user_id` en operaciones de servicio, SEC-006 — Rotación de claves Supabase
-
-### Community 137 - "Tablero de Ejecución de Tareas — OpenCode CLI (`02_OPENCODE_TASKS.md`)"
-Cohesion: 0.40
-Nodes (5): 🟡 PRIORIDAD 3: Medios (Semana 3-4), SEC-007 — URLs firmadas para recibos, SEC-009 — Reemplazar djb2 por SHA-256 en audit logger, SEC-011 — Corregir columnas `deleted_at` faltantes en esquema, SEC-012 — Restringir validación de localhost a paths y puertos conocidos
-
 ### Community 146 - "MigracionNube.tsx"
-Cohesion: 0.09
-Nodes (31): @radix-ui/react-progress, ErrorBoundary, Props, State, Card, CardContent, CardDescription, CardFooter (+23 more)
+Cohesion: 0.10
+Nodes (29): ErrorBoundary, Props, State, Card, CardContent, CardDescription, CardFooter, CardHeader (+21 more)
 
 ### Community 178 - "SyncIndicator.tsx"
 Cohesion: 0.20
-Nodes (9): @capacitor/network, @testing-library/react, DesktopSyncIcon(), isNative, SyncIcon(), SyncIndicator(), SyncState, UploadDots() (+1 more)
+Nodes (10): @capacitor/network, @testing-library/react, DesktopSyncIcon(), isNative, SyncIcon(), SyncIndicator(), SyncState, UploadDots() (+2 more)
 
 ## Knowledge Gaps
-- **31 isolated node(s):** `@hookform/resolvers`, `@tanstack/query-sync-storage-persister`, `@types/react-window`, `date-fns`, `framer-motion` (+26 more)
+- **31 isolated node(s):** `autoprefixer`, `@capacitor/android`, `cross-env`, `cssnano`, `date-fns` (+26 more)
   These have ≤1 connection - possible missing edges or undocumented components. (Counts symbols only; 651 node(s) total have ≤1 connection when file, concept and rationale nodes are included.)
 - **52 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
 
 ## Suggested Questions
 _Questions this graph is uniquely positioned to answer:_
 
-- **Why does `react` connect `useFinanceData` to `finance-store.ts`, `Core Dependencies & Third-Party Packages`, `Autonomous Notification & Scheduling Engine`, `useNotificationScheduler.ts`, `class-variance-authority`, `Cloud Sync & Offline State Engine`, `Navigation Shell & Responsive Drawers`, `Savings Goals & Folder Organization`, `Brand Identity & Accent Palettes`, `Interactive Toast Notification System`, `Core Dependencies & Third-Party Packages`, `supabase.ts`, `MigracionNube.tsx`, `Brand Identity & Accent Palettes`, `Navigation Shell & Responsive Drawers`, `Autonomous Notification & Scheduling Engine`, `Supabase Authentication & Security Context`, `version-check.ts`, `chart.tsx`, `BrandLogo.tsx`, `Core Dependencies & Third-Party Packages`, `Core Dependencies & Third-Party Packages`, `Core Dependencies & Third-Party Packages`, `SyncIndicator.tsx`, `recharts`, `scroll-area.tsx`, `useFinanceData`, `Login.tsx`, `breadcrumb.tsx`, `input-otp.tsx`, `accordion.tsx`, `sheet.tsx`?**
-  _High betweenness centrality (0.122) - this node is a cross-community bridge._
-- **Are the 14 inferred relationships involving `useFinanceData()` (e.g. with `3. Alineación Arquitectónica (Finance Pal Local-First)` and `4. Mapa de Archivos e Impacto (Sprint 1)`) actually correct?**
-  _`useFinanceData()` has 14 INFERRED edges - model-reasoned connections that need verification._
-- **What connects `@hookform/resolvers`, `@tanstack/query-sync-storage-persister`, `@types/react-window` to the rest of the system?**
+- **Why does `cn()` connect `Core Dependencies & Third-Party Packages` to `Button`, `lucide-react`, `Navigation Shell & Responsive Drawers`, `Metas.tsx`, `Brand Identity & Accent Palettes`, `Interactive Toast Notification System`, `react`, `MigracionNube.tsx`, `Brand Identity & Accent Palettes`, `Navigation Shell & Responsive Drawers`, `Supabase Authentication & Security Context`, `Movimientos.tsx`, `GoalDetailContent.tsx`, `chart.tsx`, `Core Dependencies & Third-Party Packages`, `Core Dependencies & Third-Party Packages`, `PillTabs.tsx`, `Core Dependencies & Third-Party Packages`, `FolderChips.tsx`, `scroll-area.tsx`, `Login.tsx`, `sheet.tsx`?**
+  _High betweenness centrality (0.121) - this node is a cross-community bridge._
+- **Are the 15 inferred relationships involving `useFinanceData()` (e.g. with `2. Alineación Arquitectónica (Finance Pal Local-First)` and `3. Alineación Arquitectónica (Finance Pal Local-First)`) actually correct?**
+  _`useFinanceData()` has 15 INFERRED edges - model-reasoned connections that need verification._
+- **What connects `autoprefixer`, `@capacitor/android`, `cross-env` to the rest of the system?**
   _31 weakly-connected nodes found - possible documentation gaps or missing edges._
-- **Should `useFinanceData` be split into smaller, more focused modules?**
-  _Cohesion score 0.05067818654775177 - nodes in this community are weakly interconnected._
-- **Why does `cn()` connect `Core Dependencies & Third-Party Packages` to `useFinanceData`, `Navigation Shell & Responsive Drawers`, `Savings Goals & Folder Organization`, `Brand Identity & Accent Palettes`, `Interactive Toast Notification System`, `Core Dependencies & Third-Party Packages`, `MigracionNube.tsx`, `Brand Identity & Accent Palettes`, `Navigation Shell & Responsive Drawers`, `Supabase Authentication & Security Context`, `chart.tsx`, `BrandLogo.tsx`, `Core Dependencies & Third-Party Packages`, `Core Dependencies & Third-Party Packages`, `PillTabs.tsx`, `Core Dependencies & Third-Party Packages`, `scroll-area.tsx`, `breadcrumb.tsx`, `input-otp.tsx`, `accordion.tsx`, `sheet.tsx`?**
-  _High betweenness centrality (0.112) - this node is a cross-community bridge._
-- **Should `finance-store.ts` be split into smaller, more focused modules?**
-  _Cohesion score 0.10256410256410256 - nodes in this community are weakly interconnected._
+- **Should `lucide-react` be split into smaller, more focused modules?**
+  _Cohesion score 0.10404040404040404 - nodes in this community are weakly interconnected._
+- **Why does `react` connect `react` to `Button`, `lucide-react`, `Core Dependencies & Third-Party Packages`, `notifications.ts`, `Autonomous Notification & Scheduling Engine`, `finance.ts`, `Cloud Sync & Offline State Engine`, `Navigation Shell & Responsive Drawers`, `Metas.tsx`, `Brand Identity & Accent Palettes`, `Interactive Toast Notification System`, `supabase.ts`, `finance-store.ts`, `MigracionNube.tsx`, `Brand Identity & Accent Palettes`, `Navigation Shell & Responsive Drawers`, `Autonomous Notification & Scheduling Engine`, `Supabase Authentication & Security Context`, `version-check.ts`, `Movimientos.tsx`, `GoalDetailContent.tsx`, `chart.tsx`, `Core Dependencies & Third-Party Packages`, `Core Dependencies & Third-Party Packages`, `Core Dependencies & Third-Party Packages`, `SyncIndicator.tsx`, `FolderChips.tsx`, `scroll-area.tsx`, `Login.tsx`, `useSessionManager.ts`, `sheet.tsx`?**
+  _High betweenness centrality (0.118) - this node is a cross-community bridge._
+- **Should `Autonomous Notification & Scheduling Engine` be split into smaller, more focused modules?**
+  _Cohesion score 0.029411764705882353 - nodes in this community are weakly interconnected._
 - **Why does `dependencies` connect `Autonomous Notification & Scheduling Engine` to `Autonomous Notification & Scheduling Engine`?**
-  _High betweenness centrality (0.083) - this node is a cross-community bridge._
+  _High betweenness centrality (0.082) - this node is a cross-community bridge._
