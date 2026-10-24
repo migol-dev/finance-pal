@@ -40,7 +40,8 @@ export const BrandLogo = memo(function BrandLogo({
   const effectiveVersion: UIVersion = forceVersion ?? version ?? currentVersion;
   const s = SIZE_MAP[size] || SIZE_MAP.md;
   const shouldAnimate = animated && !reduceMotion;
-  const coinGradId = id ? `fp-v2-coin-${id}` : shouldAnimate ? "fp-v2-coin" : "fp-v2-coin-static";
+  const reactId = useId().replace(/:/g, "");
+  const coinGradId = id ? `fp-v2-coin-${id}` : `fp-v2-coin-${reactId}`;
 
   if (effectiveVersion === "classic") {
     return (
