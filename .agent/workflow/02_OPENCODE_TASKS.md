@@ -18,7 +18,7 @@
 | **Tareas en Progreso (⏳)** | 0 |
 | **Tareas Bloqueadas / Incompletas (⚠️)** | 0 |
 | **Progreso Estimado** | `[====================] 100%` |
-| **Último Checkpoint Git** | `c42ff62` (`CP-S2-01`) |
+| **Último Checkpoint Git** | `a4480c6` (`CP-S2-02`) |
 
 ---
 
@@ -87,14 +87,15 @@
 
 | # Checkpoint | Hash Commit | Tareas Cubiertas | Resultado Build / Test | Resumen de Cambios |
 | :--- | :--- | :--- | :--- | :--- |
-| `CP-S2-01` | `c42ff62` | `F2.1 - F2.7` | `PASS (tsc + vitest 173/173 + lint)` | `Implementación completa de Sprint 2 (Navegación Ergonómica, AppShell v2, QuickTransactionSheet, CommandPalette)` |
+| `CP-S2-01` | `c42ff62` | `F2.1 - F2.7` | `PASS (tsc + vitest 173/173 + lint)` | `Implementación inicial de Sprint 2 (Navegación Ergonómica, AppShell v2, QuickTransactionSheet, CommandPalette)` |
+| `CP-S2-02` | `a4480c6` | `F2.1 - F2.7` | `PASS (tsc + vitest 176/176 + lint)` | `Corrección de addTransaction alias en useFinanceData, campo de nota opcional en QuickTransactionSheet, fix de borrado en re-render, ajuste de footer rail y expansión de tests` |
 
 ---
 
 ## 5. Resumen de Entrega de Fase 2 (Construcción Concluida)
 
 - **Estado de Compilación Local (`npx tsc --noEmit`):** `PASS (0 errores)`
-- **Resultado de Tests (`npx vitest run`):** `PASS (173/173 passing, 33 archivos de prueba)`
+- **Resultado de Tests (`npx vitest run`):** `PASS (176/176 passing, 33 archivos de prueba)`
 - **Resultado de Linter (`npm run lint`):** `PASS (0 errores, 291 warnings preexistentes)`
-- **Grafo de Conocimiento (`graphify`):** Actualizado (`1932 nodos, 5517 aristas, 130 comunidades`)
+- **Grafo de Conocimiento (`graphify`):** Actualizado (`1935 nodos, 5522 aristas, 142 comunidades`)
 - **Instrucción Estricta:** Tarea detenida al concluir la Fase 2 de Construcción sin continuar a Fase 3 (sin merge a `redesign/ui-v2` ni firma de `03_ANTIGRAVITY_REVIEW.md`).
