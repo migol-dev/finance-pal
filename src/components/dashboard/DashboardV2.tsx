@@ -24,6 +24,7 @@ import {
   BarChart3,
   ArrowUpRight,
   ArrowDownRight,
+  Minus,
   Wallet,
   Building2,
   ChevronRight,
@@ -49,7 +50,25 @@ export function DashboardV2() {
   } = useFinanceData();
 
   const { openQuickTx } = useQuickTxModal();
-  const [hide, setHide] = useState(false);
+  const [hide, setHide] = useState(() => {
+    try {
+      return sessionStorage.getItem("fp_hide_balances") === "true";
+    } catch {
+      return false;
+    }
+  });
+
+  const toggleHide = () => {
+    setHide((prev) => {
+      const next = !prev;
+      try {
+        sessionStorage.setItem("fp_hide_balances", String(next));
+      } catch {
+        /* ignore */
+      }
+      return next;
+    });
+  };
 
   useEffect(() => {
     try {
@@ -259,14 +278,19 @@ export function DashboardV2() {
     const liquidAssets = cash + bank;
     const goalsSaved = goals.reduce((sum, g) => sum + (g.saved || 0), 0);
 
-    // Cuentas por cobrar (préstamos que diste y aún no te liquidan)
+    // Cuentas por cobrar (préstamos otorgados vigentes al cierre del periodo)
     const receivables = debts.reduce((sum, d) => {
-      const paid = d.payments.reduce((pSum, p) => pSum + p.amount, 0);
+      const debtDate = parseDateLocal(d.date);
+      if (debtDate > endOfMonth) return sum;
+      const paid = (d.payments || []).reduce((pSum, p) => {
+        const payDate = parseDateLocal(p.date);
+        return payDate <= endOfMonth ? pSum + p.amount : pSum;
+      }, 0);
       return sum + Math.max(0, d.amount - paid);
     }, 0);
 
     const totalAssets = Math.max(0, liquidAssets + receivables);
-    const netWorth = monthStats.cumulativeNet;
+    const netWorth = totalAssets - liabilities;
 
     // Variación mensual del patrimonio
     const monthlyNetFlow = monthStats.net;
@@ -286,7 +310,7 @@ export function DashboardV2() {
       monthlyNetFlow,
       percentChange,
     };
-  }, [accounts, transactions, debts, goals, monthStats.cumulativeNet, monthStats.net, activeYear, activeMonth]);
+  }, [accounts, transactions, debts, goals, monthStats.net, activeYear, activeMonth]);
 
   // Próximos compromisos / pagos fijos del mes
   const upcoming = useMemo(() => {
@@ -359,14 +383,16 @@ export function DashboardV2() {
 
   const mask = (s: string) => (hide ? "••••••" : s);
   const greet = profile.name ? `Hola, ${profile.name.split(" ")[0]}` : "Bienvenido";
-  const isPositiveFlow = wealthBreakdown.monthlyNetFlow >= 0;
+  const trend = wealthBreakdown.monthlyNetFlow > 0 ? "up" : wealthBreakdown.monthlyNetFlow < 0 ? "down" : "flat";
+  const formattedPercent =
+    Math.abs(wealthBreakdown.percentChange) < 0.05 ? "0.0" : Math.abs(wealthBreakdown.percentChange).toFixed(1);
 
   return (
     <div className="w-full space-y-6 lg:space-y-8 animate-in fade-in duration-300">
       {/* ── Encabezado Editorial Superior ── */}
       <header className="px-5 lg:px-0 pt-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-[#E4E0D8] dark:border-white/10 pb-5">
         <div className="flex items-center gap-3.5">
-          <BrandLogo size="md" withText={false} />
+          <BrandLogo size="md" withText={false} animated />
           <div>
             <div className="flex items-center gap-2">
               <h1 className="font-display-v2 text-xl sm:text-2xl font-bold tracking-tight text-foreground">
@@ -386,7 +412,7 @@ export function DashboardV2() {
         <div className="flex items-center gap-2.5 self-start sm:self-auto">
           <MonthSwitcher />
           <button
-            onClick={() => setHide((h) => !h)}
+            onClick={toggleHide}
             aria-label={hide ? "Mostrar saldos" : "Ocultar saldos"}
             title={hide ? "Mostrar saldos" : "Ocultar saldos"}
             className="size-9 rounded-lg border border-[#E4E0D8] dark:border-white/10 bg-card hover:bg-muted/60 flex items-center justify-center text-muted-foreground hover:text-foreground transition-all duration-200 active:scale-[0.96]"
@@ -414,32 +440,36 @@ export function DashboardV2() {
           <div className="relative pt-2">
             <div className="flex items-baseline justify-between gap-4 flex-wrap">
               <div>
-                <p className="text-xs uppercase tracking-widest font-semibold text-muted-foreground">
+                <p className="font-display-v2 text-xs uppercase tracking-widest font-semibold text-muted-foreground">
                   Patrimonio Neto Total
                 </p>
                 <div className="flex items-baseline gap-3 mt-1.5 flex-wrap">
-                  <span className="font-display-v2 text-3xl sm:text-4xl lg:text-5xl font-extrabold tracking-tight text-foreground font-mono-tabular">
+                  <span className="font-mono-tabular text-3xl sm:text-4xl lg:text-5xl font-extrabold tracking-tight text-foreground">
                     {mask(fmt(wealthBreakdown.netWorth))}
                   </span>
                   <div
                     className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-xs font-mono-tabular font-bold border ${
-                      isPositiveFlow
+                      trend === "up"
                         ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20"
-                        : "bg-destructive/10 text-destructive border-destructive/20"
+                        : trend === "down"
+                        ? "bg-destructive/10 text-destructive border-destructive/20"
+                        : "bg-muted text-muted-foreground border-border"
                     }`}
                   >
-                    {isPositiveFlow ? (
+                    {trend === "up" ? (
                       <ArrowUpRight className="size-3.5" strokeWidth={1.75} />
-                    ) : (
+                    ) : trend === "down" ? (
                       <ArrowDownRight className="size-3.5" strokeWidth={1.75} />
+                    ) : (
+                      <Minus className="size-3.5" strokeWidth={1.75} />
                     )}
                     <span>
-                      {isPositiveFlow ? "+" : ""}
+                      {trend === "up" ? "+" : ""}
                       {mask(fmt(wealthBreakdown.monthlyNetFlow))}
                     </span>
                     <span className="opacity-75">
-                      ({isPositiveFlow ? "+" : ""}
-                      {wealthBreakdown.percentChange.toFixed(1)}%)
+                      ({trend === "up" ? "+" : ""}
+                      {formattedPercent}%)
                     </span>
                   </div>
                 </div>
@@ -498,7 +528,7 @@ export function DashboardV2() {
                 />
               </div>
 
-              <div className="flex items-center justify-between text-[11px] text-muted-foreground pt-1">
+              <div className="flex items-center justify-between text-[11px] text-muted-foreground pt-1 flex-wrap gap-2">
                 <span>
                   Disponibles en cuentas y efectivo:{" "}
                   <strong className="text-foreground font-mono-tabular">
@@ -510,6 +540,14 @@ export function DashboardV2() {
                     Por cobrar:{" "}
                     <strong className="text-foreground font-mono-tabular">
                       {mask(fmt(wealthBreakdown.receivables))}
+                    </strong>
+                  </span>
+                )}
+                {wealthBreakdown.goalsSaved > 0 && (
+                  <span>
+                    En metas de ahorro:{" "}
+                    <strong className="text-foreground font-mono-tabular">
+                      {mask(fmt(wealthBreakdown.goalsSaved))}
                     </strong>
                   </span>
                 )}
@@ -606,7 +644,7 @@ export function DashboardV2() {
                   onClick={() => openQuickTx("expense")}
                   className="mt-3 px-3.5 py-1.5 rounded-lg bg-primary text-primary-foreground text-xs font-bold transition hover:opacity-90 active:scale-95 inline-flex items-center gap-1.5 shadow-sm"
                 >
-                  <Plus className="size-3.5" strokeWidth={2} />
+                  <Plus className="size-3.5" strokeWidth={1.75} />
                   Nuevo Movimiento
                 </button>
               </div>
@@ -667,7 +705,7 @@ export function DashboardV2() {
               className="group p-3.5 rounded-xl border border-[#E4E0D8] dark:border-white/10 bg-card hover:bg-muted/40 transition-all duration-200 active:scale-[0.98] text-left flex items-center gap-3"
             >
               <div className="size-9 rounded-lg bg-destructive/10 text-destructive flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
-                <Plus className="size-4.5" strokeWidth={2} />
+                <Plus className="size-4.5" strokeWidth={1.75} />
               </div>
               <div className="min-w-0">
                 <p className="font-display-v2 text-sm font-bold text-foreground leading-tight">
@@ -685,7 +723,7 @@ export function DashboardV2() {
               className="group p-3.5 rounded-xl border border-[#E4E0D8] dark:border-white/10 bg-card hover:bg-muted/40 transition-all duration-200 active:scale-[0.98] text-left flex items-center gap-3"
             >
               <div className="size-9 rounded-lg bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
-                <Plus className="size-4.5" strokeWidth={2} />
+                <Plus className="size-4.5" strokeWidth={1.75} />
               </div>
               <div className="min-w-0">
                 <p className="font-display-v2 text-sm font-bold text-foreground leading-tight">
@@ -797,7 +835,7 @@ export function DashboardV2() {
                         {mask(fmt(u.amount))}
                       </p>
                       <span className="text-[10px] font-mono-tabular font-semibold text-warning">
-                        en {u.daysLeft}d
+                        {u.daysLeft === 0 ? "Hoy" : `en ${u.daysLeft}d`}
                       </span>
                     </div>
                   </div>

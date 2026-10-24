@@ -221,17 +221,131 @@ describe("Sprint 3 DashboardV2 & Dual Dispatcher Suite", () => {
       expect(screen.getByText("Café de Especialidad")).toBeInTheDocument();
     });
 
-    it("muestra el desglose de activos totales y pasivos", () => {
+    it("muestra el desglose de activos totales y pasivos con balance contable exacto", () => {
       render(
         <MemoryRouter>
           <DashboardV2 />
         </MemoryRouter>
       );
 
+      // Activos totales ($36,180 liquid + $3,000 receivables = $39,180)
       expect(screen.getByText("Activos Totales:")).toBeInTheDocument();
+      expect(screen.getByText("$39,180")).toBeInTheDocument();
+
+      // Pasivos / Obligaciones (-$4,000 en tarjeta de crédito = $4,000)
       expect(screen.getByText("Pasivos / Obligaciones:")).toBeInTheDocument();
+      expect(screen.getByText("$4,000")).toBeInTheDocument();
+
+      // Patrimonio Neto Total = Activos - Pasivos ($39,180 - $4,000 = $35,180)
+      expect(screen.getByText("$35,180")).toBeInTheDocument();
+
+      // Subdesglose de activos
       expect(screen.getByText(/Disponibles en cuentas y efectivo:/)).toBeInTheDocument();
+      expect(screen.getByText("$36,180")).toBeInTheDocument();
       expect(screen.getByText(/Por cobrar:/)).toBeInTheDocument();
+      expect(screen.getByText("$3,000")).toBeInTheDocument();
+      expect(screen.getByText(/En metas de ahorro:/)).toBeInTheDocument();
+      expect(screen.getAllByText("$25,000").length).toBeGreaterThan(0);
+    });
+
+    it("muestra indicador de tendencia neutral cuando el flujo neto del mes es exactamente cero", () => {
+      // Mock estado donde ingresos y gastos son exactamente iguales y sin deudas del mes
+      mockState.debts = [];
+      mockState.fixedItems = [];
+      mockState.transactions = [
+        {
+          id: "tx-eq-1",
+          concept: "Ingreso igual",
+          amount: 5000,
+          type: "income",
+          date: "2026-10-10",
+        },
+        {
+          id: "tx-eq-2",
+          concept: "Gasto igual",
+          amount: 5000,
+          type: "expense",
+          date: "2026-10-12",
+        },
+      ];
+
+      render(
+        <MemoryRouter>
+          <DashboardV2 />
+        </MemoryRouter>
+      );
+
+      // Flujo neto mensual es 0, no debe llevar prefijo '+' ni '-'
+      expect(screen.getAllByText("$0").length).toBeGreaterThan(0);
+      expect(screen.getByText("(0.0%)")).toBeInTheDocument();
+      expect(screen.queryByText("+$0")).not.toBeInTheDocument();
+      expect(screen.queryByText("(+0.0%)")).not.toBeInTheDocument();
+    });
+
+    it("filtra deudas y abonos futuros para no contaminar balances de periodos pasados", () => {
+      mockState.activeYear = 2026;
+      mockState.activeMonth = 8; // Septiembre 2026
+
+      mockState.debts = [
+        {
+          id: "debt-future",
+          person: "Pedro Futuro",
+          concept: "Préstamo futuro",
+          amount: 10000,
+          date: "2026-11-01",
+          payments: [],
+        },
+        {
+          id: "debt-past",
+          person: "Laura Pasado",
+          concept: "Préstamo en septiembre",
+          amount: 6000,
+          date: "2026-09-05",
+          payments: [
+            { id: "pay-oct", amount: 2000, date: "2026-10-01" }, // Pago en octubre
+            { id: "pay-sep", amount: 1000, date: "2026-09-20" }, // Pago en septiembre
+          ],
+        },
+      ];
+
+      render(
+        <MemoryRouter>
+          <DashboardV2 />
+        </MemoryRouter>
+      );
+
+      // En Septiembre:
+      // - debt-future (noviembre) no se cuenta ($0)
+      // - debt-past: $6,000 inicial - $1,000 pagado en septiembre = $5,000 por cobrar
+      expect(screen.getByText("$5,000")).toBeInTheDocument();
+    });
+
+    it("muestra 'Hoy' cuando el pago fijo programado vence el día actual", () => {
+      const today = new Date();
+      mockState.activeYear = today.getFullYear();
+      mockState.activeMonth = today.getMonth();
+      mockState.fixedItems = [
+        {
+          id: "fix-today",
+          concept: "Suscripción Nube",
+          amount: 299,
+          type: "expense_fixed",
+          active: true,
+          startDate: `${today.getFullYear()}-01-01`,
+          frequency: "monthly",
+          payDay: today.getDate(), // hoy
+        },
+      ];
+
+      render(
+        <MemoryRouter>
+          <DashboardV2 />
+        </MemoryRouter>
+      );
+
+      expect(screen.getByText("Suscripción Nube")).toBeInTheDocument();
+      expect(screen.getByText("Hoy")).toBeInTheDocument();
+      expect(screen.queryByText("en 0d")).not.toBeInTheDocument();
     });
 
     it("muestra la meta prioritaria y su porcentaje de avance", () => {
@@ -261,7 +375,8 @@ describe("Sprint 3 DashboardV2 & Dual Dispatcher Suite", () => {
   });
 
   describe("Modo de Privacidad (Ocultar Saldos)", () => {
-    it("enmascara los montos con viñetas al hacer click en el botón de privacidad", () => {
+    it("enmascara los montos con viñetas al hacer click en el botón de privacidad y persiste en sessionStorage", () => {
+      sessionStorage.clear();
       render(
         <MemoryRouter>
           <DashboardV2 />
@@ -277,14 +392,16 @@ describe("Sprint 3 DashboardV2 & Dual Dispatcher Suite", () => {
       // Clic para ocultar
       fireEvent.click(hideBtn);
 
-      // Ahora deben existir múltiples elementos enmascarados
+      // Ahora deben existir múltiples elementos enmascarados y haberse guardado en sessionStorage
       const masked = screen.getAllByText("••••••");
       expect(masked.length).toBeGreaterThan(0);
+      expect(sessionStorage.getItem("fp_hide_balances")).toBe("true");
       expect(screen.getByLabelText("Mostrar saldos")).toBeInTheDocument();
 
       // Clic para volver a mostrar
       fireEvent.click(screen.getByLabelText("Mostrar saldos"));
       expect(screen.queryAllByText("••••••").length).toBe(0);
+      expect(sessionStorage.getItem("fp_hide_balances")).toBe("false");
     });
   });
 
