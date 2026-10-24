@@ -1734,15 +1734,15 @@
     "semantic_hash": ""
   },
   ".agent/workflow/01_ARCHITECT_PLAN.md": {
-    "mtime": 1792881501.0613697,
-    "seen": 1792881733.5716686,
+    "mtime": 1792881778.8329933,
+    "seen": 1792882708.3202574,
     "ast_hash": "4267b18a2471ba4ff0df31e012a436d0",
     "semantic_hash": ""
   },
   ".agent/workflow/02_OPENCODE_TASKS.md": {
-    "mtime": 1792881501.0813696,
-    "seen": 1792881733.5716703,
-    "ast_hash": "1f689202e44ae6a7c89241d54b206c60",
+    "mtime": 1792881778.8329933,
+    "seen": 1792882708.3202596,
+    "ast_hash": "75bc1d7d23ed9482cbc08fd4c37616d8",
     "semantic_hash": ""
   },
   ".agent/workflow/03_ANTIGRAVITY_REVIEW.md": {
@@ -1920,9 +1920,9 @@
     "semantic_hash": ""
   },
   "src/components/dashboard/DashboardV2.tsx": {
-    "mtime": 1792881712.6568334,
-    "seen": 1792881733.5712907,
-    "ast_hash": "e5aa5f550eb4d3e650263ae52415ec03",
+    "mtime": 1792882478.6209235,
+    "seen": 1792882708.3198636,
+    "ast_hash": "845333b5dac595601f1ff11c541f81e6",
     "semantic_hash": ""
   },
   "src/pages/DashboardClassic.tsx": {
@@ -1932,9 +1932,9 @@
     "semantic_hash": ""
   },
   "src/test/ui-version-dashboard.test.tsx": {
-    "mtime": 1792881697.341797,
-    "seen": 1792881733.571613,
-    "ast_hash": "d205b5f8ff51cec79b9473efbb5ed8f2",
+    "mtime": 1792882626.572363,
+    "seen": 1792882708.3202076,
+    "ast_hash": "afba476c858f847b3df8de4ed6dc8ba3",
     "semantic_hash": ""
   }
 }
