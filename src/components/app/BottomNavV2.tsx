@@ -26,7 +26,7 @@ export const BottomNavV2 = memo(function BottomNavV2() {
           initial={{ y: 20, opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
           transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
-          className="bg-card/92 backdrop-blur-md rounded-2xl border border-border/80 shadow-lg shadow-black/5 dark:shadow-black/25 flex items-center justify-around px-1 py-1.5"
+          className="bg-card/90 backdrop-blur-md rounded-2xl border border-border/80 shadow-lg shadow-black/5 dark:shadow-black/25 flex items-center justify-around px-1 py-1.5"
         >
           {/* Primeros 2 items: Inicio y Movimientos */}
           {NAV_ITEMS_V2.slice(0, 2).map(({ to, icon: Icon, label }) => (

@@ -58,19 +58,7 @@ export const CommandPalette = memo(function CommandPalette({
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if ((e.metaKey || e.ctrlKey) && (e.key === "k" || e.key === "K")) {
-        // Evitar activar dentro de elementos editables a menos que sea la paleta misma
-        const target = e.target as HTMLElement | null;
-        if (
-          target &&
-          (target.tagName === "INPUT" || target.tagName === "TEXTAREA" || target.isContentEditable) &&
-          !target.closest("[cmdk-root]")
-        ) {
-          // Permitir ⌘K incluso dentro de inputs estándar como patrón universal de command bar
-          e.preventDefault();
-          handleOpenChange(!isOpen);
-          return;
-        }
-
+        // ⌘K / Ctrl+K funciona también dentro de inputs (patrón universal de command bar)
         e.preventDefault();
         handleOpenChange(!isOpen);
       }

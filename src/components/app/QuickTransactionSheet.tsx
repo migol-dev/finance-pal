@@ -42,7 +42,7 @@ export const QuickTransactionSheet = memo(function QuickTransactionSheet() {
       setConcept("");
       setAmount("");
       setNote("");
-      setCategory(defaultType === "income" ? "Salario" : "Alimentación");
+      setCategory(defaultType === "income" ? "Trabajo" : "Alimentación");
       setDate(today);
       if (accounts && accounts.length > 0) {
         setAccountId(accounts[0].id);
@@ -141,7 +141,7 @@ export const QuickTransactionSheet = memo(function QuickTransactionSheet() {
               type="button"
               onClick={() => {
                 setType("income");
-                setCategory("Salario");
+                setCategory("Trabajo");
               }}
               className={cn(
                 "flex items-center justify-center gap-1.5 py-2 rounded-lg transition-all",
