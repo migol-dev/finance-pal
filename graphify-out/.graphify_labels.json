@@ -1,5 +1,4 @@
 {
-  "1": "Autonomous Notification & Scheduling Engine",
   "2": "Autonomous Notification & Scheduling Engine",
   "3": "Core Dependencies & Third-Party Packages",
   "5": "Autonomous Notification & Scheduling Engine",
@@ -10,7 +9,6 @@
   "13": "Brand Identity & Accent Palettes",
   "14": "Interactive Toast Notification System",
   "15": "Autonomous Notification & Scheduling Engine",
-  "16": "Core Dependencies & Third-Party Packages",
   "19": "Brand Identity & Accent Palettes",
   "20": "Debt Management & Loan Tracking",
   "21": "Navigation Shell & Responsive Drawers",
@@ -33,7 +31,6 @@
   "55": "Command Palette & Search Quick Actions",
   "59": "Android Native Integration & Build Pipeline",
   "60": "Command Palette & Search Quick Actions",
-  "62": "Core Dependencies & Third-Party Packages",
   "66": "Build Configuration & Tooling Infrastructure",
   "67": "dependabot.yml Subsystem",
   "68": "Build Configuration & Tooling Infrastructure",

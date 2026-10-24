@@ -3,6 +3,12 @@
   "buildCommand": "vite build",
   "outputDirectory": "dist",
   "installCommand": "npm install",
+  "git": {
+    "deploymentEnabled": {
+      "redesign/*": false,
+      "builder/*": false
+    }
+  },
   "rewrites": [
     { "source": "/(.*)", "destination": "/index.html" }
   ],
