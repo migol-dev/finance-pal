@@ -244,10 +244,15 @@ otp_expiry = 3600
 # admin_email = "admin@email.com"
 # sender_name = "Admin"
 
-# Uncomment to customize email template
-# [auth.email.template.invite]
-# subject = "You have been invited"
-# content_path = "./supabase/templates/invite.html"
+# Signup confirmation email template
+[auth.email.template.confirmation]
+subject = "Confirma tu correo para Finance Pal"
+content_path = "./supabase/templates/confirmation.html"
+
+# Email address change confirmation email template
+[auth.email.template.email_change]
+subject = "Confirma el cambio de correo de Finance Pal"
+content_path = "./supabase/templates/email_change.html"
 
 # Uncomment to customize notification email template
 # [auth.email.notification.password_changed]

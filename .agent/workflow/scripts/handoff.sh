@@ -34,12 +34,12 @@ EOF
 
 function cmd_status() {
   echo "=============================================================================="
-  echo "📊 ESTADO DEL FLUJO: ANTIGRAVITY (Google) ↔ OPENCODE (DeepSeek 4.1 Flash)"
+  echo "📊 ESTADO DEL FLUJO: ARQUITECTO (Argon 4) ↔ CONSTRUCTOR (Gemini 3.8 Flash)"
   echo "=============================================================================="
 
   # 1. Plan Arquitectónico
   echo ""
-  echo "1️⃣  FASE 1: PLAN ARQUITECTÓNICO (Antigravity: Gemini 3.8 Flash / Argon 4)"
+  echo "1️⃣  FASE 1: PLAN ARQUITECTÓNICO (Antigravity CLI: Gemini 4 Argon)"
   if [[ -f "${PLAN_FILE}" ]]; then
     local plan_status
     plan_status=$(grep -i "Estado:" "${PLAN_FILE}" | head -1 | sed 's/[>*]//g' | xargs || echo "No definido")
@@ -49,9 +49,9 @@ function cmd_status() {
     echo "   ❌ Archivo 01_ARCHITECT_PLAN.md no encontrado."
   fi
 
-  # 2. OpenCode Tasks
+  # 2. Builder Tasks
   echo ""
-  echo "2️⃣  FASE 2: CONSTRUCCIÓN Y CHECKPOINTS (OpenCode: DeepSeek 4.1 Flash)"
+  echo "2️⃣  FASE 2: CONSTRUCCIÓN Y CHECKPOINTS (Antigravity CLI: Gemini 3.8 Flash)"
   if [[ -f "${TASKS_FILE}" ]]; then
     local tasks_status
     tasks_status=$(grep -i "Estado General:" "${TASKS_FILE}" | head -1 | sed 's/[>*]//g' | xargs || echo "No definido")
@@ -95,10 +95,10 @@ function cmd_next() {
     echo "   Usa el modelo Gemini 3.8 Flash o Argon 4."
     echo "   Al terminar, cambia el estado a: 🟢 LISTO PARA CONSTRUCCIÓN"
   elif grep -q "LISTO PARA CONSTRUCCIÓN" "${PLAN_FILE}" 2>/dev/null && grep -q "EN ESPERA" "${TASKS_FILE}" 2>/dev/null; then
-    echo "👉 [FASE 2] OpenCode CLI (DeepSeek 4.1 Flash) debe arrancar la construcción."
-    echo "   1. Crea o activa el worktree: ./.agent/workflow/scripts/worktree-manager.sh create <nombre>"
-    echo "   2. Ejecuta opencode en .worktrees/builder"
-    echo "   3. Copia el prompt con: ./.agent/workflow/scripts/handoff.sh prompt 2"
+    echo "👉 [FASE 2] Antigravity CLI (Gemini 3.8 Flash) debe arrancar la construcción."
+    echo "   1. Entra al worktree: cd .worktrees/builder"
+    echo "   2. Inicia agy con modelo Gemini 3.8 Flash"
+    echo "   3. Obtén el prompt con: bash ../../.agent/workflow/scripts/handoff.sh prompt 2"
   elif grep -q "EN PROGRESO" "${TASKS_FILE}" 2>/dev/null; then
     echo "👉 [FASE 2] OpenCode está construyendo. Continúa actualizando checkpoints en 02_OPENCODE_TASKS.md."
   elif grep -q "COMPLETADO" "${TASKS_FILE}" 2>/dev/null && grep -q "EN ESPERA" "${REVIEW_FILE}" 2>/dev/null; then
