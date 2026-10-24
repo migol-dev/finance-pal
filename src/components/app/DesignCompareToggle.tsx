@@ -1,17 +1,16 @@
-import { useEffect, useState, memo } from "react";
+import { useEffect, useState, memo, useCallback } from "react";
 import { useFinance } from "@/store/finance-store";
 import { Sparkles, Layers, X } from "lucide-react";
 import { toast } from "sonner";
-import { cn } from "@/lib/utils";
 
 export const DesignCompareToggle = memo(function DesignCompareToggle() {
-  const uiVersion = useFinance((s) => s.appSettings.uiVersion ?? "v2");
-  const toggleUIVersion = useFinance((s) => s.toggleUIVersion);
+  const uiVersion = useFinance((s) => s?.appSettings?.uiVersion ?? "v2");
+  const toggleUIVersion = useFinance((s) => s?.toggleUIVersion);
   const [collapsed, setCollapsed] = useState(false);
 
-  const handleToggle = () => {
+  const handleToggle = useCallback(() => {
     const next = uiVersion === "v2" ? "classic" : "v2";
-    toggleUIVersion();
+    toggleUIVersion?.();
     if (next === "v2") {
       toast.success("Diseño activo: Warm Editorial (v2)", {
         description: "Estética cálida en alabastro, tipografía editorial y nuevo monograma FP.",
@@ -21,7 +20,7 @@ export const DesignCompareToggle = memo(function DesignCompareToggle() {
         description: "Interfaz tradicional original de Finance Pal.",
       });
     }
-  };
+  }, [uiVersion, toggleUIVersion]);
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -32,7 +31,7 @@ export const DesignCompareToggle = memo(function DesignCompareToggle() {
     };
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [uiVersion, toggleUIVersion]);
+  }, [handleToggle]);
 
   if (collapsed) {
     return (

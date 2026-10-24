@@ -278,7 +278,7 @@ export const useFinance = create<State>()(
 
         resetAll: () => {
           const d = new Date();
-          set({ fixedItems: [], transactions: [], goals: [], debts: [], changeLog: [], activeYear: d.getFullYear(), activeMonth: d.getMonth(), appSettings: { accentColor: "blue", compactMode: false, glassEffect: true, conflictResolved: false, notifications: DEFAULT_NOTIFICATION_PREFS, accessibility: DEFAULT_ACCESSIBILITY_SETTINGS } });
+          set({ fixedItems: [], transactions: [], goals: [], debts: [], changeLog: [], activeYear: d.getFullYear(), activeMonth: d.getMonth(), appSettings: { uiVersion: 'v2', accentColor: 'emerald', compactMode: false, glassEffect: true, conflictResolved: false, notifications: DEFAULT_NOTIFICATION_PREFS, accessibility: DEFAULT_ACCESSIBILITY_SETTINGS } });
           // Audit log: all data deleted
           supabase.auth.getUser().then(({ data: authData }) => {
             const userId = authData?.user?.id;

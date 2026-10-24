@@ -3,7 +3,7 @@ import { Wallet } from "lucide-react";
 import { useFinance } from "@/store/finance-store";
 
 export function SplashScreen() {
-  const uiVersion = useFinance((s) => s.appSettings.uiVersion ?? "v2");
+  const uiVersion = useFinance((s) => s?.appSettings?.uiVersion ?? "v2");
 
   if (uiVersion === "classic") {
     return (

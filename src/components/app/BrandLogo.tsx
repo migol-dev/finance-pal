@@ -34,7 +34,7 @@ export const BrandLogo = memo(function BrandLogo({
   forceVersion,
   animated = false,
 }: BrandLogoProps) {
-  const currentVersion = useFinance((s) => s.appSettings.uiVersion ?? "v2");
+  const currentVersion = useFinance((s) => s?.appSettings?.uiVersion ?? "v2");
   const effectiveVersion: UIVersion = forceVersion ?? version ?? currentVersion;
   const s = SIZE_MAP[size] || SIZE_MAP.md;
 

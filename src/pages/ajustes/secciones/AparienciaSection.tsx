@@ -10,7 +10,7 @@ import { Switch } from "@/components/ui/switch";
 import { cn } from "@/lib/utils";
 
 function UIVersionSelector() {
-  const uiVersion = useFinance((s) => s.appSettings.uiVersion ?? "v2");
+  const uiVersion = useFinance((s) => s?.appSettings?.uiVersion ?? "v2");
   const setUIVersion = useFinance((s) => s.setUIVersion);
 
   return (
