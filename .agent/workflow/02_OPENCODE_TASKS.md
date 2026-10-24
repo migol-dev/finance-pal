@@ -1,10 +1,10 @@
 # 🛠️ Registro de Ejecución y Checkpoints: Constructor CLI (`02_OPENCODE_TASKS.md`)
 
-> **Fase:** 2 — Construcción e Implementación Técnica (Sprint 3: Dashboard Principal v2 — Warm Editorial Wealth)  
+> **Fase:** 2 — Construcción e Implementación Técnica (Sprint 4: Movimientos y Transacciones v2 — Warm Editorial Wealth & Master-Detail)  
 > **Agente Constructor:** Antigravity CLI (`agy`)  
 > **Modelo Configurado:** Google Gemini 3.8 Flash  
 > **Referencia de Entrada:** `.agent/workflow/01_ARCHITECT_PLAN.md`  
-> **Worktree:** `.worktrees/builder` (`builder/ui-v2-sprint-3`)  
+> **Worktree:** `.worktrees/builder` (`builder/ui-v2-sprint-4`)  
 > **Estado General:** ✅ COMPLETADO (Fase 2 Concluida)
 
 ---
@@ -18,59 +18,56 @@
 | **Tareas en Progreso (⏳)** | 0 |
 | **Tareas Bloqueadas / Incompletas (⚠️)** | 0 |
 | **Progreso Estimado** | `[====================] 100%` |
-| **Último Checkpoint Git** | `CP-S3-01` |
+| **Último Checkpoint Git** | `CP-S4-01 (3f0d1c4)` |
 
 ---
 
 ## 2. Lista de Tareas Detallada y Estado de Ejecución
 
-### Sprint 3 — Dashboard Principal v2 (`DashboardV2`)
+### Sprint 4 — Movimientos y Transacciones v2 (`MovimientosV2`)
 
-- [x] **Tarea F3.1 — Extracción de `DashboardClassic.tsx` y Despachador en `Dashboard.tsx`:**
-  - Se extrajo el componente original completo a `src/pages/DashboardClassic.tsx` preservando el 100% del código y comportamiento histórico.
-  - En `src/pages/Dashboard.tsx`, se implementó el despachador inteligente: renderiza `<DashboardV2 />` cuando `appSettings ? (appSettings.uiVersion ?? "v2") === "v2"` y `<DashboardClassic />` cuando es `"classic"`. Si `appSettings` es undefined (ej. en snapshots heredados sin configuración de tienda), preserva el modo clásico.
+- [x] **Tarea F4.1 — Extracción de `MovimientosClassic.tsx` y Despachador en `Movimientos.tsx`:**
+  - Se extrajo el componente original completo a `src/pages/MovimientosClassic.tsx` preservando el 100% del comportamiento histórico.
+  - En `src/pages/Movimientos.tsx`, se implementó el despachador condicional: renderiza `<MovimientosV2 />` cuando `appSettings ? (appSettings.uiVersion ?? "v2") === "v2"` y `<MovimientosClassic />` cuando es `"classic"`. Si `appSettings` es undefined, preserva el modo clásico.
 
-- [x] **Tarea F3.2 — Escenario Principal de Patrimonio Neto (`DashboardV2.tsx`):**
-  - Se implementó `src/components/dashboard/DashboardV2.tsx` con la dirección estética *Warm Editorial Wealth*.
-  - Encabezado con saludo editorial personalizado (`profile.name`), badge distintivo `v2` y selector de periodo activo (`MonthSwitcher`).
-  - Escenario de patrimonio: Balance neto acumulado (`cumulativeNet`) en tipografía display `Fraunces` (`font-display-v2`) y métrica monetaria en `JetBrains Mono` (`font-mono-tabular` con `tabular-nums`).
-  - Variación mensual: Cálculo del flujo neto mensual con indicador dinámico de tendencia y valor absoluto (`+/- $X,XXX.XX`) y porcentual (`+/- X.X%`).
-  - Desglose de activos líquidos (Efectivo + Cuentas bancarias + Ahorro en metas) vs pasivos / obligaciones con barra de corte hairline de 1px.
-  - Botón de privacidad ("Ocultar saldos") para enmascarar todas las magnitudes con `••••••`.
+- [x] **Tarea F4.2 — Feed Cronológico Agrupado y Subtotales Diarios Tabulares:**
+  - Agrupación por días de forma descendente en formato legible (`DD de Mes, YYYY`).
+  - Cabeceras de sección con subtotal neto del día en tipografía `JetBrains Mono` (`font-mono-tabular` con `tabular-nums`), con indicador cromático de flujo (+ verde si ingresos superan gastos, - terracota si gastos superan ingresos, neutro en balance 0).
 
-- [x] **Tarea F3.3 — Arquitectura Espacial Asimétrica (12 Columnas en PC):**
-  - En pantallas de escritorio (`lg:`):
-    - `col-span-7`: Escenario de patrimonio neto, bloque de flujo del mes (ingresos vs gastos vs ahorro con tasa de ahorro porcentual) y lista de movimientos recientes con enlaces tipográficos a `/movimientos`.
-    - `col-span-5`: Acciones rápidas ("+ Gasto" y "+ Ingreso" con micro-física que disparan `openQuickTx("expense")` y `openQuickTx("income")` vía `useQuickTxModal`), tarjeta editorial de Meta Prioritaria con barra de progreso y porcentaje de completitud, y lista de Próximos Pagos Fijos con cuenta regresiva (`en Xd`).
+- [x] **Tarea F4.3 — Filtros Contextuales De-boxed (Píldoras Horizontales y Búsqueda):**
+  - Barra de píldoras horizontales con desplazamiento suave (*smooth scroll*) para Tipo (Todo, Gasto, Ingreso, Ahorro, Traspaso), Cuenta, Categoría y Presets de fecha (Mes activo, Hoy, Ayer, 7d, 30d, Personalizado con date inputs).
+  - Búsqueda en tiempo real con input de texto y botón `X` de limpieza instantánea.
+  - Cero card-itis o bordes pesados invasivos; integración directa sobre el lienzo.
 
-- [x] **Tarea F3.4 — De-boxing Estricto y Micro-física Táctil:**
-  - Cumplimiento riguroso de la regla de 60%+ canvas abierto sobre `#FAF8F5` / `#0C0C0B`.
-  - Cero card-itis o tarjetas genéricas con sombras pesadas.
-  - Separadores hairline nítidos de 1px (`border-[#E4E0D8]` en claro / `dark:border-white/10` en oscuro).
-  - Micro-física táctil de pulsación elástica `active:scale-[0.98]` con transición desacelerada en todas las áreas interactivas.
-  - Iconos Lucide estilizados con `strokeWidth={1.5}` o `1.75`.
+- [x] **Tarea F4.4 — Arquitectura Espacial Master-Detail en Escritorio (`lg:`) y Drawer Móvil (`vaul`):**
+  - En PC (`lg:`): Layout de 12 columnas (`col-span-7` para el feed cronológico y `col-span-5` para el panel inspector/formulario de detalle y edición en vivo sticky sin tapar la lista).
+  - En móvil (`< lg`): Drawer inferior deslizante (`vaul` / `src/components/ui/drawer.tsx`) al hacer tap en una transacción para inspeccionar y editar con facilidad táctil.
+  - Soporte de acciones: Modificar transacción (`updateTx`), eliminar con confirmación (`removeTx`), gestionar abonos/deudas hacia `/deudas` y ver comprobantes adjuntos.
 
-- [x] **Tarea F3.5 — Pruebas Automatizadas de `DashboardV2`:**
-  - Creada suite completa en `src/test/ui-version-dashboard.test.tsx` (13 tests pasando al 100%):
-    1. Renderizado de `DashboardV2` en modo `v2`.
-    2. Renderizado de `DashboardClassic` en modo `classic`.
-    3. Preservación de `DashboardClassic` si `appSettings` es undefined (compatibilidad de snapshots).
-    4. Renderizado de saludo editorial con nombre de usuario y badge `v2`.
-    5. Formateo y cálculo de patrimonio neto, ingresos, gastos y ahorro.
-    6. Desglose de activos totales vs pasivos y montos disponibles en cuentas/efectivo.
-    7. Visualización de meta prioritaria y porcentaje de avance.
-    8. Sección de distribución de liquidez (efectivo vs bancos).
-    9. Modo de privacidad: enmascaramiento con viñetas al pulsar el botón de privacidad y restauración al desocultar.
-    10. Disparo de `openQuickTx("expense")` al accionar el botón de Gasto.
-    11. Disparo de `openQuickTx("income")` al accionar el botón de Ingreso.
-    12. Estado vacío elegante cuando no hay transacciones en el mes.
-    13. Estado vacío "Al día en este mes" cuando no hay pagos fijos pendientes.
+- [x] **Tarea F4.5 — Suite de Pruebas Automatizadas de `MovimientosV2`:**
+  - Creada suite completa en `src/test/ui-version-movimientos.test.tsx` (15/15 tests pasando al 100%):
+    1. Renderizado de `MovimientosV2` en modo `v2`.
+    2. Renderizado de `MovimientosClassic` en modo `classic`.
+    3. Preservación de `MovimientosClassic` si `appSettings` es undefined (compatibilidad de snapshots).
+    4. Agrupación por días y cálculo de subtotales diarios con signo y `tabular-nums`.
+    5. Filtrado interactivo por píldoras de tipo.
+    6. Filtrado interactivo mediante búsqueda por texto reactiva.
+    7. Botón de restablecer/limpiar filtros.
+    8. Selección en Master-Detail y renderizado del inspector en PC.
+    9. Edición en el inspector y llamada a `updateTx`.
+    10. Eliminación con diálogo de confirmación y llamada a `removeTx`.
+    11. Manejo de transacciones de deuda con badge y navegación.
+    12. Estado vacío editorial cuando no hay movimientos.
+    13. Registro de nuevo movimiento mediante modal y llamada a `addTx`.
+    14. Manejo de traspasos entre cuentas con símbolo ⇄ y cuentas origen/destino.
+    15. Apertura del drawer móvil al hacer tap en pantalla pequeña.
 
-- [x] **Tarea F3.6 — Verificación Integral y Grafo de Conocimiento:**
+- [x] **Tarea F4.6 — Verificación Integral y Grafo de Conocimiento:**
   - `npx tsc --noEmit`: 0 errores.
-  - `npx vitest run`: 190/190 tests pasando (35 archivos de prueba, 100%).
-  - `npm run lint`: 0 errores (294 warnings preexistentes, 0 warnings en código nuevo).
-  - Grafo de conocimiento actualizado con `graphify update .` (1944 nodos, 5584 aristas, 143 comunidades).
+  - `npx vitest run`: 207/207 tests pasando (35 archivos de prueba, 100%).
+  - `npm run lint`: 0 errores y 0 warnings en archivos de Sprint 4.
+  - Grafo de conocimiento actualizado con `graphify update .` (1964 nodos, 5719 aristas, 138 comunidades).
+  - Registro de checkpoints y candado local sin `git push`.
 
 ---
 
@@ -86,14 +83,14 @@
 
 | # Checkpoint | Hash Commit | Tareas Cubiertas | Resultado Build / Test | Resumen de Cambios |
 | :--- | :--- | :--- | :--- | :--- |
-| `CP-S3-01` | `5e06181` | `F3.1 - F3.6` | `PASS (tsc + vitest 190/190 + lint)` | `Implementación completa de Sprint 3 (DashboardV2 Warm Editorial Wealth, despachador dual en Dashboard.tsx, DashboardClassic.tsx, suite de tests y actualización de grafo)` |
-| `CP-S3-02` | `f980f9e` | `Review & Fixes` | `PASS (tsc + vitest 192/192 + lint)` | `Corrección de consistencia contable de balance patrimonial, filtrado temporal de cuentas por cobrar, tendencia neutral en flujo cero, persistencia de privacidad por sesión y trazo hairline en iconos Plus` |
+| `CP-S4-01` | `3f0d1c4` | `F4.1 - F4.6` | `PASS (tsc + vitest 207/207 + lint)` | `Implementación completa de Sprint 4 (MovimientosV2 Warm Editorial Wealth, despachador dual en Movimientos.tsx, MovimientosClassic.tsx, Master-Detail 7/5 en PC, Drawer vaul en móvil, suite de tests y actualización de grafo)` |
+| `CP-S4-02` | `667c106` | `Review & Fixes` | `PASS (tsc + vitest 211/211 + lint)` | `Eliminación de abonos y préstamos de deuda con removeDebt/removeDebtPayment, soporte de rangos temporales fuera del mes activo, validación de fechas contra RangeError, validación de cuentas origen/destino en traspasos, e integración de IconPicker y comprobantes` |
 
 ---
 
 ## 5. Resumen de Entrega de Fase 2 (Construcción Concluida)
 
 - **Estado de Compilación Local (`npx tsc --noEmit`):** `PASS (0 errores)`
-- **Resultado de Tests (`npx vitest run`):** `PASS (192/192 passing, 34 archivos de prueba)`
-- **Resultado de Linter (`npm run lint`):** `PASS (0 errores en archivos nuevos y modificados)`
-- **Grafo de Conocimiento (`graphify`):** Actualizado (`1944 nodos, 5584 aristas, 143 comunidades`)
+- **Resultado de Tests (`npx vitest run`):** `PASS (211/211 passing, 35 archivos de prueba, 100%)`
+- **Resultado de Linter (`npm run lint`):** `PASS (0 errores, 0 warnings en código nuevo)`
+- **Grafo de Conocimiento (`graphify`):** Actualizado (`1966 nodos, 5725 aristas, 135 comunidades`)
