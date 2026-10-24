@@ -87,12 +87,13 @@
 | # Checkpoint | Hash Commit | Tareas Cubiertas | Resultado Build / Test | Resumen de Cambios |
 | :--- | :--- | :--- | :--- | :--- |
 | `CP-S3-01` | `5e06181` | `F3.1 - F3.6` | `PASS (tsc + vitest 190/190 + lint)` | `Implementación completa de Sprint 3 (DashboardV2 Warm Editorial Wealth, despachador dual en Dashboard.tsx, DashboardClassic.tsx, suite de tests y actualización de grafo)` |
+| `CP-S3-02` | `f980f9e` | `Review & Fixes` | `PASS (tsc + vitest 192/192 + lint)` | `Corrección de consistencia contable de balance patrimonial, filtrado temporal de cuentas por cobrar, tendencia neutral en flujo cero, persistencia de privacidad por sesión y trazo hairline en iconos Plus` |
 
 ---
 
 ## 5. Resumen de Entrega de Fase 2 (Construcción Concluida)
 
 - **Estado de Compilación Local (`npx tsc --noEmit`):** `PASS (0 errores)`
-- **Resultado de Tests (`npx vitest run`):** `PASS (190/190 passing, 35 archivos de prueba)`
+- **Resultado de Tests (`npx vitest run`):** `PASS (192/192 passing, 34 archivos de prueba)`
 - **Resultado de Linter (`npm run lint`):** `PASS (0 errores en archivos nuevos y modificados)`
 - **Grafo de Conocimiento (`graphify`):** Actualizado (`1944 nodos, 5584 aristas, 143 comunidades`)
