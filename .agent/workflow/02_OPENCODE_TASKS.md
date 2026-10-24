@@ -18,7 +18,7 @@
 | **Tareas en Progreso (⏳)** | 0 |
 | **Tareas Bloqueadas / Incompletas (⚠️)** | 0 |
 | **Progreso Estimado** | `[████████████████████] 100%` |
-| **Último Checkpoint Git** | `CP-07 (075aec5)` |
+| **Último Checkpoint Git** | `CP-08 (1c320e2)` |
 
 ---
 
@@ -106,13 +106,14 @@
 | `CP-05` | `9c846bc` | `F1.5` | `PASS (tsc)` | `feat(shell): wire ui-v2 root classes and live DesignCompareToggle` |
 | `CP-06` | `f6e785b` | `F1.6` | `PASS (tsc)` | `feat(settings): add UI design version selector in AparienciaSection` |
 | `CP-07` | `075aec5` | `F1.7` | `PASS (tsc + vitest 156/156 + lint)` | `test(ui-v2): add unit tests for UIVersion store and palette engine` |
+| `CP-08` | `1c320e2` | `F1.1-F1.7 Audit` | `PASS (tsc + vitest 166/166 + lint)` | `fix(ui-v2): harden reduced-motion, code-splitting, defensive palette resolution, and accessibility` |
 
 ---
 
 ## 5. Resumen de Entrega para Antigravity Reviewer
 
 - **Estado de Compilación Local (`npx tsc --noEmit`):** `[PASS (0 errores)]`
-- **Resultado de Tests (`npx vitest run`):** `[PASS (156/156 passing, 31 archivos de prueba)]`
-- **Resultado de Lint (`npm run lint`):** `[PASS (0 errores, 284 warnings preexistentes)]`
+- **Resultado de Tests (`npx vitest run`):** `[PASS (166/166 passing, 32 archivos de prueba)]`
+- **Resultado de Lint (`npm run lint`):** `[PASS (0 errores, 292 warnings preexistentes)]`
 - **Mensaje de Traspaso a Antigravity:**
-  > Fase 2 de Construcción (Sprint 1: Fundación Dual, Identidad Warm Editorial, Logo FP Vectorial & SplashScreen Animado) completada al 100%. Se implementó el sistema de diseño dual (v2 vs classic) sin romper ninguna funcionalidad preexistente ni alterar snapshots previos a v1, con cobertura completa de pruebas unitarias y actualización del grafo de conocimiento. Listo para Fase 3 (Revisión y Auditoría por Antigravity).
+  > Fase 2 de Construcción (Sprint 1: Fundación Dual, Identidad Warm Editorial, Logo FP Vectorial & SplashScreen Animado) completada al 100%. Se auditó e implementó el sistema de diseño dual (v2 vs classic) sin romper ninguna funcionalidad preexistente ni alterar snapshots previos a v1, con endurecimiento de accesibilidad (`prefers-reduced-motion`), carga diferida (`@/lib/framer`), resolución defensiva de paletas y cobertura completa de pruebas (166 tests). Listo para Fase 3 (Revisión y Auditoría por Antigravity).
