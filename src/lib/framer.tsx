@@ -5,7 +5,26 @@ import React from "react";
 type AnyProps = Record<string, any> & { children?: React.ReactNode };
 
 function stripAnimProps(props: AnyProps) {
-  const { initial, animate, exit, transition, variants, layout, layoutId, whileHover, whileTap, whileInView, onViewportEnter, onViewportLeave, ...rest } = props;
+  const {
+    initial,
+    animate,
+    exit,
+    transition,
+    variants,
+    layout,
+    layoutId,
+    whileHover,
+    whileTap,
+    whileInView,
+    onViewportEnter,
+    onViewportLeave,
+    custom,
+    pathLength,
+    pathOffset,
+    onAnimationStart,
+    onAnimationComplete,
+    ...rest
+  } = props;
   return rest;
 }
 
@@ -27,6 +46,8 @@ const fallback: Record<string, any> = {
   button: make("button"),
   img: make("img"),
   svg: make("svg"),
+  path: make("path"),
+  circle: make("circle"),
   p: make("p"),
   h1: make("h1"),
   h2: make("h2"),

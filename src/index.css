@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:ital,wght@0,400;0,700;1,400;1,700&family=Lexend:wght@400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:ital,wght@0,400;0,700;1,400;1,700&family=Fraunces:ital,opsz,wght@0,9..144,600..800;1,9..144,600&family=JetBrains+Mono:wght@400;500;600;700&family=Lexend:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
 
 @tailwind base;
 @tailwind components;
@@ -316,6 +316,47 @@
     --g-sunset: linear-gradient(135deg, hsl(38 95% 55%) 0%, hsl(20 85% 52%) 50%, hsl(10 80% 54%) 100%);
     --g-ocean: linear-gradient(135deg, hsl(30 90% 48%), hsl(50 85% 52%));
   }
+
+  /* ─── Warm Editorial Wealth (v2) Design Tokens ─── */
+  html.ui-v2 {
+    --background: 40 33% 97%;
+    --foreground: 60 2% 10%;
+    --card: 39 24% 93%;
+    --card-foreground: 60 2% 10%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 60 2% 10%;
+    --muted: 39 18% 90%;
+    --muted-foreground: 38 5% 41%;
+    --border: 40 18% 87%;
+    --input: 40 18% 87%;
+    --radius: 0.75rem;
+    --radius-sm: 0.5rem;
+    --radius-lg: 1rem;
+    --radius-xl: 1.25rem;
+    --sidebar-background: 40 33% 97%;
+    --sidebar-foreground: 60 2% 10%;
+    --sidebar-border: 40 18% 87%;
+  }
+
+  html.dark.ui-v2 {
+    --background: 60 4% 5%;
+    --foreground: 60 5% 93%;
+    --card: 60 3% 8%;
+    --card-foreground: 60 5% 93%;
+    --popover: 60 3% 11%;
+    --popover-foreground: 60 5% 93%;
+    --muted: 60 3% 13%;
+    --muted-foreground: 45 2% 55%;
+    --border: 60 3% 16%;
+    --input: 60 3% 16%;
+    --sidebar-background: 60 4% 5%;
+    --sidebar-foreground: 60 5% 93%;
+    --sidebar-border: 60 3% 16%;
+  }
+
+  html.ui-v2 body {
+    font-family: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+  }
 }
 
 @layer base {
@@ -361,6 +402,16 @@
 }
 
 @layer utilities {
+  .font-display-v2 {
+    font-family: 'Fraunces', 'Plus Jakarta Sans', serif;
+    letter-spacing: -0.035em;
+  }
+
+  .font-mono-tabular {
+    font-family: 'JetBrains Mono', monospace;
+    font-variant-numeric: tabular-nums;
+  }
+
   .gradient-primary { background-image: var(--g-primary); }
   .gradient-secondary { background-image: var(--g-secondary); }
   .gradient-success { background-image: var(--g-success); }

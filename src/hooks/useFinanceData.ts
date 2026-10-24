@@ -38,6 +38,7 @@ import {
   type ChangeLogEntry,
   type AppSettings,
   type AccentColor,
+  type UIVersion,
   type NotificationPreferences,
   type AccessibilitySettings,
 } from '@/lib/finance';
@@ -63,6 +64,7 @@ type UiSelection = {
   syncFiltersToURL: boolean;
   changeLog: ChangeLogEntry[];
   appSettings: AppSettings;
+  uiVersion: UIVersion;
   setTheme: (t: ThemeMode) => void;
   toggleTheme: () => void;
   setProfile: (p: Partial<UserProfile>) => void;
@@ -70,6 +72,8 @@ type UiSelection = {
   resetToToday: () => void;
   ensureScheduledTransactions: () => void;
   setSyncFiltersToURL: (v: boolean) => void;
+  setUIVersion: (v: UIVersion) => void;
+  toggleUIVersion: () => void;
   setAccentColor: (color: AccentColor) => void;
   setCompactMode: (compact: boolean) => void;
   setGlassEffect: (glass: boolean) => void;
@@ -127,6 +131,7 @@ export function useFinanceData() {
       syncFiltersToURL: state.syncFiltersToURL,
       changeLog: state.changeLog,
       appSettings: state.appSettings,
+      uiVersion: state.appSettings?.uiVersion ?? 'v2',
       setTheme: state.setTheme,
       toggleTheme: state.toggleTheme,
       setProfile: state.setProfile,
@@ -134,6 +139,8 @@ export function useFinanceData() {
       resetToToday: state.resetToToday,
       ensureScheduledTransactions: state.ensureScheduledTransactions,
       setSyncFiltersToURL: state.setSyncFiltersToURL,
+      setUIVersion: state.setUIVersion,
+      toggleUIVersion: state.toggleUIVersion,
       setAccentColor: state.setAccentColor,
       setCompactMode: state.setCompactMode,
       setGlassEffect: state.setGlassEffect,
@@ -387,6 +394,9 @@ export function useFinanceData() {
     resetToToday: ui.resetToToday,
     syncFiltersToURL: ui.syncFiltersToURL,
     setSyncFiltersToURL: ui.setSyncFiltersToURL,
+    uiVersion: ui.uiVersion,
+    setUIVersion: ui.setUIVersion,
+    toggleUIVersion: ui.toggleUIVersion,
     changeLog: ui.changeLog,
     clearChangeLog: ui.clearChangeLog,
     appSettings: ui.appSettings,

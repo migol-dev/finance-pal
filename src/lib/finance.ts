@@ -607,7 +607,10 @@ export const DEFAULT_ACCESSIBILITY_SETTINGS: AccessibilitySettings = {
   enhancedFocusRing: true,
 };
 
+export type UIVersion = "classic" | "v2";
+
 export interface AppSettings {
+  uiVersion?: UIVersion;
   accentColor: AccentColor;
   compactMode: boolean;
   glassEffect: boolean;

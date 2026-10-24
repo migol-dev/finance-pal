@@ -10,12 +10,14 @@ import { SplashScreen } from "./SplashScreen";
 import { Capacitor } from "@capacitor/core";
 import { App as CapacitorApp } from "@capacitor/app";
 import { toast } from "sonner";
-import { ACCENT_PALETTES, AccentColor } from "@/lib/accent-palette";
+import { getAccentPalette, AccentColor } from "@/lib/accent-palette";
+import type { UIVersion } from "@/lib/finance";
 import { isSupabaseEnabled } from "@/lib/supabase";
+import { DesignCompareToggle } from "./DesignCompareToggle";
 
-function applyAccentVars(root: HTMLElement, color: AccentColor) {
+function applyAccentVars(root: HTMLElement, color: AccentColor, uiVersion: UIVersion = "v2") {
   const theme = root.classList.contains("dark") ? "dark" : "light";
-  const p = ACCENT_PALETTES[theme][color];
+  const p = getAccentPalette(theme, color, uiVersion);
   root.style.setProperty("--accent-hue", String(p.hue));
   root.style.setProperty("--accent-saturation", p.saturation);
   root.style.setProperty("--accent-lightness", p.lightness);
@@ -51,6 +53,7 @@ export function AppShell({ children }: { children: ReactNode }) {
   const compactMode = appSettings.compactMode;
   const glassEffect = appSettings.glassEffect;
   const a11y = appSettings.accessibility;
+  const uiVersion = appSettings.uiVersion ?? "v2";
 
   // Activar motor reactivo autónomo de notificaciones
   useNotificationScheduler();
@@ -80,17 +83,23 @@ export function AppShell({ children }: { children: ReactNode }) {
   useEffect(() => {
     const root = document.documentElement;
     if (resolvedTheme === "dark") root.classList.add("dark"); else root.classList.remove("dark");
-    const meta = document.querySelector('meta[name="theme-color"]');
-    if (meta) meta.setAttribute("content", resolvedTheme === "dark" ? "#0a0e1a" : "#ffffff");
-    applyAccentVars(root, accentColor);
-  }, [resolvedTheme, accentColor]);
 
-  useEffect(() => {
-    const root = document.documentElement;
+    root.classList.toggle("ui-v2", uiVersion === "v2");
+    root.classList.toggle("ui-classic", uiVersion === "classic");
+
     root.className.split(" ").filter(c => c.startsWith("accent-")).forEach(c => root.classList.remove(c));
     root.classList.add(`accent-${accentColor}`);
-    applyAccentVars(root, accentColor);
-  }, [accentColor]);
+
+    const meta = document.querySelector('meta[name="theme-color"]');
+    if (meta) {
+      if (uiVersion === "v2") {
+        meta.setAttribute("content", resolvedTheme === "dark" ? "#0C0C0B" : "#FAF8F5");
+      } else {
+        meta.setAttribute("content", resolvedTheme === "dark" ? "#0a0e1a" : "#ffffff");
+      }
+    }
+    applyAccentVars(root, accentColor, uiVersion);
+  }, [resolvedTheme, accentColor, uiVersion]);
 
   useEffect(() => {
     const root = document.documentElement;
@@ -202,6 +211,7 @@ export function AppShell({ children }: { children: ReactNode }) {
       </div>
       <NotificationPermissionPrompt />
       <BottomNav />
+      <DesignCompareToggle />
     </div>
   );
 }
