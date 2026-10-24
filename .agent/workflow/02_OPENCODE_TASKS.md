@@ -18,7 +18,7 @@
 | **Tareas en Progreso (⏳)** | 0 |
 | **Tareas Bloqueadas / Incompletas (⚠️)** | 0 |
 | **Progreso Estimado** | `[====================] 100%` |
-| **Último Checkpoint Git** | `CP-S4-01` |
+| **Último Checkpoint Git** | `CP-S4-01 (3f0d1c4)` |
 
 ---
 
@@ -83,7 +83,7 @@
 
 | # Checkpoint | Hash Commit | Tareas Cubiertas | Resultado Build / Test | Resumen de Cambios |
 | :--- | :--- | :--- | :--- | :--- |
-| `CP-S4-01` | `Pending Commit` | `F4.1 - F4.6` | `PASS (tsc + vitest 207/207 + lint)` | `Implementación completa de Sprint 4 (MovimientosV2 Warm Editorial Wealth, despachador dual en Movimientos.tsx, MovimientosClassic.tsx, Master-Detail 7/5 en PC, Drawer vaul en móvil, suite de tests y actualización de grafo)` |
+| `CP-S4-01` | `3f0d1c4` | `F4.1 - F4.6` | `PASS (tsc + vitest 207/207 + lint)` | `Implementación completa de Sprint 4 (MovimientosV2 Warm Editorial Wealth, despachador dual en Movimientos.tsx, MovimientosClassic.tsx, Master-Detail 7/5 en PC, Drawer vaul en móvil, suite de tests y actualización de grafo)` |
 
 ---
 
