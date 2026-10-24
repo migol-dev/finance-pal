@@ -86,7 +86,7 @@
 
 | # Checkpoint | Hash Commit | Tareas Cubiertas | Resultado Build / Test | Resumen de Cambios |
 | :--- | :--- | :--- | :--- | :--- |
-| `CP-S3-01` | *(en commit)* | `F3.1 - F3.6` | `PASS (tsc + vitest 190/190 + lint)` | `Implementación completa de Sprint 3 (DashboardV2 Warm Editorial Wealth, despachador dual en Dashboard.tsx, DashboardClassic.tsx, suite de tests y actualización de grafo)` |
+| `CP-S3-01` | `5e06181` | `F3.1 - F3.6` | `PASS (tsc + vitest 190/190 + lint)` | `Implementación completa de Sprint 3 (DashboardV2 Warm Editorial Wealth, despachador dual en Dashboard.tsx, DashboardClassic.tsx, suite de tests y actualización de grafo)` |
 
 ---
 
