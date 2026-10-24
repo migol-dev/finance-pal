@@ -1,9 +1,9 @@
-# Graph Report - builder  (2026-10-24)
+# Graph Report - finance-pal  (2026-10-24)
 
 ## Corpus Check
-- 280 files · ~488,697 words
+- 280 files · ~488,744 words
 - Verdict: corpus is large enough that graph structure adds value.
-- Unclassified: 34 file(s) not represented in the graph (top: .xml 14, (none) 7, .toml 4)
+- Unclassified: 33 file(s) not represented in the graph (top: .xml 14, (none) 6, .toml 4)
 
 ## Summary
 - 1944 nodes · 5584 edges · 143 communities (87 shown, 56 thin omitted)
@@ -11,7 +11,7 @@
 - Token cost: 0 input · 0 output
 
 ## Graph Freshness
-- Built from commit: `f980f9e6`
+- Built from commit: `92ccf692`
 - Run `git rev-parse HEAD` and compare to check if the graph is stale.
 - Run `graphify update .` after code changes (no API cost).
 
@@ -136,13 +136,13 @@
 7. `AppError` - 62 edges
 8. `vitest` - 36 edges
 9. `Label` - 35 edges
-10. `Input` - 33 edges
+10. `useAuth()` - 33 edges
 
 ## Surprising Connections (you probably didn't know these)
-- `4. Mapa de Archivos e Impacto (Sprint 3)` --references--> `DashboardV2()`  [INFERRED]
-  .agent/workflow/01_ARCHITECT_PLAN.md → src/components/dashboard/DashboardV2.tsx
 - `Sprint 3 — Dashboard Principal v2 (`DashboardV2`)` --references--> `DashboardV2()`  [INFERRED]
   .agent/workflow/02_OPENCODE_TASKS.md → src/components/dashboard/DashboardV2.tsx
+- `4. Mapa de Archivos e Impacto (Sprint 3)` --references--> `DashboardV2()`  [INFERRED]
+  .agent/workflow/01_ARCHITECT_PLAN.md → src/components/dashboard/DashboardV2.tsx
 - `5. Dictamen Final` --references--> `DashboardV2()`  [INFERRED]
   .agent/workflow/03_ANTIGRAVITY_REVIEW.md → src/components/dashboard/DashboardV2.tsx
 - `3. Alineación Arquitectónica (Local-First & useFinanceData)` --references--> `useFinanceData()`  [INFERRED]
@@ -504,7 +504,7 @@ Cohesion: 0.20
 Nodes (13): @capacitor/network, DesktopSyncIcon(), isNative, SyncIcon(), SyncIndicator(), SyncState, UploadDots(), useNetwork() (+5 more)
 
 ## Knowledge Gaps
-- **31 isolated node(s):** `@hookform/resolvers`, `@tanstack/query-sync-storage-persister`, `@types/react-window`, `date-fns`, `framer-motion` (+26 more)
+- **31 isolated node(s):** `autoprefixer`, `@capacitor/android`, `cross-env`, `cssnano`, `date-fns` (+26 more)
   These have ≤1 connection - possible missing edges or undocumented components. (Counts symbols only; 662 node(s) total have ≤1 connection when file, concept and rationale nodes are included.)
 - **56 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
 
@@ -512,16 +512,16 @@ Nodes (13): @capacitor/network, DesktopSyncIcon(), isNative, SyncIcon(), SyncInd
 _Questions this graph is uniquely positioned to answer:_
 
 - **Why does `react` connect `react` to `DashboardV2.tsx`, `Core Dependencies & Third-Party Packages`, `notifications.ts`, `Autonomous Notification & Scheduling Engine`, `Cloud Sync & Offline State Engine`, `Navigation Shell & Responsive Drawers`, `QuickTransactionSheet.tsx`, `AppShell.tsx`, `Interactive Toast Notification System`, `utils.ts`, `useFinanceData.ts`, `MigracionNube.tsx`, `Brand Identity & Accent Palettes`, `Navigation Shell & Responsive Drawers`, `Supabase Authentication & Security Context`, `version-check.ts`, `ui-version-navigation.test.tsx`, `chart.tsx`, `Core Dependencies & Third-Party Packages`, `react-router-dom`, `Core Dependencies & Third-Party Packages`, `useSessionManager.ts`, `Core Dependencies & Third-Party Packages`, `SyncIndicator.tsx`, `Login.tsx`, `recharts`, `breadcrumb.tsx`, `sheet.tsx`, `framer.tsx`, `avatar.tsx`, `tabs.tsx`?**
-  _High betweenness centrality (0.124) - this node is a cross-community bridge._
+  _High betweenness centrality (0.127) - this node is a cross-community bridge._
 - **Are the 12 inferred relationships involving `useFinanceData()` (e.g. with `1. Resumen Ejecutivo del Sprint 3` and `3. Alineación Arquitectónica (Local-First & useFinanceData)`) actually correct?**
   _`useFinanceData()` has 12 INFERRED edges - model-reasoned connections that need verification._
-- **What connects `@hookform/resolvers`, `@tanstack/query-sync-storage-persister`, `@types/react-window` to the rest of the system?**
+- **What connects `autoprefixer`, `@capacitor/android`, `cross-env` to the rest of the system?**
   _31 weakly-connected nodes found - possible documentation gaps or missing edges._
 - **Should `react` be split into smaller, more focused modules?**
   _Cohesion score 0.07061539686330706 - nodes in this community are weakly interconnected._
 - **Why does `cn()` connect `Core Dependencies & Third-Party Packages` to `react`, `notifications.ts`, `Navigation Shell & Responsive Drawers`, `QuickTransactionSheet.tsx`, `AppShell.tsx`, `Interactive Toast Notification System`, `utils.ts`, `MigracionNube.tsx`, `Brand Identity & Accent Palettes`, `Navigation Shell & Responsive Drawers`, `Supabase Authentication & Security Context`, `ui-version-navigation.test.tsx`, `chart.tsx`, `Core Dependencies & Third-Party Packages`, `react-router-dom`, `Core Dependencies & Third-Party Packages`, `Core Dependencies & Third-Party Packages`, `breadcrumb.tsx`, `sheet.tsx`, `avatar.tsx`, `tabs.tsx`?**
-  _High betweenness centrality (0.116) - this node is a cross-community bridge._
+  _High betweenness centrality (0.094) - this node is a cross-community bridge._
 - **Should `Autonomous Notification & Scheduling Engine` be split into smaller, more focused modules?**
   _Cohesion score 0.029411764705882353 - nodes in this community are weakly interconnected._
 - **Why does `dependencies` connect `Autonomous Notification & Scheduling Engine` to `Autonomous Notification & Scheduling Engine`?**
-  _High betweenness centrality (0.075) - this node is a cross-community bridge._
+  _High betweenness centrality (0.074) - this node is a cross-community bridge._
