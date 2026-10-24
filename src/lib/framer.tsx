@@ -27,6 +27,8 @@ const fallback: Record<string, any> = {
   button: make("button"),
   img: make("img"),
   svg: make("svg"),
+  path: make("path"),
+  circle: make("circle"),
   p: make("p"),
   h1: make("h1"),
   h2: make("h2"),
