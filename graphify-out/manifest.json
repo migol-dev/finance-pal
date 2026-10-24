@@ -198,9 +198,9 @@
     "semantic_hash": ""
   },
   "src/components/app/BrandLogo.tsx": {
-    "mtime": 1792879059.634139,
-    "seen": 1792879073.6190693,
-    "ast_hash": "0fe3d967fa26d66abbdb4b8412fc2a8e",
+    "mtime": 1792879204.093711,
+    "seen": 1792879244.1178327,
+    "ast_hash": "127ca556c79576fbf5a0471f75811e87",
     "semantic_hash": ""
   },
   "src/components/app/DataConflictDialog.tsx": {
@@ -1746,9 +1746,9 @@
     "semantic_hash": ""
   },
   ".agent/workflow/03_ANTIGRAVITY_REVIEW.md": {
-    "mtime": 1792876012.0687346,
-    "seen": 1792877868.902725,
-    "ast_hash": "088c710ffd62edca2d6e37e55075e5b8",
+    "mtime": 1792879234.0778284,
+    "seen": 1792879244.1182532,
+    "ast_hash": "e25f8b29bbf8d621eeb159aca8d62d64",
     "semantic_hash": ""
   },
   ".agent/workflow/README.md": {
