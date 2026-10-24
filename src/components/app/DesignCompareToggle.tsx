@@ -13,10 +13,12 @@ export const DesignCompareToggle = memo(function DesignCompareToggle() {
     toggleUIVersion?.();
     if (next === "v2") {
       toast.success("Diseño activo: Warm Editorial (v2)", {
+        id: "ui-version-toast",
         description: "Estética cálida en alabastro, tipografía editorial y nuevo monograma FP.",
       });
     } else {
       toast.info("Diseño activo: Clásico (v1)", {
+        id: "ui-version-toast",
         description: "Interfaz tradicional original de Finance Pal.",
       });
     }
@@ -24,6 +26,9 @@ export const DesignCompareToggle = memo(function DesignCompareToggle() {
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.target as HTMLElement)?.closest?.("input, textarea, [contenteditable='true'], select")) {
+        return;
+      }
       if (e.altKey && (e.key === "d" || e.key === "D")) {
         e.preventDefault();
         handleToggle();
@@ -40,7 +45,7 @@ export const DesignCompareToggle = memo(function DesignCompareToggle() {
         onClick={() => setCollapsed(false)}
         title="Mostrar conmutador de diseño (Alt + D)"
         aria-label="Mostrar conmutador de versión de diseño"
-        className="fixed z-50 bottom-20 right-4 lg:bottom-6 lg:right-6 size-9 rounded-full bg-card/90 backdrop-blur-md border border-border/80 shadow-md text-foreground flex items-center justify-center hover:scale-105 active:scale-95 transition-all"
+        className="fixed z-50 bottom-[calc(5.25rem+env(safe-area-inset-bottom,0px))] sm:bottom-20 right-4 lg:bottom-6 lg:right-6 size-9 rounded-full bg-card/90 backdrop-blur-md border border-border/80 shadow-md text-foreground flex items-center justify-center hover:scale-105 active:scale-95 transition-all"
       >
         <Sparkles className="size-4 text-primary" />
       </button>
@@ -51,7 +56,7 @@ export const DesignCompareToggle = memo(function DesignCompareToggle() {
     <div
       role="region"
       aria-label="Conmutador de versión de diseño"
-      className="fixed z-50 bottom-20 right-4 lg:bottom-6 lg:right-6 flex items-center gap-1.5 p-1.5 pl-3 rounded-full bg-card/95 backdrop-blur-md border border-border/80 shadow-lg text-foreground animate-in fade-in slide-in-from-bottom-2 duration-200 select-none"
+      className="fixed z-50 bottom-[calc(5.25rem+env(safe-area-inset-bottom,0px))] sm:bottom-20 right-4 lg:bottom-6 lg:right-6 flex items-center gap-1.5 p-1.5 pl-3 rounded-full bg-card/95 backdrop-blur-md border border-border/80 shadow-lg text-foreground animate-in fade-in slide-in-from-bottom-2 duration-200 select-none"
     >
       <button
         type="button"

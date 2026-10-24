@@ -1,9 +1,9 @@
-import { memo } from "react";
+import { memo, useId } from "react";
 import logoImg from "@/assets/nuevo_logo.webp";
 import { cn } from "@/lib/utils";
 import { useFinance } from "@/store/finance-store";
 import type { UIVersion } from "@/lib/finance";
-import { motion } from "framer-motion";
+import { motion } from "@/lib/framer";
 
 export interface BrandLogoProps {
   size?: "xs" | "sm" | "md" | "lg" | "xl";
@@ -33,10 +33,14 @@ export const BrandLogo = memo(function BrandLogo({
   version,
   forceVersion,
   animated = false,
-}: BrandLogoProps) {
+  id,
+}: BrandLogoProps & { id?: string }) {
   const currentVersion = useFinance((s) => s?.appSettings?.uiVersion ?? "v2");
+  const reduceMotion = useFinance((s) => s?.appSettings?.accessibility?.reduceMotion);
   const effectiveVersion: UIVersion = forceVersion ?? version ?? currentVersion;
   const s = SIZE_MAP[size] || SIZE_MAP.md;
+  const shouldAnimate = animated && !reduceMotion;
+  const coinGradId = id ? `fp-v2-coin-${id}` : shouldAnimate ? "fp-v2-coin" : "fp-v2-coin-static";
 
   if (effectiveVersion === "classic") {
     return (
@@ -75,7 +79,7 @@ export const BrandLogo = memo(function BrandLogo({
   }
 
   // --- V2: Isotipo Vectorial "El Compañero Próspero" (Monograma FP + Semilla/Moneda) ---
-  const iconContent = animated ? (
+  const iconContent = shouldAnimate ? (
     <motion.svg
       viewBox="0 0 48 48"
       fill="none"
@@ -86,7 +90,7 @@ export const BrandLogo = memo(function BrandLogo({
       transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
     >
       <defs>
-        <linearGradient id="fp-v2-coin" x1="20" y1="12" x2="32" y2="24" gradientUnits="userSpaceOnUse">
+        <linearGradient id={coinGradId} x1="20" y1="12" x2="32" y2="24" gradientUnits="userSpaceOnUse">
           <stop stopColor="hsl(var(--primary))" />
           <stop offset="1" stopColor="hsl(var(--primary-glow, var(--primary)))" />
         </linearGradient>
@@ -118,7 +122,7 @@ export const BrandLogo = memo(function BrandLogo({
         cx="25.5"
         cy="17"
         r="3.6"
-        fill="url(#fp-v2-coin)"
+        fill={`url(#${coinGradId})`}
         initial={{ scale: 0, opacity: 0 }}
         animate={{ scale: 1, opacity: 1 }}
         transition={{ type: "spring", stiffness: 400, damping: 20, delay: 0.35 }}
@@ -144,7 +148,7 @@ export const BrandLogo = memo(function BrandLogo({
       aria-label="Finance Pal Isotipo"
     >
       <defs>
-        <linearGradient id="fp-v2-coin-static" x1="20" y1="12" x2="32" y2="24" gradientUnits="userSpaceOnUse">
+        <linearGradient id={coinGradId} x1="20" y1="12" x2="32" y2="24" gradientUnits="userSpaceOnUse">
           <stop stopColor="hsl(var(--primary))" />
           <stop offset="1" stopColor="hsl(var(--primary-glow, var(--primary)))" />
         </linearGradient>
@@ -170,7 +174,7 @@ export const BrandLogo = memo(function BrandLogo({
         cx="25.5"
         cy="17"
         r="3.6"
-        fill="url(#fp-v2-coin-static)"
+        fill={`url(#${coinGradId})`}
       />
       {/* Destello especular */}
       <circle
@@ -200,7 +204,7 @@ export const BrandLogo = memo(function BrandLogo({
             Finance Pal
           </p>
           {subtitle && (
-            <p className={cn("text-muted-foreground font-medium truncate leading-tight text-xs", s.sub)}>
+            <p className={cn("text-muted-foreground font-medium truncate leading-tight", s.sub)}>
               {subtitle}
             </p>
           )}

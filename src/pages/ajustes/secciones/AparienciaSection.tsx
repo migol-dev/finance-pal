@@ -158,12 +158,30 @@ function ThemeSelector() {
 }
 
 export const AparienciaSection = memo(function AparienciaSection({ onBack }: SectionProps) {
+  const uiVersion = useFinance((s) => s.appSettings?.uiVersion ?? "v2");
   const accentColor = useFinance((s) => s.appSettings.accentColor);
   const setAccentColor = useFinance((s) => s.setAccentColor);
   const compactMode = useFinance((s) => s.appSettings.compactMode);
   const setCompactMode = useFinance((s) => s.setCompactMode);
   const glassEffect = useFinance((s) => s.appSettings.glassEffect);
   const setGlassEffect = useFinance((s) => s.setGlassEffect);
+
+  const isV2 = uiVersion === "v2";
+  const accentConfig: Record<string, { bg: string; label: string }> = isV2
+    ? {
+        emerald: { bg: "bg-[#1F7A5A] dark:bg-[#34D399]", label: "Esmeralda Botánico" },
+        amber: { bg: "bg-[#C86446] dark:bg-[#F59E0B]", label: "Terracota Editorial" },
+        blue: { bg: "bg-[#2383E2] dark:bg-[#60A5FA]", label: "Cobalto Precisión" },
+        rose: { bg: "bg-[#B84A62] dark:bg-[#FB7185]", label: "Arcilla Botánica" },
+        violet: { bg: "bg-[#5B46E5] dark:bg-[#A78BFA]", label: "Índigo Editorial" },
+      }
+    : {
+        blue: { bg: "bg-blue-500", label: "Azul" },
+        violet: { bg: "bg-violet-500", label: "Violeta" },
+        emerald: { bg: "bg-emerald-500", label: "Esmeralda" },
+        rose: { bg: "bg-rose-500", label: "Rosa" },
+        amber: { bg: "bg-amber-500", label: "Ámbar" },
+      };
 
   return (
     <div className="space-y-6">
@@ -183,26 +201,27 @@ export const AparienciaSection = memo(function AparienciaSection({ onBack }: Sec
 
       {/* Accent Color Palette */}
       <div className="rounded-2xl bg-card border border-border p-4 sm:p-5 shadow-soft space-y-3">
-        <div>
-          <h3 className="font-bold text-sm text-foreground">Color de acento principal</h3>
-          <p className="text-xs text-muted-foreground">Tonalidad para botones, gráficas y elementos destacados</p>
+        <div className="flex items-center justify-between">
+          <div>
+            <h3 className="font-bold text-sm text-foreground">Color de acento principal</h3>
+            <p className="text-xs text-muted-foreground">Tonalidad para botones, gráficas y elementos destacados</p>
+          </div>
+          <span className="text-xs font-semibold text-primary hidden sm:inline-block">
+            {accentConfig[accentColor]?.label ?? accentColor}
+          </span>
         </div>
         <div className="flex gap-2.5 pt-1">
-          {(["blue", "violet", "emerald", "rose", "amber"] as const).map((c) => {
-            const colors = {
-              blue: "bg-blue-500",
-              violet: "bg-violet-500",
-              emerald: "bg-emerald-500",
-              rose: "bg-rose-500",
-              amber: "bg-amber-500",
-            };
+          {(["emerald", "amber", "blue", "rose", "violet"] as const).map((c) => {
+            const item = accentConfig[c] ?? { bg: "bg-primary", label: c };
             return (
               <button
                 key={c}
                 type="button"
                 onClick={() => setAccentColor(c)}
-                aria-label={`Seleccionar acento ${c}`}
-                className={`size-10 sm:size-11 rounded-xl ${colors[c]} transition-all flex items-center justify-center ${
+                title={item.label}
+                aria-label={`Seleccionar acento ${item.label}`}
+                aria-pressed={accentColor === c}
+                className={`size-10 sm:size-11 rounded-xl ${item.bg} transition-all flex items-center justify-center ${
                   accentColor === c ? "ring-2 ring-offset-2 ring-offset-background ring-foreground scale-110 shadow-md" : "opacity-60 hover:opacity-100"
                 }`}
               >

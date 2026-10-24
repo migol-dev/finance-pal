@@ -82,5 +82,26 @@ describe("UIVersion dual design settings & palette engine", () => {
       const fallback = getAccentPalette("light", "nonexistent" as unknown as AccentColor, "v2");
       expect(fallback).toEqual(ACCENT_PALETTES_V2.light.emerald);
     });
+
+    it("defensively handles 'system' or undefined theme without throwing", () => {
+      const systemPalette = getAccentPalette("system" as any, "emerald", "v2");
+      expect(systemPalette).toEqual(ACCENT_PALETTES_V2.light.emerald);
+
+      const undefinedPalette = getAccentPalette(undefined as any, "emerald", "v2");
+      expect(undefinedPalette).toEqual(ACCENT_PALETTES_V2.light.emerald);
+    });
+  });
+
+  describe("3. useFinanceData facade exposure", () => {
+    it("exposes uiVersion, setUIVersion, and toggleUIVersion on the facade", () => {
+      const store = useFinance.getState();
+      expect(store.appSettings.uiVersion).toBe("v2");
+
+      store.setUIVersion("classic");
+      expect(useFinance.getState().appSettings.uiVersion).toBe("classic");
+
+      store.toggleUIVersion();
+      expect(useFinance.getState().appSettings.uiVersion).toBe("v2");
+    });
   });
 });

@@ -87,6 +87,9 @@ export function AppShell({ children }: { children: ReactNode }) {
     root.classList.toggle("ui-v2", uiVersion === "v2");
     root.classList.toggle("ui-classic", uiVersion === "classic");
 
+    root.className.split(" ").filter(c => c.startsWith("accent-")).forEach(c => root.classList.remove(c));
+    root.classList.add(`accent-${accentColor}`);
+
     const meta = document.querySelector('meta[name="theme-color"]');
     if (meta) {
       if (uiVersion === "v2") {
@@ -97,13 +100,6 @@ export function AppShell({ children }: { children: ReactNode }) {
     }
     applyAccentVars(root, accentColor, uiVersion);
   }, [resolvedTheme, accentColor, uiVersion]);
-
-  useEffect(() => {
-    const root = document.documentElement;
-    root.className.split(" ").filter(c => c.startsWith("accent-")).forEach(c => root.classList.remove(c));
-    root.classList.add(`accent-${accentColor}`);
-    applyAccentVars(root, accentColor, uiVersion);
-  }, [accentColor, uiVersion]);
 
   useEffect(() => {
     const root = document.documentElement;

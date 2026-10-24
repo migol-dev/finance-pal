@@ -64,6 +64,7 @@ type UiSelection = {
   syncFiltersToURL: boolean;
   changeLog: ChangeLogEntry[];
   appSettings: AppSettings;
+  uiVersion: UIVersion;
   setTheme: (t: ThemeMode) => void;
   toggleTheme: () => void;
   setProfile: (p: Partial<UserProfile>) => void;
@@ -130,6 +131,7 @@ export function useFinanceData() {
       syncFiltersToURL: state.syncFiltersToURL,
       changeLog: state.changeLog,
       appSettings: state.appSettings,
+      uiVersion: state.appSettings?.uiVersion ?? 'v2',
       setTheme: state.setTheme,
       toggleTheme: state.toggleTheme,
       setProfile: state.setProfile,
@@ -392,6 +394,7 @@ export function useFinanceData() {
     resetToToday: ui.resetToToday,
     syncFiltersToURL: ui.syncFiltersToURL,
     setSyncFiltersToURL: ui.setSyncFiltersToURL,
+    uiVersion: ui.uiVersion,
     setUIVersion: ui.setUIVersion,
     toggleUIVersion: ui.toggleUIVersion,
     changeLog: ui.changeLog,

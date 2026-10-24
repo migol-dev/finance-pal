@@ -426,10 +426,11 @@ export const ACCENT_PALETTES_V2: Record<"light" | "dark", Record<AccentColor, Ac
 };
 
 export function getAccentPalette(
-  theme: "light" | "dark",
-  color: AccentColor,
+  theme: "light" | "dark" = "light",
+  color: AccentColor = "emerald",
   uiVersion: UIVersion = "v2"
 ): AccentPalette {
+  const effectiveTheme = theme === "dark" ? "dark" : "light";
   const source = uiVersion === "v2" ? ACCENT_PALETTES_V2 : ACCENT_PALETTES;
-  return source[theme]?.[color] ?? source[theme]?.emerald ?? ACCENT_PALETTES[theme].emerald;
+  return source[effectiveTheme]?.[color] ?? source[effectiveTheme]?.emerald ?? ACCENT_PALETTES.light.emerald;
 }

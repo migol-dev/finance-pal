@@ -79,13 +79,13 @@ export const createSettingsSlice: StateCreator<
     setSyncFiltersToURL: (v) => set({ syncFiltersToURL: v }),
 
     setUIVersion: (uiVersion) =>
-        set((s) => ({ appSettings: { ...s.appSettings, uiVersion } })),
+        set((s) => ({ appSettings: { ...(s.appSettings || {}), uiVersion } })),
 
     toggleUIVersion: () =>
         set((s) => ({
             appSettings: {
-                ...s.appSettings,
-                uiVersion: (s.appSettings.uiVersion ?? 'v2') === 'v2' ? 'classic' : 'v2',
+                ...(s.appSettings || {}),
+                uiVersion: (s.appSettings?.uiVersion ?? 'v2') === 'v2' ? 'classic' : 'v2',
             },
         })),
 
