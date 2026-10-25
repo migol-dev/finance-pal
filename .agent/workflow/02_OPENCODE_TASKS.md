@@ -77,9 +77,9 @@
 
 - [x] **Tarea F5.6 — Verificación Integral y Grafo de Conocimiento:**
   - `npx tsc --noEmit`: 0 errores.
-  - `npx vitest run`: 230/230 tests pasando (36 archivos de prueba, 100%).
+  - `npx vitest run`: 235/235 tests pasando (36 archivos de prueba, 100%).
   - `npm run lint`: 0 errores y 0 warnings en los módulos creados/modificados.
-  - Grafo de conocimiento actualizado con `graphify update .` (2001 nodos, 5982 aristas, 133 comunidades).
+  - Grafo de conocimiento actualizado con `graphify update .` (2002 nodos, 5995 aristas, 145 comunidades).
   - Sincronización de worktree con `.agent/workflow/scripts/worktree-manager.sh sync`.
 
 ---
@@ -88,7 +88,10 @@
 
 | ID Tarea | Archivo / Función | Problema / Error Exacto | Causa de la Dificultad | Qué debe revisar/hacer Antigravity |
 | :--- | :--- | :--- | :--- | :--- |
-| `-` | `-` | *Sin bloqueos* | `-` | `-` |
+| `REV-S5-01` | `src/lib/validators.ts` | Error de validación Zod al adjuntar comprobantes o transferencias en abonos de deuda (`unrecognized_keys: receipt`) | `debtPaymentSchema` tenía `.strict()` y omitía `receipt`, `transferToAccountId` y `externalPayee` | Resuelto en revisión: schema actualizado para soportar comprobantes y transferencias |
+| `REV-S5-02` | `DeudasV2.tsx` / `MetasV2.tsx` | Violación de Anti-AI Law 1 y 3 por presencia de grids simétricos de 3 tarjetas | Envolvía métricas en tarjetas separadas `rounded-2xl` | Resuelto en revisión: migrado a layout de-boxed Warm Editorial Wealth con divisores hairline |
+| `REV-S5-03` | `MetasV2.tsx` | Falta de botones para editar/eliminar carpetas y discrepancia de conteo recursivo | Omisión de acciones en pills y filtro estricto sin subcarpetas | Resuelto en revisión: acciones añadidas, confirmación con ElegantConfirm y resolución recursiva |
+| `REV-S5-04` | `DeudasV2.tsx` / `MetasV2.tsx` | Deep-linking móvil con `?id=...` no abría el Drawer de Vaul | Solo asignaba `selectedId` sin verificar viewport | Resuelto en revisión: abre Drawer si `window.innerWidth < 1024` |
 
 ---
 
@@ -96,13 +99,14 @@
 
 | # Checkpoint | Hash Commit | Tareas Cubiertas | Resultado Build / Test | Resumen de Cambios |
 | :--- | :--- | :--- | :--- | :--- |
-| `CP-S5-01` | `(En builder)` | `F5.1 - F5.6` | `PASS (tsc + vitest 230/230 + lint)` | `Implementación completa de Sprint 5: DeudasV2 (amortización, dirección yo debo vs me deben, master-detail 7/5, drawer vaul), MetasV2 (hitos 25/50/75/100%, ritmo mensual paceForGoal, carpetas, aportaciones ágiles), despachadores duales en Deudas.tsx y Metas.tsx, extracciones clásicas DeudasClassic y MetasClassic, suite de 19 tests y actualización de grafo` |
+| `CP-S5-01` | `1336f9f` | `F5.1 - F5.6` | `PASS (tsc + vitest 230/230 + lint)` | `Implementación base de Sprint 5: DeudasV2, MetasV2, despachadores duales y extracciones clásicas` |
+| `CP-S5-02` | `(En builder)` | `F5.1 - F5.6 (Auditoría & Endurecimiento)` | `PASS (tsc + vitest 235/235 + lint)` | `Corrección de schema en debtPaymentSchema (receipt/transfer), de-boxing Warm Editorial Wealth (cero 3-card grids), subida/vista de comprobantes en abonos, gestión completa de carpetas (editar/eliminar), soporte móvil para deep-linking y 24 tests unitarios e integración` |
 
 ---
 
 ## 5. Resumen de Entrega de Fase 2 (Construcción Concluida)
 
 - **Estado de Compilación Local (`npx tsc --noEmit`):** `PASS (0 errores)`
-- **Resultado de Tests (`npx vitest run`):** `PASS (230/230 passing, 36 archivos de prueba, 100%)`
+- **Resultado de Tests (`npx vitest run`):** `PASS (235/235 passing, 36 archivos de prueba, 100%)`
 - **Resultado de Linter (`npm run lint`):** `PASS (0 errores)`
-- **Grafo de Conocimiento (`graphify`):** Actualizado (`2001 nodos, 5982 aristas, 133 comunidades`)
+- **Grafo de Conocimiento (`graphify`):** Actualizado (`2002 nodos, 5995 edges, 145 comunidades`)

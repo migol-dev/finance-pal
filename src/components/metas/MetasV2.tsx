@@ -114,8 +114,28 @@ export function MetasV2() {
     const id = params.get("id");
     if (id && goals.some((g) => g.id === id)) {
       setSelectedId(id);
+      if (typeof window !== "undefined" && window.innerWidth < 1024) {
+        setIsMobileDrawerOpen(true);
+      }
     }
   }, [params, goals]);
+
+  // Helper para resolver todos los IDs de subcarpetas descendientes
+  const getFolderAndDescendantIds = useMemo(() => {
+    return (folderId: string): Set<string> => {
+      const set = new Set<string>([folderId]);
+      const addChildren = (pid: string) => {
+        goalFolders
+          .filter((f) => f.parentId === pid)
+          .forEach((c) => {
+            set.add(c.id);
+            addChildren(c.id);
+          });
+      };
+      addChildren(folderId);
+      return set;
+    };
+  }, [goalFolders]);
 
   // Conteo de metas por carpeta (incluyendo recursión para subcarpetas)
   const getFolderGoalCount = (folderId: string): number => {
@@ -151,8 +171,9 @@ export function MetasV2() {
       .filter((g) => {
         // Filtro por carpeta
         if (selectedFolderId === "uncategorized" && g.folderId) return false;
-        if (selectedFolderId && selectedFolderId !== "uncategorized" && g.folderId !== selectedFolderId) {
-          return false;
+        if (selectedFolderId && selectedFolderId !== "uncategorized") {
+          const validFolderIds = getFolderAndDescendantIds(selectedFolderId);
+          if (!g.folderId || !validFolderIds.has(g.folderId)) return false;
         }
 
         // Filtro por estado
@@ -174,7 +195,7 @@ export function MetasV2() {
         if (!a.pinned && b.pinned) return 1;
         return 0;
       });
-  }, [goals, selectedFolderId, statusFilter, query]);
+  }, [goals, selectedFolderId, statusFilter, query, getFolderAndDescendantIds]);
 
   const selectedGoal = useMemo(() => {
     return goals.find((g) => g.id === selectedId) || null;
@@ -230,80 +251,71 @@ export function MetasV2() {
         }
       />
 
-      {/* Resumen Global De-boxed (Anti-AI Law 1 & 2) */}
+      {/* Resumen Global De-boxed (Warm Editorial Wealth - Anti-AI Law 1 & 3) */}
       <section className="px-4 sm:px-6 mb-6">
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-          {/* Total Ahorrado */}
-          <div className="p-4 rounded-2xl bg-card border border-[#E4E0D8] dark:border-white/10 transition-colors">
-            <div className="flex items-center justify-between mb-1">
+        <div className="py-4 border-y border-[#E4E0D8] dark:border-white/10 flex flex-col md:flex-row md:items-center justify-between gap-6">
+          {/* Focal figure: Ahorro Acumulado */}
+          <div className="min-w-0">
+            <div className="flex items-center gap-2">
               <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
-                <Coins className="size-3.5 text-primary" />
+                <Coins className="size-3.5 text-primary" strokeWidth={1.75} />
                 Ahorro Acumulado
               </span>
-              <span className="text-[10px] text-muted-foreground font-mono-tabular">
+              <span className="text-[10px] text-muted-foreground font-mono-tabular font-medium">
                 Meta global {fmt(totals.totalTarget)}
               </span>
             </div>
-            <p className="text-2xl font-bold font-mono-tabular tracking-tight text-foreground">
-              {fmt(totals.totalSaved)}
-            </p>
-            <div className="space-y-1 mt-2">
-              <div className="flex items-center justify-between text-[11px] text-muted-foreground">
-                <span>Avance global</span>
-                <span className="font-mono-tabular font-bold text-foreground">
-                  {totals.globalPct.toFixed(1)}%
-                </span>
-              </div>
-              <div className="h-1.5 rounded-full bg-muted overflow-hidden">
-                <div
-                  style={{ width: `${totals.globalPct}%` }}
-                  className="h-full rounded-full bg-primary transition-all duration-500"
-                />
-              </div>
+            <div className="flex items-baseline gap-3 mt-1 flex-wrap">
+              <span className="text-3xl sm:text-4xl font-extrabold font-mono-tabular tracking-tight text-foreground">
+                {fmt(totals.totalSaved)}
+              </span>
+              <span className="text-xs font-bold font-mono-tabular px-2.5 py-0.5 rounded-full bg-primary/10 text-primary border border-primary/20">
+                {totals.globalPct.toFixed(1)}% avance
+              </span>
+            </div>
+            {/* Barra hairline de avance global */}
+            <div className="w-full max-w-md h-1.5 rounded-full bg-muted overflow-hidden mt-2">
+              <div
+                style={{ width: `${totals.globalPct}%` }}
+                className="h-full rounded-full bg-primary transition-all duration-500"
+              />
             </div>
           </div>
 
-          {/* Falta por Ahorrar */}
-          <div className="p-4 rounded-2xl bg-card border border-[#E4E0D8] dark:border-white/10 transition-colors">
-            <div className="flex items-center justify-between mb-1">
+          {/* Cifras de Capital Restante y Cumplimiento con divisor hairline */}
+          <div className="grid grid-cols-2 gap-6 sm:gap-8 pt-4 md:pt-0 border-t md:border-t-0 md:border-l border-[#E4E0D8] dark:border-white/10 md:pl-8 shrink-0">
+            {/* Capital Restante */}
+            <div>
               <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
-                <TrendingUp className="size-3.5 text-amber-600 dark:text-amber-400" />
+                <TrendingUp className="size-3.5 text-amber-600 dark:text-amber-400" strokeWidth={1.75} />
                 Capital Restante
               </span>
-              <span className="text-[10px] text-amber-700 dark:text-amber-400 font-mono-tabular">
-                Por alcanzar
-              </span>
+              <p className="text-xl sm:text-2xl font-bold font-mono-tabular text-amber-700 dark:text-amber-400 mt-1">
+                {fmt(totals.totalRemaining)}
+              </p>
+              <p className="text-[10px] text-muted-foreground mt-0.5">
+                Por alcanzar en tus metas
+              </p>
             </div>
-            <p className="text-2xl font-bold font-mono-tabular tracking-tight text-amber-700 dark:text-amber-400">
-              {fmt(totals.totalRemaining)}
-            </p>
-            <p className="text-[11px] text-muted-foreground mt-1">
-              Distribuido entre tus metas en curso
-            </p>
-          </div>
 
-          {/* Metas Conquistadas */}
-          <div className="p-4 rounded-2xl bg-card border border-[#E4E0D8] dark:border-white/10 transition-colors">
-            <div className="flex items-center justify-between mb-1">
+            {/* Metas Conquistadas */}
+            <div>
               <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
-                <Sparkles className="size-3.5 text-emerald-600 dark:text-emerald-400" />
+                <Sparkles className="size-3.5 text-emerald-600 dark:text-emerald-400" strokeWidth={1.75} />
                 Cumplimiento
               </span>
-              <span className="text-[10px] text-emerald-700 dark:text-emerald-400 font-mono-tabular">
+              <p className="text-xl sm:text-2xl font-bold font-mono-tabular text-emerald-700 dark:text-emerald-400 mt-1">
                 {totals.completedCount} de {goals.length}
-              </span>
+              </p>
+              <p className="text-[10px] text-muted-foreground mt-0.5">
+                {goals.length - totals.completedCount} sueños aún en camino activo
+              </p>
             </div>
-            <p className="text-2xl font-bold font-mono-tabular tracking-tight text-emerald-700 dark:text-emerald-400">
-              {totals.completedCount} {totals.completedCount === 1 ? "Meta cumplida" : "Metas cumplidas"}
-            </p>
-            <p className="text-[11px] text-muted-foreground mt-1">
-              {goals.length - totals.completedCount} sueños aún en camino activo
-            </p>
           </div>
         </div>
       </section>
 
-      {/* Barra de Carpetas y Categorías (Píldoras fluidas) */}
+      {/* Barra de Carpetas y Categorías (Píldoras fluidas con edición) */}
       <section className="px-4 sm:px-6 mb-5" aria-label="Organizador por carpetas">
         <div className="flex items-center gap-2 overflow-x-auto no-scrollbar pb-1">
           {/* Todas */}
@@ -332,15 +344,15 @@ export function MetasV2() {
             </button>
           )}
 
-          {/* Carpetas registradas */}
+          {/* Carpetas registradas con acciones de edición/eliminación */}
           {goalFolders.map((f) => {
             const count = getFolderGoalCount(f.id);
             const isSelected = selectedFolderId === f.id;
             return (
-              <div key={f.id} className="relative group shrink-0">
+              <div key={f.id} className="relative group shrink-0 flex items-center">
                 <button
                   onClick={() => setSelectedFolderId(isSelected ? null : f.id)}
-                  className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-semibold border transition active:scale-[0.98] ${
+                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold border transition active:scale-[0.98] ${
                     isSelected
                       ? "bg-primary text-primary-foreground border-primary shadow-xs"
                       : "bg-card border-[#E4E0D8] dark:border-white/10 text-muted-foreground hover:text-foreground"
@@ -353,6 +365,31 @@ export function MetasV2() {
                   />
                   <span>{f.name}</span>
                   <span className="opacity-75 font-mono-tabular">({count})</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setEditingFolder(f);
+                    setOpenFolderModal(true);
+                  }}
+                  title="Editar carpeta"
+                  aria-label={`Editar carpeta ${f.name}`}
+                  className="size-6 ml-0.5 rounded-md flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted opacity-0 group-hover:opacity-100 focus:opacity-100 transition"
+                >
+                  <Pencil className="size-3" strokeWidth={1.5} />
+                </button>
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setDeleteFolder(f);
+                  }}
+                  title="Eliminar carpeta"
+                  aria-label={`Eliminar carpeta ${f.name}`}
+                  className="size-6 rounded-md flex items-center justify-center text-muted-foreground hover:text-destructive hover:bg-destructive/10 opacity-0 group-hover:opacity-100 focus:opacity-100 transition"
+                >
+                  <Trash2 className="size-3" strokeWidth={1.5} />
                 </button>
               </div>
             );
@@ -413,11 +450,9 @@ export function MetasV2() {
           {/* COLUMNA IZQUIERDA (col-span-7): Catálogo de Metas con Hitos y Ritmo */}
           <section className="lg:col-span-7 space-y-3" aria-label="Lista de metas">
             {goals.length === 0 ? (
-              /* Estado Vacío Sin Metas */
+              /* Estado Vacío Sin Metas (Anti-AI Law 5: Sin circular bubble badge) */
               <div className="rounded-2xl border border-dashed border-[#E4E0D8] dark:border-white/10 p-10 text-center flex flex-col items-center justify-center">
-                <div className="size-12 rounded-full bg-muted/60 flex items-center justify-center mb-3 text-muted-foreground">
-                  <Target className="size-6" strokeWidth={1.5} />
-                </div>
+                <Target className="size-8 text-muted-foreground mb-3" strokeWidth={1.5} />
                 <h3 className="font-display-v2 text-lg font-semibold tracking-tight text-foreground mb-1">
                   Sin metas de ahorro aún
                 </h3>
@@ -738,6 +773,34 @@ export function MetasV2() {
         icon={Trash2}
         iconColor="bg-destructive"
       />
+
+      {/* Confirmación para Eliminar Carpeta */}
+      <ElegantConfirm
+        open={!!deleteFolder}
+        onOpenChange={(v) => !v && setDeleteFolder(null)}
+        title="¿Eliminar carpeta?"
+        description={
+          <span className="text-sm text-muted-foreground">
+            ¿Estás seguro de eliminar la carpeta{" "}
+            <span className="font-bold text-foreground">"{deleteFolder?.name}"</span>? Las metas no se
+            eliminarán, solo quedarán sin carpeta organizadora.
+          </span>
+        }
+        onConfirm={async () => {
+          if (deleteFolder) {
+            try {
+              await removeGoalFolder(deleteFolder.id);
+              toast.success("Carpeta eliminada");
+              if (selectedFolderId === deleteFolder.id) setSelectedFolderId(null);
+            } catch (e: any) {
+              toast.error(e.message || "Error al eliminar la carpeta");
+            }
+            setDeleteFolder(null);
+          }
+        }}
+        icon={Trash2}
+        iconColor="bg-destructive"
+      />
     </div>
   );
 }
@@ -767,6 +830,12 @@ function GoalInspectorContent({
   const [date, setDate] = useState(localDateNow());
   const [accountId, setAccountId] = useState<string | undefined>(accounts[0]?.id);
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  useEffect(() => {
+    if (!accountId && accounts.length > 0) {
+      setAccountId(accounts[0].id);
+    }
+  }, [accounts, accountId]);
 
   const handleQuickAdd = (delta: number) => {
     const cur = parseFloat(amount) || 0;

@@ -99,6 +99,9 @@ export function DeudasV2() {
     const id = params.get("id");
     if (id && debts.some((d) => d.id === id)) {
       setSelectedId(id);
+      if (typeof window !== "undefined" && window.innerWidth < 1024) {
+        setIsMobileDrawerOpen(true);
+      }
     }
   }, [params, debts]);
 
@@ -224,71 +227,70 @@ export function DeudasV2() {
         }
       />
 
-      {/* Resumen Global De-boxed (Anti-AI Law 1 & 2) */}
+      {/* Resumen Global De-boxed (Warm Editorial Wealth - Anti-AI Law 1 & 3) */}
       <section className="px-4 sm:px-6 mb-6">
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-          {/* Por Cobrar */}
-          <div className="p-4 rounded-2xl bg-card border border-[#E4E0D8] dark:border-white/10 transition-colors">
-            <div className="flex items-center justify-between mb-1">
-              <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
-                <ArrowDownLeft className="size-3.5 text-emerald-600 dark:text-emerald-400" />
-                Me deben (Por cobrar)
+        <div className="py-4 border-y border-[#E4E0D8] dark:border-white/10 flex flex-col md:flex-row md:items-center justify-between gap-6">
+          {/* Focal figure: Balance Neto de Deudas */}
+          <div className="min-w-0">
+            <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground block">
+              Balance Neto de Deudas
+            </span>
+            <div className="flex items-baseline gap-3 mt-1 flex-wrap">
+              <span
+                className={`text-3xl sm:text-4xl font-extrabold font-mono-tabular tracking-tight ${
+                  totals.netBalance > 0
+                    ? "text-emerald-700 dark:text-emerald-400"
+                    : totals.netBalance < 0
+                    ? "text-rose-700 dark:text-rose-400"
+                    : "text-foreground"
+                }`}
+              >
+                {totals.netBalance > 0 ? `+${fmt(totals.netBalance)}` : fmt(totals.netBalance)}
               </span>
-              <span className="text-[10px] text-emerald-700 dark:text-emerald-400 font-mono-tabular font-medium">
-                Cobrado {fmt(totals.collectedLent)}
-              </span>
-            </div>
-            <p className="text-2xl font-bold font-mono-tabular tracking-tight text-emerald-700 dark:text-emerald-400">
-              {fmt(totals.pendingToCollect)}
-            </p>
-            <p className="text-[11px] text-muted-foreground mt-1">
-              Total prestado: <span className="font-mono-tabular">{fmt(totals.totalLent)}</span>
-            </p>
-          </div>
-
-          {/* Por Pagar */}
-          <div className="p-4 rounded-2xl bg-card border border-[#E4E0D8] dark:border-white/10 transition-colors">
-            <div className="flex items-center justify-between mb-1">
-              <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
-                <ArrowUpRight className="size-3.5 text-rose-600 dark:text-rose-400" />
-                Yo debo (Por pagar)
-              </span>
-              <span className="text-[10px] text-rose-700 dark:text-rose-400 font-mono-tabular font-medium">
-                Abonado {fmt(totals.paidBorrowed)}
-              </span>
-            </div>
-            <p className="text-2xl font-bold font-mono-tabular tracking-tight text-rose-700 dark:text-rose-400">
-              {fmt(totals.pendingToPay)}
-            </p>
-            <p className="text-[11px] text-muted-foreground mt-1">
-              Deuda original: <span className="font-mono-tabular">{fmt(totals.totalBorrowed)}</span>
-            </p>
-          </div>
-
-          {/* Balance Neto */}
-          <div className="p-4 rounded-2xl bg-card border border-[#E4E0D8] dark:border-white/10 transition-colors">
-            <div className="flex items-center justify-between mb-1">
-              <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
-                Balance Neto de Deudas
-              </span>
-              <span className="text-[10px] text-muted-foreground">
+              <span
+                className={`text-xs font-semibold font-mono-tabular px-2.5 py-0.5 rounded-full border ${
+                  totals.netBalance >= 0
+                    ? "bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border-emerald-500/20"
+                    : "bg-rose-500/10 text-rose-700 dark:text-rose-400 border-rose-500/20"
+                }`}
+              >
                 {totals.netBalance >= 0 ? "A tu favor" : "En contra"}
               </span>
             </div>
-            <p
-              className={`text-2xl font-bold font-mono-tabular tracking-tight ${
-                totals.netBalance > 0
-                  ? "text-emerald-700 dark:text-emerald-400"
-                  : totals.netBalance < 0
-                  ? "text-rose-700 dark:text-rose-400"
-                  : "text-foreground"
-              }`}
-            >
-              {totals.netBalance > 0 ? `+${fmt(totals.netBalance)}` : fmt(totals.netBalance)}
-            </p>
             <p className="text-[11px] text-muted-foreground mt-1">
-              Diferencia neta entre activos y pasivos
+              Diferencia neta entre activos y pasivos por cobrar y pagar
             </p>
+          </div>
+
+          {/* Cifras de Por Cobrar y Por Pagar con divisor hairline */}
+          <div className="grid grid-cols-2 gap-6 sm:gap-8 pt-4 md:pt-0 border-t md:border-t-0 md:border-l border-[#E4E0D8] dark:border-white/10 md:pl-8 shrink-0">
+            {/* Por Cobrar */}
+            <div>
+              <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
+                <ArrowDownLeft className="size-3.5 text-emerald-600 dark:text-emerald-400" strokeWidth={1.75} />
+                Me deben (Por cobrar)
+              </span>
+              <p className="text-xl sm:text-2xl font-bold font-mono-tabular text-emerald-700 dark:text-emerald-400 mt-1">
+                {fmt(totals.pendingToCollect)}
+              </p>
+              <p className="text-[10px] text-muted-foreground mt-0.5">
+                Cobrado <span className="font-mono-tabular font-medium">{fmt(totals.collectedLent)}</span> de <span className="font-mono-tabular">{fmt(totals.totalLent)}</span>
+              </p>
+            </div>
+
+            {/* Por Pagar */}
+            <div>
+              <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
+                <ArrowUpRight className="size-3.5 text-rose-600 dark:text-rose-400" strokeWidth={1.75} />
+                Yo debo (Por pagar)
+              </span>
+              <p className="text-xl sm:text-2xl font-bold font-mono-tabular text-rose-700 dark:text-rose-400 mt-1">
+                {fmt(totals.pendingToPay)}
+              </p>
+              <p className="text-[10px] text-muted-foreground mt-0.5">
+                Abonado <span className="font-mono-tabular font-medium">{fmt(totals.paidBorrowed)}</span> de <span className="font-mono-tabular">{fmt(totals.totalBorrowed)}</span>
+              </p>
+            </div>
           </div>
         </div>
       </section>
@@ -419,11 +421,9 @@ export function DeudasV2() {
           {/* COLUMNA IZQUIERDA (col-span-7): Lista de Deudas con Amortización */}
           <section className="lg:col-span-7 space-y-3" aria-label="Lista de deudas">
             {debts.length === 0 ? (
-              /* Estado Vacío Sin Deudas */
+              /* Estado Vacío Sin Deudas (Anti-AI Law 5: Sin circular bubble badge) */
               <div className="rounded-2xl border border-dashed border-[#E4E0D8] dark:border-white/10 p-10 text-center flex flex-col items-center justify-center">
-                <div className="size-12 rounded-full bg-muted/60 flex items-center justify-center mb-3 text-muted-foreground">
-                  <HandCoins className="size-6" strokeWidth={1.5} />
-                </div>
+                <HandCoins className="size-8 text-muted-foreground mb-3" strokeWidth={1.5} />
                 <h3 className="font-display-v2 text-lg font-semibold tracking-tight text-foreground mb-1">
                   Sin deudas ni préstamos
                 </h3>
@@ -747,14 +747,18 @@ function DebtInspectorContent({
   const [amount, setAmount] = useState(String(pending > 0 ? pending : ""));
   const [date, setDate] = useState(localDateNow());
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("transfer");
-  const [accountId, setAccountId] = useState<string | undefined>(debt.accountId);
+  const [accountId, setAccountId] = useState<string | undefined>(debt.accountId ?? accounts[0]?.id);
   const [note, setNote] = useState("");
+  const [receiptData, setReceiptData] = useState<string | undefined>(undefined);
+  const [viewReceipt, setViewReceipt] = useState<string | null>(null);
   const [isSubmittingPay, setIsSubmittingPay] = useState(false);
 
-  // Actualizar monto sugerido si cambia la deuda seleccionada
+  // Actualizar monto sugerido y cuenta si cambia la deuda seleccionada
   useEffect(() => {
     setAmount(String(pending > 0 ? pending : ""));
-  }, [debt.id, pending]);
+    setAccountId(debt.accountId ?? accounts[0]?.id);
+    setReceiptData(undefined);
+  }, [debt.id, debt.accountId, pending, accounts]);
 
   const handlePaySubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -772,9 +776,11 @@ function DebtInspectorContent({
         paymentMethod,
         accountId: accountId || undefined,
         note: note.trim() || undefined,
+        receipt: receiptData,
       });
       toast.success("¡Abono registrado exitosamente!");
       setNote("");
+      setReceiptData(undefined);
     } catch (err: any) {
       toast.error(err.message || "Error al registrar el abono");
     } finally {
@@ -923,6 +929,45 @@ function DebtInspectorContent({
             />
           </div>
 
+          <div>
+            <div className="flex items-center justify-between mb-1">
+              <Label className="text-[11px]">Comprobante de abono (opcional)</Label>
+              {receiptData && (
+                <button
+                  type="button"
+                  onClick={() => setReceiptData(undefined)}
+                  className="text-[10px] text-destructive hover:underline"
+                >
+                  Quitar archivo
+                </button>
+              )}
+            </div>
+            <Input
+              type="file"
+              accept="image/*"
+              onChange={(e) => {
+                const file = e.target.files?.[0];
+                if (file) {
+                  const reader = new FileReader();
+                  reader.onload = () => {
+                    if (typeof reader.result === "string") {
+                      setReceiptData(reader.result);
+                    }
+                  };
+                  reader.readAsDataURL(file);
+                }
+              }}
+              className="h-9 text-xs rounded-lg file:mr-2 file:py-1 file:px-2 file:rounded-md file:border-0 file:text-[11px] file:font-semibold file:bg-primary/10 file:text-primary hover:file:bg-primary/20"
+            />
+            {receiptData && (
+              <img
+                src={receiptData}
+                alt="Vista previa del comprobante"
+                className="mt-1.5 rounded-lg max-h-24 object-contain border border-[#E4E0D8] dark:border-white/10"
+              />
+            )}
+          </div>
+
           <Button
             type="submit"
             disabled={isSubmittingPay}
@@ -963,6 +1008,16 @@ function DebtInspectorContent({
                   <p className="text-[10px] text-muted-foreground truncate">
                     {fmtDate(p.date)} {p.note ? `• ${p.note}` : ""}
                   </p>
+                  {p.receipt && (
+                    <button
+                      type="button"
+                      onClick={() => setViewReceipt(p.receipt!)}
+                      className="inline-flex items-center gap-1 text-[10px] text-primary hover:underline font-medium mt-0.5"
+                    >
+                      <FileText className="size-3" strokeWidth={1.5} />
+                      <span>Ver comprobante</span>
+                    </button>
+                  )}
                 </div>
 
                 <button
@@ -977,6 +1032,25 @@ function DebtInspectorContent({
           </div>
         )}
       </div>
+
+      {/* Modal para Visualizar Comprobante de Abono */}
+      <Dialog open={!!viewReceipt} onOpenChange={(v) => !v && setViewReceipt(null)}>
+        <DialogContent className="max-w-md p-4 rounded-2xl">
+          <DialogHeader>
+            <DialogTitle className="text-sm font-semibold">Comprobante de abono</DialogTitle>
+            <DialogDescription className="text-xs text-muted-foreground">
+              Comprobante adjunto al pago
+            </DialogDescription>
+          </DialogHeader>
+          {viewReceipt && (
+            <img
+              src={viewReceipt}
+              alt="Comprobante completo"
+              className="w-full max-h-[70vh] object-contain rounded-lg border border-[#E4E0D8] dark:border-white/10"
+            />
+          )}
+        </DialogContent>
+      </Dialog>
 
       {/* Zona de Peligro / Eliminar */}
       <div className="pt-2 border-t border-[#E4E0D8] dark:border-white/10">

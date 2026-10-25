@@ -4,6 +4,7 @@ import { MemoryRouter } from "react-router-dom";
 import Deudas from "@/pages/Deudas";
 import Metas from "@/pages/Metas";
 import type { Debt, Goal, GoalFolder, Account, AppSettings } from "@/lib/finance";
+import { debtPaymentSchema, validateEntity } from "@/lib/validators";
 
 // Mock de ResizeObserver
 class MockResizeObserver {
@@ -323,6 +324,17 @@ describe("Sprint 5 — DeudasV2, MetasV2 & Dual Dispatchers Suite", () => {
       expect(screen.getByRole("complementary", { name: "Inspector de deuda" })).toBeInTheDocument();
       expect(screen.getAllByText("Crédito personal").length).toBeGreaterThan(0);
     });
+
+    it("opens mobile drawer automatically on mobile viewport when deep-linked", () => {
+      window.innerWidth = 500;
+      render(
+        <MemoryRouter initialEntries={["/deudas?id=debt-2"]}>
+          <Deudas />
+        </MemoryRouter>
+      );
+
+      expect(screen.getByText("Detalle de Deuda")).toBeInTheDocument();
+    });
   });
 
   // ==========================================
@@ -397,7 +409,7 @@ describe("Sprint 5 — DeudasV2, MetasV2 & Dual Dispatchers Suite", () => {
         </MemoryRouter>
       );
 
-      const folderPill = screen.getByRole("button", { name: /viajes y aventuras/i });
+      const folderPill = screen.getByRole("button", { name: /^viajes y aventuras/i });
       fireEvent.click(folderPill);
 
       expect(screen.getByText("Viaje a Japón")).toBeInTheDocument();
@@ -475,6 +487,97 @@ describe("Sprint 5 — DeudasV2, MetasV2 & Dual Dispatchers Suite", () => {
       await waitFor(() => {
         expect(mockRemoveGoal).toHaveBeenCalledWith("goal-1");
       });
+    });
+
+    it("opens mobile drawer automatically on mobile viewport when deep-linked in Metas", () => {
+      window.innerWidth = 500;
+      render(
+        <MemoryRouter initialEntries={["/metas?id=goal-1"]}>
+          <Metas />
+        </MemoryRouter>
+      );
+
+      expect(screen.getByText("Detalle de Meta")).toBeInTheDocument();
+    });
+
+    it("allows deleting a folder with confirmation dialog", async () => {
+      render(
+        <MemoryRouter>
+          <Metas />
+        </MemoryRouter>
+      );
+
+      const deleteFolderBtn = screen.getByRole("button", { name: /eliminar carpeta viajes y aventuras/i });
+      fireEvent.click(deleteFolderBtn);
+
+      expect(screen.getByText("¿Eliminar carpeta?")).toBeInTheDocument();
+      const confirmBtn = screen.getByRole("button", { name: /confirmar|eliminar/i });
+      fireEvent.click(confirmBtn);
+
+      await waitFor(() => {
+        expect(mockRemoveGoalFolder).toHaveBeenCalledWith("folder-1");
+      });
+    });
+
+    it("includes goals in subfolders when parent folder is selected", () => {
+      // Agregar subcarpeta y meta dentro de subcarpeta
+      mockState.goalFolders.push({
+        id: "folder-sub",
+        name: "Europa",
+        parentId: "folder-1",
+        color: "gradient-sunset",
+        order: 1,
+        createdAt: "2026-01-01T00:00:00.000Z",
+      });
+      mockState.goals.push({
+        id: "goal-sub",
+        name: "Tour Francia",
+        target: 20000,
+        saved: 5000,
+        emoji: "🗼",
+        color: "gradient-sunset",
+        folderId: "folder-sub",
+      });
+
+      render(
+        <MemoryRouter>
+          <Metas />
+        </MemoryRouter>
+      );
+
+      // Clic en la carpeta padre "Viajes y Aventuras"
+      const parentFolderPill = screen.getByRole("button", { name: /^viajes y aventuras/i });
+      fireEvent.click(parentFolderPill);
+
+      // Ambas metas (padre y subcarpeta) deben estar visibles
+      expect(screen.getByText("Viaje a Japón")).toBeInTheDocument();
+      expect(screen.getByText("Tour Francia")).toBeInTheDocument();
+      expect(screen.queryByText("Fondo de Emergencia")).not.toBeInTheDocument();
+    });
+  });
+
+  // ==========================================
+  // VALIDATORS SCHEMA HARDENING TESTS
+  // ==========================================
+  describe("Validators Schema Hardening", () => {
+    it("validates debtPaymentSchema with receipt and transfer metadata without throwing", () => {
+      const paymentWithReceipt = {
+        id: "123e4567-e89b-12d3-a456-426614174000",
+        amount: 1500,
+        date: "2026-10-24T12:00:00.000Z",
+        paymentMethod: "transfer",
+        accountId: "123e4567-e89b-12d3-a456-426614174001",
+        transferToAccountId: "123e4567-e89b-12d3-a456-426614174002",
+        externalPayee: {
+          clabe: "123456789012345678",
+          bank: "BBVA",
+          name: "Carlos Mendoza",
+        },
+        receipt: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=",
+      };
+
+      const result = validateEntity(debtPaymentSchema, paymentWithReceipt);
+      expect(result.success).toBe(true);
     });
   });
 });
