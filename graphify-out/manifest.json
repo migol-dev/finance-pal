@@ -102,9 +102,9 @@
     "semantic_hash": ""
   },
   "package.json": {
-    "mtime": 1792636986.858102,
-    "seen": 1792890757.9034204,
-    "ast_hash": "ba4f719bfe8e39f2671da503cb2de595",
+    "mtime": 1792956653.0036566,
+    "seen": 1792956710.046224,
+    "ast_hash": "deaaee2e40682320d6e811c617d6b1fe",
     "semantic_hash": ""
   },
   "postcss.config.js": {
@@ -186,9 +186,9 @@
     "semantic_hash": ""
   },
   "src/components/app/AppShell.tsx": {
-    "mtime": 1792954237.9980516,
-    "seen": 1792955078.1914072,
-    "ast_hash": "fa3e8210bb85750ea308bba3acc4f742",
+    "mtime": 1792956567.2167442,
+    "seen": 1792956710.0462563,
+    "ast_hash": "dfe68427ec0ab80024d3c042cd980ceb",
     "semantic_hash": ""
   },
   "src/components/app/BottomNav.tsx": {
@@ -882,9 +882,9 @@
     "semantic_hash": ""
   },
   "src/lib/version-check.ts": {
-    "mtime": 1792555600.107605,
-    "seen": 1792890757.9037035,
-    "ast_hash": "516d525abc471bb56515a80961b01e7e",
+    "mtime": 1792956657.9566529,
+    "seen": 1792956710.0465007,
+    "ast_hash": "52cdbd2dffed5b3d0b3d42ab3f2fb4ac",
     "semantic_hash": ""
   },
   "src/lib/web-push.ts": {
