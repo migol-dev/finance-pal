@@ -22,6 +22,7 @@ import { AjustesHeader } from "../AjustesHeader";
 import { SectionProps } from "../types";
 import { IconPicker } from "@/components/app/IconPicker";
 import { IconDisplay } from "@/components/app/IconDisplay";
+import { CategorySelectWithCreate } from "@/components/app/CategorySelectWithCreate";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -51,7 +52,6 @@ function FixedForm({
   accounts: Account[];
   onSave: (i: Omit<FixedItem, "id">) => void;
 }) {
-  const cats = Object.keys(CATEGORY_EMOJI);
   const initialFreq: Frequency = initial?.frequency
     ? ((initial.frequency as string) === "annual" ? "yearly" : initial.frequency)
     : "monthly";
@@ -152,18 +152,13 @@ function FixedForm({
       </div>
       <div>
         <Label className="text-xs">Categoría</Label>
-        <Select value={category} onValueChange={setCategory}>
-          <SelectTrigger className="h-11 rounded-2xl">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            {cats.map((c) => (
-              <SelectItem key={c} value={c}>
-                {CATEGORY_EMOJI[c]} {c}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+        <div className="mt-1">
+          <CategorySelectWithCreate
+            value={category}
+            onChange={setCategory}
+            triggerClassName="h-11 rounded-2xl"
+          />
+        </div>
       </div>
       <div>
         <Label className="text-xs">Monto</Label>

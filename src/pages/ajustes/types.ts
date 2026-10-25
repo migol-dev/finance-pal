@@ -4,6 +4,7 @@ export type AjustesSectionId =
   | "perfil"
   | "cuentas"
   | "fijos"
+  | "categorias"
   | "apariencia"
   | "accesibilidad"
   | "notificaciones"

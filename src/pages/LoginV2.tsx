@@ -17,6 +17,9 @@ import {
   Shield,
   Database,
   Smartphone,
+  Sun,
+  Moon,
+  Monitor,
 } from "lucide-react";
 import { BrandLogo } from "@/components/app/BrandLogo";
 import { Browser } from "@capacitor/browser";
@@ -61,6 +64,8 @@ const GitHubIcon = () => (
 export function LoginV2() {
   const { session, mfaRequired, signOut, checkMfaStatus, refreshSession } = useAuth();
   const { resolvedTheme } = useSystemTheme();
+  const currentTheme = useFinance((s) => s.theme);
+  const setTheme = useFinance((s) => s.setTheme);
   const accentColor = useFinance((s) => s.appSettings?.accentColor ?? "emerald");
   const [isLogin, setIsLogin] = useState(true);
   const [email, setEmail] = useState("");
@@ -414,16 +419,50 @@ export function LoginV2() {
           {/* FORM COLUMN (7 cols on lg:): Clean De-boxed Authentication */}
           <div className="lg:col-span-7 p-8 sm:p-12 flex flex-col justify-center">
             <div className="w-full max-w-md mx-auto space-y-6">
-              {/* Form Header */}
-              <div>
-                <h3 className="font-display-v2 text-2xl font-normal">
-                  {isLogin ? "Iniciar Sesión" : "Crear una Cuenta"}
-                </h3>
-                <p className="text-xs text-[#6E6A63] dark:text-[#8E8D8A] mt-1">
-                  {isLogin
-                    ? "Accede a tus cuentas, metas y patrimonio con tus credenciales."
-                    : "Comienza a organizar tu patrimonio con soberanía de datos."}
-                </p>
+              {/* Form Header with Dynamic Theme Switcher */}
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <h3 className="font-display-v2 text-2xl font-normal">
+                    {isLogin ? "Iniciar Sesión" : "Crear una Cuenta"}
+                  </h3>
+                  <p className="text-xs text-[#6E6A63] dark:text-[#8E8D8A] mt-1">
+                    {isLogin
+                      ? "Accede a tus cuentas, metas y patrimonio con tus credenciales."
+                      : "Comienza a organizar tu patrimonio con soberanía de datos."}
+                  </p>
+                </div>
+
+                {/* Theme Selector (Claro / Oscuro / Sistema) */}
+                <div
+                  role="radiogroup"
+                  aria-label="Selector de tema visual"
+                  className="inline-flex p-0.5 rounded-lg bg-[#FAF8F5] dark:bg-white/[0.05] border border-[#E4E0D8] dark:border-white/10 shrink-0 self-start"
+                >
+                  {(
+                    [
+                      { key: "system", label: "Auto", title: "Tema del sistema", icon: Monitor },
+                      { key: "light", label: "Claro", title: "Tema claro", icon: Sun },
+                      { key: "dark", label: "Oscuro", title: "Tema oscuro", icon: Moon },
+                    ] as const
+                  ).map(({ key, label, title, icon: Icon }) => (
+                    <button
+                      key={key}
+                      type="button"
+                      role="radio"
+                      aria-checked={currentTheme === key}
+                      title={title}
+                      onClick={() => setTheme(key)}
+                      className={`flex items-center gap-1 px-2 py-1 rounded-[6px] text-[11px] font-mono-tabular transition-all ${
+                        currentTheme === key
+                          ? "bg-white dark:bg-[#1E1E1C] text-foreground font-semibold shadow-xs"
+                          : "text-[#6E6A63] dark:text-[#8E8D8A] hover:text-foreground"
+                      }`}
+                    >
+                      <Icon className="size-3" strokeWidth={1.75} />
+                      <span className="hidden sm:inline">{label}</span>
+                    </button>
+                  ))}
+                </div>
               </div>
 
               {/* Main Auth Form */}

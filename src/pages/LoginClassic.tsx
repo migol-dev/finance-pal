@@ -5,7 +5,7 @@ import { useAuth } from '@/context/AuthContext';
 import { useSystemTheme } from '@/hooks/useSystemTheme';
 import { useFinance } from '@/store/finance-store';
 import { ACCENT_PALETTES } from '@/lib/accent-palette';
-import { Mail, Lock, Loader2, LogIn, UserPlus, ShieldCheck, Key, ArrowLeft, Sparkles } from 'lucide-react';
+import { Mail, Lock, Loader2, LogIn, UserPlus, ShieldCheck, Key, ArrowLeft, Sparkles, Sun, Moon, Monitor } from 'lucide-react';
 import { BrandLogo } from '@/components/app/BrandLogo';
 import { Progress } from '@/components/ui/progress';
 import { Browser } from '@capacitor/browser';
@@ -243,6 +243,8 @@ function AnimatedBackground() {
 export default function Login() {
   const { session, mfaRequired, signOut, checkMfaStatus, refreshSession } = useAuth();
   const { resolvedTheme } = useSystemTheme();
+  const currentTheme = useFinance((s) => s.theme);
+  const setTheme = useFinance((s) => s.setTheme);
   const accentColor = useFinance((s) => s.appSettings.accentColor);
   const [isLogin, setIsLogin] = useState(true);
   const [email, setEmail] = useState('');
@@ -528,7 +530,40 @@ export default function Login() {
         transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
         className="w-full max-w-[420px] relative z-10 my-auto"
       >
-        <div className="login-glass-card rounded-3xl p-5 min-[400px]:p-8 shadow-pop">
+        <div className="login-glass-card rounded-3xl p-5 min-[400px]:p-8 shadow-pop relative">
+          {/* Dynamic Theme Switcher */}
+          <div className="flex justify-end mb-3">
+            <div
+              role="radiogroup"
+              aria-label="Selector de tema visual"
+              className="inline-flex p-0.5 rounded-xl bg-muted/40 border border-border/40 text-xs"
+            >
+              {(
+                [
+                  { key: 'system', label: 'Auto', icon: Monitor },
+                  { key: 'light', label: 'Claro', icon: Sun },
+                  { key: 'dark', label: 'Oscuro', icon: Moon },
+                ] as const
+              ).map(({ key, label, icon: Icon }) => (
+                <button
+                  key={key}
+                  type="button"
+                  role="radio"
+                  aria-checked={currentTheme === key}
+                  onClick={() => setTheme(key)}
+                  className={`flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-medium transition-all ${
+                    currentTheme === key
+                      ? 'bg-card text-foreground font-semibold shadow-xs'
+                      : 'text-muted-foreground hover:text-foreground'
+                  }`}
+                >
+                  <Icon className="size-3" />
+                  <span>{label}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+
           {/* Header with animated logo */}
           <motion.div
             initial={{ opacity: 0, y: 16 }}

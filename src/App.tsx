@@ -1,4 +1,4 @@
-import React, { Suspense, lazy, useEffect, useRef } from "react";
+import React, { Suspense, lazy, useEffect, useState, useRef } from "react";
 import { queryClient } from "@/lib/queryClient";
 import { PersistQueryClientProvider } from '@tanstack/react-query-persist-client';
 import { createAsyncStoragePersister } from '@tanstack/query-async-storage-persister';
@@ -8,6 +8,7 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { AppShell } from "@/components/app/AppShell";
+import { SplashScreen } from "@/components/app/SplashScreen";
 import { ErrorBoundary } from '@/components/ErrorBoundary';
 import { DataConflictDialog } from '@/components/app/DataConflictDialog';
 import { UpdateNotification } from '@/components/app/UpdateNotification';
@@ -402,6 +403,14 @@ function containsImplicitTokens(url: string): boolean {
 }
 
 const App = () => {
+  const [booting, setBooting] = useState(true);
+
+  useEffect(() => {
+    // 1.5s (1500ms) boot screen timeout per Warm Editorial Wealth Labor Illusion
+    const t = setTimeout(() => setBooting(false), 1500);
+    return () => clearTimeout(t);
+  }, []);
+
   useEffect(() => {
     if (isSupabaseEnabled) {
       setupSyncListener();
@@ -442,6 +451,7 @@ const App = () => {
           <AuthProvider>
             <Toaster />
             <Sonner />
+            {booting && <SplashScreen />}
             <BrowserRouter>
               <AuthGuard />
               {/* Update notification - non-intrusive, checks GitHub releases */}

@@ -26,6 +26,7 @@ import type {
 import { fetchUserSettings, upsertUserSettings } from '@/services/settings.service';
 import {
   getDueOccurrencesForFixedItem,
+  setCachedCustomCategories,
   type Account,
   type Transaction,
   type FixedItem,
@@ -41,6 +42,7 @@ import {
   type UIVersion,
   type NotificationPreferences,
   type AccessibilitySettings,
+  type CustomCategory,
 } from '@/lib/finance';
 
 // Hook fachada: único punto de entrada para componentes y páginas.
@@ -80,6 +82,9 @@ type UiSelection = {
   setNotificationPrefs: (prefs: Partial<NotificationPreferences>) => void;
   setAccessibilitySettings: (prefs: Partial<AccessibilitySettings>) => void;
   clearChangeLog: () => void;
+  addCustomCategory: (cat: { name: string; emoji: string }) => CustomCategory | null;
+  updateCustomCategory: (id: string, patch: { name?: string; emoji?: string }) => void;
+  removeCustomCategory: (id: string) => void;
   exportData: (scopes?: ExportScopes) => string;
   importData: (
     json: string,
@@ -147,6 +152,9 @@ export function useFinanceData() {
       setNotificationPrefs: state.setNotificationPrefs,
       setAccessibilitySettings: state.setAccessibilitySettings,
       clearChangeLog: state.clearChangeLog,
+      addCustomCategory: state.addCustomCategory,
+      updateCustomCategory: state.updateCustomCategory,
+      removeCustomCategory: state.removeCustomCategory,
       exportData: state.exportData,
       importData: state.importData,
       resetAll: state.resetAll,
@@ -154,6 +162,10 @@ export function useFinanceData() {
       cleanupOrphanReceipts: state.cleanupOrphanReceipts,
     })),
   );
+
+  useEffect(() => {
+    setCachedCustomCategories(ui.appSettings?.customCategories);
+  }, [ui.appSettings?.customCategories]);
 
   // --- Sincronización de settings con la nube (Fase 8) ---
   // Los slices ya no tocan la red: la carga inicial y el upsert reactivo viven aquí.
@@ -409,6 +421,10 @@ export function useFinanceData() {
     setGlassEffect: ui.setGlassEffect,
     setNotificationPrefs: ui.setNotificationPrefs,
     setAccessibilitySettings: ui.setAccessibilitySettings,
+    customCategories: ui.appSettings?.customCategories ?? [],
+    addCustomCategory: ui.addCustomCategory,
+    updateCustomCategory: ui.updateCustomCategory,
+    removeCustomCategory: ui.removeCustomCategory,
 
     // --- Operaciones de datos locales / híbridas ---
     ensureScheduledTransactions: reconcileScheduledTransactions,

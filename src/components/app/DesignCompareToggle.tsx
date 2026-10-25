@@ -56,12 +56,12 @@ export const DesignCompareToggle = memo(function DesignCompareToggle() {
     <div
       role="region"
       aria-label="Conmutador de versión de diseño"
-      className="fixed z-50 bottom-[calc(5.25rem+env(safe-area-inset-bottom,0px))] sm:bottom-20 right-4 lg:bottom-6 lg:right-6 flex items-center gap-1.5 p-1.5 pl-3 rounded-full bg-card/95 backdrop-blur-md border border-border/80 shadow-lg text-foreground animate-in fade-in slide-in-from-bottom-2 duration-200 select-none"
+      className="fixed z-50 bottom-[calc(5.25rem+env(safe-area-inset-bottom,0px))] sm:bottom-20 right-3 sm:right-4 lg:bottom-6 lg:right-6 flex items-center gap-1 p-1 sm:p-1.5 sm:pl-3 rounded-full bg-card/95 backdrop-blur-md border border-border/80 shadow-lg text-foreground animate-in fade-in slide-in-from-bottom-2 duration-200 select-none"
     >
       <button
         type="button"
         onClick={handleToggle}
-        className="flex items-center gap-2 text-xs font-semibold hover:opacity-85 active:scale-[0.98] transition-all"
+        className="flex items-center gap-1.5 sm:gap-2 text-xs font-semibold hover:opacity-85 active:scale-[0.98] transition-all px-1.5 sm:px-0"
         title="Alternar diseño de la interfaz (Atajo: Alt + D)"
       >
         {uiVersion === "v2" ? (
@@ -69,8 +69,11 @@ export const DesignCompareToggle = memo(function DesignCompareToggle() {
             <span className="flex items-center justify-center size-5 rounded-full bg-primary/15 text-primary">
               <Sparkles className="size-3" />
             </span>
-            <span className="font-display-v2 font-bold text-foreground">
-              Warm Editorial <span className="text-[10px] text-primary uppercase font-mono px-1 py-0.5 rounded bg-primary/10 ml-0.5">v2</span>
+            <span className="hidden sm:inline font-display-v2 font-bold text-foreground">
+              Warm Editorial
+            </span>
+            <span className="text-[10px] text-primary uppercase font-mono font-bold px-1 py-0.5 rounded bg-primary/10">
+              v2
             </span>
           </>
         ) : (
@@ -78,8 +81,11 @@ export const DesignCompareToggle = memo(function DesignCompareToggle() {
             <span className="flex items-center justify-center size-5 rounded-full bg-muted text-muted-foreground">
               <Layers className="size-3" />
             </span>
-            <span className="font-sans font-medium text-foreground">
-              Clásico <span className="text-[10px] text-muted-foreground uppercase font-mono px-1 py-0.5 rounded bg-muted ml-0.5">v1</span>
+            <span className="hidden sm:inline font-sans font-medium text-foreground">
+              Clásico
+            </span>
+            <span className="text-[10px] text-muted-foreground uppercase font-mono px-1 py-0.5 rounded bg-muted">
+              v1
             </span>
           </>
         )}

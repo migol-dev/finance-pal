@@ -11,18 +11,20 @@ import {
   ShieldCheck,
   ChevronRight,
   Sparkles,
+  Tag,
 } from "lucide-react";
 import { useFinanceData } from "@/hooks/useFinanceData";
 import { useAuth } from "@/context/AuthContext";
 import { isSupabaseEnabled } from "@/lib/supabase";
 import { getCurrentVersion } from "@/lib/version-check";
 import { AjustesSectionId, AjustesCategoryMeta } from "./types";
-import { Header } from "@/components/app/Header";
+import { SyncIndicator } from "@/components/app/SyncIndicator";
 
 // Secciones modulares de configuración
 import { PerfilSection } from "./secciones/PerfilSection";
 import { CuentasSection } from "./secciones/CuentasSection";
 import { FijosSection } from "./secciones/FijosSection";
+import { CategoriasSection } from "./secciones/CategoriasSection";
 import { AparienciaSection } from "./secciones/AparienciaSection";
 import { AccesibilidadSection } from "./secciones/AccesibilidadSection";
 import { NotificacionesSection } from "./secciones/NotificacionesSection";
@@ -62,8 +64,16 @@ const CATEGORIES_DEF: {
     accent: "text-[#8B5CF6]",
   },
   {
-    id: "apariencia",
+    id: "categorias",
     code: "04",
+    title: "Categorías",
+    description: "Categorías generales y personalizadas",
+    icon: Tag,
+    accent: "text-[#10B981]",
+  },
+  {
+    id: "apariencia",
+    code: "05",
     title: "Apariencia",
     description: "Temas claro/oscuro, color de acento y modo compacto",
     icon: Palette,
@@ -71,7 +81,7 @@ const CATEGORIES_DEF: {
   },
   {
     id: "accesibilidad",
-    code: "05",
+    code: "06",
     title: "Accesibilidad",
     description: "Tamaño de texto continuo, alto contraste y dislexia",
     icon: Accessibility,
@@ -79,7 +89,7 @@ const CATEGORIES_DEF: {
   },
   {
     id: "notificaciones",
-    code: "06",
+    code: "07",
     title: "Notificaciones",
     description: "Alertas push, avisos de corte y recordatorios",
     icon: Bell,
@@ -87,7 +97,7 @@ const CATEGORIES_DEF: {
   },
   {
     id: "datos",
-    code: "07",
+    code: "08",
     title: "Nube y Respaldos",
     description: "Sincronización Supabase, exportar/importar datos",
     icon: Cloud,
@@ -95,7 +105,7 @@ const CATEGORIES_DEF: {
   },
   {
     id: "seguridad",
-    code: "08",
+    code: "09",
     title: "Seguridad y Sistema",
     description: "Restablecer datos, diagnóstico y versión",
     icon: ShieldCheck,
@@ -107,7 +117,7 @@ export const AjustesV2 = memo(function AjustesV2() {
   const [searchParams, setSearchParams] = useSearchParams();
   const seccionParam = (searchParams.get("seccion") as AjustesSectionId) || null;
 
-  const { profile, accounts, fixedItems, appSettings } = useFinanceData();
+  const { profile, accounts, fixedItems, appSettings, customCategories = [] } = useFinanceData();
   const accentColor = appSettings?.accentColor ?? "emerald";
   const a11y = appSettings?.accessibility;
   const notifications = appSettings?.notifications;
@@ -139,6 +149,7 @@ export const AjustesV2 = memo(function AjustesV2() {
       else if (cat.id === "cuentas")
         badge = `${accounts?.length ?? 0} ${(accounts?.length ?? 0) === 1 ? "cuenta" : "cuentas"}`;
       else if (cat.id === "fijos") badge = `${fixedItems?.length ?? 0} activos`;
+      else if (cat.id === "categorias") badge = `${customCategories?.length ?? 0} personalizadas`;
       else if (cat.id === "apariencia") badge = accentColor;
       else if (cat.id === "accesibilidad") badge = `${textScalePercent}%`;
       else if (cat.id === "notificaciones")
@@ -167,6 +178,8 @@ export const AjustesV2 = memo(function AjustesV2() {
         return <CuentasSection onBack={handleBack} />;
       case "fijos":
         return <FijosSection onBack={handleBack} />;
+      case "categorias":
+        return <CategoriasSection onBack={handleBack} />;
       case "apariencia":
         return <AparienciaSection onBack={handleBack} />;
       case "accesibilidad":
@@ -185,19 +198,26 @@ export const AjustesV2 = memo(function AjustesV2() {
   return (
     <div className="min-h-screen pb-32 bg-[#FAF8F5] dark:bg-[#0C0C0B] text-[#191918] dark:text-[#EDEDED]">
       <div className="max-w-6xl mx-auto px-4 sm:px-6">
-        {/* Layout: Master-Detail 4/8 in desktop; Agile Drill-Down in mobile */}
+        {/* Layout: Master-Detail 5/7 in laptop, 4/8 in desktop xl; Agile Drill-Down in mobile */}
         <div className="lg:grid lg:grid-cols-12 lg:gap-8 lg:pt-6">
-          {/* MASTER COLUMN (col-span-4): Sticky on PC, Fullscreen on mobile if !seccionParam */}
+          {/* MASTER COLUMN (col-span-5 / xl:col-span-4): Sticky on PC, Fullscreen on mobile if !seccionParam */}
           <div
-            className={`lg:col-span-4 ${
+            className={`lg:col-span-5 xl:col-span-4 ${
               seccionParam ? "hidden lg:block" : "block"
             } space-y-5 lg:sticky lg:top-6 lg:self-start`}
           >
-            {/* Header */}
-            <Header
-              title="Ajustes"
-              subtitle="Configuración general, personalización y datos"
-            />
+            {/* Header Adaptativo (anti-truncamiento a escala 135%) */}
+            <div className="px-1 pt-2 pb-1 space-y-1">
+              <div className="flex items-center gap-2.5 min-w-0">
+                <h1 className="text-xl sm:text-2xl font-black font-display-v2 tracking-tight text-foreground whitespace-nowrap">
+                  Ajustes
+                </h1>
+                {isSupabaseEnabled && <SyncIndicator compact />}
+              </div>
+              <p className="text-xs text-muted-foreground leading-relaxed">
+                Configuración general, personalización y datos
+              </p>
+            </div>
 
             {/* Profile Quick Pill */}
             <button
@@ -255,13 +275,13 @@ export const AjustesV2 = memo(function AjustesV2() {
                         <div className={`size-8 rounded-lg bg-[#FAF8F5] dark:bg-white/5 border border-[#E4E0D8]/60 dark:border-white/5 flex items-center justify-center shrink-0 ${cat.accent}`}>
                           <IconComponent className="size-4" strokeWidth={1.5} />
                         </div>
-                        <div className="min-w-0 font-sans">
-                          <div className="flex items-center gap-2">
+                        <div className="min-w-0 font-sans flex-1">
+                          <div className="flex items-center gap-1.5 flex-wrap">
                             <span className="font-semibold text-xs text-foreground truncate">
                               {cat.title}
                             </span>
                             {cat.badge && (
-                              <span className="px-1.5 py-0.2 rounded bg-[#FAF8F5] dark:bg-white/5 border border-[#E4E0D8]/60 dark:border-white/5 text-[9px] font-mono-tabular font-bold text-[#6E6A63] dark:text-[#8E8D8A] shrink-0">
+                              <span className="px-1.5 py-0.5 rounded bg-[#FAF8F5] dark:bg-white/5 border border-[#E4E0D8]/60 dark:border-white/5 text-[9px] font-mono-tabular font-bold text-[#6E6A63] dark:text-[#8E8D8A] shrink-0">
                                 {cat.badge}
                               </span>
                             )}
@@ -286,11 +306,11 @@ export const AjustesV2 = memo(function AjustesV2() {
             </div>
           </div>
 
-          {/* DETAIL COLUMN (col-span-8): Active Section Content */}
-          <div
-            className={`lg:col-span-8 ${
+          {/* DETAIL COLUMN (col-span-7 / xl:col-span-8): Active Section Content */}
+          <main
+            className={`lg:col-span-7 xl:col-span-8 ${
               seccionParam ? "block" : "hidden lg:block"
-            }`}
+            } min-w-0`}
           >
             <div className="rounded-2xl lg:border lg:border-[#E4E0D8] lg:dark:border-white/10 lg:bg-white lg:dark:bg-[#141413] lg:p-8 pt-4">
               {seccionParam ? (
@@ -307,7 +327,7 @@ export const AjustesV2 = memo(function AjustesV2() {
                 </div>
               )}
             </div>
-          </div>
+          </main>
         </div>
       </div>
     </div>

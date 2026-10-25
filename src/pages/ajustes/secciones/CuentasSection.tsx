@@ -15,15 +15,17 @@ import { ElegantConfirm } from "@/components/app/ElegantConfirm";
 
 function AccountForm({
   initial,
+  defaultType = "bank",
   onSave,
   accounts,
 }: {
   initial: Account | null;
+  defaultType?: Account["type"];
   onSave: (a: Omit<Account, "id">) => void;
   accounts: Account[];
 }) {
-  const [name, setName] = useState(initial?.name ?? "");
-  const [type, setType] = useState<Account["type"]>(initial?.type ?? "bank");
+  const [name, setName] = useState(initial?.name ?? (defaultType === "cash" ? "Efectivo" : ""));
+  const [type, setType] = useState<Account["type"]>(initial?.type ?? defaultType);
   const [initialBalance, setInitialBalance] = useState(initial?.initialBalance ? String(initial?.initialBalance) : "0");
   const [currency, setCurrency] = useState(initial?.currency ?? "MXN");
   const [denoms, setDenoms] = useState<Denomination[] | undefined>(initial?.denominations ?? []);
@@ -131,6 +133,7 @@ export const CuentasSection = memo(function CuentasSection({ onBack }: SectionPr
   const { accounts, addAccount, updateAccount, removeAccount, transactions, debts } = useFinanceData();
   const [accountsOpen, setAccountsOpen] = useState(false);
   const [editingAccount, setEditingAccount] = useState<Account | null>(null);
+  const [defaultAccountType, setDefaultAccountType] = useState<Account["type"]>("bank");
   const [cashDenomsState, setCashDenomsState] = useState<Denomination[] | undefined>(undefined);
   const [accountToDelete, setAccountToDelete] = useState<Account | null>(null);
 
@@ -154,7 +157,7 @@ export const CuentasSection = memo(function CuentasSection({ onBack }: SectionPr
         <h2 className="text-xs uppercase tracking-wider font-bold text-muted-foreground">Tus Cuentas</h2>
         <Button
           size="sm"
-          onClick={() => { setEditingAccount(null); setAccountsOpen(true); }}
+          onClick={() => { setEditingAccount(null); setDefaultAccountType("bank"); setAccountsOpen(true); }}
           className="rounded-xl h-9 text-xs font-semibold gradient-primary text-primary-foreground border-0"
         >
           <Plus className="size-3.5 mr-1.5" /> Nueva cuenta
@@ -265,7 +268,7 @@ export const CuentasSection = memo(function CuentasSection({ onBack }: SectionPr
           <div className="rounded-2xl bg-card border border-border p-5 text-center shadow-soft space-y-2">
             <p className="text-sm text-muted-foreground">No tienes ninguna cuenta de tipo <span className="font-bold text-foreground">Efectivo</span> configurada.</p>
             <Button
-              onClick={() => { setEditingAccount(null); setAccountsOpen(true); }}
+              onClick={() => { setEditingAccount(null); setDefaultAccountType("cash"); setAccountsOpen(true); }}
               className="rounded-xl gradient-primary text-primary-foreground font-bold text-xs h-9"
             >
               Crear cuenta de efectivo
@@ -282,8 +285,10 @@ export const CuentasSection = memo(function CuentasSection({ onBack }: SectionPr
             <DialogDescription className="sr-only">Formulario para crear o actualizar cuenta bancaria o de efectivo</DialogDescription>
           </DialogHeader>
           <AccountForm
+            key={editingAccount ? `edit-${editingAccount.id}` : `new-${defaultAccountType}`}
             accounts={accounts}
             initial={editingAccount}
+            defaultType={defaultAccountType}
             onSave={(a) => {
               if (editingAccount) {
                 updateAccount(editingAccount.id, a);

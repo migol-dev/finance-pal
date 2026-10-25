@@ -70,7 +70,7 @@ export const DesktopSidebarV2 = memo(function DesktopSidebarV2() {
       aria-label="Navegación lateral de escritorio v2"
       className={cn(
         "hidden lg:flex lg:flex-col lg:h-screen lg:shrink-0 lg:border-r lg:border-border lg:bg-card/95 lg:backdrop-blur-md transition-all duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] z-40 select-none",
-        isCollapsed ? "lg:w-[72px] lg:p-3" : "lg:w-[240px] lg:p-4"
+        isCollapsed ? "lg:w-[72px] lg:p-3" : "lg:w-[256px] xl:w-[264px] lg:p-4"
       )}
     >
       {/* Cabecera con BrandLogo y Toggle de Colapso */}

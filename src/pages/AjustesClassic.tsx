@@ -6,6 +6,7 @@ import { AjustesHub } from "./ajustes/AjustesHub";
 import { PerfilSection } from "./ajustes/secciones/PerfilSection";
 import { CuentasSection } from "./ajustes/secciones/CuentasSection";
 import { FijosSection } from "./ajustes/secciones/FijosSection";
+import { CategoriasSection } from "./ajustes/secciones/CategoriasSection";
 import { AparienciaSection } from "./ajustes/secciones/AparienciaSection";
 import { AccesibilidadSection } from "./ajustes/secciones/AccesibilidadSection";
 import { NotificacionesSection } from "./ajustes/secciones/NotificacionesSection";
@@ -40,6 +41,8 @@ export const Ajustes = memo(function Ajustes() {
         return <CuentasSection onBack={handleBack} />;
       case "fijos":
         return <FijosSection onBack={handleBack} />;
+      case "categorias":
+        return <CategoriasSection onBack={handleBack} />;
       case "apariencia":
         return <AparienciaSection onBack={handleBack} />;
       case "accesibilidad":

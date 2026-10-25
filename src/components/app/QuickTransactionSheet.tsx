@@ -13,7 +13,8 @@ import {
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { CATEGORY_EMOJI, Transaction, Account } from "@/lib/finance";
+import { CategorySelectWithCreate } from "@/components/app/CategorySelectWithCreate";
+import { Transaction, Account } from "@/lib/finance";
 import { useFinanceData } from "@/hooks/useFinanceData";
 import { useQuickTxModal } from "@/store/ui-quick-tx-store";
 import { cn } from "@/lib/utils";
@@ -42,7 +43,7 @@ export const QuickTransactionSheet = memo(function QuickTransactionSheet() {
       setConcept("");
       setAmount("");
       setNote("");
-      setCategory(defaultType === "income" ? "Trabajo" : "Alimentación");
+      setCategory(defaultType === "income" ? "Trabajo / Sueldo" : "Alimentación");
       setDate(today);
       if (accounts && accounts.length > 0) {
         setAccountId(accounts[0].id);
@@ -52,8 +53,6 @@ export const QuickTransactionSheet = memo(function QuickTransactionSheet() {
     }
     prevOpenRef.current = isOpen;
   }, [isOpen, defaultType, accounts, today]);
-
-  const categories = useMemo(() => Object.keys(CATEGORY_EMOJI), []);
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -141,7 +140,7 @@ export const QuickTransactionSheet = memo(function QuickTransactionSheet() {
               type="button"
               onClick={() => {
                 setType("income");
-                setCategory("Trabajo");
+                setCategory("Trabajo / Sueldo");
               }}
               className={cn(
                 "flex items-center justify-center gap-1.5 py-2 rounded-lg transition-all",
@@ -199,18 +198,7 @@ export const QuickTransactionSheet = memo(function QuickTransactionSheet() {
               <label className="text-[11px] font-semibold text-muted-foreground tracking-wide uppercase">
                 Categoría
               </label>
-              <Select value={category} onValueChange={setCategory}>
-                <SelectTrigger className="h-10 text-xs bg-background/50 border-border">
-                  <SelectValue placeholder="Selecciona" />
-                </SelectTrigger>
-                <SelectContent className="max-h-56">
-                  {categories.map((c) => (
-                    <SelectItem key={c} value={c} className="text-xs">
-                      {CATEGORY_EMOJI[c]} {c}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <CategorySelectWithCreate value={category} onChange={setCategory} />
             </div>
 
             <div className="space-y-1">

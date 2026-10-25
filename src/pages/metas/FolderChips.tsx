@@ -38,10 +38,11 @@ export function FolderChips({
 }: FolderChipsProps) {
   const [drawerOpen, setDrawerOpen] = useState(false);
   const uncategorizedCount = goals.filter((g) => !g.folderId).length;
-  const selectedSubfolder =
-    selectedFolderId && selectedFolderId !== "uncategorized" && !folderTree.some((f) => f.id === selectedFolderId)
-      ? goalFolders.find((f) => f.id === selectedFolderId)
-      : null;
+  const isSpecificFolderSelected =
+    selectedFolderId !== null && selectedFolderId !== "uncategorized";
+  const activeFolderName = isSpecificFolderSelected
+    ? goalFolders.find((f) => f.id === selectedFolderId)?.name
+    : null;
 
   const handleSelectInsideDrawer = (id: string | null) => {
     onSelectFolder(id);
@@ -50,13 +51,13 @@ export function FolderChips({
 
   return (
     <div className="lg:hidden mb-4">
-      <div className="flex items-center gap-2 overflow-x-auto no-scrollbar -mx-4 px-4 py-1">
+      <div className="grid grid-cols-3 gap-2">
         {/* Chip: Todas */}
         <button
           type="button"
           onClick={() => onSelectFolder(null)}
           className={cn(
-            "shrink-0 h-9 px-3.5 rounded-full text-xs font-bold transition flex items-center gap-1.5",
+            "min-h-[40px] px-2.5 rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 active:scale-[0.98]",
             selectedFolderId === null
               ? "gradient-primary text-primary-foreground shadow-glow"
               : "bg-card border border-border text-muted-foreground hover:text-foreground"
@@ -71,62 +72,33 @@ export function FolderChips({
           type="button"
           onClick={() => onSelectFolder("uncategorized")}
           className={cn(
-            "shrink-0 h-9 px-3.5 rounded-full text-xs font-bold transition flex items-center gap-1.5",
+            "min-h-[40px] px-2 rounded-xl text-xs font-bold transition flex items-center justify-center gap-1 active:scale-[0.98]",
             selectedFolderId === "uncategorized"
               ? "gradient-primary text-primary-foreground shadow-glow"
               : "bg-card border border-border text-muted-foreground hover:text-foreground"
           )}
         >
-          <span>Sin carpeta</span>
-          <span className="text-[10px] opacity-80 tabular-nums">({uncategorizedCount})</span>
+          <span className="truncate">Sin carpeta</span>
+          <span className="text-[10px] opacity-80 tabular-nums shrink-0">({uncategorizedCount})</span>
         </button>
 
-        {/* Root folders as chips */}
-        {folderTree.map((folder) => {
-          const isSelected = selectedFolderId === folder.id;
-          const count = getFolderGoalCount(folder.id);
-          return (
-            <button
-              key={folder.id}
-              type="button"
-              onClick={() => onSelectFolder(folder.id)}
-              className={cn(
-                "shrink-0 h-9 px-3.5 rounded-full text-xs font-bold transition flex items-center gap-1.5 max-w-[160px]",
-                isSelected
-                  ? "gradient-primary text-primary-foreground shadow-glow"
-                  : "bg-card border border-border text-muted-foreground hover:text-foreground"
-              )}
-            >
-              <span className="truncate">{folder.name}</span>
-              <span className="text-[10px] opacity-80 tabular-nums">({count})</span>
-            </button>
-          );
-        })}
-
-        {/* Active subfolder chip if a non-root folder is selected */}
-        {selectedSubfolder && (
-          <button
-            type="button"
-            onClick={() => onSelectFolder(selectedSubfolder.id)}
-            className="shrink-0 h-9 px-3.5 rounded-full text-xs font-bold transition flex items-center gap-1.5 max-w-[160px] gradient-primary text-primary-foreground shadow-glow"
-          >
-            <span className="truncate">{selectedSubfolder.name}</span>
-            <span className="text-[10px] opacity-80 tabular-nums">
-              ({getFolderGoalCount(selectedSubfolder.id)})
-            </span>
-          </button>
-        )}
-
-        {/* Drawer Trigger Button */}
+        {/* Drawer Trigger Button: Carpetas */}
         <Drawer open={drawerOpen} onOpenChange={setDrawerOpen}>
           <DrawerTrigger asChild>
             <button
               type="button"
               aria-label="Ver todas las carpetas en panel"
-              className="shrink-0 h-9 px-3 rounded-full text-xs font-bold bg-muted/80 text-foreground hover:bg-muted border border-border/80 flex items-center gap-1.5"
+              className={cn(
+                "min-h-[40px] px-2.5 rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 active:scale-[0.98]",
+                isSpecificFolderSelected
+                  ? "gradient-primary text-primary-foreground shadow-glow"
+                  : "bg-muted/80 text-foreground hover:bg-muted border border-border/80"
+              )}
             >
-              <Layers className="size-3.5 text-primary" />
-              <span>Carpetas</span>
+              <Layers className="size-3.5 shrink-0" />
+              <span className="truncate">
+                {activeFolderName ? activeFolderName : "Carpetas"}
+              </span>
             </button>
           </DrawerTrigger>
           <DrawerContent className="max-h-[85dvh] p-4 pt-2">

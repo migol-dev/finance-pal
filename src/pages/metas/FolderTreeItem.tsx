@@ -1,7 +1,6 @@
 import { useState } from "react";
 import { ChevronRight, MoreHorizontal, FolderPlus, Pencil, Trash2 } from "lucide-react";
 import { IconDisplay } from "@/components/app/IconDisplay";
-import { ElegantConfirm } from "@/components/app/ElegantConfirm";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -38,7 +37,6 @@ export function FolderTreeItem({
   getFolderGoalCount,
 }: FolderTreeItemProps) {
   const [expanded, setExpanded] = useState(true);
-  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
   const hasChildren = folder.children.length > 0;
   const isSelected = selectedFolderId === folder.id;
   const indentPx = 8 + Math.min(level, 3) * 12;
@@ -81,29 +79,30 @@ export function FolderTreeItem({
         >
           <IconDisplay
             icon={folder.icon ?? { kind: "emoji", value: "📁" }}
-            size="sm"
-            className="shrink-0 bg-background/80 shadow-xs"
+            size="xs"
+            className="size-7 text-xs rounded-lg shrink-0 bg-background/80 shadow-xs"
           />
-          <span className="flex-1 min-w-0 font-medium text-sm line-clamp-2 break-words">
+          <span className="flex-1 min-w-0 font-medium text-sm truncate" title={folder.name}>
             {folder.name}
           </span>
-          <span className="text-xs opacity-70 px-1.5 py-0.5 rounded-full bg-muted/50 tabular-nums">
+          <span className="shrink-0 text-xs opacity-70 px-1.5 py-0.5 rounded-full bg-muted/50 tabular-nums">
             {goalCount}
           </span>
         </button>
 
         {/* Context Menu '...' */}
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <button
-              type="button"
-              aria-label={`Acciones para la carpeta ${folder.name}`}
-              className="shrink-0 size-8 rounded-lg hover:bg-muted text-muted-foreground hover:text-foreground flex items-center justify-center transition focus:outline-none"
-            >
-              <MoreHorizontal className="size-4" />
-            </button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="w-48 rounded-xl p-1 shadow-lg">
+        <div className="shrink-0 hidden group-hover:flex focus-within:flex [@media(hover:none)]:flex">
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <button
+                type="button"
+                aria-label={`Acciones para la carpeta ${folder.name}`}
+                className="size-7 rounded-lg hover:bg-muted text-muted-foreground hover:text-foreground flex items-center justify-center transition focus:outline-none"
+              >
+                <MoreHorizontal className="size-3.5" />
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-48 rounded-xl p-1 shadow-lg">
             <DropdownMenuItem
               onClick={() => onAddChild(folder.id)}
               className="flex items-center gap-2 cursor-pointer rounded-lg text-xs font-medium py-2"
@@ -119,7 +118,7 @@ export function FolderTreeItem({
               <span>Editar carpeta</span>
             </DropdownMenuItem>
             <DropdownMenuItem
-              onClick={() => setDeleteConfirmOpen(true)}
+              onClick={() => onDelete(folder.id)}
               className="flex items-center gap-2 cursor-pointer rounded-lg text-xs font-medium py-2 text-destructive focus:text-destructive focus:bg-destructive/10"
             >
               <Trash2 className="size-4" />
@@ -127,25 +126,8 @@ export function FolderTreeItem({
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
+        </div>
       </div>
-
-      {/* Delete confirmation modal */}
-      <ElegantConfirm
-        open={deleteConfirmOpen}
-        onOpenChange={setDeleteConfirmOpen}
-        title="¿Eliminar carpeta?"
-        description={
-          <span className="text-sm text-muted-foreground">
-            Se eliminará la carpeta <span className="font-bold text-foreground">"{folder.name}"</span>. Las metas que contenía quedarán sin carpeta.
-          </span>
-        }
-        onConfirm={() => {
-          onDelete(folder.id);
-          setDeleteConfirmOpen(false);
-        }}
-        icon={Trash2}
-        iconColor="bg-destructive"
-      />
 
       {/* Nested children */}
       {expanded && hasChildren && (

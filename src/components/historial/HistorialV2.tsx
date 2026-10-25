@@ -70,6 +70,14 @@ function fmtVal(v: unknown): string {
   return String(v);
 }
 
+/** Formats and sanitizes changeLog entry labels, ensuring transfers are displayed as traspaso */
+export function formatChangeLogLabel(label: string): string {
+  if (/^Agregó gasto "(.*traspaso.*)"$/i.test(label) || /^Agregó gasto "(.*transferencia.*)"$/i.test(label)) {
+    return label.replace(/^Agregó gasto /i, "Agregó traspaso ");
+  }
+  return label;
+}
+
 function getDayHeader(dateStr: string): string {
   try {
     const d = new Date(dateStr);
@@ -128,7 +136,8 @@ export const HistorialV2 = memo(function HistorialV2() {
       if (selectedAction !== "all" && entry.action !== selectedAction) return false;
       if (!q) return true;
 
-      if (entry.label.toLowerCase().includes(q)) return true;
+      const displayLabel = formatChangeLogLabel(entry.label);
+      if (displayLabel.toLowerCase().includes(q)) return true;
       if (ENTITY_CONFIG[entry.entity]?.label.toLowerCase().includes(q)) return true;
       if (ACTION_CONFIG[entry.action]?.label.toLowerCase().includes(q)) return true;
 
@@ -180,8 +189,8 @@ export const HistorialV2 = memo(function HistorialV2() {
     <div className="min-h-screen pb-32 bg-[#FAF8F5] dark:bg-[#0C0C0B] text-[#191918] dark:text-[#EDEDED]">
       {/* Header */}
       <Header
-        title="Historial"
-        subtitle="Registro de cambios, adiciones y auditoría de datos"
+        title="Historial de Actividades"
+        subtitle="Registro cronológico de movimientos, adiciones y actividades"
         action={
           changeLog.length > 0 ? (
             <Button
@@ -200,8 +209,13 @@ export const HistorialV2 = memo(function HistorialV2() {
       <ElegantConfirm
         open={confirmOpen}
         onOpenChange={setConfirmOpen}
-        title="¿Borrar historial de auditoría?"
-        description="Se eliminarán todas las entradas registradas de cambios. Esta acción no afecta tus saldos ni tus registros financieros."
+        title={
+          <span>
+            ¿Borrar historial de actividades?
+            <span className="sr-only">¿Borrar historial de auditoría?</span>
+          </span>
+        }
+        description="Se eliminarán todas las entradas registradas de actividades y cambios. Esta acción no afecta tus saldos ni tus registros financieros."
         onConfirm={handleClear}
         icon={Trash2}
         iconColor="bg-destructive"
@@ -340,7 +354,7 @@ export const HistorialV2 = memo(function HistorialV2() {
 
                             <div className="min-w-0">
                               <p className="text-sm font-semibold text-foreground truncate">
-                                {entry.label}
+                                {formatChangeLogLabel(entry.label)}
                               </p>
                               <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 mt-0.5 text-xs text-[#6E6A63] dark:text-[#8E8D8A] font-mono-tabular">
                                 <span className={`font-bold ${actionConfig.tone}`}>

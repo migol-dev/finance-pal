@@ -409,7 +409,7 @@ describe("Sprint 5 — DeudasV2, MetasV2 & Dual Dispatchers Suite", () => {
         </MemoryRouter>
       );
 
-      const folderPill = screen.getByRole("button", { name: /^viajes y aventuras/i });
+      const folderPill = screen.getByRole("button", { name: /seleccionar carpeta viajes y aventuras/i });
       fireEvent.click(folderPill);
 
       expect(screen.getByText("Viaje a Japón")).toBeInTheDocument();
@@ -507,7 +507,10 @@ describe("Sprint 5 — DeudasV2, MetasV2 & Dual Dispatchers Suite", () => {
         </MemoryRouter>
       );
 
-      const deleteFolderBtn = screen.getByRole("button", { name: /eliminar carpeta viajes y aventuras/i });
+      const actionsBtn = screen.getByRole("button", { name: /acciones para la carpeta viajes y aventuras/i });
+      fireEvent.pointerDown(actionsBtn, { button: 0 });
+      fireEvent.click(actionsBtn);
+      const deleteFolderBtn = await screen.findByText(/eliminar carpeta/i);
       fireEvent.click(deleteFolderBtn);
 
       expect(screen.getByText("¿Eliminar carpeta?")).toBeInTheDocument();
@@ -546,7 +549,7 @@ describe("Sprint 5 — DeudasV2, MetasV2 & Dual Dispatchers Suite", () => {
       );
 
       // Clic en la carpeta padre "Viajes y Aventuras"
-      const parentFolderPill = screen.getByRole("button", { name: /^viajes y aventuras/i });
+      const parentFolderPill = screen.getByRole("button", { name: /seleccionar carpeta viajes y aventuras/i });
       fireEvent.click(parentFolderPill);
 
       // Ambas metas (padre y subcarpeta) deben estar visibles

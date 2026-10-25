@@ -127,7 +127,7 @@ describe("FolderChips Component", () => {
     createdAt: new Date().toISOString(),
   };
 
-  it("renders active subfolder chip when selectedFolderId is a nested child folder", () => {
+  it("renders 3-button layout with active folder name on carpetas trigger", () => {
     render(
       <FolderChips
         folderTree={[rootFolder]}
@@ -142,8 +142,8 @@ describe("FolderChips Component", () => {
       />
     );
 
+    expect(screen.getByText("Todas")).toBeInTheDocument();
+    expect(screen.getByText("Sin carpeta")).toBeInTheDocument();
     expect(screen.getByText("Subcarpeta Especial")).toBeInTheDocument();
-    expect(screen.getByText("(7)")).toBeInTheDocument();
-    expect(screen.getByText("(3)")).toBeInTheDocument();
   });
 });

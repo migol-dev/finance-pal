@@ -96,5 +96,29 @@ describe("Ajustes Modular Page", () => {
       screen.getByRole("button", { name: /Enviar notificación de prueba ahora/i }),
     ).toBeInTheDocument();
   });
+
+  it("preselecciona tipo 'cash' y nombre 'Efectivo' al hacer clic en 'Crear cuenta de efectivo'", async () => {
+    // Asegurar que no hay cuenta cash
+    useFinance.setState({ accounts: [] });
+
+    renderWithProviders("/ajustes?seccion=cuentas");
+
+    const btnCrearCash = await screen.findByRole("button", { name: /Crear cuenta de efectivo/i });
+    expect(btnCrearCash).toBeInTheDocument();
+
+    fireEvent.click(btnCrearCash);
+
+    // Modal de Nueva cuenta
+    expect(await screen.findByRole("heading", { name: "Nueva cuenta" })).toBeInTheDocument();
+
+    // El input de nombre debe tener "Efectivo"
+    const nameInput = screen.getByPlaceholderText(/Ej\. BBVA Débito/i) as HTMLInputElement;
+    expect(nameInput.value).toBe("Efectivo");
+
+    // El desglose de efectivo debe estar activo (no el placeholder de no disponible)
+    expect(screen.getByText("Desglose de efectivo (opcional)")).toBeInTheDocument();
+    expect(screen.queryByText("Desglose disponible solo para cuentas de efectivo.")).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Agregar denominación/i })).toBeInTheDocument();
+  });
 });
 

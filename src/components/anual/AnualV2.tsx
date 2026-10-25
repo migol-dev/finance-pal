@@ -9,10 +9,12 @@ import {
   MONTHS_SHORT,
   isFixedActiveInMonth,
   iconFor,
+  emojiFor,
   PAYMENT_METHOD_LABEL,
   PAYMENT_METHOD_EMOJI,
   PaymentMethod,
   parseDateLocal,
+  isIOweDebt,
 } from "@/lib/finance";
 import { Header } from "@/components/app/Header";
 import { PillTabs } from "@/components/app/PillTabs";
@@ -71,6 +73,7 @@ export const AnualV2 = memo(function AnualV2() {
     activeMonth,
     setActive,
     accounts,
+    customCategories = [],
   } = useFinanceData();
   const navigate = useNavigate();
   const [tab, setTab] = useState<Tab>("general");
@@ -112,11 +115,20 @@ export const AnualV2 = memo(function AnualV2() {
         }
 
         for (const dt of debts) {
+          const isYoDebo = isIOweDebt(dt);
           const dd = parseDateLocal(dt.date);
-          if (dd.getFullYear() === year && dd.getMonth() === idx) expense += dt.amount;
-          for (const p of dt.payments) {
+          if (dd.getFullYear() === year && dd.getMonth() === idx) {
+            if (!isYoDebo) expense += dt.amount;
+          }
+          for (const p of (dt.payments || [])) {
             const pd = parseDateLocal(p.date);
-            if (pd.getFullYear() === year && pd.getMonth() === idx) income += p.amount;
+            if (pd.getFullYear() === year && pd.getMonth() === idx) {
+              if (isYoDebo) {
+                expense += p.amount;
+              } else {
+                income += p.amount;
+              }
+            }
           }
         }
 
@@ -292,15 +304,16 @@ export const AnualV2 = memo(function AnualV2() {
   );
 
   const debtsYear = useMemo(() => {
-    const lent = debts
+    const meDeben = debts.filter((d) => !isIOweDebt(d));
+    const lent = meDeben
       .filter((d) => parseDateLocal(d.date).getFullYear() === activeYear)
       .reduce((s, d) => s + d.amount, 0);
-    const collected = debts
-      .flatMap((d) => d.payments)
+    const collected = meDeben
+      .flatMap((d) => d.payments || [])
       .filter((p) => parseDateLocal(p.date).getFullYear() === activeYear)
       .reduce((s, p) => s + p.amount, 0);
-    const outstanding = debts.reduce((s, d) => {
-      const paid = d.payments.reduce((a, p) => a + p.amount, 0);
+    const outstanding = meDeben.reduce((s, d) => {
+      const paid = (d.payments || []).reduce((a, p) => a + p.amount, 0);
       return s + Math.max(0, d.amount - paid);
     }, 0);
     return { lent, collected, outstanding };
@@ -475,14 +488,38 @@ export const AnualV2 = memo(function AnualV2() {
           </div>
         </div>
 
-        {/* Tab Switcher */}
-        <div className="flex justify-start">
-          <PillTabs<Tab>
-            ariaLabel="Vistas del resumen anual"
-            tabs={["general", "categorias", "metodos", "metas"]}
-            value={tab}
-            onChange={setTab}
-          />
+        {/* Tab Switcher de ancho completo con diseño editorial */}
+        <div
+          role="tablist"
+          aria-label="Vistas del resumen anual"
+          className="w-full grid grid-cols-4 gap-1.5 p-1.5 rounded-2xl bg-[#F2EFE9] dark:bg-[#141413] border border-[#E4E0D8] dark:border-white/10"
+        >
+          {(
+            [
+              { key: "general" as const, label: "General" },
+              { key: "categorias" as const, label: "Categorías" },
+              { key: "metodos" as const, label: "Métodos" },
+              { key: "metas" as const, label: "Metas" },
+            ] as const
+          ).map((t) => {
+            const active = tab === t.key;
+            return (
+              <button
+                key={t.key}
+                role="tab"
+                type="button"
+                aria-selected={active}
+                onClick={() => setTab(t.key)}
+                className={`min-h-[42px] px-2 sm:px-4 py-2 rounded-xl text-xs sm:text-sm font-semibold transition-all flex items-center justify-center text-center select-none active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#2383E2] ${
+                  active
+                    ? "bg-white dark:bg-[#1C1C1A] text-[#191918] dark:text-[#EDEDED] border border-[#E4E0D8] dark:border-white/15 shadow-xs font-bold"
+                    : "text-[#6E6A63] dark:text-[#A09E97] hover:text-[#191918] dark:hover:text-[#EDEDED] hover:bg-white/50 dark:hover:bg-white/[0.03] border border-transparent"
+                }`}
+              >
+                <span>{t.label}</span>
+              </button>
+            );
+          })}
         </div>
 
         {/* TAB 1: GENERAL (Asymmetric 7/5 Desktop Layout) */}
@@ -778,7 +815,8 @@ export const AnualV2 = memo(function AnualV2() {
                                 className="size-2.5 rounded-full shrink-0"
                                 style={{ backgroundColor: color }}
                               />
-                              {c.name}
+                              <span className="select-none">{emojiFor(c.name, customCategories)}</span>
+                              <span>{c.name}</span>
                             </span>
                             <div className="flex items-center gap-2">
                               <span className="font-bold">{fmt(c.value)}</span>

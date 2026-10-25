@@ -13,6 +13,7 @@ import { supabase } from "@/lib/supabase";
 import { saveEncryptedState, loadEncryptedState, clearEncryptedState, isEncryptionAvailable, extractReceiptsToIndexedDB, restoreReceiptsFromIndexedDB } from '@/lib/encrypted-storage';
 import { audit } from '@/lib/audit-logger';
 import { migrateData, sanitizeMigratedData } from '@/lib/schema-migrations';
+import { writeThemePref } from '@/lib/theme-sync';
 import {
   SCHEMA_VERSION,
   generateSecureId,
@@ -394,7 +395,7 @@ export const useFinance = create<State>()(
         const persistedAppSettings = isObj(persistedState.appSettings)
           ? persistedState.appSettings
           : {};
-        return {
+        const mergedState = {
           ...currentState,
           ...persistedState,
           appSettings: {
@@ -405,8 +406,19 @@ export const useFinance = create<State>()(
               ...DEFAULT_ACCESSIBILITY_SETTINGS,
               ...(isObj(persistedAppSettings.accessibility) ? persistedAppSettings.accessibility : {}),
             },
+            customCategories: Array.isArray(persistedAppSettings.customCategories)
+              ? persistedAppSettings.customCategories
+              : (currentState.appSettings.customCategories ?? []),
           },
         };
+        try {
+          writeThemePref({
+            theme: mergedState.theme,
+            uiVersion: mergedState.appSettings.uiVersion,
+            accentColor: mergedState.appSettings.accentColor,
+          });
+        } catch {}
+        return mergedState;
       },
     }
   )

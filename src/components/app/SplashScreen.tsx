@@ -1,7 +1,14 @@
-import { memo, useId, useEffect, useState } from "react";
-import { motion } from "@/lib/framer";
+import { memo, useId, useEffect, useState, useRef } from "react";
+import { motion, AnimatePresence } from "@/lib/framer";
 import { Wallet } from "lucide-react";
 import { useFinance } from "@/store/finance-store";
+
+const BOOT_STEPS = [
+  { id: "01", tag: "PREFERENCIAS", label: "Cargando preferencias y perfil editorial..." },
+  { id: "02", tag: "BÓVEDA LOCAL", label: "Descifrando bóveda local (AES-GCM)..." },
+  { id: "03", tag: "BASE DE DATOS", label: "Conectando con base de datos e índices..." },
+  { id: "04", tag: "LIBRO MAYOR", label: "Sincronizando balances y liquidez disponible..." },
+];
 
 export const SplashScreen = memo(function SplashScreen() {
   const uiVersion = useFinance((s) => s?.appSettings?.uiVersion ?? "v2");
@@ -9,6 +16,11 @@ export const SplashScreen = memo(function SplashScreen() {
   const [osReducedMotion, setOsReducedMotion] = useState(false);
   const rawId = useId();
   const coinGradId = `splash-fp-coin-${rawId.replace(/[^a-zA-Z0-9_-]/g, "")}`;
+
+  // Telemetría coreografiada de 1.5s (1500ms)
+  const [progress, setProgress] = useState(0);
+  const [stepIndex, setStepIndex] = useState(0);
+  const startTimeRef = useRef<number | null>(null);
 
   useEffect(() => {
     if (typeof window === "undefined" || !window.matchMedia) return;
@@ -21,9 +33,46 @@ export const SplashScreen = memo(function SplashScreen() {
 
   const shouldReduceMotion = Boolean(userReducedMotion || osReducedMotion);
 
+  useEffect(() => {
+    if (shouldReduceMotion) {
+      setProgress(100);
+      setStepIndex(3);
+      return;
+    }
+
+    const DURATION = 1450; // 1450ms + 50ms salida
+    let frameId: number;
+
+    const tick = (now: number) => {
+      if (!startTimeRef.current) startTimeRef.current = now;
+      const elapsed = now - startTimeRef.current;
+      const pct = Math.min(100, (elapsed / DURATION) * 100);
+      setProgress(pct);
+
+      if (elapsed < 375) {
+        setStepIndex(0);
+      } else if (elapsed < 750) {
+        setStepIndex(1);
+      } else if (elapsed < 1125) {
+        setStepIndex(2);
+      } else {
+        setStepIndex(3);
+      }
+
+      if (elapsed < DURATION) {
+        frameId = requestAnimationFrame(tick);
+      } else {
+        setProgress(100);
+      }
+    };
+
+    frameId = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(frameId);
+  }, [shouldReduceMotion]);
+
   if (uiVersion === "classic") {
     return (
-      <div className="fixed inset-0 z-[100] flex flex-col items-center justify-center bg-background">
+      <div className="fixed inset-0 z-[200] flex flex-col items-center justify-center bg-background">
         <div className="relative flex items-center justify-center">
           {!shouldReduceMotion && (
             <>
@@ -62,29 +111,34 @@ export const SplashScreen = memo(function SplashScreen() {
     );
   }
 
-  // --- V2: Warm Editorial Wealth Animated SplashScreen ---
+  // --- V2: Propuesta A — Editorial Ledger Ticker (1.5s Labor Illusion) ---
+  const currentStep = BOOT_STEPS[stepIndex];
+
   return (
-    <div className="fixed inset-0 z-[100] flex flex-col items-center justify-center bg-background text-foreground transition-colors duration-500">
-      {/* Halo ambiental suave con acento editorial */}
-      <div className="relative flex flex-col items-center justify-center">
+    <div
+      aria-label="Cargando Finance Pal"
+      role="status"
+      className="fixed inset-0 z-[200] flex flex-col items-center justify-center bg-[#FAF8F5] dark:bg-[#0C0C0B] text-foreground transition-colors duration-300"
+    >
+      <div className="w-full max-w-sm px-6 flex flex-col items-center">
+        {/* Monograma FP Central con Esquinas de Encuadre Arquitectónico */}
         <div className="relative flex items-center justify-center">
-          <span
-            className={`absolute size-36 rounded-3xl bg-primary/10 blur-xl ${
-              shouldReduceMotion ? "opacity-40" : "animate-pulse"
-            }`}
-          />
+          {/* Ticks arquitectónicos de 1px en esquinas */}
+          <div className="absolute -top-2.5 -left-2.5 size-3 border-t border-l border-primary/50 pointer-events-none" />
+          <div className="absolute -bottom-2.5 -right-2.5 size-3 border-b border-r border-primary/50 pointer-events-none" />
+
           <motion.div
-            initial={shouldReduceMotion ? false : { scale: 0.85, opacity: 0 }}
+            initial={shouldReduceMotion ? false : { scale: 0.88, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
-            transition={shouldReduceMotion ? { duration: 0 } : { duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
-            className="size-28 rounded-2xl bg-card border border-border/80 shadow-soft flex items-center justify-center relative z-10 p-2"
+            transition={shouldReduceMotion ? { duration: 0 } : { duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
+            className="size-24 rounded-xl bg-[#F2EFE9] dark:bg-[#141413] border border-[#E4E0D8] dark:border-[#262624] shadow-sm flex items-center justify-center relative z-10 p-2"
           >
             <svg
               viewBox="0 0 48 48"
               fill="none"
               xmlns="http://www.w3.org/2000/svg"
               className="w-full h-full"
-              aria-label="Finance Pal Isotipo Animado"
+              aria-label="Finance Pal Isotipo"
             >
               <defs>
                 <linearGradient id={coinGradId} x1="20" y1="12" x2="32" y2="24" gradientUnits="userSpaceOnUse">
@@ -101,9 +155,8 @@ export const SplashScreen = memo(function SplashScreen() {
                 strokeLinejoin="round"
                 initial={shouldReduceMotion ? false : { pathLength: 0, opacity: 0 }}
                 animate={{ pathLength: 1, opacity: 1 }}
-                transition={shouldReduceMotion ? { duration: 0 } : { duration: 0.9, ease: [0.22, 1, 0.36, 1] }}
+                transition={shouldReduceMotion ? { duration: 0 } : { duration: 0.8, ease: [0.22, 1, 0.36, 1] }}
               />
-              {/* Barra transversal de la F */}
               <motion.path
                 d="M 15 30 H 26"
                 stroke="hsl(var(--primary))"
@@ -111,9 +164,8 @@ export const SplashScreen = memo(function SplashScreen() {
                 strokeLinecap="round"
                 initial={shouldReduceMotion ? false : { pathLength: 0, opacity: 0 }}
                 animate={{ pathLength: 1, opacity: 1 }}
-                transition={shouldReduceMotion ? { duration: 0 } : { duration: 0.6, delay: 0.35, ease: [0.22, 1, 0.36, 1] }}
+                transition={shouldReduceMotion ? { duration: 0 } : { duration: 0.5, delay: 0.25, ease: [0.22, 1, 0.36, 1] }}
               />
-              {/* Brote elástico de la Semilla / Moneda Próspera */}
               <motion.circle
                 cx="25.5"
                 cy="17"
@@ -121,59 +173,77 @@ export const SplashScreen = memo(function SplashScreen() {
                 fill={`url(#${coinGradId})`}
                 initial={shouldReduceMotion ? false : { scale: 0, opacity: 0 }}
                 animate={{ scale: 1, opacity: 1 }}
-                transition={shouldReduceMotion ? { duration: 0 } : { type: "spring", stiffness: 400, damping: 20, delay: 0.45 }}
-              />
-              {/* Destello especular */}
-              <motion.circle
-                cx="24.4"
-                cy="15.8"
-                r="1.1"
-                fill="#FFFFFF"
-                initial={shouldReduceMotion ? false : { opacity: 0, scale: 0 }}
-                animate={{ opacity: 0.9, scale: 1 }}
-                transition={shouldReduceMotion ? { duration: 0 } : { delay: 0.65, duration: 0.2 }}
+                transition={shouldReduceMotion ? { duration: 0 } : { type: "spring", stiffness: 400, damping: 20, delay: 0.35 }}
               />
             </svg>
           </motion.div>
         </div>
 
-        {/* Identidad editorial */}
+        {/* Título de la Aplicación */}
         <motion.div
-          initial={shouldReduceMotion ? false : { opacity: 0, y: 10 }}
+          initial={shouldReduceMotion ? false : { opacity: 0, y: 6 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={shouldReduceMotion ? { duration: 0 } : { delay: 0.4, duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
-          className="mt-6 text-center"
+          transition={shouldReduceMotion ? { duration: 0 } : { delay: 0.2, duration: 0.4 }}
+          className="mt-5 text-center"
         >
-          <h1 className="font-display-v2 text-2xl font-bold tracking-tight text-foreground">
+          <h1 className="font-display-v2 text-2xl font-semibold tracking-[-0.03em] text-[#191918] dark:text-[#F2EFE9]">
             Finance Pal
           </h1>
-          <p className="mt-1 text-xs text-muted-foreground font-medium tracking-wide">
+          <p className="mt-0.5 text-xs text-muted-foreground font-medium">
             Tu compañero financiero
+          </p>
+          <p className="mt-0.5 font-mono text-[9.5px] tracking-[0.16em] uppercase text-[#6E6A63] dark:text-[#8E8D8A]">
+            BÓVEDA PATRIMONIAL · V2
           </p>
         </motion.div>
 
-        {/* Barra de progreso sutil y elegante */}
+        {/* Cajetilla de Telemetría Dinámica (Editorial Ledger Ticker) */}
         <motion.div
-          initial={shouldReduceMotion ? false : { opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={shouldReduceMotion ? { duration: 0 } : { delay: 0.5 }}
-          className="mt-8 w-28 h-1 rounded-full bg-muted overflow-hidden"
+          initial={shouldReduceMotion ? false : { opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={shouldReduceMotion ? { duration: 0 } : { delay: 0.25, duration: 0.4 }}
+          className="mt-6 w-full rounded-md bg-[#F2EFE9] dark:bg-[#141413] border border-[#E4E0D8] dark:border-[#222220] p-3.5 shadow-sm"
         >
-          {shouldReduceMotion ? (
-            <div className="h-full w-2/3 bg-primary rounded-full mx-auto" />
-          ) : (
-            <motion.div
-              className="h-full bg-primary rounded-full"
-              initial={{ x: "-100%" }}
-              animate={{ x: "100%" }}
-              transition={{
-                duration: 1.2,
-                repeat: Infinity,
-                ease: [0.22, 1, 0.36, 1],
-              }}
+          {/* Cabecera del paso y porcentaje */}
+          <div className="flex items-center justify-between text-xs font-mono">
+            <span className="text-primary font-semibold tracking-wider text-[11px]">
+              [PASO {currentStep.id}/04] · {currentStep.tag}
+            </span>
+            <span className="font-mono tabular-nums font-semibold text-foreground text-[12px]">
+              {Math.round(progress)}%
+            </span>
+          </div>
+
+          {/* Mensaje de proceso en curso con transición suave */}
+          <div className="mt-2 flex items-center gap-2 min-h-[22px]">
+            <span className="size-2 rounded-full bg-primary shrink-0 animate-pulse" />
+            <AnimatePresence mode="wait">
+              <motion.span
+                key={currentStep.id}
+                initial={{ opacity: 0, y: 2 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -2 }}
+                transition={{ duration: 0.15 }}
+                className="text-[12px] text-[#191918] dark:text-[#EDEDED] font-sans truncate"
+              >
+                {currentStep.label}
+              </motion.span>
+            </AnimatePresence>
+          </div>
+
+          {/* Barra hairline de 3px */}
+          <div className="mt-3 w-full h-[3px] rounded-full bg-[#E4E0D8] dark:bg-[#262624] overflow-hidden">
+            <div
+              className="h-full bg-primary transition-all duration-150 ease-out rounded-full"
+              style={{ width: `${progress}%` }}
             />
-          )}
+          </div>
         </motion.div>
+
+        {/* Leyenda de integridad de datos */}
+        <p className="mt-4 font-mono text-[9.5px] tracking-widest text-[#9E9A90] dark:text-[#6E6A63] uppercase text-center">
+          LOCAL-FIRST · CIFRADO AES-GCM
+        </p>
       </div>
     </div>
   );

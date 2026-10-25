@@ -1,11 +1,11 @@
 # 🛠️ Registro de Ejecución y Checkpoints: Constructor CLI (`02_OPENCODE_TASKS.md`)
 
-> **Fase:** 2 — Construcción e Implementación Técnica (Sprint 6: Vistas Secundarias, Pulido Final & Accesibilidad)  
+> **Fase:** 2 — Construcción e Implementación Técnica (Sprint 8: Pulido de Anual y Metas, Categorías Personalizadas, Orden de Boot y Tema desde el Segundo 1)  
 > **Agente Constructor:** Antigravity CLI (`agy`)  
 > **Modelo Configurado:** Google Gemini 3.8 Flash  
-> **Referencia de Entrada:** `.agent/workflow/01_ARCHITECT_PLAN.md`  
-> **Worktree:** `.worktrees/builder` (`builder/ui-v2-sprint-6`)  
-> **Estado General:** ✅ COMPLETADO (Fase 2 Concluida — Sprint Final)
+> **Agente Revisor & Auditor (Fase 3):** Google Gemini 4 Argon  
+> **Referencia de Entrada:** `.agent/workflow/01_ARCHITECT_PLAN.md` y `.agent/task.md`  
+> **Estado General:** ✅ COMPLETADO (Fase 2 Concluida — Listo para Auditoría Fase 3 por Gemini 4 Argon)  
 
 ---
 
@@ -18,121 +18,94 @@
 | **Tareas en Progreso (⏳)** | 0 |
 | **Tareas Pendientes (📋)** | 0 |
 | **Progreso Estimado** | `[====================] 100%` |
-| **Último Checkpoint Git** | `CP-S6-01` |
+| **Último Checkpoint Git** | `CP-S8-01` |
 
 ---
 
-## 2. Lista de Tareas Detallada y Estado de Ejecución
+## 2. Lista de Tareas Detallada para el Constructor (Gemini 3.8 Flash)
 
-### Sprint 6 — Vistas Secundarias, Pulido Final & Accesibilidad
+### BLOQUE 1 — Primeras Observaciones (Correcciones UI en Resumen Anual y Metas Móvil)
 
-- [x] **Tarea F6.1 — Extracción defensiva y despachador dual de `Anual`:**
-  - Se extrajo el código histórico intacto a `src/pages/AnualClassic.tsx` asegurando 100% de compatibilidad regresiva.
-  - Se configuró el despachador dual condicional en `src/pages/Anual.tsx`: renderiza `AnualV2` cuando `appSettings ? (appSettings.uiVersion ?? "v2") === "v2"` y `AnualClassic` cuando es `"classic"` o `appSettings` es indefinido (preservando snapshots).
+- [x] **Tarea F8.1 — Rediseño del Selector de Pestañas en Resumen Anual (`AnualV2.tsx` y `PillTabs.tsx`):**
+  - **Archivos modificados:**
+    - `[MODIFY]` [AnualV2.tsx](file:///run/media/migol/Files/Projectos/Aplications/Finance%20Pal/Finance%20Pal%20APP/Finance%20Pal%20V1.19.38/finance-pal/src/components/anual/AnualV2.tsx):
+      - Reemplazado el contenedor estrecho por una barra segmentada editorial de **ancho completo** (`w-full grid grid-cols-4 gap-1.5 p-1.5 rounded-2xl bg-[#F2EFE9] dark:bg-[#141413] border border-[#E4E0D8] dark:border-white/10`).
+      - Etiquetas con ortografía perfecta: `"General"`, `"Categorías"`, `"Métodos"`, `"Metas"`.
+      - Botones con amplio espacio táctil (`min-h-[42px] px-2 sm:px-4 py-2 rounded-xl text-xs sm:text-sm font-semibold`) y fondo activo limpio y elegante (`bg-white dark:bg-[#1C1C1A] text-[#191918] dark:text-[#EDEDED] border border-[#E4E0D8] dark:border-white/15 shadow-xs font-bold`).
+    - `[MODIFY]` [PillTabs.tsx](file:///run/media/migol/Files/Projectos/Aplications/Finance%20Pal/Finance%20Pal%20APP/Finance%20Pal%20V1.19.38/finance-pal/src/components/app/PillTabs.tsx):
+      - Espaciado base mejorado (`min-h-[38px] px-3.5 py-2 gap-1.5`), soporte opcional para `labels?: Record<T, string>` y colores de alta legibilidad editorial.
+  - **Criterio de Aceptación:** En Resumen Anual (móvil y escritorio), los 4 botones aprovechan todo el ancho disponible, no se ven apretados y su fondo activo luce editorial y nítido.
 
-- [x] **Tarea F6.2 — Implementar `AnualV2` (Resumen Anual de Alto Rendimiento):**
-  - Implementado en `src/components/anual/AnualV2.tsx` bajo la identidad *Warm Editorial Wealth* (`#FAF8F5` / `#0C0C0B`).
-  - Héroe macroeconómico con superávit/flujo neto acumulado en tipografía editorial `Fraunces` y cifras en `font-mono-tabular` con selector fluido de año fiscal.
-  - Tabla mensual con divisores hairline y microbarras de flujo inline proporcionales.
-  - Gráfico `SimpleAreaChart` de-boxed para flujo mensual y curva de neto.
-  - Pestañas de categorías y métodos de pago de-boxed con barras de porcentaje proporcionales.
-  - Layout asimétrico 7/5 en escritorio (`col-span-7` gráfico y tabla mensual + `col-span-5` comparativas YoY y balance de deudas).
-  - Rendimiento extremo: cálculos de series anuales memoizados con `useMemo` y `useCallback`, exportación a CSV protegida contra entornos no navegadores.
-
-- [x] **Tarea F6.3 — Extracción defensiva y despachador dual de `Historial`:**
-  - Se extrajo el código histórico a `src/pages/HistorialClassic.tsx`.
-  - Se configuró el despachador dual condicional en `src/pages/Historial.tsx`: renderiza `HistorialV2` en `v2` y `HistorialClassic` en `classic`.
-
-- [x] **Tarea F6.4 — Implementar `HistorialV2` (Auditoría Reactiva y Paginación Incremental):**
-  - Implementado en `src/components/historial/HistorialV2.tsx` eliminando `bg-card` y `shadow-soft` pesados por divisores hairline limpios.
-  - Agrupación cronológica por día ("Hoy", "Ayer" o fecha en formato regional).
-  - Píldoras de filtro por entidad (Movimientos, Fijos, Metas, Deudas) y por acción (Creados, Editados, Eliminados) con buscador reactivo por texto sin recargas.
-  - Diff `from -> to` en tipografía monospace tabular con disclosure progresivo ("Ver todos los N cambios") para no saturar la vista.
-  - Paginación incremental ("Cargar más registros") en lotes de 40 para mantener 60-120fps sostenidos incluso con miles de registros de auditoría.
-  - Diálogo de confirmación elegante `ElegantConfirm` para borrado total con consumo vía `useFinanceData()`.
-
-- [x] **Tarea F6.5 — Extracción defensiva, despachador dual y Master-Detail de `Ajustes`:**
-  - Se extrajo el código de `src/pages/Ajustes.tsx` a `src/pages/AjustesClassic.tsx`.
-  - Se configuró el despachador dual en `src/pages/Ajustes.tsx` preservando exports tanto por defecto como nombrado (`Ajustes`).
-  - Se implementó `src/pages/ajustes/AjustesV2.tsx` con arquitectura Master-Detail en PC (`col-span-4` índice sticky con coordenadas tipográficas `01 / PERFIL`, `02 / CUENTAS`... + `col-span-8` área de trabajo de la sección activa).
-  - Panel de bienvenida cuando no hay sección seleccionada en escritorio para evitar elementos duplicados en el DOM y drill-down ágil en móvil con retorno fluido.
-  - Salvaguarda con encadenamiento opcional `appSettings?.accentColor ?? "emerald"` en `AjustesHub.tsx` ante estados sin inicializar.
-
-- [x] **Tarea F6.6 — Extracción defensiva, `auth-helpers.ts` y desarrollo de `LoginV2`:**
-  - Se extrajo el código histórico a `src/pages/LoginClassic.tsx`.
-  - Se creó el módulo común `src/pages/login/auth-helpers.ts` exportando `isValidRedirectUri`, `getValidatedRedirectUri`, `getSafeAuthError`, `calculatePasswordStrength` y `checkAuthRateLimit`.
-  - Se configuró el despachador dual en `src/pages/Login.tsx`: renderiza `LoginV2` en `v2` y `LoginClassic` en `classic`.
-  - Se implementó `src/pages/LoginV2.tsx`: layout asimétrico 5/7 (5 columnas para narrativa editorial de marca y pilares de seguridad con `BrandLogo` respetando `prefers-reduced-motion` + 7 columnas para formulario directo sobre lienzo abierto con inputs hairline y medidor de contraseña lineal fino).
-  - Eliminación total de partículas flotantes o loops de animación continuos que consuman CPU.
-  - Flujo completo y seguro de autenticación por email, chequeo HIBP de contraseñas filtradas, botones OAuth (Google y GitHub) y pantalla de verificación 2FA TOTP con factor challenge y auditoría.
-
-- [x] **Tarea F6.7 — Suite de Pruebas Automatizadas en `src/test/ui-version-secondary.test.tsx`:**
-  - 28 pruebas unitarias y de integración pasando al 100%:
-    1. Renderizado de `AnualV2` en `v2`.
-    2. Renderizado de `AnualClassic` en `classic`.
-    3. Preservación de `AnualClassic` cuando `appSettings` es indefinido.
-    4. Renderizado de `HistorialV2` en `v2`.
-    5. Renderizado de `HistorialClassic` en `classic`.
-    6. Preservación de `HistorialClassic` cuando `appSettings` es indefinido.
-    7. Renderizado de `AjustesV2` en `v2`.
-    8. Renderizado de `AjustesClassic` en `classic`.
-    9. Preservación de `AjustesClassic` cuando `appSettings` es indefinido.
-    10. Renderizado de `LoginV2` en `v2`.
-    11. Renderizado de `LoginClassic` en `classic`.
-    12. Preservación de `LoginClassic` cuando `appSettings` es indefinido.
-    13. Despliegue de métricas anuales calculadas en `AnualV2`.
-    14. Navegación de años en `AnualV2`.
-    15. Pestañas de categorías, métodos y metas en `AnualV2`.
-    16. Exportación de CSV en `AnualV2`.
-    17. Despliegue y agrupación de historial en `HistorialV2`.
-    18. Filtro reactivo por texto en `HistorialV2`.
-    19. Filtro por entidad en `HistorialV2`.
-    20. Filtro por acción en `HistorialV2`.
-    21. Confirmación de borrado en `HistorialV2`.
-    22. Despliegue de índice con coordenadas en `AjustesV2`.
-    23. Navegación a sección activa en `AjustesV2`.
-    24. Validación estricta de URIs de redirección OAuth.
-    25. Cálculo de robustez de contraseña.
-    26. Sanitización de errores de autenticación.
-    27. Alternancia de modo Login vs Registro.
-    28. Despliegue de pantalla de verificación 2FA TOTP.
-
-- [x] **Tarea F6.8 — Verificación Integral, Accesibilidad y Grafo de Conocimiento:**
-  - `npx tsc --noEmit`: 0 errores.
-  - `npx vitest run`: 37 archivos de prueba, 269/269 pruebas pasando (100% éxito, 0 regresiones).
-  - `npm run lint`: 0 errores.
-  - `npm run build`: Compilación de producción exitosa en 14.81s con optimización de chunks.
-  - Accesibilidad: Contraste AAA (> 14:1) en textos sobre lienzo claro/oscuro, focus rings visibles (`focus-visible:ring-2 focus-visible:ring-[#2383E2]`), aria-labels en botones de icono, touch targets >= 44px, estados `aria-pressed` y `aria-expanded`, y corrección de semántica HTML (`<h2>` reemplazado por `<span>` dentro de `<button>` en AjustesV2).
-  - Grafo de conocimiento: Actualizado con `graphify update .` (2053 nodos, 6223 aristas, 140 comunidades).
+- [x] **Tarea F8.2 — Simplificación de la Barra de Carpetas en Metas Móvil (`FolderChips.tsx`):**
+  - **Archivos modificados:**
+    - `[MODIFY]` [FolderChips.tsx](file:///run/media/migol/Files/Projectos/Aplications/Finance%20Pal/Finance%20Pal%20APP/Finance%20Pal%20V1.19.38/finance-pal/src/pages/metas/FolderChips.tsx):
+      - Eliminado el renderizado de carpetas individuales en la barra horizontal superior móvil.
+      - Renderizado **únicamente** de los 3 botones: **`"Todas"`**, **`"Sin carpeta"`** y **`"Carpetas"`** (que abre el `Drawer` con el árbol `FolderTree`).
+      - Distribuidos en un grid de 3 columnas fijas (`grid grid-cols-3 gap-2`) para que jamás se oculte ni se tape el botón `"Carpetas"`.
+      - Si el usuario seleccionó una carpeta desde el explorador, el botón `"Carpetas"` se resalta con el gradiente de acento activo y muestra el nombre de la carpeta seleccionada.
+  - **Criterio de Aceptación:** En la vista móvil de Metas solo aparecen `"Todas"`, `"Sin carpeta"` y `"Carpetas"`, todos 100% visibles sin desbordamiento horizontal.
 
 ---
 
-## 3. ⚠️ Registro de Bloqueos, Fallos y Dificultades (Escalation Log)
+### BLOQUE 2 — Segundas Observaciones (Categorías Generales + Creación Personalizada, Orden de Boot y Tema desde el Segundo 1)
 
-| ID Tarea | Archivo / Función | Problema / Error Exacto | Causa de la Dificultad | Solución Aplicada |
-| :--- | :--- | :--- | :--- | :--- |
-| `S6-ISS-01` | `src/pages/ajustes/AjustesHub.tsx` | `Cannot read properties of undefined (reading 'accentColor')` | Al invocar `AjustesClassic` con `appSettings` indefinido (snapshots/tests legacy), se accedía directamente a propiedades sin fallback | Solucionado con encadenamiento opcional `appSettings?.accentColor ?? "emerald"` |
-| `S6-ISS-02` | `src/components/anual/AnualV2.tsx` | `URL.createObjectURL is not a function` en jsdom | jsdom no implementa `URL.createObjectURL` por defecto | Se añadió guardia defensiva `typeof URL.createObjectURL === "function"` y mock en tests |
-| `S6-ISS-03` | `src/pages/ajustes/AjustesV2.tsx` | Múltiples elementos con texto de categorías en pruebas de renderizado | Renderizar la sección por defecto en la columna de detalle duplicaba el título | Se implementó panel de bienvenida en columna de detalle cuando `seccionParam` es nulo |
-| `S6-ISS-04` | `src/components/historial/HistorialV2.tsx` | `TypeError: Converting circular structure to JSON` | Si un objeto en `changeLog` contiene referencias circulares en `from`/`to`, `JSON.stringify` fallaba | Se protegió con `try/catch` retornando `"[Objeto]"` |
-| `S6-ISS-05` | `src/pages/ajustes/AjustesV2.tsx` | Elemento `<h2>` anidado dentro de `<button>` interactivo | Infracción de especificación W3C HTML5 y accesibilidad de lectores de pantalla | Reemplazado por `<span>` conservando tipografía idéntica |
-| `S6-ISS-06` | Vistas secundarias v2 | Touch targets < 44px y falta de focus rings visibles | Botones con tamaños compactos (`size-7`, `h-9`, `py-1`) no cumplían la meta de 44px ni anillos visibles | Elevados a `min-h-[44px]` y estilizados con `focus-visible:ring-2` |
+- [x] **Tarea F8.3 — Categorías Generales Universales + Modelo `CustomCategory` (Máx. 20 Caracteres + Emoji):**
+  - **Archivos modificados:**
+    - `[MODIFY]` [finance.ts](file:///run/media/migol/Files/Projectos/Aplications/Finance%20Pal/Finance%20Pal%20APP/Finance%20Pal%20V1.19.38/finance-pal/src/lib/finance.ts):
+      - Actualizado `DEFAULT_CATEGORY_EMOJI` con categorías cotidianas universales: *Alimentación* (`🛒`), *Transporte* (`🚗`), *Vivienda* (`🏠`), *Servicios* (`💡`), *Salud* (`💊`), *Educación* (`📚`), *Entretenimiento* (`🎬`), *Compras* (`🛍️`), *Familia y Mascotas* (`🐾`), *Trabajo / Sueldo* (`💼`), *Negocio / Ventas* (`📈`), *Ahorro e Inversión* (`🏦`), *Deudas* (`🤝`), *Regalos* (`🎁`), *Otros* (`✨`).
+      - Conservado `LEGACY_CATEGORY_EMOJI` para retrocompatibilidad histórica.
+      - Definido `MAX_CUSTOM_CATEGORY_NAME_LENGTH = 20` y la interfaz `CustomCategory`.
+      - Agregado `customCategories?: CustomCategory[]` a `AppSettings`.
+      - Creados helpers `getCategoriesMap(customCategories)` y actualizado `emojiFor` e `iconFor`.
+    - `[MODIFY]` [settings-slice.ts](file:///run/media/migol/Files/Projectos/Aplications/Finance%20Pal/Finance%20Pal%20APP/Finance%20Pal%20V1.19.38/finance-pal/src/store/slices/settings-slice.ts) y [useFinanceData.ts](file:///run/media/migol/Files/Projectos/Aplications/Finance%20Pal/Finance%20Pal%20APP/Finance%20Pal%20V1.19.38/finance-pal/src/hooks/useFinanceData.ts):
+      - Expuestos `customCategories`, `addCustomCategory`, `updateCustomCategory` y `removeCustomCategory` con validación estricta de 20 caracteres y sanitización.
+  - **Criterio de Aceptación:** Las categorías por defecto son generales para cualquier persona y el store permite crear, editar y eliminar categorías personalizadas con límite de 20 caracteres y emoji.
+
+- [x] **Tarea F8.4 — Nuevo Apartado `"Categorías"` en Ajustes + Opción Directa `"+ Crear nueva"` en Movimientos:**
+  - **Archivos creados/modificados:**
+    - `[NEW]` [CategoriasSection.tsx](file:///run/media/migol/Files/Projectos/Aplications/Finance%20Pal/Finance%20Pal%20APP/Finance%20Pal%20V1.19.38/finance-pal/src/pages/ajustes/secciones/CategoriasSection.tsx):
+      - Sección dedicada en Ajustes para gestionar categorías personalizadas con selector táctil de emoji, input con límite `maxLength={20}` + contador `X/20`, edición y eliminación.
+    - `[NEW]` [CategorySelectWithCreate.tsx](file:///run/media/migol/Files/Projectos/Aplications/Finance%20Pal/Finance%20Pal%20APP/Finance%20Pal%20V1.19.38/finance-pal/src/components/app/CategorySelectWithCreate.tsx):
+      - Selector de categoría reutilizable con opción directa **`➕ Crear nueva categoría...`** en el menú. Despliega un diálogo compacto para ingresar emoji y nombre (`<= 20` caracteres) y seleccionarla automáticamente al guardarla.
+    - `[MODIFY]` [types.ts](file:///run/media/migol/Files/Projectos/Aplications/Finance%20Pal/Finance%20Pal%20APP/Finance%20Pal%20V1.19.38/finance-pal/src/pages/ajustes/types.ts), [AjustesV2.tsx](file:///run/media/migol/Files/Projectos/Aplications/Finance%20Pal/Finance%20Pal%20APP/Finance%20Pal%20V1.19.38/finance-pal/src/pages/ajustes/AjustesV2.tsx), [AjustesHub.tsx](file:///run/media/migol/Files/Projectos/Aplications/Finance%20Pal/Finance%20Pal%20APP/Finance%20Pal%20V1.19.38/finance-pal/src/pages/ajustes/AjustesHub.tsx), [AjustesClassic.tsx](file:///run/media/migol/Files/Projectos/Aplications/Finance%20Pal/Finance%20Pal%20APP/Finance%20Pal%20V1.19.38/finance-pal/src/pages/AjustesClassic.tsx):
+      - Registrada la nueva sección `"categorias"`.
+    - `[MODIFY]` [MovimientosV2.tsx](file:///run/media/migol/Files/Projectos/Aplications/Finance%20Pal/Finance%20Pal%20APP/Finance%20Pal%20V1.19.38/finance-pal/src/components/movimientos/MovimientosV2.tsx), [QuickTransactionSheet.tsx](file:///run/media/migol/Files/Projectos/Aplications/Finance%20Pal/Finance%20Pal%20APP/Finance%20Pal%20V1.19.38/finance-pal/src/components/app/QuickTransactionSheet.tsx), [FijosSection.tsx](file:///run/media/migol/Files/Projectos/Aplications/Finance%20Pal/Finance%20Pal%20APP/Finance%20Pal%20V1.19.38/finance-pal/src/pages/ajustes/secciones/FijosSection.tsx):
+      - Integrado `CategorySelectWithCreate` y `getCategoriesMap(customCategories)` en creación, edición y filtros.
+  - **Criterio de Aceptación:** El usuario puede gestionar sus categorías desde Ajustes y también crear una nueva categoría con nombre (`<= 20` chars) y emoji directamente desde el selector de categoría de un movimiento.
+
+- [x] **Tarea F8.5 — Orden Estricto de Arranque al Recargar (Primero Animación `SplashScreen`, Después `PageSkeleton`):**
+  - **Archivos modificados:**
+    - `[MODIFY]` [App.tsx](file:///run/media/migol/Files/Projectos/Aplications/Finance%20Pal/Finance%20Pal%20APP/Finance%20Pal%20V1.19.38/finance-pal/src/App.tsx) y [AppShell.tsx](file:///run/media/migol/Files/Projectos/Aplications/Finance%20Pal/Finance%20Pal%20APP/Finance%20Pal%20V1.19.38/finance-pal/src/components/app/AppShell.tsx):
+      - Elevado el estado `booting` (1500ms) a la raíz en `App.tsx` con `<SplashScreen />` a `z-[200]`.
+      - Desde el milisegundo 0 del reload, la pantalla muestra la animación de arranque coreografiada.
+      - Eliminado el duplicado local de `booting` en `AppShell.tsx`.
+      - Los skeletons solo se muestran después de los 1500ms si la sesión o la sincronización en la nube siguen pendientes.
+  - **Criterio de Aceptación:** Al recargar la página jamás aparece `PageSkeleton` antes de `SplashScreen`; primero se ve la animación y después (solo si aún sigue cargando) aparecen los skeletons.
+
+- [x] **Tarea F8.6 — Detección de Tema desde el Segundo 1 + Selector Dinámico en Login y Register:**
+  - **Archivos creados/modificados:**
+    - `[NEW]` [theme-sync.ts](file:///run/media/migol/Files/Projectos/Aplications/Finance%20Pal/Finance%20Pal%20APP/Finance%20Pal%20V1.19.38/finance-pal/src/lib/theme-sync.ts):
+      - Helpers síncronos `readInitialThemePref()` y `writeThemePref()` con sincronización inmediata con `localStorage["fp-theme-pref"]`.
+    - `[MODIFY]` [index.html](file:///run/media/migol/Files/Projectos/Aplications/Finance%20Pal/Finance%20Pal%20APP/Finance%20Pal%20V1.19.38/finance-pal/index.html):
+      - Script síncrono bloqueante en `<head>` que previene cualquier destello blanco antes del primer frame.
+    - `[MODIFY]` [settings-slice.ts](file:///run/media/migol/Files/Projectos/Aplications/Finance%20Pal/Finance%20Pal%20APP/Finance%20Pal%20V1.19.38/finance-pal/src/store/slices/settings-slice.ts) y [finance-store.ts](file:///run/media/migol/Files/Projectos/Aplications/Finance%20Pal/Finance%20Pal%20APP/Finance%20Pal%20V1.19.38/finance-pal/src/store/finance-store.ts):
+      - Inicialización reactiva desde `readInitialThemePref()` y persistencia continua.
+    - `[MODIFY]` [LoginV2.tsx](file:///run/media/migol/Files/Projectos/Aplications/Finance%20Pal/Finance%20Pal%20APP/Finance%20Pal%20V1.19.38/finance-pal/src/pages/LoginV2.tsx) y [LoginClassic.tsx](file:///run/media/migol/Files/Projectos/Aplications/Finance%20Pal/Finance%20Pal%20APP/Finance%20Pal%20V1.19.38/finance-pal/src/pages/LoginClassic.tsx):
+      - Selector dinámico de tema con 3 opciones (`Sistema / Auto`, `Claro`, `Oscuro`) accesible en Login, Register y 2FA.
+  - **Criterio de Aceptación:** Al recargar la página en modo oscuro o con el dispositivo en modo oscuro, la app se pinta oscura desde el milisegundo 0 sin destello claro; y desde Login/Register se puede cambiar el tema dinámicamente.
 
 ---
 
-## 4. Registro Histórico de Checkpoints (Commits en Worktree Builder)
+### BLOQUE 3 — Pruebas Automatizadas, Verificación y Auditoría (Gemini 4 Argon)
 
-| # Checkpoint | Hash Commit | Tareas Cubiertas | Resultado Build / Test | Resumen de Cambios |
-| :--- | :--- | :--- | :--- | :--- |
-| `CP-S6-01` | `1c1b0ae` | `F6.1 - F6.8` | `PASS (tsc + vitest 263/263 + lint + build)` | `Implementación completa de Sprint 6: AnualV2, HistorialV2, AjustesV2 (Master-Detail), LoginV2 (asimetría 5/7), auth-helpers, despachadores duales y suite de 28 tests` |
-| `CP-S6-02` | `f7aef0d` | `F6.1 - F6.8 (A11y & Edge Cases)` | `PASS (tsc + vitest 269/269 + lint + build)` | `Auditoría y pulido final de accesibilidad: touch targets >= 44px, focus rings visibles, corrección de semántica HTML en AjustesV2, protección contra estructuras circulares en HistorialV2 y 6 tests de casos límite` |
+- [x] **Tarea F8.7 — Suite de Pruebas Automatizadas del Sprint 8:**
+  - **Archivos creados:**
+    - `[NEW]` [sprint8-categories-theme-boot.test.tsx](file:///run/media/migol/Files/Projectos/Aplications/Finance%20Pal/Finance%20Pal%20APP/Finance%20Pal%20V1.19.38/finance-pal/src/test/sprint8-categories-theme-boot.test.tsx):
+      - 10 pruebas unitarias de `AnualV2`, `FolderChips`, `customCategories` (límite de 20 caracteres, emojis, CRUD), `CategorySelectWithCreate`, sincronización síncrona de tema y conmutador dinámico en `LoginV2` y `LoginClassic`.
+  - **Criterio de Aceptación:** 10/10 pruebas de Sprint 8 pasan exitosamente.
 
----
-
-## 5. Resumen de Entrega de Fase 2 (Construcción Concluida)
-
-- **Estado de Compilación Local (`npx tsc --noEmit`):** `PASS (0 errores)`
-- **Resultado de Tests (`npx vitest run`):** `PASS (269/269 passing, 37 archivos de prueba, 100%)`
-- **Resultado de Linter (`npm run lint`):** `PASS (0 errores)`
-- **Resultado de Build (`npm run build`):** `PASS (14.81s, chunks optimizados)`
-- **Grafo de Conocimiento (`graphify`):** Actualizado (`2053 nodos, 6223 edges, 140 comunidades`)
+- [x] **Tarea F8.8 — Verificación Integral, Actualización del Grafo y Preparación de Auditoría:**
+  - `npx tsc --noEmit` completado con 0 errores de tipado.
+  - `npx vitest run`: **40/40 suites aprobadas, 299/299 tests pasando (100% verde)**.
+  - `npm run build`: bundle de producción compilado limpiamente en 16.15s.
+  - `graphify update .`: Grafo de conocimiento AST sincronizado (2098 nodos, 6517 aristas).

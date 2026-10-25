@@ -12,6 +12,7 @@ import {
   parseDateLocal,
   computeBalances,
   cashTotalFromDenominations,
+  isIOweDebt,
 } from "@/lib/finance";
 import {
   Eye,
@@ -30,6 +31,7 @@ import {
   ChevronRight,
   ShieldCheck,
   CheckCircle2,
+  Settings,
 } from "lucide-react";
 import { motion } from "@/lib/framer";
 import { MonthSwitcher } from "@/components/app/MonthSwitcher";
@@ -191,14 +193,21 @@ export function DashboardV2() {
     }
 
     for (const d of debts) {
+      const isYoDebo = isIOweDebt(d);
       const dd = parseDateLocal(d.date);
       if (dd.getFullYear() === activeYear && dd.getMonth() === activeMonth) {
-        expense += d.amount;
+        if (!isYoDebo) {
+          expense += d.amount;
+        }
       }
-      for (const p of d.payments) {
+      for (const p of (d.payments || [])) {
         const pd = parseDateLocal(p.date);
         if (pd.getFullYear() === activeYear && pd.getMonth() === activeMonth) {
-          income += p.amount;
+          if (isYoDebo) {
+            expense += p.amount;
+          } else {
+            income += p.amount;
+          }
         }
       }
     }
@@ -224,12 +233,21 @@ export function DashboardV2() {
     }
 
     for (const d of debts) {
+      const isYoDebo = isIOweDebt(d);
       if (parseDateLocal(d.date) <= endOfMonth) {
-        cumulativeNet -= d.amount;
+        if (!isYoDebo) {
+          cumulativeNet -= d.amount;
+        } else {
+          cumulativeNet += d.amount;
+        }
       }
-      for (const p of d.payments) {
+      for (const p of (d.payments || [])) {
         if (parseDateLocal(p.date) <= endOfMonth) {
-          cumulativeNet += p.amount;
+          if (isYoDebo) {
+            cumulativeNet -= p.amount;
+          } else {
+            cumulativeNet += p.amount;
+          }
         }
       }
     }
@@ -278,16 +296,33 @@ export function DashboardV2() {
     const liquidAssets = cash + bank;
     const goalsSaved = goals.reduce((sum, g) => sum + (g.saved || 0), 0);
 
-    // Cuentas por cobrar (préstamos otorgados vigentes al cierre del periodo)
-    const receivables = debts.reduce((sum, d) => {
-      const debtDate = parseDateLocal(d.date);
-      if (debtDate > endOfMonth) return sum;
-      const paid = (d.payments || []).reduce((pSum, p) => {
-        const payDate = parseDateLocal(p.date);
-        return payDate <= endOfMonth ? pSum + p.amount : pSum;
+    // Cuentas por cobrar (préstamos otorgados vigentes al cierre del periodo: solo 'me_deben')
+    const receivables = debts
+      .filter((d) => !isIOweDebt(d))
+      .reduce((sum, d) => {
+        const debtDate = parseDateLocal(d.date);
+        if (debtDate > endOfMonth) return sum;
+        const paid = (d.payments || []).reduce((pSum, p) => {
+          const payDate = parseDateLocal(p.date);
+          return payDate <= endOfMonth ? pSum + p.amount : pSum;
+        }, 0);
+        return sum + Math.max(0, d.amount - paid);
       }, 0);
-      return sum + Math.max(0, d.amount - paid);
-    }, 0);
+
+    // Deudas pendientes ('yo_debo') al cierre del periodo que suman a los pasivos
+    const yoDeboLiabilities = debts
+      .filter((d) => isIOweDebt(d))
+      .reduce((sum, d) => {
+        const debtDate = parseDateLocal(d.date);
+        if (debtDate > endOfMonth) return sum;
+        const paid = (d.payments || []).reduce((pSum, p) => {
+          const payDate = parseDateLocal(p.date);
+          return payDate <= endOfMonth ? pSum + p.amount : pSum;
+        }, 0);
+        return sum + Math.max(0, d.amount - paid);
+      }, 0);
+
+    liabilities += yoDeboLiabilities;
 
     const totalAssets = Math.max(0, liquidAssets + receivables);
     const netWorth = totalAssets - liabilities;
@@ -398,24 +433,24 @@ export function DashboardV2() {
               <h1 className="font-display-v2 text-xl sm:text-2xl font-bold tracking-tight text-foreground">
                 {greet}
               </h1>
-              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-mono-tabular font-semibold bg-primary/10 text-primary border border-primary/20">
+              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-mono-tabular font-semibold bg-primary/10 text-primary border border-primary/20">
                 <ShieldCheck className="size-3" strokeWidth={1.5} />
                 v2
               </span>
             </div>
             <p className="text-xs text-muted-foreground mt-0.5">
-              Panorama patrimonial y flujo financiero de {MONTHS[activeMonth]} {activeYear}
+              Resumen de tus cuentas en {MONTHS[activeMonth]} {activeYear}
             </p>
           </div>
         </div>
 
-        <div className="flex items-center gap-2.5 self-start sm:self-auto">
+        <div className="flex items-center gap-2.5 self-start sm:self-auto flex-wrap max-w-full">
           <MonthSwitcher />
           <button
             onClick={toggleHide}
             aria-label={hide ? "Mostrar saldos" : "Ocultar saldos"}
             title={hide ? "Mostrar saldos" : "Ocultar saldos"}
-            className="size-9 rounded-lg border border-[#E4E0D8] dark:border-white/10 bg-card hover:bg-muted/60 flex items-center justify-center text-muted-foreground hover:text-foreground transition-all duration-200 active:scale-[0.96]"
+            className="size-11 sm:size-9 min-h-[44px] min-w-[44px] sm:min-h-0 sm:min-w-0 rounded-lg border border-[#E4E0D8] dark:border-white/10 bg-card hover:bg-muted/60 flex items-center justify-center text-muted-foreground hover:text-foreground transition-all duration-200 active:scale-[0.96] shrink-0"
           >
             {hide ? <EyeOff className="size-4" strokeWidth={1.5} /> : <Eye className="size-4" strokeWidth={1.5} />}
           </button>
@@ -423,9 +458,21 @@ export function DashboardV2() {
             to="/anual"
             aria-label="Resumen anual"
             title="Ir al Resumen Anual"
-            className="size-9 rounded-lg border border-[#E4E0D8] dark:border-white/10 bg-card hover:bg-muted/60 flex items-center justify-center text-muted-foreground hover:text-foreground transition-all duration-200 active:scale-[0.96]"
+            className="size-11 sm:size-9 min-h-[44px] min-w-[44px] sm:min-h-0 sm:min-w-0 rounded-lg border border-[#E4E0D8] dark:border-white/10 bg-card hover:bg-muted/60 flex items-center justify-center text-muted-foreground hover:text-foreground transition-all duration-200 active:scale-[0.96] shrink-0"
           >
             <BarChart3 className="size-4" strokeWidth={1.5} />
+          </Link>
+          <Link
+            to="/ajustes"
+            aria-label="Ir a Ajustes y Perfil"
+            title="Ajustes y Perfil"
+            className="lg:hidden size-11 min-h-[44px] min-w-[44px] rounded-lg border border-[#E4E0D8] dark:border-white/10 bg-card hover:bg-muted/60 flex items-center justify-center text-muted-foreground hover:text-foreground transition-all duration-200 active:scale-[0.96] shrink-0"
+          >
+            {profile.avatar ? (
+              <IconDisplay icon={profile.avatar} size="xs" className="size-4 shrink-0" />
+            ) : (
+              <Settings className="size-4" strokeWidth={1.5} />
+            )}
           </Link>
         </div>
       </header>
@@ -441,8 +488,10 @@ export function DashboardV2() {
             <div className="flex items-baseline justify-between gap-4 flex-wrap">
               <div>
                 <p className="font-display-v2 text-xs uppercase tracking-widest font-semibold text-muted-foreground">
-                  Patrimonio Neto Total
+                  Tu dinero total
+                  <span className="sr-only">Patrimonio Neto Total</span>
                 </p>
+                <p className="text-[11px] text-muted-foreground mt-0.5">Lo que tienes menos lo que debes</p>
                 <div className="flex items-baseline gap-3 mt-1.5 flex-wrap">
                   <span className="font-mono-tabular text-3xl sm:text-4xl lg:text-5xl font-extrabold tracking-tight text-foreground">
                     {mask(fmt(wealthBreakdown.netWorth))}
@@ -477,7 +526,8 @@ export function DashboardV2() {
 
               <div className="text-right">
                 <span className="text-[11px] text-muted-foreground uppercase tracking-wider block">
-                  Corte del periodo
+                  Mes actual
+                  <span className="sr-only">Corte del periodo</span>
                 </span>
                 <span className="text-xs font-mono-tabular text-foreground/80 font-medium">
                   {MONTHS[activeMonth]} {activeYear}
@@ -487,15 +537,21 @@ export function DashboardV2() {
 
             {/* Barra de Proporción Activos vs Pasivos (De-boxed) */}
             <div className="mt-6 pt-5 border-t border-[#E4E0D8] dark:border-white/10 space-y-2.5">
-              <div className="flex items-center justify-between text-xs font-mono-tabular">
-                <div className="flex items-center gap-2">
-                  <span className="size-2 rounded-full bg-primary" />
-                  <span className="text-muted-foreground font-sans">Activos Totales:</span>
+              <div className="flex items-center justify-between gap-x-4 gap-y-2 text-xs font-mono-tabular flex-wrap">
+                <div className="flex items-center gap-2 shrink-0">
+                  <span className="size-2 rounded-full bg-primary shrink-0" />
+                  <span className="text-muted-foreground font-sans">
+                    Lo que tienes:
+                    <span className="sr-only">Activos Totales:</span>
+                  </span>
                   <span className="font-semibold text-foreground">{mask(fmt(wealthBreakdown.totalAssets))}</span>
                 </div>
-                <div className="flex items-center gap-2">
-                  <span className="size-2 rounded-full bg-destructive" />
-                  <span className="text-muted-foreground font-sans">Pasivos / Obligaciones:</span>
+                <div className="flex items-center gap-2 shrink-0">
+                  <span className="size-2 rounded-full bg-destructive shrink-0" />
+                  <span className="text-muted-foreground font-sans">
+                    Lo que debes:
+                    <span className="sr-only">Pasivos / Obligaciones:</span>
+                  </span>
                   <span className="font-semibold text-foreground">{mask(fmt(wealthBreakdown.liabilities))}</span>
                 </div>
               </div>

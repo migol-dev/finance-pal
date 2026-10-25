@@ -464,5 +464,53 @@ describe("Sprint 3 DashboardV2 & Dual Dispatcher Suite", () => {
 
       expect(screen.getByText("Al día en este mes")).toBeInTheDocument();
     });
+
+    it("clasifica deudas 'yo_debo' en pasivos (Lo que debes) y 'me_deben' en activos (Por cobrar)", () => {
+      mockState.accounts = [
+        { id: "acc-1", name: "BBVA", type: "bank", initialBalance: 10000 },
+      ];
+      mockState.transactions = [];
+      mockState.fixedItems = [];
+      mockState.debts = [
+        // me_deben: Alguien me debe 3,000 con 1,000 abonados -> 2,000 por cobrar (Activo)
+        {
+          id: "debt-receivable",
+          person: "Pedro",
+          concept: "Préstamo personal",
+          amount: 3000,
+          date: "2026-10-01T12:00:00.000Z",
+          type: "me_deben",
+          payments: [
+            { id: "p-rec-1", amount: 1000, date: "2026-10-05T12:00:00.000Z" },
+          ],
+        },
+        // yo_debo: Yo debo 5,000 con 1,500 abonados -> 3,500 pendiente por pagar (Pasivo)
+        {
+          id: "debt-payable",
+          person: "Banco Santander",
+          concept: "Crédito automotriz",
+          amount: 5000,
+          date: "2026-10-01T12:00:00.000Z",
+          type: "yo_debo",
+          payments: [
+            { id: "p-pay-1", amount: 1500, date: "2026-10-10T12:00:00.000Z" },
+          ],
+        },
+      ];
+
+      render(
+        <MemoryRouter>
+          <DashboardV2 />
+        </MemoryRouter>
+      );
+
+      // Saldo líquido en banco: 10,000 + 1,000 (abono recibido) - 1,500 (abono pagado) = 9,500
+      // Activos totales: saldo líquido 9,500 + 2,000 (me_deben pendiente) = 11,500
+      // Pasivos totales: 3,500 (yo_debo pendiente)
+      // Patrimonio neto: 11,500 - 3,500 = 8,000
+      expect(screen.getAllByText(/3,500/).length).toBeGreaterThanOrEqual(1);
+      expect(screen.getAllByText(/11,500/).length).toBeGreaterThanOrEqual(1);
+      expect(screen.getAllByText(/8,000/).length).toBeGreaterThanOrEqual(1);
+    });
   });
 });

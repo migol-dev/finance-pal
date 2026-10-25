@@ -57,10 +57,10 @@ export const AccessibilitySettings = memo(function AccessibilitySettings() {
   return (
     <div className="space-y-4">
       {/* 1. Granular Text Scale Slider & Presets */}
-      <div className="rounded-2xl bg-card border border-border p-4 sm:p-5 shadow-soft space-y-4">
+      <div className="rounded-md bg-card/80 border border-border/80 p-4 sm:p-5 shadow-sm space-y-4">
         <div className="flex items-center justify-between gap-2.5">
           <div className="flex items-center gap-2.5">
-            <div className="size-9 rounded-xl bg-primary/10 text-primary flex items-center justify-center shrink-0">
+            <div className="size-9 rounded-md bg-primary/10 text-primary flex items-center justify-center shrink-0">
               <Type className="size-4.5" />
             </div>
             <div>
@@ -68,7 +68,7 @@ export const AccessibilitySettings = memo(function AccessibilitySettings() {
               <p className="text-xs text-muted-foreground">Ajusta la escala tipográfica exacta para toda la app</p>
             </div>
           </div>
-          <span className="px-2.5 py-1 rounded-full bg-primary/10 text-primary font-extrabold text-xs">
+          <span className="px-2.5 py-1 rounded-md bg-primary/10 text-primary font-mono font-bold text-xs">
             {currentPercent}%
           </span>
         </div>
@@ -92,7 +92,7 @@ export const AccessibilitySettings = memo(function AccessibilitySettings() {
         </div>
 
         {/* Quick Presets */}
-        <div className="grid grid-cols-4 gap-2 pt-1">
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-1">
           {(
             [
               { percent: 85, preset: "compact", label: "85%", desc: "Compacto" },
@@ -108,7 +108,7 @@ export const AccessibilitySettings = memo(function AccessibilitySettings() {
                 type="button"
                 onClick={() => handlePresetClick(s.percent, s.preset as TextScale)}
                 aria-pressed={active}
-                className={`py-2 px-1.5 rounded-xl text-center border transition flex flex-col items-center justify-center min-h-[44px] ${
+                className={`py-2 px-2 rounded-md text-center border transition flex flex-col items-center justify-center min-h-[48px] ${
                   active
                     ? "border-primary bg-primary/15 text-primary font-bold shadow-sm ring-1 ring-primary/40"
                     : "border-border bg-muted/40 text-muted-foreground hover:text-foreground hover:bg-muted"
@@ -138,7 +138,7 @@ export const AccessibilitySettings = memo(function AccessibilitySettings() {
       </div>
 
       {/* 2. Visual & Cognitive Accessibility Toggles */}
-      <div className="rounded-2xl bg-card border border-border p-4 sm:p-5 shadow-soft space-y-4">
+      <div className="rounded-md bg-card/80 border border-border/80 p-4 sm:p-5 shadow-sm space-y-4">
         {/* High contrast (WCAG AAA) */}
         <div className="flex items-center justify-between gap-3">
           <div className="flex items-center gap-2.5 min-w-0">
@@ -149,7 +149,7 @@ export const AccessibilitySettings = memo(function AccessibilitySettings() {
               <Label htmlFor="a11y-high-contrast" className="font-bold text-sm cursor-pointer">
                 Alto contraste (WCAG AAA)
               </Label>
-              <p className="text-xs text-muted-foreground">Bordes definidos de 2px, máxima pureza cromática y sin transparencias tenues</p>
+              <p className="text-xs text-muted-foreground">Bordes nítidos calibrados de 1px a 1.5px, texto puro de alto contraste (≥ 7:1) y sin transparencias tenues</p>
             </div>
           </div>
           <Switch
@@ -279,7 +279,7 @@ export const AccessibilitySettings = memo(function AccessibilitySettings() {
       </div>
 
       {/* 3. Color blindness palette */}
-      <div className="rounded-2xl bg-card border border-border p-4 sm:p-5 shadow-soft space-y-3">
+      <div className="rounded-md bg-card/80 border border-border/80 p-4 sm:p-5 shadow-sm space-y-3">
         <div className="flex items-center gap-2.5">
           <div className="size-9 rounded-xl bg-primary/10 text-primary flex items-center justify-center shrink-0">
             <Palette className="size-4.5" />

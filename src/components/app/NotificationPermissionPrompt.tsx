@@ -130,18 +130,18 @@ export function NotificationPermissionPrompt() {
         </div>
       </div>
 
-      <div className="mt-3.5 flex items-center justify-between gap-2 pt-3 border-t border-border/60">
-        <span className="text-[11px] text-muted-foreground flex items-center gap-1">
+      <div className="mt-3.5 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2.5 pt-3 border-t border-border/60">
+        <span className="text-[11px] text-muted-foreground flex items-center gap-1 shrink-0">
           <ShieldCheck className="size-3.5 text-emerald-500 shrink-0" />
           100% personalizable en Ajustes
         </span>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center justify-end gap-2 w-full sm:w-auto">
           <Button
             type="button"
             variant="ghost"
             size="sm"
             onClick={handleDismiss}
-            className="h-9 rounded-xl text-xs font-semibold text-muted-foreground"
+            className="h-9 rounded-md text-xs font-semibold text-muted-foreground flex-1 sm:flex-initial"
           >
             Ahora no
           </Button>
@@ -150,9 +150,9 @@ export function NotificationPermissionPrompt() {
             size="sm"
             disabled={submitting}
             onClick={handleGrantPermission}
-            className="h-9 rounded-xl text-xs font-bold px-3.5 shadow-sm"
+            className="h-9 rounded-md text-xs font-bold px-3.5 shadow-sm flex-1 sm:flex-initial whitespace-nowrap"
           >
-            {submitting ? "Solicitando..." : "Permitir notificaciones"}
+            {submitting ? "Solicitando..." : "Activar avisos"}
           </Button>
         </div>
       </div>

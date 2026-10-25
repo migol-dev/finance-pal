@@ -10,7 +10,6 @@ import { useFinanceData } from "@/hooks/useFinanceData";
 import { useSystemTheme } from "@/hooks/useSystemTheme";
 import { useNotificationScheduler } from "@/hooks/useNotificationScheduler";
 import { NotificationPermissionPrompt } from "./NotificationPermissionPrompt";
-import { SplashScreen } from "./SplashScreen";
 import { Capacitor } from "@capacitor/core";
 import { App as CapacitorApp } from "@capacitor/app";
 import { toast } from "sonner";
@@ -63,17 +62,10 @@ export function AppShell({ children }: { children: ReactNode }) {
   useNotificationScheduler();
 
   const didInit = useRef(false);
-  const [booting, setBooting] = useState(true);
   const location = useLocation();
   const navigate = useNavigate();
   const touchRef = useRef<{ x: number; y: number; t: number } | null>(null);
   const lastBackPressRef = useRef<number | null>(null);
-
-  useEffect(() => {
-    // Only handle the boot screen timeout here, completely decoupled from data dependencies
-    const t = setTimeout(() => setBooting(false), 900);
-    return () => clearTimeout(t);
-  }, []);
 
   useEffect(() => {
     if (didInit.current) return;
@@ -200,7 +192,6 @@ export function AppShell({ children }: { children: ReactNode }) {
 
   return (
     <div className="min-h-screen bg-background text-foreground">
-      {booting && <SplashScreen />}
       <div className="lg:flex lg:h-screen lg:overflow-hidden">
         {uiVersion === "v2" ? <DesktopSidebarV2 /> : <DesktopSidebar />}
         <main

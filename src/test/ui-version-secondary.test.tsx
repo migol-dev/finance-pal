@@ -351,11 +351,11 @@ describe("Sprint 6 — Vistas Secundarias & Despachadores Duales Suite", () => {
 
     it("cambia entre pestañas de Categorías, Métodos y Metas", () => {
       renderWithProviders(<Anual />);
-      const catTab = screen.getByRole("tab", { name: /categorias/i });
+      const catTab = screen.getByRole("tab", { name: /categor[íi]as/i });
       fireEvent.click(catTab);
       expect(screen.getByText(/Gasto por Categoría en 2026/i)).toBeInTheDocument();
 
-      const metodosTab = screen.getByRole("tab", { name: /metodos/i });
+      const metodosTab = screen.getByRole("tab", { name: /m[ée]todos/i });
       fireEvent.click(metodosTab);
       expect(screen.getByText(/Distribución por Método de Pago/i)).toBeInTheDocument();
 

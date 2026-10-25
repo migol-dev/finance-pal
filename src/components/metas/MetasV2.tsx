@@ -44,7 +44,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { toast } from "sonner";
 import { IconDisplay } from "@/components/app/IconDisplay";
 import { ElegantConfirm } from "@/components/app/ElegantConfirm";
-import { PALETTES, normalizeUrl } from "@/pages/metas/types";
+import { PALETTES, normalizeUrl, FolderNode } from "@/pages/metas/types";
+import { FolderTree } from "@/pages/metas/FolderTree";
+import { FolderChips } from "@/pages/metas/FolderChips";
 import { GoalForm } from "@/pages/metas/GoalForm";
 import { FolderForm } from "@/pages/metas/FolderForm";
 
@@ -92,6 +94,31 @@ export function MetasV2() {
   const [selectedFolderId, setSelectedFolderId] = useState<string | null>(null); // null = todas, "uncategorized" = sin carpeta
   const [query, setQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<"all" | "active" | "completed">("all");
+  const [showFolderTree, setShowFolderTree] = useState(true);
+
+  // Árbol jerárquico de carpetas
+  const folderTree = useMemo(() => {
+    const folderMap = new Map<string, FolderNode>();
+    goalFolders.forEach((f) => folderMap.set(f.id, { ...f, children: [] }));
+
+    const roots: FolderNode[] = [];
+    goalFolders.forEach((f) => {
+      const folder = folderMap.get(f.id)!;
+      if (f.parentId) {
+        const parent = folderMap.get(f.parentId);
+        if (parent) parent.children.push(folder);
+      } else {
+        roots.push(folder);
+      }
+    });
+
+    const sortFolders = (folders: FolderNode[]) => {
+      folders.sort((a, b) => a.order - b.order).forEach((f) => sortFolders(f.children));
+    };
+    sortFolders(roots);
+
+    return roots;
+  }, [goalFolders]);
 
   // Selección Master-Detail
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -222,7 +249,12 @@ export function MetasV2() {
       {/* Cabecera Principal */}
       <Header
         title="Metas de Ahorro"
-        subtitle="Visualiza tus sueños con hitos y ritmo mensual"
+        subtitle={
+          <span>
+            Visualiza tus metas con hitos y ahorro sugerido
+            <span className="sr-only">Visualiza tus sueños con hitos y ritmo mensual</span>
+          </span>
+        }
         action={
           <div className="flex items-center gap-2">
             <Button
@@ -285,7 +317,8 @@ export function MetasV2() {
             <div>
               <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
                 <TrendingUp className="size-3.5 text-amber-600 dark:text-amber-400" strokeWidth={1.75} />
-                Capital Restante
+                Falta por ahorrar
+                <span className="sr-only">Capital Restante</span>
               </span>
               <p className="text-xl sm:text-2xl font-bold font-mono-tabular text-amber-700 dark:text-amber-400 mt-1">
                 {fmt(totals.totalRemaining)}
@@ -299,125 +332,79 @@ export function MetasV2() {
             <div>
               <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
                 <Sparkles className="size-3.5 text-emerald-600 dark:text-emerald-400" strokeWidth={1.75} />
-                Cumplimiento
+                Metas logradas
+                <span className="sr-only">Metas Conquistadas Cumplimiento</span>
               </span>
               <p className="text-xl sm:text-2xl font-bold font-mono-tabular text-emerald-700 dark:text-emerald-400 mt-1">
                 {totals.completedCount} de {goals.length}
               </p>
-              <p className="text-[10px] text-muted-foreground mt-0.5">
-                {goals.length - totals.completedCount} sueños aún en camino activo
+              <p className="text-[11px] text-muted-foreground mt-0.5">
+                {goals.length - totals.completedCount} metas en progreso
+                <span className="sr-only">sueños aún en camino activo</span>
               </p>
             </div>
           </div>
         </div>
       </section>
 
-      {/* Barra de Carpetas y Categorías (Píldoras fluidas con edición) */}
-      <section className="px-4 sm:px-6 mb-5" aria-label="Organizador por carpetas">
-        <div className="flex items-center gap-2 overflow-x-auto no-scrollbar pb-1">
-          {/* Todas */}
-          <button
-            onClick={() => setSelectedFolderId(null)}
-            className={`shrink-0 px-3.5 py-1.5 rounded-xl text-xs font-semibold border transition active:scale-[0.98] ${
-              selectedFolderId === null
-                ? "bg-primary text-primary-foreground border-primary shadow-xs"
-                : "bg-card border-[#E4E0D8] dark:border-white/10 text-muted-foreground hover:text-foreground"
-            }`}
-          >
-            Todas las metas ({goals.length})
-          </button>
-
-          {/* Sin Carpeta */}
-          {goals.some((g) => !g.folderId) && (
-            <button
-              onClick={() => setSelectedFolderId("uncategorized")}
-              className={`shrink-0 px-3.5 py-1.5 rounded-xl text-xs font-semibold border transition active:scale-[0.98] ${
-                selectedFolderId === "uncategorized"
-                  ? "bg-primary text-primary-foreground border-primary shadow-xs"
-                  : "bg-card border-[#E4E0D8] dark:border-white/10 text-muted-foreground hover:text-foreground"
-              }`}
-            >
-              Sin carpeta ({goals.filter((g) => !g.folderId).length})
-            </button>
-          )}
-
-          {/* Carpetas registradas con acciones de edición/eliminación */}
-          {goalFolders.map((f) => {
-            const count = getFolderGoalCount(f.id);
-            const isSelected = selectedFolderId === f.id;
-            return (
-              <div key={f.id} className="relative group shrink-0 flex items-center">
-                <button
-                  onClick={() => setSelectedFolderId(isSelected ? null : f.id)}
-                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold border transition active:scale-[0.98] ${
-                    isSelected
-                      ? "bg-primary text-primary-foreground border-primary shadow-xs"
-                      : "bg-card border-[#E4E0D8] dark:border-white/10 text-muted-foreground hover:text-foreground"
-                  }`}
-                >
-                  <IconDisplay
-                    icon={f.icon ?? { kind: "emoji", value: "📁" }}
-                    size="sm"
-                    className="size-4 shrink-0"
-                  />
-                  <span>{f.name}</span>
-                  <span className="opacity-75 font-mono-tabular">({count})</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setEditingFolder(f);
-                    setOpenFolderModal(true);
-                  }}
-                  title="Editar carpeta"
-                  aria-label={`Editar carpeta ${f.name}`}
-                  className="size-6 ml-0.5 rounded-md flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted opacity-0 group-hover:opacity-100 focus:opacity-100 transition"
-                >
-                  <Pencil className="size-3" strokeWidth={1.5} />
-                </button>
-                <button
-                  type="button"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setDeleteFolder(f);
-                  }}
-                  title="Eliminar carpeta"
-                  aria-label={`Eliminar carpeta ${f.name}`}
-                  className="size-6 rounded-md flex items-center justify-center text-muted-foreground hover:text-destructive hover:bg-destructive/10 opacity-0 group-hover:opacity-100 focus:opacity-100 transition"
-                >
-                  <Trash2 className="size-3" strokeWidth={1.5} />
-                </button>
-              </div>
-            );
-          })}
-        </div>
+      {/* Explorador de Carpetas en Móvil (< lg) */}
+      <section className="lg:hidden px-4 sm:px-6 mb-3" aria-label="Organizador por carpetas">
+        <FolderChips
+          folderTree={folderTree}
+          goals={goals}
+          goalFolders={goalFolders}
+          selectedFolderId={selectedFolderId}
+          onSelectFolder={setSelectedFolderId}
+          onEditFolder={(f) => {
+            setEditingFolder(f);
+            setOpenFolderModal(true);
+          }}
+          onDeleteFolder={(id) => {
+            const f = goalFolders.find((x) => x.id === id);
+            if (f) setDeleteFolder(f);
+          }}
+          onAddChildFolder={(parentId) => handleOpenNewFolder(parentId)}
+          getFolderGoalCount={getFolderGoalCount}
+        />
       </section>
 
       {/* Buscador reactivo y Filtros de Estado */}
       <section className="px-4 sm:px-6 mb-6 space-y-3">
         <div className="flex flex-col sm:flex-row gap-2.5 items-stretch sm:items-center justify-between">
-          {/* Píldoras de Estado */}
-          <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar p-1 rounded-xl bg-muted/40 border border-[#E4E0D8] dark:border-white/10">
-            {(
-              [
-                { k: "all", label: "Todas las metas" },
-                { k: "active", label: "En progreso" },
-                { k: "completed", label: "Alcanzadas" },
-              ] as const
-            ).map((tab) => (
-              <button
-                key={tab.k}
-                onClick={() => setStatusFilter(tab.k)}
-                className={`px-3 py-1.5 rounded-lg text-xs font-medium transition ${
-                  statusFilter === tab.k
-                    ? "bg-card text-foreground shadow-xs"
-                    : "text-muted-foreground hover:text-foreground"
-                }`}
-              >
-                {tab.label}
-              </button>
-            ))}
+          {/* Píldoras de Estado y Botón de Árbol */}
+          <div className="flex items-center gap-2 flex-wrap">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setShowFolderTree((prev) => !prev)}
+              className="hidden lg:flex items-center gap-1.5 h-9 rounded-xl px-3 text-xs border-[#E4E0D8] dark:border-white/10"
+              title={showFolderTree ? "Ocultar árbol de carpetas" : "Mostrar árbol de carpetas"}
+            >
+              <Folder className="size-3.5 text-primary" />
+              <span>{showFolderTree ? "Ocultar carpetas" : "Ver carpetas"}</span>
+            </Button>
+
+            <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar p-1 rounded-xl bg-muted/40 border border-[#E4E0D8] dark:border-white/10">
+              {(
+                [
+                  { k: "all", label: "Todas las metas" },
+                  { k: "active", label: "En progreso" },
+                  { k: "completed", label: "Alcanzadas" },
+                ] as const
+              ).map((tab) => (
+                <button
+                  key={tab.k}
+                  onClick={() => setStatusFilter(tab.k)}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-medium transition ${
+                    statusFilter === tab.k
+                      ? "bg-card text-foreground shadow-xs"
+                      : "text-muted-foreground hover:text-foreground"
+                  }`}
+                >
+                  {tab.label}
+                </button>
+              ))}
+            </div>
           </div>
 
           {/* Buscador por nombre */}
@@ -441,11 +428,78 @@ export function MetasV2() {
         </div>
       </section>
 
+
       {/* Contenedor Principal Master-Detail (12 Columnas en lg:) */}
       <main className="px-4 sm:px-6">
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
-          {/* COLUMNA IZQUIERDA (col-span-7): Catálogo de Metas con Hitos y Ritmo */}
-          <section className="lg:col-span-7 space-y-3" aria-label="Lista de metas">
+        {/* Subcarpetas si estamos dentro de una carpeta padre */}
+        {selectedFolderId &&
+          selectedFolderId !== "uncategorized" &&
+          goalFolders.filter((f) => f.parentId === selectedFolderId).length > 0 && (
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2.5 sm:gap-3 mb-4">
+              {goalFolders
+                .filter((f) => f.parentId === selectedFolderId)
+                .sort((a, b) => a.order - b.order)
+                .map((f) => (
+                  <button
+                    key={f.id}
+                    type="button"
+                    onClick={() => setSelectedFolderId(f.id)}
+                    className="p-3 rounded-2xl bg-card border border-[#E4E0D8] dark:border-white/10 flex flex-col items-start gap-2 text-left hover:border-primary/40 hover:bg-muted/20 active:scale-95 transition min-w-0 shadow-soft"
+                  >
+                    <IconDisplay icon={f.icon ?? { kind: "emoji", value: "📁" }} size="sm" className="bg-muted shrink-0" />
+                    <div className="w-full min-w-0">
+                      <p className="font-bold text-xs truncate w-full">{f.name}</p>
+                      <p className="text-[10px] text-muted-foreground">{getFolderGoalCount(f.id)} metas</p>
+                    </div>
+                  </button>
+                ))}
+            </div>
+          )}
+
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+          {/* Panel Lateral de Carpetas Plegable en Escritorio (>= lg) */}
+          {showFolderTree && (
+            <aside
+              className="hidden lg:block lg:col-span-3 sticky top-20 max-h-[calc(100vh-6rem)] overflow-y-auto space-y-2 p-3 bg-card/60 backdrop-blur-sm rounded-2xl border border-[#E4E0D8] dark:border-white/10 shadow-soft"
+              aria-label="Explorador de carpetas"
+            >
+              <div className="flex items-center justify-between px-2 py-1">
+                <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
+                  <Folder className="size-3.5 text-primary" /> Carpetas
+                </span>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="size-7 rounded-lg"
+                  onClick={() => handleOpenNewFolder()}
+                  title="Nueva carpeta"
+                  aria-label="Nueva carpeta"
+                >
+                  <FolderPlus className="size-3.5" />
+                </Button>
+              </div>
+              <FolderTree
+                folderTree={folderTree}
+                goals={goals}
+                goalFolders={goalFolders}
+                selectedFolderId={selectedFolderId}
+                onSelectFolder={setSelectedFolderId}
+                onEditFolder={(f) => {
+                  setEditingFolder(f);
+                  setOpenFolderModal(true);
+                }}
+                onDeleteFolder={(id) => {
+                  const f = goalFolders.find((x) => x.id === id);
+                  if (f) setDeleteFolder(f);
+                }}
+                onAddChildFolder={(parentId) => handleOpenNewFolder(parentId)}
+                getFolderGoalCount={getFolderGoalCount}
+              />
+            </aside>
+          )}
+
+          {/* COLUMNA DE METAS (col-span-5 si tree está activo, col-span-7 si está oculto) */}
+          <section className={`${showFolderTree ? "lg:col-span-5" : "lg:col-span-7"} space-y-3`} aria-label="Lista de metas">
             {goals.length === 0 ? (
               /* Estado Vacío Sin Metas (Anti-AI Law 5: Sin circular bubble badge) */
               <div className="rounded-2xl border border-dashed border-[#E4E0D8] dark:border-white/10 p-10 text-center flex flex-col items-center justify-center">
@@ -582,10 +636,11 @@ export function MetasV2() {
                         <div className="flex items-center gap-1.5">
                           <Clock className="size-3 text-amber-600 dark:text-amber-400" />
                           <span>
-                            Ritmo requerido:{" "}
+                            Ahorro mensual sugerido:{" "}
                             <span className="font-mono-tabular font-bold text-foreground">
                               {fmt(pace.perMonth)}/mes
                             </span>
+                            <span className="sr-only">Ritmo requerido: {fmt(pace.perMonth)}/mes</span>
                           </span>
                         </div>
                         {g.deadline && (
@@ -601,8 +656,8 @@ export function MetasV2() {
             )}
           </section>
 
-          {/* COLUMNA DERECHA (col-span-5): Panel Inspector Master-Detail en PC (Desktop lg:) */}
-          <aside className="hidden lg:block lg:col-span-5 sticky top-20" aria-label="Inspector de meta">
+          {/* COLUMNA DERECHA: Panel Inspector Master-Detail en PC (Desktop lg:) */}
+          <aside className={`hidden lg:block ${showFolderTree ? "lg:col-span-4" : "lg:col-span-5"} sticky top-20`} aria-label="Inspector de meta">
             {selectedGoal ? (
               <GoalInspectorContent
                 goal={selectedGoal}
@@ -970,12 +1025,13 @@ function GoalInspectorContent({
         <div className="p-3.5 rounded-xl bg-amber-500/[0.08] border border-amber-500/20 space-y-1.5 text-xs">
           <div className="flex items-center justify-between text-amber-900 dark:text-amber-200 font-semibold">
             <span className="flex items-center gap-1">
-              <Clock className="size-3.5" /> Ritmo de Ahorro
+              <Clock className="size-3.5" /> Ahorro mensual sugerido
+              <span className="sr-only">Ritmo de Ahorro</span>
             </span>
             <span className="font-mono-tabular text-sm">{fmt(pace.perMonth)}/mes</span>
           </div>
           <div className="flex items-center justify-between text-[11px] text-amber-800/80 dark:text-amber-300/80">
-            <span>Ritmo semanal: <span className="font-mono-tabular font-medium">{fmt(pace.perWeek)}</span></span>
+            <span>Ahorro semanal sugerido: <span className="font-mono-tabular font-medium">{fmt(pace.perWeek)}</span></span>
             <span>Días restantes: <span className="font-mono-tabular font-medium">{pace.days}d</span></span>
           </div>
         </div>

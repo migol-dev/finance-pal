@@ -580,5 +580,46 @@ describe("Sprint 4 — MovimientosV2 & Dual Dispatcher Suite", () => {
     expect(screen.getByText("Reembolso viáticos")).toBeInTheDocument();
     expect(screen.queryByText("Nómina Quincenal")).not.toBeInTheDocument();
   });
+
+  // 14. Filas virtuales de 'yo_debo' (deudas adquiridas y pagos)
+  it("distingue deudas 'yo_debo' en filas virtuales y muestra 'Eliminar deuda' en el inspector", () => {
+    mockState.debts.push({
+      id: "debt-yo-debo",
+      person: "Banco Azteca",
+      concept: "Crédito personal",
+      amount: 8000,
+      date: "2026-10-10T12:00:00.000Z",
+      type: "yo_debo",
+      accountId: "acc-1",
+      payments: [
+        {
+          id: "pay-yd-1",
+          amount: 1000,
+          date: "2026-10-15T12:00:00.000Z",
+          note: "Pago 1",
+          paymentMethod: "transfer",
+          accountId: "acc-1",
+        },
+      ],
+    });
+
+    render(
+      <MemoryRouter>
+        <MovimientosV2 />
+      </MemoryRouter>
+    );
+
+    // Debe mostrar la fila virtual de la deuda propia
+    expect(screen.getByText("Deuda con Banco Azteca")).toBeInTheDocument();
+    // Y el pago debe mostrar "Pago a Banco Azteca"
+    expect(screen.getByText("Pago a Banco Azteca")).toBeInTheDocument();
+
+    // Seleccionar la deuda adquirida
+    fireEvent.click(screen.getByText("Deuda con Banco Azteca"));
+    const inspector = screen.getByRole("complementary", { name: /inspector de detalle/i });
+    // El botón debe decir "Eliminar deuda", NO "Eliminar préstamo"
+    const deleteBtn = within(inspector).getByRole("button", { name: /eliminar deuda/i });
+    expect(deleteBtn).toBeInTheDocument();
+  });
 });
 

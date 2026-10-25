@@ -148,6 +148,11 @@ export interface Debt {
   type?: "me_deben" | "yo_debo";
 }
 
+/** Determines if a debt represents money owed by the user ('yo_debo') */
+export function isIOweDebt(d: Debt | { type?: string; note?: string }): boolean {
+  return (d.type ?? "me_deben") === "yo_debo" || (d.note ? d.note.includes("[yo_debo]") : false);
+}
+
 export type ChangeAction = "create" | "update" | "delete";
 export type ChangeEntity = "transaction" | "fixed" | "goal" | "debt";
 
@@ -522,22 +527,31 @@ export function computeBalances(accounts: Account[], transactions: Transaction[]
 
   // Also include debt-related movements
   for (const d of debts) {
+    const isYoDebo = isIOweDebt(d);
     const debtDate = parseDateLocal(d.date);
     if (debtDate.getTime() <= endTs) {
       // ONLY apply to balance if accountId is explicitly set for the debt creation
       // This prevents "surprise" negative balances from old debts with no account assigned.
       if (d.accountId && map[d.accountId] !== undefined) {
-        map[d.accountId] -= d.amount;
+        if (isYoDebo) {
+          map[d.accountId] += d.amount;
+        } else {
+          map[d.accountId] -= d.amount;
+        }
       }
     }
 
-    for (const p of d.payments) {
+    for (const p of (d.payments || [])) {
       const payDate = parseDateLocal(p.date);
       if (payDate.getTime() <= endTs) {
         // For payments, if no accountId is set, fall back to payment method
         const payAccountId = p.accountId ?? getFallbackId(p.paymentMethod);
         if (payAccountId && map[payAccountId] !== undefined) {
-          map[payAccountId] += p.amount;
+          if (isYoDebo) {
+            map[payAccountId] -= p.amount;
+          } else {
+            map[payAccountId] += p.amount;
+          }
         }
       }
     }
@@ -551,12 +565,55 @@ export function cashTotalFromDenominations(denoms?: Denomination[]) {
   return denoms.reduce((acc, d) => acc + (d.value * (d.count || 0)), 0);
 }
 
+export const MAX_CUSTOM_CATEGORY_NAME_LENGTH = 20;
+
+export interface CustomCategory {
+  id: string;
+  name: string; // Máximo 20 caracteres
+  emoji: string;
+  createdAt?: string;
+}
+
+/** Categorías generales y cotidianas por defecto */
+export const DEFAULT_CATEGORY_EMOJI: Record<string, string> = {
+  Alimentación: "🛒",
+  Transporte: "🚗",
+  Vivienda: "🏠",
+  Servicios: "💡",
+  Salud: "💊",
+  Educación: "📚",
+  Entretenimiento: "🎬",
+  Compras: "🛍️",
+  "Familia y Mascotas": "🐾",
+  "Trabajo / Sueldo": "💼",
+  "Negocio / Ventas": "📈",
+  "Ahorro e Inversión": "🏦",
+  Deudas: "🤝",
+  Regalos: "🎁",
+  Otros: "✨",
+};
+
+/** Categorías legadas para retrocompatibilidad de transacciones históricas */
+export const LEGACY_CATEGORY_EMOJI: Record<string, string> = {
+  Trabajo: "💼",
+  Servicios: "🛠️",
+  Transporte: "⛽",
+  Salud: "💪",
+  Conectividad: "📱",
+  "Apoyo familiar": "👨‍👩‍👧",
+  Ocio: "🎉",
+  "Cuidado personal": "🧴",
+  Moto: "🏍️",
+  Fondo: "🛟",
+  Hogar: "🏠",
+  Ropa: "👕",
+  Café: "☕",
+  Mascotas: "🐾",
+};
+
 export const CATEGORY_EMOJI: Record<string, string> = {
-  Trabajo: "💼", Servicios: "🛠️", Transporte: "⛽", Salud: "💪",
-  Conectividad: "📱", "Apoyo familiar": "👨‍👩‍👧", Ocio: "🎉",
-  Alimentación: "🛒", "Cuidado personal": "🧴", Entretenimiento: "🎵",
-  Moto: "🏍️", Fondo: "🛟", Otros: "✨", Hogar: "🏠", Educación: "📚",
-  Ropa: "👕", Café: "☕", Mascotas: "🐾", Regalos: "🎁", Deudas: "🤝",
+  ...DEFAULT_CATEGORY_EMOJI,
+  ...LEGACY_CATEGORY_EMOJI,
 };
 
 export const COMMON_EMOJIS = [
@@ -618,6 +675,7 @@ export interface AppSettings {
   conflictResolved?: boolean;
   notifications: NotificationPreferences;
   accessibility: AccessibilitySettings;
+  customCategories?: CustomCategory[];
 }
 
 export type NotificationRepeatFrequency = "daily" | "every_3_days" | "weekly" | "once";
@@ -916,12 +974,43 @@ export function getUpcomingOccurrencesForFixedItem(
   });
 }
 
-export const emojiFor = (cat: string) => CATEGORY_EMOJI[cat] ?? "💸";
+let _cachedCustomCategories: CustomCategory[] = [];
+
+export function setCachedCustomCategories(customCategories?: CustomCategory[]) {
+  _cachedCustomCategories = Array.isArray(customCategories) ? customCategories : [];
+}
+
+/** Obtiene el diccionario consolidado de categorías (generales + personalizadas del usuario) */
+export function getCategoriesMap(customCategories?: CustomCategory[]): Record<string, string> {
+  if (Array.isArray(customCategories)) {
+    _cachedCustomCategories = customCategories;
+  }
+  const map: Record<string, string> = { ...DEFAULT_CATEGORY_EMOJI };
+  const list = Array.isArray(customCategories) ? customCategories : _cachedCustomCategories;
+  for (const c of list) {
+    if (c && c.name) {
+      map[c.name] = c.emoji || "🏷️";
+    }
+  }
+  return map;
+}
+
+export function emojiFor(cat: string, customCategories?: CustomCategory[]): string {
+  const list = Array.isArray(customCategories) ? customCategories : _cachedCustomCategories;
+  if (list.length > 0) {
+    const custom = list.find((c) => c && c.name.toLowerCase() === cat.toLowerCase());
+    if (custom) return custom.emoji || "🏷️";
+  }
+  return CATEGORY_EMOJI[cat] ?? "💸";
+}
 
 /** Resolve display info for any record that might carry an icon. */
-export function iconFor(rec: { icon?: IconRef; category?: string; emoji?: string }): IconRef {
+export function iconFor(
+  rec: { icon?: IconRef; category?: string; emoji?: string },
+  customCategories?: CustomCategory[]
+): IconRef {
   if (rec.icon) return rec.icon;
   if (rec.emoji) return { kind: "emoji", value: rec.emoji };
-  return { kind: "emoji", value: emojiFor(rec.category ?? "") };
+  return { kind: "emoji", value: emojiFor(rec.category ?? "", customCategories) };
 }
 

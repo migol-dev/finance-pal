@@ -12,6 +12,7 @@ import {
   PAYMENT_METHOD_EMOJI,
   fmtDate,
   Account,
+  isIOweDebt,
 } from "@/lib/finance";
 import { Header } from "@/components/app/Header";
 import {
@@ -53,10 +54,6 @@ const localDateNow = () => {
 
 function totalDebtPaid(d: Debt): number {
   return (d.payments ?? []).reduce((a, p) => a + p.amount, 0);
-}
-
-function isIOweDebt(d: Debt): boolean {
-  return d.type === "yo_debo" || (d.note ? d.note.includes("[yo_debo]") : false);
 }
 
 function getDebtAmortization(d: Debt) {
@@ -266,7 +263,7 @@ export function DeudasV2() {
               <p className="text-xl sm:text-2xl font-bold font-mono-tabular text-emerald-700 dark:text-emerald-400 mt-1">
                 {fmt(totals.pendingToCollect)}
               </p>
-              <p className="text-[10px] text-muted-foreground mt-0.5">
+              <p className="text-[11px] text-muted-foreground mt-0.5">
                 Cobrado <span className="font-mono-tabular font-medium">{fmt(totals.collectedLent)}</span> de <span className="font-mono-tabular">{fmt(totals.totalLent)}</span>
               </p>
             </div>
@@ -275,12 +272,13 @@ export function DeudasV2() {
             <div>
               <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
                 <ArrowUpRight className="size-3.5 text-rose-600 dark:text-rose-400" strokeWidth={1.75} />
-                Yo debo (Por pagar)
+                Mis deudas (Por pagar)
+                <span className="sr-only">Yo debo (Por pagar)</span>
               </span>
               <p className="text-xl sm:text-2xl font-bold font-mono-tabular text-rose-700 dark:text-rose-400 mt-1">
                 {fmt(totals.pendingToPay)}
               </p>
-              <p className="text-[10px] text-muted-foreground mt-0.5">
+              <p className="text-[11px] text-muted-foreground mt-0.5">
                 Abonado <span className="font-mono-tabular font-medium">{fmt(totals.paidBorrowed)}</span> de <span className="font-mono-tabular">{fmt(totals.totalBorrowed)}</span>
               </p>
             </div>
@@ -510,7 +508,7 @@ export function DeudasV2() {
                         <p className="text-sm font-bold font-mono-tabular text-foreground">
                           {fmt(pending)}
                         </p>
-                        <p className="text-[10px] text-muted-foreground">pendiente</p>
+                        <p className="text-[11px] text-muted-foreground">Saldo pendiente</p>
                       </div>
                     </div>
 

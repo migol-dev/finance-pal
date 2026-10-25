@@ -1,11 +1,14 @@
 import React, { useEffect, useMemo, useState, useCallback } from "react";
 import { useSearchParams, useNavigate } from "react-router-dom";
+import { cn } from "@/lib/utils";
 import { useFinanceData } from "@/hooks/useFinanceData";
 import {
   fmt,
   CATEGORY_EMOJI,
   MONTHS,
   iconFor,
+  emojiFor,
+  getCategoriesMap,
   IconRef,
   Transaction,
   PaymentMethod,
@@ -15,12 +18,14 @@ import {
   parseDateLocal,
   Account,
   DebtPayment,
+  isIOweDebt,
 } from "@/lib/finance";
 import { Header } from "@/components/app/Header";
 import { MonthSwitcher } from "@/components/app/MonthSwitcher";
 import { IconDisplay } from "@/components/app/IconDisplay";
 import { IconPicker } from "@/components/app/IconPicker";
 import { ElegantConfirm } from "@/components/app/ElegantConfirm";
+import { CategorySelectWithCreate } from "@/components/app/CategorySelectWithCreate";
 import {
   Search,
   Plus,
@@ -29,10 +34,13 @@ import {
   X,
   Receipt,
   ChevronRight,
+  ChevronDown,
+  ChevronUp,
   ExternalLink,
   SlidersHorizontal,
   Wallet,
 } from "lucide-react";
+import { motion, AnimatePresence } from "@/lib/framer";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -109,9 +117,15 @@ export function MovimientosV2() {
     activeMonth,
     debts,
     accounts,
+    customCategories = [],
     syncFiltersToURL,
     setSyncFiltersToURL,
   } = useFinanceData();
+
+  const categoriesMap = useMemo(
+    () => getCategoriesMap(customCategories),
+    [customCategories]
+  );
 
   const [params, setParams] = useSearchParams();
 
@@ -196,13 +210,14 @@ export function MovimientosV2() {
     (onlyMonth: boolean) => {
       const rows: MovimientoRow[] = [];
       debts.forEach((d) => {
+        const isYoDebo = isIOweDebt(d);
         const dd = parseDateLocal(d.date);
         if (!onlyMonth || (dd.getFullYear() === activeYear && dd.getMonth() === activeMonth)) {
           rows.push({
             id: `debt-${d.id}`,
-            type: "expense",
+            type: isYoDebo ? "income" : "expense",
             category: "Deudas",
-            concept: `Préstamo a ${d.person}`,
+            concept: isYoDebo ? `Deuda con ${d.person}` : `Préstamo a ${d.person}`,
             amount: d.amount,
             date: d.date,
             note: d.concept,
@@ -212,14 +227,14 @@ export function MovimientosV2() {
             _debtId: d.id,
           });
         }
-        d.payments.forEach((p: DebtPayment) => {
+        (d.payments || []).forEach((p: DebtPayment) => {
           const pd = parseDateLocal(p.date);
           if (!onlyMonth || (pd.getFullYear() === activeYear && pd.getMonth() === activeMonth)) {
             rows.push({
               id: `pay-${d.id}-${p.id}`,
-              type: "income",
+              type: isYoDebo ? "expense" : "income",
               category: "Deudas",
-              concept: `Abono a ${d.person}`,
+              concept: isYoDebo ? `Pago a ${d.person}` : `Abono a ${d.person}`,
               amount: p.amount,
               date: p.date,
               note: p.note,
@@ -361,6 +376,17 @@ export function MovimientosV2() {
     setIsEditingSelected(false);
   }, [selectedId]);
 
+  const [isMoreFiltersOpen, setIsMoreFiltersOpen] = useState(false);
+
+  const secondaryActiveCount = useMemo(() => {
+    let count = 0;
+    if (accountFilter !== "all") count += 1;
+    if (categoryFilter !== "all") count += 1;
+    if (datePreset !== "all") count += 1;
+    if (filter === "saving" || filter === "transfer") count += 1;
+    return count;
+  }, [accountFilter, categoryFilter, datePreset, filter]);
+
   const hasActiveFilters =
     filter !== "all" ||
     accountFilter !== "all" ||
@@ -415,123 +441,260 @@ export function MovimientosV2() {
         <MonthSwitcher />
       </div>
 
-      {/* Contenedor de Filtros De-boxed */}
+      {/* Contenedor de Filtros De-boxed (Dos niveles con bandeja desplegable elástica) */}
       <section className="px-4 sm:px-6 mb-6 space-y-3" aria-label="Filtros de movimientos">
-        {/* Barra de Búsqueda y Limpieza */}
-        <div className="flex items-center gap-2 max-w-2xl">
+        {/* Nivel 1: Fila Principal (Buscador + Tipos Básicos + Botón Más filtros + Limpiar) */}
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5">
+          {/* Barra de Búsqueda */}
           <div className="relative flex-1">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" strokeWidth={1.5} />
             <Input
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               placeholder="Buscar por concepto, categoría o método..."
-              className="pl-9 h-9 text-xs rounded-lg bg-card/60 border-[#E4E0D8] dark:border-white/10 focus-visible:ring-1 focus-visible:ring-primary/40"
+              className="pl-9 pr-9 h-10 text-xs rounded-xl bg-card/60 border-[#E4E0D8] dark:border-white/10 focus-visible:ring-1 focus-visible:ring-primary/40"
             />
+            {query && (
+              <button
+                type="button"
+                onClick={() => setQuery("")}
+                aria-label="Limpiar búsqueda"
+                className="absolute right-2.5 top-1/2 -translate-y-1/2 size-6 rounded-lg text-xs text-muted-foreground hover:text-foreground flex items-center justify-center"
+              >
+                <X className="size-3.5" />
+              </button>
+            )}
           </div>
-          {hasActiveFilters && (
+
+          <div className="flex items-center gap-1.5 flex-wrap">
+            {/* Píldoras de Tipo Primarias (Todo, Gastos, Ingresos) */}
+            <div className="flex items-center gap-1 p-1 rounded-xl bg-muted/40 border border-[#E4E0D8] dark:border-white/10">
+              {FILTER_TABS.slice(0, 3).map((tab) => {
+                const isActive = filter === tab.k;
+                return (
+                  <button
+                    key={tab.k}
+                    type="button"
+                    onClick={() => setFilter(tab.k as typeof filter)}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all duration-150 active:scale-[0.98] ${
+                      isActive
+                        ? "bg-foreground text-background shadow-xs font-semibold"
+                        : "text-muted-foreground hover:text-foreground"
+                    }`}
+                  >
+                    {tab.label}
+                  </button>
+                );
+              })}
+              {/* Si está seleccionado Ahorros o Traspasos, mostrarlo aquí como pill activa */}
+              {(filter === "saving" || filter === "transfer") && (
+                <button
+                  type="button"
+                  onClick={() => setFilter("all")}
+                  className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-foreground text-background shadow-xs flex items-center gap-1"
+                >
+                  <span>{filter === "saving" ? "Ahorros" : "Traspasos"}</span>
+                  <X className="size-3" />
+                </button>
+              )}
+            </div>
+
+            {/* Botón Elástico 'Más filtros' con Contador de Filtros Activos */}
             <button
-              onClick={resetFilters}
-              className="h-9 px-3 rounded-lg border border-[#E4E0D8] dark:border-white/10 bg-card/40 text-xs text-muted-foreground hover:text-foreground flex items-center gap-1.5 active:scale-[0.98] transition"
-              title="Restablecer todos los filtros"
+              type="button"
+              onClick={() => setIsMoreFiltersOpen((prev) => !prev)}
+              aria-expanded={isMoreFiltersOpen}
+              className={`h-10 px-3.5 rounded-xl border text-xs font-medium flex items-center gap-1.5 transition-all active:scale-[0.98] ${
+                secondaryActiveCount > 0 || isMoreFiltersOpen
+                  ? "bg-primary/10 border-primary/30 text-primary font-semibold"
+                  : "bg-card border-[#E4E0D8] dark:border-white/10 text-muted-foreground hover:text-foreground hover:bg-muted/30"
+              }`}
             >
-              <X className="size-3.5" strokeWidth={1.5} />
-              <span className="hidden sm:inline">Limpiar filtros</span>
+              <SlidersHorizontal className="size-3.5" strokeWidth={1.75} />
+              <span>Más filtros</span>
+              {secondaryActiveCount > 0 && (
+                <span className="size-4 rounded-full bg-primary text-primary-foreground text-[11px] font-bold flex items-center justify-center font-mono-tabular">
+                  {secondaryActiveCount}
+                </span>
+              )}
+              {isMoreFiltersOpen ? (
+                <ChevronUp className="size-3.5 opacity-70" />
+              ) : (
+                <ChevronDown className="size-3.5 opacity-70" />
+              )}
             </button>
-          )}
-        </div>
 
-        {/* Píldoras de Tipo (De-boxed pills) */}
-        <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-0.5">
-          {FILTER_TABS.map((tab) => {
-            const isActive = filter === tab.k;
-            return (
+            {/* Botón Limpiar Filtros cuando hay filtros activos */}
+            {hasActiveFilters && (
               <button
-                key={tab.k}
-                onClick={() => setFilter(tab.k as typeof filter)}
-                className={`shrink-0 px-3 py-1.5 rounded-full text-xs font-medium transition-all duration-150 active:scale-[0.98] ${
-                  isActive
-                    ? "bg-foreground text-background shadow-xs font-semibold"
-                    : "bg-muted/60 text-muted-foreground hover:text-foreground hover:bg-muted"
-                }`}
+                type="button"
+                onClick={resetFilters}
+                aria-label="Limpiar filtros"
+                className="h-10 px-3 rounded-xl border border-[#E4E0D8] dark:border-white/10 bg-card/60 text-xs text-muted-foreground hover:text-foreground flex items-center gap-1.5 active:scale-[0.98] transition"
+                title="Restablecer todos los filtros"
               >
-                {tab.label}
+                <X className="size-3.5" strokeWidth={1.5} />
+                <span className="hidden sm:inline">Limpiar filtros</span>
+                <span className="sm:hidden">Limpiar</span>
               </button>
-            );
-          })}
-
-          <div className="h-4 w-px bg-[#E4E0D8] dark:bg-white/10 mx-1 shrink-0" />
-
-          {/* Selector Rápido de Cuenta */}
-          <Select value={accountFilter} onValueChange={setAccountFilter}>
-            <SelectTrigger className="shrink-0 h-7 text-xs rounded-full border-[#E4E0D8] dark:border-white/10 bg-muted/40 px-3 w-auto gap-1">
-              <Wallet className="size-3 text-muted-foreground" strokeWidth={1.5} />
-              <SelectValue placeholder="Cuenta" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">Todas las cuentas</SelectItem>
-              {accounts.map((a: Account) => (
-                <SelectItem key={a.id} value={a.id}>
-                  {a.name} ({a.type === "cash" ? "Efectivo" : "Banco"})
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-
-          {/* Selector Rápido de Categoría */}
-          <Select value={categoryFilter} onValueChange={setCategoryFilter}>
-            <SelectTrigger className="shrink-0 h-7 text-xs rounded-full border-[#E4E0D8] dark:border-white/10 bg-muted/40 px-3 w-auto gap-1">
-              <SelectValue placeholder="Categoría" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">Todas las categorías</SelectItem>
-              {Object.keys(CATEGORY_EMOJI).map((cat) => (
-                <SelectItem key={cat} value={cat}>
-                  {CATEGORY_EMOJI[cat]} {cat}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-
-          {/* Selector de Rango Temporal */}
-          {DATE_PRESETS.map((preset) => {
-            const isActive = datePreset === preset.key;
-            return (
-              <button
-                key={preset.key}
-                onClick={() => setDatePreset(preset.key)}
-                className={`shrink-0 px-2.5 py-1 rounded-full text-[11px] font-medium transition-all duration-150 active:scale-[0.98] ${
-                  isActive
-                    ? "bg-primary/15 text-primary border border-primary/30 font-semibold"
-                    : "text-muted-foreground hover:text-foreground border border-transparent"
-                }`}
-              >
-                {preset.label}
-              </button>
-            );
-          })}
-        </div>
-
-        {/* Inputs de Fecha Personalizada si preset === 'custom' */}
-        {datePreset === "custom" && (
-          <div className="flex items-center gap-2 pt-1">
-            <span className="text-xs text-muted-foreground">Desde:</span>
-            <Input
-              type="date"
-              aria-label="Fecha desde"
-              value={dateFrom}
-              onChange={(e) => setDateFrom(e.target.value)}
-              className="h-8 w-36 text-xs rounded-lg"
-            />
-            <span className="text-xs text-muted-foreground">Hasta:</span>
-            <Input
-              type="date"
-              aria-label="Fecha hasta"
-              value={dateTo}
-              onChange={(e) => setDateTo(e.target.value)}
-              className="h-8 w-36 text-xs rounded-lg"
-            />
+            )}
           </div>
-        )}
+        </div>
+
+        {/* Nivel 2: Bandeja Desplegable (Cuentas, Categorías, Rango de Fechas, Tipos secundarios) */}
+        <div
+          className={cn(
+            "overflow-hidden transition-all duration-300 ease-[cubic-bezier(0.22,1,0.36,1)]",
+            isMoreFiltersOpen
+              ? "max-h-[1200px] opacity-100"
+              : "max-h-0 opacity-0 pointer-events-none -mt-3"
+          )}
+        >
+          <div className="p-4 rounded-2xl bg-card/70 backdrop-blur-md border border-[#E4E0D8] dark:border-white/10 space-y-4 shadow-soft">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3.5">
+                  {/* Selector de Cuenta */}
+                  <div className="space-y-1.5">
+                    <Label className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
+                      <Wallet className="size-3 text-primary" strokeWidth={1.75} /> Cuenta
+                    </Label>
+                    <Select value={accountFilter} onValueChange={setAccountFilter}>
+                      <SelectTrigger className="w-full h-9 text-xs rounded-xl border-[#E4E0D8] dark:border-white/10 bg-background/80">
+                        <SelectValue placeholder="Todas las cuentas" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">Todas las cuentas</SelectItem>
+                        {accounts.map((a: Account) => (
+                          <SelectItem key={a.id} value={a.id}>
+                            {a.name} ({a.type === "cash" ? "Efectivo" : "Banco"})
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  {/* Selector de Categoría */}
+                  <div className="space-y-1.5">
+                    <Label className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
+                      <Receipt className="size-3 text-primary" strokeWidth={1.75} /> Categoría
+                    </Label>
+                    <Select value={categoryFilter} onValueChange={setCategoryFilter}>
+                      <SelectTrigger className="w-full h-9 text-xs rounded-xl border-[#E4E0D8] dark:border-white/10 bg-background/80">
+                        <SelectValue placeholder="Todas las categorías" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">Todas las categorías</SelectItem>
+                        {Object.entries(categoriesMap).map(([cat, emoji]) => (
+                          <SelectItem key={cat} value={cat}>
+                            {emoji} {cat}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  {/* Tipos Adicionales (Ahorros / Traspasos) */}
+                  <div className="space-y-1.5 sm:col-span-2 lg:col-span-1">
+                    <Label className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+                      Otros tipos
+                    </Label>
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setFilter(filter === "saving" ? "all" : "saving")}
+                        className={`flex-1 h-9 px-3 rounded-xl text-xs font-medium border transition-all ${
+                          filter === "saving"
+                            ? "bg-primary text-primary-foreground border-primary font-bold shadow-xs"
+                            : "bg-background/80 border-[#E4E0D8] dark:border-white/10 text-muted-foreground hover:text-foreground"
+                        }`}
+                      >
+                        Ahorros
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setFilter(filter === "transfer" ? "all" : "transfer")}
+                        className={`flex-1 h-9 px-3 rounded-xl text-xs font-medium border transition-all ${
+                          filter === "transfer"
+                            ? "bg-primary text-primary-foreground border-primary font-bold shadow-xs"
+                            : "bg-background/80 border-[#E4E0D8] dark:border-white/10 text-muted-foreground hover:text-foreground"
+                        }`}
+                      >
+                        Traspasos
+                      </button>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Presets de Fecha */}
+                <div className="pt-2 border-t border-[#E4E0D8]/60 dark:border-white/5 space-y-2">
+                  <div className="flex items-center justify-between">
+                    <Label className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+                      Periodo de búsqueda
+                    </Label>
+                    {datePreset !== "all" && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setDatePreset("all");
+                          setDateFrom("");
+                          setDateTo("");
+                        }}
+                        className="text-[11px] text-primary hover:underline"
+                      >
+                        Restablecer a mes activo
+                      </button>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-1.5 flex-wrap">
+                    {DATE_PRESETS.map((preset) => {
+                      const isActive = datePreset === preset.key;
+                      return (
+                        <button
+                          key={preset.key}
+                          type="button"
+                          onClick={() => {
+                            setDatePreset(preset.key);
+                            if (!isMoreFiltersOpen) setIsMoreFiltersOpen(true);
+                          }}
+                          className={`px-3 py-1 rounded-xl text-xs font-medium transition-all active:scale-[0.98] ${
+                            isActive
+                              ? "bg-primary text-primary-foreground font-semibold shadow-xs"
+                              : "bg-muted/40 border border-[#E4E0D8]/70 dark:border-white/10 text-muted-foreground hover:text-foreground"
+                          }`}
+                        >
+                          {preset.label}
+                        </button>
+                      );
+                    })}
+                  </div>
+
+                  {/* Fechas personalizadas */}
+                  {datePreset === "custom" && (
+                    <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2 pt-2">
+                      <div className="flex items-center gap-1.5 w-full sm:w-auto">
+                        <span className="text-xs text-muted-foreground w-12 sm:w-auto">Desde:</span>
+                        <Input
+                          type="date"
+                          aria-label="Fecha desde"
+                          value={dateFrom}
+                          onChange={(e) => setDateFrom(e.target.value)}
+                          className="h-9 w-full sm:w-40 text-xs rounded-xl bg-background"
+                        />
+                      </div>
+                      <div className="flex items-center gap-1.5 w-full sm:w-auto">
+                        <span className="text-xs text-muted-foreground w-12 sm:w-auto">Hasta:</span>
+                        <Input
+                          type="date"
+                          aria-label="Fecha hasta"
+                          value={dateTo}
+                          onChange={(e) => setDateTo(e.target.value)}
+                          className="h-9 w-full sm:w-40 text-xs rounded-xl bg-background"
+                        />
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+        </div>
       </section>
 
       {/* Contenedor Principal Master-Detail (12 Columnas en lg:) */}
@@ -973,6 +1136,7 @@ function TransactionDetailView({
   onCloseDrawer?: () => void;
 }) {
   const navigate = useNavigate();
+  const { customCategories = [] } = useFinanceData();
   const acct = accounts.find((a) => a.id === row.accountId);
   const isVirtual = row._virtual;
   const destAcct = !isVirtual && row.type === "transfer" && row.transferToAccountId
@@ -988,7 +1152,7 @@ function TransactionDetailView({
         <div>
           <span className="text-muted-foreground block text-[11px]">Categoría</span>
           <span className="font-medium text-foreground flex items-center gap-1 mt-0.5">
-            {CATEGORY_EMOJI[row.category] && <span>{CATEGORY_EMOJI[row.category]}</span>}
+            <span>{emojiFor(row.category, customCategories)}</span>
             {row.category}
           </span>
         </div>
@@ -1108,6 +1272,8 @@ function TransactionDetailView({
           {row._virtual
             ? row.id.startsWith("pay-")
               ? "Eliminar abono de deuda"
+              : row.type === "income" || (row.concept && row.concept.startsWith("Deuda"))
+              ? "Eliminar deuda"
               : "Eliminar préstamo"
             : "Eliminar movimiento"}
         </Button>
@@ -1260,18 +1426,13 @@ function TransactionEditForm({
       <div className="grid grid-cols-2 gap-2">
         <div>
           <Label className="text-[11px]">Categoría</Label>
-          <Select value={category} onValueChange={setCategory}>
-            <SelectTrigger className="h-8 text-xs rounded-lg mt-1">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {Object.keys(CATEGORY_EMOJI).map((c) => (
-                <SelectItem key={c} value={c}>
-                  {CATEGORY_EMOJI[c]} {c}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          <div className="mt-1">
+            <CategorySelectWithCreate
+              value={category}
+              onChange={setCategory}
+              triggerClassName="h-8 text-xs rounded-lg"
+            />
+          </div>
         </div>
 
         <div>
@@ -1434,7 +1595,7 @@ function TransactionCreateForm({
   const [type, setType] = useState<TxType>(defaultType);
   const [concept, setConcept] = useState("");
   const [amount, setAmount] = useState("");
-  const [category, setCategory] = useState(defaultType === "income" ? "Trabajo" : "Alimentación");
+  const [category, setCategory] = useState(defaultType === "income" ? "Trabajo / Sueldo" : "Alimentación");
   const [date, setDate] = useState(defaultDateStr);
   const [accountId, setAccountId] = useState(accounts[0]?.id ?? "");
   const [transferToAccountId, setTransferToAccountId] = useState(accounts[1]?.id ?? "");
@@ -1506,8 +1667,8 @@ function TransactionCreateForm({
             type="button"
             onClick={() => {
               setType(tab.k as TxType);
-              if (tab.k === "income") setCategory("Trabajo");
-              else if (tab.k === "saving") setCategory("Ahorro");
+              if (tab.k === "income") setCategory("Trabajo / Sueldo");
+              else if (tab.k === "saving") setCategory("Ahorro e Inversión");
               else setCategory("Alimentación");
             }}
             className={`py-2 rounded-lg text-xs font-medium transition ${
@@ -1564,18 +1725,13 @@ function TransactionCreateForm({
       <div className="grid grid-cols-2 gap-2.5">
         <div>
           <Label className="text-xs">Categoría</Label>
-          <Select value={category} onValueChange={setCategory}>
-            <SelectTrigger className="h-9 text-xs rounded-lg mt-1">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {Object.keys(CATEGORY_EMOJI).map((c) => (
-                <SelectItem key={c} value={c}>
-                  {CATEGORY_EMOJI[c]} {c}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          <div className="mt-1">
+            <CategorySelectWithCreate
+              value={category}
+              onChange={setCategory}
+              triggerClassName="h-9 text-xs rounded-lg"
+            />
+          </div>
         </div>
 
         <div>
