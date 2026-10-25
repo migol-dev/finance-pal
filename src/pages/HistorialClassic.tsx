@@ -1,0 +1,110 @@
+import { useFinance } from "@/store/finance-store";
+import { Header } from "@/components/app/Header";
+import { Button } from "@/components/ui/button";
+import { Trash2, History } from "lucide-react";
+import { toast } from "sonner";
+import { motion, AnimatePresence } from "@/lib/framer";
+import { ElegantConfirm } from "@/components/app/ElegantConfirm";
+import { useState } from "react";
+
+const ENTITY_LABEL: Record<string, string> = {
+  transaction: "Movimiento",
+  fixed: "Fijo",
+  goal: "Meta",
+  debt: "Deuda",
+};
+const ACTION_LABEL: Record<string, string> = {
+  create: "Creado",
+  update: "Editado",
+  delete: "Eliminado",
+};
+const ACTION_COLOR: Record<string, string> = {
+  create: "text-success",
+  update: "text-primary",
+  delete: "text-destructive",
+};
+
+function fmtVal(v: unknown): string {
+  if (v === undefined || v === null) return "—";
+  if (typeof v === "object") return JSON.stringify(v).slice(0, 40);
+  if (typeof v === "string" && v.length > 40) return v.slice(0, 40) + "…";
+  return String(v);
+}
+
+export default function Historial() {
+  const changeLog = useFinance((s) => s.changeLog);
+  const clearChangeLog = useFinance((s) => s.clearChangeLog);
+  const [confirmOpen, setConfirmOpen] = useState(false);
+
+  return (
+    <div className="flex flex-col min-h-[100dvh] pb-[calc(7rem+env(safe-area-inset-bottom))] overflow-hidden bg-background">
+      <Header title="Historial" subtitle="Cambios y ediciones" action={
+        changeLog.length > 0 ? (
+          <Button onClick={() => setConfirmOpen(true)} variant="secondary" className="rounded-xl h-10 text-sm px-3 shrink-0" aria-label="Limpiar historial">
+            <Trash2 className="size-4 min-[360px]:mr-1.5" />
+            <span className="hidden min-[360px]:inline">Limpiar</span>
+          </Button>
+        ) : undefined
+      } />
+
+      <ElegantConfirm
+        open={confirmOpen}
+        onOpenChange={setConfirmOpen}
+        title="¿Borrar historial?"
+        description="Se eliminará todo el registro de cambios. Esta acción no se puede deshacer."
+        onConfirm={() => { clearChangeLog(); toast.success("Historial borrado"); }}
+        icon={Trash2}
+        iconColor="bg-destructive"
+      />
+
+      <div className="flex-1 overflow-y-auto no-scrollbar pb-28">
+        {changeLog.length === 0 ? (
+          <div className="px-5 lg:px-6">
+            <div className="rounded-xl bg-muted/50 border border-dashed border-border p-8 text-center">
+              <History className="size-10 mx-auto text-muted-foreground mb-3" />
+              <p className="text-sm text-muted-foreground">Aún no hay cambios registrados</p>
+            </div>
+          </div>
+        ) : (
+          <div className="px-5 lg:px-6 space-y-2">
+            <AnimatePresence initial={false}>
+              {changeLog.slice(0, 100).map((e) => (
+                <motion.div
+                  key={e.id}
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="rounded-xl bg-card border border-border p-3 shadow-soft"
+                >
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="min-w-0">
+                      <p className="text-sm font-semibold truncate">{e.label}</p>
+                      <p className="text-xs text-muted-foreground mt-0.5">
+                        <span className={`font-bold ${ACTION_COLOR[e.action]}`}>{ACTION_LABEL[e.action] || e.action}</span>
+                        <span className="mx-1.5">·</span>
+                        {ENTITY_LABEL[e.entity] || e.entity}
+                        <span className="mx-1.5">·</span>
+                        {new Date(e.at).toLocaleString("es-MX", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}
+                      </p>
+                    </div>
+                  </div>
+                  {e.changes && e.changes.length > 0 && (
+                    <ul className="mt-2 space-y-0.5">
+                      {e.changes.slice(0, 2).map((c, i) => (
+                        <li key={i} className="text-xs text-muted-foreground break-words line-clamp-2">
+                          <span className="font-semibold text-foreground/70">{c.field}</span>: <span className="line-through opacity-50">{fmtVal(c.from)}</span> <span className="text-foreground font-medium">{fmtVal(c.to)}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </motion.div>
+              ))}
+            </AnimatePresence>
+            {changeLog.length > 100 && (
+              <p className="text-center text-xs text-muted-foreground py-4">Mostrando los últimos 100 cambios</p>
+            )}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}

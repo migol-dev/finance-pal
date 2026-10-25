@@ -24,9 +24,9 @@ interface AjustesHubProps {
 
 export const AjustesHub = memo(function AjustesHub({ onSelectSection }: AjustesHubProps) {
   const { profile, accounts, fixedItems, appSettings } = useFinanceData();
-  const accentColor = appSettings.accentColor;
-  const a11y = appSettings.accessibility;
-  const notifications = appSettings.notifications;
+  const accentColor = appSettings?.accentColor ?? "emerald";
+  const a11y = appSettings?.accessibility;
+  const notifications = appSettings?.notifications;
   const { session } = useAuth();
 
   const textScalePercent = a11y?.textScalePercent ?? 100;
