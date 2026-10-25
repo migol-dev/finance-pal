@@ -18,7 +18,7 @@
 | **Tareas en Progreso (⏳)** | 0 |
 | **Tareas Bloqueadas / Incompletas (⚠️)** | 0 |
 | **Progreso Estimado** | `[====================] 100%` |
-| **Último Checkpoint Git** | `CP-S5-01 (builder/ui-v2-sprint-5)` |
+| **Último Checkpoint Git** | `CP-S5-01 (53269de)` |
 
 ---
 
