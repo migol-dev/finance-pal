@@ -16,7 +16,6 @@ import { toast } from "sonner";
 import { getAccentPalette, AccentColor } from "@/lib/accent-palette";
 import type { UIVersion } from "@/lib/finance";
 import { isSupabaseEnabled } from "@/lib/supabase";
-import { DesignCompareToggle } from "./DesignCompareToggle";
 
 function applyAccentVars(root: HTMLElement, color: AccentColor, uiVersion: UIVersion = "v2") {
   const theme = root.classList.contains("dark") ? "dark" : "light";
@@ -214,7 +213,6 @@ export function AppShell({ children }: { children: ReactNode }) {
       ) : (
         <BottomNav />
       )}
-      <DesignCompareToggle />
     </div>
   );
 }
