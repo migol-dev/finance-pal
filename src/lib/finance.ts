@@ -145,6 +145,7 @@ export interface Debt {
   icon?: IconRef;
   payments: DebtPayment[];
   accountId?: string;
+  type?: "me_deben" | "yo_debo";
 }
 
 export type ChangeAction = "create" | "update" | "delete";

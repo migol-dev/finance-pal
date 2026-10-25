@@ -1,9 +1,9 @@
-# Graph Report - builder  (2026-10-24)
+# Graph Report - finance-pal  (2026-10-24)
 
 ## Corpus Check
-- 283 files · ~495,647 words
+- 283 files · ~495,699 words
 - Verdict: corpus is large enough that graph structure adds value.
-- Unclassified: 34 file(s) not represented in the graph (top: .xml 14, (none) 7, .toml 4)
+- Unclassified: 33 file(s) not represented in the graph (top: .xml 14, (none) 6, .toml 4)
 
 ## Summary
 - 1966 nodes · 5725 edges · 135 communities (84 shown, 51 thin omitted)
@@ -11,7 +11,7 @@
 - Token cost: 0 input · 0 output
 
 ## Graph Freshness
-- Built from commit: `667c1067`
+- Built from commit: `1c70e5b2`
 - Run `git rev-parse HEAD` and compare to check if the graph is stale.
 - Run `graphify update .` after code changes (no API cost).
 
@@ -492,7 +492,7 @@ Nodes (10): @capacitor/network, @testing-library/react, DesktopSyncIcon(), isNat
 _Questions this graph is uniquely positioned to answer:_
 
 - **Why does `cn()` connect `Core Dependencies & Third-Party Packages` to `Button`, `DashboardV2.tsx`, `finance.ts`, `Navigation Shell & Responsive Drawers`, `QuickTransactionSheet.tsx`, `AppShell.tsx`, `Interactive Toast Notification System`, `react`, `MigracionNube.tsx`, `Brand Identity & Accent Palettes`, `Navigation Shell & Responsive Drawers`, `Supabase Authentication & Security Context`, `lucide-react`, `Ajustes.tsx`, `ui-version-navigation.test.tsx`, `chart.tsx`, `Core Dependencies & Third-Party Packages`, `GoalDetailContent.tsx`, `useFinanceData`, `Core Dependencies & Third-Party Packages`, `Login.tsx`, `Core Dependencies & Third-Party Packages`, `PillTabs.tsx`, `sheet.tsx`?**
-  _High betweenness centrality (0.121) - this node is a cross-community bridge._
+  _High betweenness centrality (0.120) - this node is a cross-community bridge._
 - **Are the 11 inferred relationships involving `useFinanceData()` (e.g. with `1. Resumen Ejecutivo del Sprint 4` and `4. Verificación de Criterios de Aceptación (Sign-off)`) actually correct?**
   _`useFinanceData()` has 11 INFERRED edges - model-reasoned connections that need verification._
 - **What connects `@hookform/resolvers`, `@tanstack/query-sync-storage-persister`, `@types/react-window` to the rest of the system?**
@@ -500,8 +500,8 @@ _Questions this graph is uniquely positioned to answer:_
 - **Should `Autonomous Notification & Scheduling Engine` be split into smaller, more focused modules?**
   _Cohesion score 0.029411764705882353 - nodes in this community are weakly interconnected._
 - **Why does `react` connect `react` to `Button`, `DashboardV2.tsx`, `Core Dependencies & Third-Party Packages`, `notifications.ts`, `Autonomous Notification & Scheduling Engine`, `finance.ts`, `Cloud Sync & Offline State Engine`, `Navigation Shell & Responsive Drawers`, `QuickTransactionSheet.tsx`, `AppShell.tsx`, `Interactive Toast Notification System`, `useFinanceData.ts`, `finance-store.ts`, `MigracionNube.tsx`, `Brand Identity & Accent Palettes`, `Navigation Shell & Responsive Drawers`, `Autonomous Notification & Scheduling Engine`, `Supabase Authentication & Security Context`, `version-check.ts`, `lucide-react`, `Ajustes.tsx`, `ui-version-navigation.test.tsx`, `chart.tsx`, `Core Dependencies & Third-Party Packages`, `GoalDetailContent.tsx`, `useFinanceData`, `Core Dependencies & Third-Party Packages`, `Login.tsx`, `Core Dependencies & Third-Party Packages`, `accent-palette.ts`, `SyncIndicator.tsx`, `sheet.tsx`, `framer.tsx`?**
-  _High betweenness centrality (0.106) - this node is a cross-community bridge._
+  _High betweenness centrality (0.105) - this node is a cross-community bridge._
 - **Should `Core Dependencies & Third-Party Packages` be split into smaller, more focused modules?**
   _Cohesion score 0.0797979797979798 - nodes in this community are weakly interconnected._
 - **Why does `dependencies` connect `Autonomous Notification & Scheduling Engine` to `Autonomous Notification & Scheduling Engine`?**
-  _High betweenness centrality (0.074) - this node is a cross-community bridge._
+  _High betweenness centrality (0.073) - this node is a cross-community bridge._

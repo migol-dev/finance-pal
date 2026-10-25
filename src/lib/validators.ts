@@ -166,6 +166,7 @@ export const debtSchema = z.object({
   icon: iconRefSchema.optional(),
   payments: z.array(debtPaymentSchema).max(1000),
   accountId: z.string().uuid().optional(),
+  type: z.enum(["me_deben", "yo_debo"]).optional(),
 }).strict();
 
 export const changeLogEntrySchema = z.object({
