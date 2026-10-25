@@ -876,9 +876,9 @@
     "semantic_hash": ""
   },
   "src/lib/validators.ts": {
-    "mtime": 1792886379.9033835,
-    "seen": 1792886914.56975,
-    "ast_hash": "adad112c1e1eb72a18f13ec0663737bd",
+    "mtime": 1792887501.5257535,
+    "seen": 1792887889.1616273,
+    "ast_hash": "90c9b91c148839a0b419c3524495a2bf",
     "semantic_hash": ""
   },
   "src/lib/version-check.ts": {
@@ -1734,15 +1734,15 @@
     "semantic_hash": ""
   },
   ".agent/workflow/01_ARCHITECT_PLAN.md": {
-    "mtime": 1792886473.0116134,
-    "seen": 1792886914.5699651,
+    "mtime": 1792886984.224909,
+    "seen": 1792887889.161845,
     "ast_hash": "e530d6600238b0c1dabff850c30438f6",
     "semantic_hash": ""
   },
   ".agent/workflow/02_OPENCODE_TASKS.md": {
-    "mtime": 1792886473.0286136,
-    "seen": 1792886914.5699668,
-    "ast_hash": "0a21b27c18f6395e7c0a0ca4b994df13",
+    "mtime": 1792886984.224909,
+    "seen": 1792887889.1618469,
+    "ast_hash": "791f2206fb00144330638bd5925542c3",
     "semantic_hash": ""
   },
   ".agent/workflow/03_ANTIGRAVITY_REVIEW.md": {
@@ -1956,15 +1956,15 @@
     "semantic_hash": ""
   },
   "src/components/deudas/DeudasV2.tsx": {
-    "mtime": 1792886578.4008765,
-    "seen": 1792886914.5695767,
-    "ast_hash": "1fdb7ecc6045e56f27aa0ec315ff2dab",
+    "mtime": 1792887631.9709237,
+    "seen": 1792887889.1614482,
+    "ast_hash": "18bc5f93d17eacc846ce1510aabf900c",
     "semantic_hash": ""
   },
   "src/components/metas/MetasV2.tsx": {
-    "mtime": 1792886657.7350762,
-    "seen": 1792886914.5695786,
-    "ast_hash": "8d0c5e5c7ca3e3474112686ada61cc5a",
+    "mtime": 1792887709.0605443,
+    "seen": 1792887889.161451,
+    "ast_hash": "1e970d28affd2d7d43b07065d8acd489",
     "semantic_hash": ""
   },
   "src/pages/DeudasClassic.tsx": {
@@ -1980,9 +1980,9 @@
     "semantic_hash": ""
   },
   "src/test/ui-version-deudas-metas.test.tsx": {
-    "mtime": 1792886826.8315055,
-    "seen": 1792886914.5699148,
-    "ast_hash": "fea94d832b4f9dd5e657f6beded3a89a",
+    "mtime": 1792887800.712181,
+    "seen": 1792887889.1617959,
+    "ast_hash": "9d361a0c1f4d42e858f558e453d9cf34",
     "semantic_hash": ""
   }
 }
