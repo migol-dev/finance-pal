@@ -26,6 +26,7 @@ import type {
 import { fetchUserSettings, upsertUserSettings } from '@/services/settings.service';
 import {
   getDueOccurrencesForFixedItem,
+  setCachedCustomCategories,
   type Account,
   type Transaction,
   type FixedItem,
@@ -38,8 +39,10 @@ import {
   type ChangeLogEntry,
   type AppSettings,
   type AccentColor,
+  type UIVersion,
   type NotificationPreferences,
   type AccessibilitySettings,
+  type CustomCategory,
 } from '@/lib/finance';
 
 // Hook fachada: único punto de entrada para componentes y páginas.
@@ -63,6 +66,7 @@ type UiSelection = {
   syncFiltersToURL: boolean;
   changeLog: ChangeLogEntry[];
   appSettings: AppSettings;
+  uiVersion: UIVersion;
   setTheme: (t: ThemeMode) => void;
   toggleTheme: () => void;
   setProfile: (p: Partial<UserProfile>) => void;
@@ -70,12 +74,17 @@ type UiSelection = {
   resetToToday: () => void;
   ensureScheduledTransactions: () => void;
   setSyncFiltersToURL: (v: boolean) => void;
+  setUIVersion: (v: UIVersion) => void;
+  toggleUIVersion: () => void;
   setAccentColor: (color: AccentColor) => void;
   setCompactMode: (compact: boolean) => void;
   setGlassEffect: (glass: boolean) => void;
   setNotificationPrefs: (prefs: Partial<NotificationPreferences>) => void;
   setAccessibilitySettings: (prefs: Partial<AccessibilitySettings>) => void;
   clearChangeLog: () => void;
+  addCustomCategory: (cat: { name: string; emoji: string }) => CustomCategory | null;
+  updateCustomCategory: (id: string, patch: { name?: string; emoji?: string }) => void;
+  removeCustomCategory: (id: string) => void;
   exportData: (scopes?: ExportScopes) => string;
   importData: (
     json: string,
@@ -127,6 +136,7 @@ export function useFinanceData() {
       syncFiltersToURL: state.syncFiltersToURL,
       changeLog: state.changeLog,
       appSettings: state.appSettings,
+      uiVersion: state.appSettings?.uiVersion ?? 'v2',
       setTheme: state.setTheme,
       toggleTheme: state.toggleTheme,
       setProfile: state.setProfile,
@@ -134,12 +144,17 @@ export function useFinanceData() {
       resetToToday: state.resetToToday,
       ensureScheduledTransactions: state.ensureScheduledTransactions,
       setSyncFiltersToURL: state.setSyncFiltersToURL,
+      setUIVersion: state.setUIVersion,
+      toggleUIVersion: state.toggleUIVersion,
       setAccentColor: state.setAccentColor,
       setCompactMode: state.setCompactMode,
       setGlassEffect: state.setGlassEffect,
       setNotificationPrefs: state.setNotificationPrefs,
       setAccessibilitySettings: state.setAccessibilitySettings,
       clearChangeLog: state.clearChangeLog,
+      addCustomCategory: state.addCustomCategory,
+      updateCustomCategory: state.updateCustomCategory,
+      removeCustomCategory: state.removeCustomCategory,
       exportData: state.exportData,
       importData: state.importData,
       resetAll: state.resetAll,
@@ -147,6 +162,10 @@ export function useFinanceData() {
       cleanupOrphanReceipts: state.cleanupOrphanReceipts,
     })),
   );
+
+  useEffect(() => {
+    setCachedCustomCategories(ui.appSettings?.customCategories);
+  }, [ui.appSettings?.customCategories]);
 
   // --- Sincronización de settings con la nube (Fase 8) ---
   // Los slices ya no tocan la red: la carga inicial y el upsert reactivo viven aquí.
@@ -341,6 +360,10 @@ export function useFinanceData() {
       const payload = { ...t, id: generateSecureId() } as Transaction;
       return txM.addTransaction.mutateAsync(payload);
     },
+    addTransaction: (t: Omit<Transaction, 'id'>) => {
+      const payload = { ...t, id: generateSecureId() } as Transaction;
+      return txM.addTransaction.mutateAsync(payload);
+    },
     updateTx: (id: string, p: Partial<Transaction>) =>
       txM.updateTransaction.mutateAsync({ id, patch: p }),
     removeTx: (id: string) => txM.removeTransaction.mutateAsync(id),
@@ -387,6 +410,9 @@ export function useFinanceData() {
     resetToToday: ui.resetToToday,
     syncFiltersToURL: ui.syncFiltersToURL,
     setSyncFiltersToURL: ui.setSyncFiltersToURL,
+    uiVersion: ui.uiVersion,
+    setUIVersion: ui.setUIVersion,
+    toggleUIVersion: ui.toggleUIVersion,
     changeLog: ui.changeLog,
     clearChangeLog: ui.clearChangeLog,
     appSettings: ui.appSettings,
@@ -395,6 +421,10 @@ export function useFinanceData() {
     setGlassEffect: ui.setGlassEffect,
     setNotificationPrefs: ui.setNotificationPrefs,
     setAccessibilitySettings: ui.setAccessibilitySettings,
+    customCategories: ui.appSettings?.customCategories ?? [],
+    addCustomCategory: ui.addCustomCategory,
+    updateCustomCategory: ui.updateCustomCategory,
+    removeCustomCategory: ui.removeCustomCategory,
 
     // --- Operaciones de datos locales / híbridas ---
     ensureScheduledTransactions: reconcileScheduledTransactions,

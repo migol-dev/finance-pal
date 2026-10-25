@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:ital,wght@0,400;0,700;1,400;1,700&family=Lexend:wght@400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:ital,wght@0,400;0,700;1,400;1,700&family=Fraunces:ital,opsz,wght@0,9..144,600..800;1,9..144,600&family=JetBrains+Mono:wght@400;500;600;700&family=Lexend:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
 
 @tailwind base;
 @tailwind components;
@@ -23,7 +23,7 @@
     --secondary-muted: 230 80% 95%;
 
     --muted: 240 15% 94%;
-    --muted-foreground: 250 8% 46%;
+    --muted-foreground: 38 6% 25%;
 
     --accent: 190 90% 48%;
     --accent-foreground: 0 0% 100%;
@@ -101,7 +101,7 @@
     --secondary-muted: 230 50% 15%;
 
     --muted: 225 18% 14%;
-    --muted-foreground: 215 18% 68%;
+    --muted-foreground: 40 6% 67%;
 
     --accent: 190 90% 52%;
     --accent-foreground: 0 0% 100%;
@@ -316,6 +316,47 @@
     --g-sunset: linear-gradient(135deg, hsl(38 95% 55%) 0%, hsl(20 85% 52%) 50%, hsl(10 80% 54%) 100%);
     --g-ocean: linear-gradient(135deg, hsl(30 90% 48%), hsl(50 85% 52%));
   }
+
+  /* ─── Warm Editorial Wealth (v2) Design Tokens ─── */
+  html.ui-v2 {
+    --background: 40 33% 97%;
+    --foreground: 60 2% 10%;
+    --card: 39 24% 93%;
+    --card-foreground: 60 2% 10%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 60 2% 10%;
+    --muted: 39 18% 90%;
+    --muted-foreground: 38 6% 25.5%; /* #45423D - WCAG AAA contrast >= 7:1 (8.5:1) */
+    --border: 40 18% 87%;
+    --input: 40 18% 87%;
+    --radius: 0.75rem;
+    --radius-sm: 0.5rem;
+    --radius-lg: 1rem;
+    --radius-xl: 1.25rem;
+    --sidebar-background: 40 33% 97%;
+    --sidebar-foreground: 60 2% 10%;
+    --sidebar-border: 40 18% 87%;
+  }
+
+  html.dark.ui-v2 {
+    --background: 60 4% 5%;
+    --foreground: 60 5% 93%;
+    --card: 60 3% 8%;
+    --card-foreground: 60 5% 93%;
+    --popover: 60 3% 11%;
+    --popover-foreground: 60 5% 93%;
+    --muted: 60 3% 13%;
+    --muted-foreground: 40 6% 67.3%; /* #B0ADA7 - WCAG AAA contrast >= 7:1 (7.8:1) */
+    --border: 60 3% 16%;
+    --input: 60 3% 16%;
+    --sidebar-background: 60 4% 5%;
+    --sidebar-foreground: 60 5% 93%;
+    --sidebar-border: 60 3% 16%;
+  }
+
+  html.ui-v2 body {
+    font-family: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+  }
 }
 
 @layer base {
@@ -361,6 +402,16 @@
 }
 
 @layer utilities {
+  .font-display-v2 {
+    font-family: 'Fraunces', 'Plus Jakarta Sans', serif;
+    letter-spacing: -0.035em;
+  }
+
+  .font-mono-tabular {
+    font-family: 'JetBrains Mono', monospace;
+    font-variant-numeric: tabular-nums;
+  }
+
   .gradient-primary { background-image: var(--g-primary); }
   .gradient-secondary { background-image: var(--g-secondary); }
   .gradient-success { background-image: var(--g-success); }
@@ -571,34 +622,32 @@
   }
 
   html.a11y-high-contrast {
-    --border: 0 0% 0%;
+    --border: 0 0% 32%;
     --muted-foreground: 0 0% 10%;
-    --input: 0 0% 0%;
+    --input: 0 0% 32%;
     --card: 0 0% 100%;
     --background: 0 0% 100%;
     --foreground: 0 0% 0%;
+    --primary: 210 100% 40%;
+    --ring: 210 100% 40%;
   }
   html.dark.a11y-high-contrast {
-    --border: 0 0% 100%;
-    --muted-foreground: 0 0% 95%;
-    --input: 0 0% 100%;
+    --border: 0 0% 64%;
+    --muted-foreground: 0 0% 92%;
+    --input: 0 0% 64%;
     --card: 0 0% 0%;
     --background: 0 0% 0%;
     --foreground: 0 0% 100%;
+    --primary: 210 100% 60%;
+    --ring: 210 100% 60%;
   }
-  html.a11y-high-contrast .border,
-  html.a11y-high-contrast [class*="border-"] {
-    border-width: 2px !important;
+  html.a11y-high-contrast :focus-visible {
+    outline: 2px solid hsl(var(--primary)) !important;
+    outline-offset: 2px !important;
   }
   html.a11y-high-contrast .text-muted-foreground {
     opacity: 1 !important;
     font-weight: 600;
-  }
-  html.a11y-high-contrast button,
-  html.a11y-high-contrast [role="button"],
-  html.a11y-high-contrast input,
-  html.a11y-high-contrast select {
-    border: 2px solid hsl(var(--border)) !important;
   }
 
   html.a11y-reduce-motion,
@@ -654,5 +703,25 @@
   html.a11y-cb-tritanopia {
     --success: 165 80% 40%;
     --destructive: 340 90% 55%;
+  }
+
+  /* Contención Elástica de Botones y Fondos (Accesibilidad 80% - 150%) */
+  html.ui-v2 button:not(.btn-fixed-size),
+  html.ui-v2 [role="button"]:not(.btn-fixed-size) {
+    min-height: 2.25rem;
+    height: auto;
+    box-sizing: border-box;
+  }
+
+  /* Micro-Física Táctil Zero-Overhead (GPU Compositor Only) */
+  .tactile-press {
+    transition: transform 120ms cubic-bezier(0.22, 1, 0.36, 1);
+  }
+  .tactile-press:active {
+    transform: scale(0.98);
+  }
+  .spring-bar {
+    transform-origin: left;
+    transition: transform 550ms cubic-bezier(0.22, 1, 0.36, 1);
   }
 }

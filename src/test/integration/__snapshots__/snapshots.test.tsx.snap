@@ -222,17 +222,61 @@ exports[`UI Snapshots > renders Dashboard snapshot 1`] = `
           class="inline-flex items-center gap-2.5 select-none"
         >
           <div
-            class="relative shrink-0 rounded-2xl overflow-hidden shadow-glow flex items-center justify-center bg-card border border-border/50 size-8"
+            class="relative shrink-0 rounded-xl overflow-hidden flex items-center justify-center bg-card/80 border border-border/70 shadow-sm transition-all duration-300 size-8"
           >
-            <img
-              alt="Finance Pal"
-              class="w-full h-full object-cover"
-              decoding="async"
-              height="80"
-              loading="eager"
-              src="/src/assets/nuevo_logo.webp"
-              width="80"
-            />
+            <svg
+              aria-label="Finance Pal Isotipo"
+              class="w-full h-full p-1"
+              fill="none"
+              viewBox="0 0 48 48"
+              xmlns="http://www.w3.org/2000/svg"
+            >
+              <defs>
+                <lineargradient
+                  gradientUnits="userSpaceOnUse"
+                  id="fp-v2-coin-r0"
+                  x1="20"
+                  x2="32"
+                  y1="12"
+                  y2="24"
+                >
+                  <stop
+                    stop-color="hsl(var(--primary))"
+                  />
+                  <stop
+                    offset="1"
+                    stop-color="hsl(var(--primary-glow, var(--primary)))"
+                  />
+                </lineargradient>
+              </defs>
+              <path
+                class="text-foreground"
+                d="M 15 38 V 10 H 26 C 32 10 35 13 35 17 C 35 21 32 24 26 24 H 15"
+                stroke="currentColor"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="3.2"
+              />
+              <path
+                d="M 15 30 H 26"
+                stroke="hsl(var(--primary))"
+                stroke-linecap="round"
+                stroke-width="3.2"
+              />
+              <circle
+                cx="25.5"
+                cy="17"
+                fill="url(#fp-v2-coin-r0)"
+                r="3.6"
+              />
+              <circle
+                cx="24.4"
+                cy="15.8"
+                fill="#FFFFFF"
+                opacity="0.9"
+                r="1.1"
+              />
+            </svg>
           </div>
         </div>
         <div>

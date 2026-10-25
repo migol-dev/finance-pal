@@ -308,7 +308,7 @@ describe("MFA Authentication & Hardening (2FA / TOTP)", () => {
     });
 
     it("falls back to listFactors() if mfaFactorId is null during unenrollment", async () => {
-      let stateFactorId: string | null = null;
+      const stateFactorId: string | null = null;
       const mockListFactors = vi.fn().mockResolvedValue({
         data: {
           all: [

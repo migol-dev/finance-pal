@@ -5,7 +5,7 @@ import { cn } from "@/lib/utils";
 interface Props {
   icon: IconRef;
   className?: string;
-  size?: "sm" | "md" | "lg" | "xl";
+  size?: "xs" | "sm" | "md" | "lg" | "xl";
 }
 
 /**
@@ -17,6 +17,7 @@ export const IconDisplay = memo(forwardRef<HTMLDivElement, Props>(function IconD
   ref
 ) {
   const sizeMap = {
+    xs: "size-6 text-xs",
     sm: "size-9 text-base",
     md: "size-11 text-xl",
     lg: "size-14 text-2xl",

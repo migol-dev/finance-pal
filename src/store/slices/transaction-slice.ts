@@ -71,7 +71,7 @@ export const createTransactionSlice: StateCreator<
                     'transaction',
                     nv.id,
                     'create',
-                    `Agregó ${nv.type === 'income' ? 'ingreso' : nv.type === 'saving' ? 'ahorro' : 'gasto'} "${nv.concept}"`
+                    `Agregó ${nv.type === 'income' ? 'ingreso' : nv.type === 'saving' ? 'ahorro' : nv.type === 'transfer' ? 'traspaso' : 'gasto'} "${nv.concept}"`
                 ),
                 ...s2.changeLog,
             ].slice(0, 500),

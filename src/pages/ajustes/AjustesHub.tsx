@@ -10,6 +10,7 @@ import {
   ShieldCheck,
   ChevronRight,
   Sparkles,
+  Tag,
 } from "lucide-react";
 import { useFinanceData } from "@/hooks/useFinanceData";
 import { useAuth } from "@/context/AuthContext";
@@ -23,10 +24,10 @@ interface AjustesHubProps {
 }
 
 export const AjustesHub = memo(function AjustesHub({ onSelectSection }: AjustesHubProps) {
-  const { profile, accounts, fixedItems, appSettings } = useFinanceData();
-  const accentColor = appSettings.accentColor;
-  const a11y = appSettings.accessibility;
-  const notifications = appSettings.notifications;
+  const { profile, accounts, fixedItems, appSettings, customCategories = [] } = useFinanceData();
+  const accentColor = appSettings?.accentColor ?? "emerald";
+  const a11y = appSettings?.accessibility;
+  const notifications = appSettings?.notifications;
   const { session } = useAuth();
 
   const textScalePercent = a11y?.textScalePercent ?? 100;
@@ -55,6 +56,14 @@ export const AjustesHub = memo(function AjustesHub({ onSelectSection }: AjustesH
       icon: CalendarClock,
       badge: `${fixedItems.length} activos`,
       colorClass: "bg-violet-500/10 text-violet-500",
+    },
+    {
+      id: "categorias",
+      title: "Categorías",
+      description: "Categorías generales y personalizadas",
+      icon: Tag,
+      badge: `${customCategories.length} personalizadas`,
+      colorClass: "bg-emerald-500/10 text-emerald-500",
     },
     {
       id: "apariencia",
