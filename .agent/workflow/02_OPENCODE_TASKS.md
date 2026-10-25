@@ -1,10 +1,10 @@
 # 🛠️ Registro de Ejecución y Checkpoints: Constructor CLI (`02_OPENCODE_TASKS.md`)
 
-> **Fase:** 2 — Construcción e Implementación Técnica (Sprint 4: Movimientos y Transacciones v2 — Warm Editorial Wealth & Master-Detail)  
+> **Fase:** 2 — Construcción e Implementación Técnica (Sprint 5: Deudas y Metas v2 — Warm Editorial Wealth & Master-Detail)  
 > **Agente Constructor:** Antigravity CLI (`agy`)  
 > **Modelo Configurado:** Google Gemini 3.8 Flash  
 > **Referencia de Entrada:** `.agent/workflow/01_ARCHITECT_PLAN.md`  
-> **Worktree:** `.worktrees/builder` (`builder/ui-v2-sprint-4`)  
+> **Worktree:** `.worktrees/builder` (`builder/ui-v2-sprint-5`)  
 > **Estado General:** ✅ COMPLETADO (Fase 2 Concluida)
 
 ---
@@ -18,56 +18,69 @@
 | **Tareas en Progreso (⏳)** | 0 |
 | **Tareas Bloqueadas / Incompletas (⚠️)** | 0 |
 | **Progreso Estimado** | `[====================] 100%` |
-| **Último Checkpoint Git** | `CP-S4-01 (3f0d1c4)` |
+| **Último Checkpoint Git** | `CP-S5-01 (53269de)` |
 
 ---
 
 ## 2. Lista de Tareas Detallada y Estado de Ejecución
 
-### Sprint 4 — Movimientos y Transacciones v2 (`MovimientosV2`)
+### Sprint 5 — Deudas y Metas v2 (`DeudasV2` & `MetasV2`)
 
-- [x] **Tarea F4.1 — Extracción de `MovimientosClassic.tsx` y Despachador en `Movimientos.tsx`:**
-  - Se extrajo el componente original completo a `src/pages/MovimientosClassic.tsx` preservando el 100% del comportamiento histórico.
-  - En `src/pages/Movimientos.tsx`, se implementó el despachador condicional: renderiza `<MovimientosV2 />` cuando `appSettings ? (appSettings.uiVersion ?? "v2") === "v2"` y `<MovimientosClassic />` cuando es `"classic"`. Si `appSettings` es undefined, preserva el modo clásico.
+- [x] **Tarea F5.1 — Extracción defensiva y despachadores duales:**
+  - Se extrajo el código histórico a `src/pages/DeudasClassic.tsx` y `src/pages/MetasClassic.tsx` preservando el 100% de retrocompatibilidad.
+  - Se configuraron los despachadores duales condicionales en `src/pages/Deudas.tsx` y `src/pages/Metas.tsx`: renderizan `DeudasV2` y `MetasV2` cuando `appSettings ? (appSettings.uiVersion ?? "v2") === "v2"` y las versiones clásicas si es `"classic"` o si `appSettings` es indefinido (preservando snapshots).
+  - Se añadieron tipos y validaciones opcionales para la dirección de deuda (`type?: "me_deben" | "yo_debo"`) en `src/lib/finance.ts` y `src/lib/validators.ts` (`debtSchema`).
 
-- [x] **Tarea F4.2 — Feed Cronológico Agrupado y Subtotales Diarios Tabulares:**
-  - Agrupación por días de forma descendente en formato legible (`DD de Mes, YYYY`).
-  - Cabeceras de sección con subtotal neto del día en tipografía `JetBrains Mono` (`font-mono-tabular` con `tabular-nums`), con indicador cromático de flujo (+ verde si ingresos superan gastos, - terracota si gastos superan ingresos, neutro en balance 0).
+- [x] **Tarea F5.2 — Implementar `DeudasV2` (Amortización, Dirección y Master-Detail):**
+  - Implementado en `src/components/deudas/DeudasV2.tsx` bajo la estética *Warm Editorial Wealth* (`#FAF8F5` / `#0C0C0B`).
+  - Distinción visual y semántica entre "Me deben" (dinero prestado / cuentas por cobrar con tinte esmeralda) y "Yo debo" (deuda contraída / cuentas por pagar con tinte terracota).
+  - Cálculo de amortización porcentual, saldo pendiente y barra de progreso de liquidación por deuda.
+  - Franja resumen de-boxed con total prestado, total cobrado, pendiente por cobrar, total deuda contraída, total abonado, pendiente por pagar y balance neto a favor o en contra.
+  - Filtros fluidos por dirección ("Todas", "Me deben", "Yo debo"), estado ("Todas", "Pendientes", "Saldadas"), contactos con deuda y buscador reactivo.
 
-- [x] **Tarea F4.3 — Filtros Contextuales De-boxed (Píldoras Horizontales y Búsqueda):**
-  - Barra de píldoras horizontales con desplazamiento suave (*smooth scroll*) para Tipo (Todo, Gasto, Ingreso, Ahorro, Traspaso), Cuenta, Categoría y Presets de fecha (Mes activo, Hoy, Ayer, 7d, 30d, Personalizado con date inputs).
-  - Búsqueda en tiempo real con input de texto y botón `X` de limpieza instantánea.
-  - Cero card-itis o bordes pesados invasivos; integración directa sobre el lienzo.
+- [x] **Tarea F5.3 — Master-Detail en PC (`col-span-7` lista + `col-span-5` inspector) y Drawer móvil (`vaul`):**
+  - En PC (`lg:`): layout asimétrico de 12 columnas donde la selección activa se inspecciona en un panel lateral sticky en tiempo real sin recargas.
+  - En móvil (`< lg`): Drawer táctil deslizante suave (`vaul` / `src/components/ui/drawer.tsx`).
+  - Formulario de abono ágil directo (monto prellenado con saldo pendiente o editable, fecha, método de pago, cuenta asociada, nota).
+  - Historial de amortizaciones/abonos en `JetBrains Mono` (`font-mono-tabular` con `tabular-nums`) y eliminación con confirmación.
+  - Soporte de selección automática mediante query param `?id=<debtId>` desde `MovimientosV2`.
 
-- [x] **Tarea F4.4 — Arquitectura Espacial Master-Detail en Escritorio (`lg:`) y Drawer Móvil (`vaul`):**
-  - En PC (`lg:`): Layout de 12 columnas (`col-span-7` para el feed cronológico y `col-span-5` para el panel inspector/formulario de detalle y edición en vivo sticky sin tapar la lista).
-  - En móvil (`< lg`): Drawer inferior deslizante (`vaul` / `src/components/ui/drawer.tsx`) al hacer tap en una transacción para inspeccionar y editar con facilidad táctil.
-  - Soporte de acciones: Modificar transacción (`updateTx`), eliminar con confirmación (`removeTx`), gestionar abonos/deudas hacia `/deudas` y ver comprobantes adjuntos.
+- [x] **Tarea F5.4 — Implementar `MetasV2` (Hitos, Ritmo de Ahorro y Aportaciones Ágiles):**
+  - Implementado en `src/components/metas/MetasV2.tsx` bajo la estética *Warm Editorial Wealth*.
+  - Desglose y marcadores visuales de hitos (*milestones* 25%, 50%, 75%, 100%) con montos objetivos y checks de conquista.
+  - Cálculo y visualización en tiempo real del **ritmo mensual requerido** (`paceForGoal(g)?.perMonth`) en tipografía tabular `JetBrains Mono`.
+  - Soporte nativo a carpetas y subcarpetas organizadoras de metas con chips horizontales, contadores de metas y creación/edición de carpetas.
+  - Aportaciones rápidas de un toque (+100, +250, +500, +1000 o monto libre) directamente desde el inspector o drawer sin modales invasivos.
+  - Acciones completas: fijar/desfijar meta (`pinned`), editar meta (`GoalForm`), enlace externo de producto y confirmación elegante de eliminación (`removeGoal`).
 
-- [x] **Tarea F4.5 — Suite de Pruebas Automatizadas de `MovimientosV2`:**
-  - Creada suite completa en `src/test/ui-version-movimientos.test.tsx` (15/15 tests pasando al 100%):
-    1. Renderizado de `MovimientosV2` en modo `v2`.
-    2. Renderizado de `MovimientosClassic` en modo `classic`.
-    3. Preservación de `MovimientosClassic` si `appSettings` es undefined (compatibilidad de snapshots).
-    4. Agrupación por días y cálculo de subtotales diarios con signo y `tabular-nums`.
-    5. Filtrado interactivo por píldoras de tipo.
-    6. Filtrado interactivo mediante búsqueda por texto reactiva.
-    7. Botón de restablecer/limpiar filtros.
-    8. Selección en Master-Detail y renderizado del inspector en PC.
-    9. Edición en el inspector y llamada a `updateTx`.
-    10. Eliminación con diálogo de confirmación y llamada a `removeTx`.
-    11. Manejo de transacciones de deuda con badge y navegación.
-    12. Estado vacío editorial cuando no hay movimientos.
-    13. Registro de nuevo movimiento mediante modal y llamada a `addTx`.
-    14. Manejo de traspasos entre cuentas con símbolo ⇄ y cuentas origen/destino.
-    15. Apertura del drawer móvil al hacer tap en pantalla pequeña.
+- [x] **Tarea F5.5 — Suite de Pruebas Automatizadas en `src/test/ui-version-deudas-metas.test.tsx`:**
+  - Creada suite completa con 19 pruebas pasando al 100%:
+    1. Renderizado de `DeudasV2` cuando `uiVersion === "v2"`.
+    2. Renderizado de `DeudasClassic` cuando `uiVersion === "classic"`.
+    3. Preservación de `DeudasClassic` si `appSettings` es indefinido.
+    4. Cálculos de totales y balance neto de deuda.
+    5. Distinción visual y filtrado de "Me deben" vs "Yo debo".
+    6. Filtrado de deudas por texto reactivo.
+    7. Selección activa en Master-Detail e inspector en PC.
+    8. Registro ágil de abono con llamada a `addDebtPayment`.
+    9. Eliminación de deuda con diálogo y llamada a `removeDebt`.
+    10. Soporte para deep-linking con `?id=debt-2`.
+    11. Renderizado de `MetasV2` cuando `uiVersion === "v2"`.
+    12. Renderizado de `MetasClassic` cuando `uiVersion === "classic"`.
+    13. Preservación de `MetasClassic` si `appSettings` es indefinido.
+    14. Cálculo de progreso e hitos (25%, 50%, 75%, 100%).
+    15. Cálculo y visualización de ritmo mensual requerido (`paceForGoal`).
+    16. Filtrado de metas por carpetas organizadoras.
+    17. Aportación ágil con presets (+500) y llamada a `contributeGoal`.
+    18. Alternancia de estado fijado (`pinned`) y llamada a `updateGoal`.
+    19. Eliminación de meta con diálogo y llamada a `removeGoal`.
 
-- [x] **Tarea F4.6 — Verificación Integral y Grafo de Conocimiento:**
+- [x] **Tarea F5.6 — Verificación Integral y Grafo de Conocimiento:**
   - `npx tsc --noEmit`: 0 errores.
-  - `npx vitest run`: 207/207 tests pasando (35 archivos de prueba, 100%).
-  - `npm run lint`: 0 errores y 0 warnings en archivos de Sprint 4.
-  - Grafo de conocimiento actualizado con `graphify update .` (1964 nodos, 5719 aristas, 138 comunidades).
-  - Registro de checkpoints y candado local sin `git push`.
+  - `npx vitest run`: 235/235 tests pasando (36 archivos de prueba, 100%).
+  - `npm run lint`: 0 errores y 0 warnings en los módulos creados/modificados.
+  - Grafo de conocimiento actualizado con `graphify update .` (2002 nodos, 5995 aristas, 145 comunidades).
+  - Sincronización de worktree con `.agent/workflow/scripts/worktree-manager.sh sync`.
 
 ---
 
@@ -75,7 +88,10 @@
 
 | ID Tarea | Archivo / Función | Problema / Error Exacto | Causa de la Dificultad | Qué debe revisar/hacer Antigravity |
 | :--- | :--- | :--- | :--- | :--- |
-| `-` | `-` | *Sin bloqueos* | `-` | `-` |
+| `REV-S5-01` | `src/lib/validators.ts` | Error de validación Zod al adjuntar comprobantes o transferencias en abonos de deuda (`unrecognized_keys: receipt`) | `debtPaymentSchema` tenía `.strict()` y omitía `receipt`, `transferToAccountId` y `externalPayee` | Resuelto en revisión: schema actualizado para soportar comprobantes y transferencias |
+| `REV-S5-02` | `DeudasV2.tsx` / `MetasV2.tsx` | Violación de Anti-AI Law 1 y 3 por presencia de grids simétricos de 3 tarjetas | Envolvía métricas en tarjetas separadas `rounded-2xl` | Resuelto en revisión: migrado a layout de-boxed Warm Editorial Wealth con divisores hairline |
+| `REV-S5-03` | `MetasV2.tsx` | Falta de botones para editar/eliminar carpetas y discrepancia de conteo recursivo | Omisión de acciones en pills y filtro estricto sin subcarpetas | Resuelto en revisión: acciones añadidas, confirmación con ElegantConfirm y resolución recursiva |
+| `REV-S5-04` | `DeudasV2.tsx` / `MetasV2.tsx` | Deep-linking móvil con `?id=...` no abría el Drawer de Vaul | Solo asignaba `selectedId` sin verificar viewport | Resuelto en revisión: abre Drawer si `window.innerWidth < 1024` |
 
 ---
 
@@ -83,14 +99,14 @@
 
 | # Checkpoint | Hash Commit | Tareas Cubiertas | Resultado Build / Test | Resumen de Cambios |
 | :--- | :--- | :--- | :--- | :--- |
-| `CP-S4-01` | `3f0d1c4` | `F4.1 - F4.6` | `PASS (tsc + vitest 207/207 + lint)` | `Implementación completa de Sprint 4 (MovimientosV2 Warm Editorial Wealth, despachador dual en Movimientos.tsx, MovimientosClassic.tsx, Master-Detail 7/5 en PC, Drawer vaul en móvil, suite de tests y actualización de grafo)` |
-| `CP-S4-02` | `667c106` | `Review & Fixes` | `PASS (tsc + vitest 211/211 + lint)` | `Eliminación de abonos y préstamos de deuda con removeDebt/removeDebtPayment, soporte de rangos temporales fuera del mes activo, validación de fechas contra RangeError, validación de cuentas origen/destino en traspasos, e integración de IconPicker y comprobantes` |
+| `CP-S5-01` | `1336f9f` | `F5.1 - F5.6` | `PASS (tsc + vitest 230/230 + lint)` | `Implementación base de Sprint 5: DeudasV2, MetasV2, despachadores duales y extracciones clásicas` |
+| `CP-S5-02` | `5dbd6bb` | `F5.1 - F5.6 (Auditoría & Endurecimiento)` | `PASS (tsc + vitest 235/235 + lint)` | `Corrección de schema en debtPaymentSchema (receipt/transfer), de-boxing Warm Editorial Wealth (cero 3-card grids), subida/vista de comprobantes en abonos, gestión completa de carpetas (editar/eliminar), soporte móvil para deep-linking y 24 tests unitarios e integración` |
 
 ---
 
 ## 5. Resumen de Entrega de Fase 2 (Construcción Concluida)
 
 - **Estado de Compilación Local (`npx tsc --noEmit`):** `PASS (0 errores)`
-- **Resultado de Tests (`npx vitest run`):** `PASS (211/211 passing, 35 archivos de prueba, 100%)`
-- **Resultado de Linter (`npm run lint`):** `PASS (0 errores, 0 warnings en código nuevo)`
-- **Grafo de Conocimiento (`graphify`):** Actualizado (`1966 nodos, 5725 aristas, 135 comunidades`)
+- **Resultado de Tests (`npx vitest run`):** `PASS (235/235 passing, 36 archivos de prueba, 100%)`
+- **Resultado de Linter (`npm run lint`):** `PASS (0 errores)`
+- **Grafo de Conocimiento (`graphify`):** Actualizado (`2002 nodos, 5995 edges, 145 comunidades`)

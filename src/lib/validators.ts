@@ -153,6 +153,13 @@ export const debtPaymentSchema = z.object({
   note: z.string().max(500).optional(),
   paymentMethod: paymentMethodSchema.optional(),
   accountId: z.string().uuid().optional(),
+  transferToAccountId: z.string().uuid().optional(),
+  externalPayee: z.object({
+    clabe: z.string().max(18).optional(),
+    bank: z.string().max(100).optional(),
+    name: z.string().max(100).optional(),
+  }).optional(),
+  receipt: z.string().max(5000000).optional(),
 }).strict();
 
 export const debtSchema = z.object({
@@ -166,6 +173,7 @@ export const debtSchema = z.object({
   icon: iconRefSchema.optional(),
   payments: z.array(debtPaymentSchema).max(1000),
   accountId: z.string().uuid().optional(),
+  type: z.enum(["me_deben", "yo_debo"]).optional(),
 }).strict();
 
 export const changeLogEntrySchema = z.object({
