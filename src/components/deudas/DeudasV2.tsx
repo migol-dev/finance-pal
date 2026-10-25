@@ -24,9 +24,7 @@ import {
   X,
   ArrowUpRight,
   ArrowDownLeft,
-  ChevronRight,
   Calendar,
-  AlertCircle,
   FileText,
   SlidersHorizontal,
 } from "lucide-react";
@@ -42,7 +40,6 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { motion, AnimatePresence } from "@/lib/framer";
 import { toast } from "sonner";
 import { IconPicker } from "@/components/app/IconPicker";
 import { IconDisplay } from "@/components/app/IconDisplay";
@@ -54,19 +51,15 @@ const localDateNow = () => {
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
 };
 
-export function totalDebtPaid(d: Debt): number {
+function totalDebtPaid(d: Debt): number {
   return (d.payments ?? []).reduce((a, p) => a + p.amount, 0);
 }
 
-export function isIOweDebt(d: Debt): boolean {
+function isIOweDebt(d: Debt): boolean {
   return d.type === "yo_debo" || (d.note ? d.note.includes("[yo_debo]") : false);
 }
 
-export function isOwedToMeDebt(d: Debt): boolean {
-  return !isIOweDebt(d);
-}
-
-export function getDebtAmortization(d: Debt) {
+function getDebtAmortization(d: Debt) {
   const paid = totalDebtPaid(d);
   const pending = Math.max(0, d.amount - paid);
   const pct = d.amount > 0 ? Math.min(100, (paid / d.amount) * 100) : 0;
@@ -76,7 +69,7 @@ export function getDebtAmortization(d: Debt) {
 
 export function DeudasV2() {
   const { debts, accounts, addDebt, updateDebt, removeDebt, addDebtPayment, removeDebtPayment } = useFinanceData();
-  const [params, setParams] = useSearchParams();
+  const [params] = useSearchParams();
 
   // Filtros
   const [directionFilter, setDirectionFilter] = useState<"all" | "me_deben" | "yo_debo">("all");

@@ -25,12 +25,9 @@ import {
   ExternalLink,
   SlidersHorizontal,
   Sparkles,
-  Calendar,
   Clock,
   TrendingUp,
   Coins,
-  ChevronRight,
-  MoreVertical,
 } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import {
@@ -47,7 +44,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { toast } from "sonner";
 import { IconDisplay } from "@/components/app/IconDisplay";
 import { ElegantConfirm } from "@/components/app/ElegantConfirm";
-import { PALETTES, FolderNode, normalizeUrl } from "@/pages/metas/types";
+import { PALETTES, normalizeUrl } from "@/pages/metas/types";
 import { GoalForm } from "@/pages/metas/GoalForm";
 import { FolderForm } from "@/pages/metas/FolderForm";
 
@@ -57,7 +54,7 @@ const localDateNow = () => {
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
 };
 
-export function getGoalProgress(goal: Goal) {
+function getGoalProgress(goal: Goal) {
   const pct = goal.target > 0 ? Math.min(100, (goal.saved / goal.target) * 100) : 0;
   const remaining = Math.max(0, goal.target - goal.saved);
   const completed = goal.saved >= goal.target;
