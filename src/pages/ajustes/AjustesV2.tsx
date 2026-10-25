@@ -108,9 +108,9 @@ export const AjustesV2 = memo(function AjustesV2() {
   const seccionParam = (searchParams.get("seccion") as AjustesSectionId) || null;
 
   const { profile, accounts, fixedItems, appSettings } = useFinanceData();
-  const accentColor = appSettings.accentColor;
-  const a11y = appSettings.accessibility;
-  const notifications = appSettings.notifications;
+  const accentColor = appSettings?.accentColor ?? "emerald";
+  const a11y = appSettings?.accessibility;
+  const notifications = appSettings?.notifications;
   const { session } = useAuth();
 
   const textScalePercent = a11y?.textScalePercent ?? 100;
@@ -135,10 +135,10 @@ export const AjustesV2 = memo(function AjustesV2() {
   const categoriesWithBadges = useMemo(() => {
     return CATEGORIES_DEF.map((cat) => {
       let badge = "";
-      if (cat.id === "perfil") badge = profile.currency ?? "MXN";
+      if (cat.id === "perfil") badge = profile?.currency ?? "MXN";
       else if (cat.id === "cuentas")
-        badge = `${accounts.length} ${accounts.length === 1 ? "cuenta" : "cuentas"}`;
-      else if (cat.id === "fijos") badge = `${fixedItems.length} activos`;
+        badge = `${accounts?.length ?? 0} ${(accounts?.length ?? 0) === 1 ? "cuenta" : "cuentas"}`;
+      else if (cat.id === "fijos") badge = `${fixedItems?.length ?? 0} activos`;
       else if (cat.id === "apariencia") badge = accentColor;
       else if (cat.id === "accesibilidad") badge = `${textScalePercent}%`;
       else if (cat.id === "notificaciones")
@@ -150,9 +150,9 @@ export const AjustesV2 = memo(function AjustesV2() {
       return { ...cat, badge };
     });
   }, [
-    profile.currency,
-    accounts.length,
-    fixedItems.length,
+    profile?.currency,
+    accounts?.length,
+    fixedItems?.length,
     accentColor,
     textScalePercent,
     notifications?.enabled,
@@ -203,7 +203,7 @@ export const AjustesV2 = memo(function AjustesV2() {
             <button
               type="button"
               onClick={() => handleSelectSection("perfil")}
-              className={`w-full rounded-2xl border p-4 flex items-center justify-between text-left transition-all active:scale-[0.98] ${
+              className={`w-full rounded-2xl border p-4 flex items-center justify-between text-left transition-all active:scale-[0.98] min-h-[48px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#2383E2] ${
                 activeSection === "perfil" && seccionParam
                   ? "bg-white dark:bg-[#141413] border-[#2383E2] shadow-sm"
                   : "bg-white dark:bg-[#141413] border-[#E4E0D8] dark:border-white/10 hover:border-[#2383E2]/40"
@@ -211,14 +211,14 @@ export const AjustesV2 = memo(function AjustesV2() {
             >
               <div className="flex items-center gap-3 min-w-0">
                 <div className="size-11 rounded-xl bg-[#2383E2]/10 text-[#2383E2] font-black flex items-center justify-center text-base shrink-0 font-display-v2">
-                  {profile.name ? profile.name.slice(0, 1).toUpperCase() : <User className="size-5" strokeWidth={1.5} />}
+                  {profile?.name ? profile.name.slice(0, 1).toUpperCase() : <User className="size-5" strokeWidth={1.5} />}
                 </div>
                 <div className="min-w-0">
-                  <h2 className="font-semibold text-sm text-foreground truncate">
-                    {profile.name || "Mi Perfil"}
-                  </h2>
+                  <span className="font-semibold text-sm text-foreground truncate block">
+                    {profile?.name || "Mi Perfil"}
+                  </span>
                   <p className="text-xs text-[#6E6A63] dark:text-[#8E8D8A] font-mono-tabular truncate mt-0.5">
-                    {profile.currency} · {session?.user?.email || "Modo local"}
+                    {profile?.currency ?? "MXN"} · {session?.user?.email || "Modo local"}
                   </p>
                 </div>
               </div>
@@ -240,8 +240,9 @@ export const AjustesV2 = memo(function AjustesV2() {
                     <button
                       key={cat.id}
                       type="button"
+                      aria-selected={isSelected}
                       onClick={() => handleSelectSection(cat.id)}
-                      className={`w-full rounded-xl border p-3 flex items-center justify-between text-left transition-all active:scale-[0.98] ${
+                      className={`w-full rounded-xl border p-3 flex items-center justify-between text-left transition-all active:scale-[0.98] min-h-[48px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#2383E2] ${
                         isSelected
                           ? "bg-white dark:bg-[#141413] border-[#2383E2] text-foreground shadow-sm"
                           : "bg-white dark:bg-[#141413] border-[#E4E0D8] dark:border-white/10 text-foreground hover:border-[#2383E2]/40 hover:bg-[#F2EFE9]/40 dark:hover:bg-white/[0.02]"

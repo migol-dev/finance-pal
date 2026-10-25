@@ -61,7 +61,7 @@ const GitHubIcon = () => (
 export function LoginV2() {
   const { session, mfaRequired, signOut, checkMfaStatus, refreshSession } = useAuth();
   const { resolvedTheme } = useSystemTheme();
-  const accentColor = useFinance((s) => s.appSettings.accentColor);
+  const accentColor = useFinance((s) => s.appSettings?.accentColor ?? "emerald");
   const [isLogin, setIsLogin] = useState(true);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -298,7 +298,7 @@ export function LoginV2() {
                 pattern="[0-9]*"
                 maxLength={6}
                 placeholder="123456"
-                className="w-full pl-10 pr-4 py-3 rounded-xl bg-[#FAF8F5] dark:bg-white/[0.03] border border-[#E4E0D8] dark:border-white/10 text-center text-lg tracking-[0.3em] font-mono-tabular outline-none focus:border-[#2383E2]"
+                className="w-full pl-10 pr-4 py-3 min-h-[48px] rounded-xl bg-[#FAF8F5] dark:bg-white/[0.03] border border-[#E4E0D8] dark:border-white/10 text-center text-lg tracking-[0.3em] font-mono-tabular outline-none focus:border-[#2383E2] focus-visible:ring-2 focus-visible:ring-[#2383E2]"
                 value={mfaCode}
                 onChange={(e) => setMfaCode(e.target.value.replace(/\D/g, ""))}
                 autoFocus
@@ -309,7 +309,7 @@ export function LoginV2() {
             <button
               type="submit"
               disabled={verifyingMfa || mfaCode.length !== 6}
-              className="w-full py-3 rounded-xl bg-[#191918] dark:bg-white text-white dark:text-[#0C0C0B] font-semibold text-xs font-mono-tabular flex items-center justify-center gap-2 transition active:scale-[0.98] disabled:opacity-50"
+              className="w-full py-3 min-h-[44px] rounded-xl bg-[#191918] dark:bg-white text-white dark:text-[#0C0C0B] font-semibold text-xs font-mono-tabular flex items-center justify-center gap-2 transition active:scale-[0.98] disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#2383E2]"
             >
               {verifyingMfa ? (
                 <Loader2 className="size-4 animate-spin" />
@@ -321,7 +321,7 @@ export function LoginV2() {
             <button
               type="button"
               onClick={() => signOut()}
-              className="w-full py-2 text-xs text-[#6E6A63] dark:text-[#8E8D8A] hover:text-foreground flex items-center justify-center gap-1.5 transition"
+              className="w-full py-2.5 min-h-[44px] rounded-xl text-xs text-[#6E6A63] dark:text-[#8E8D8A] hover:text-foreground flex items-center justify-center gap-1.5 transition active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#2383E2]"
             >
               <ArrowLeft className="size-3.5" /> Cancelar e iniciar con otra cuenta
             </button>
@@ -446,7 +446,7 @@ export function LoginV2() {
                       onChange={(e) => setEmail(e.target.value)}
                       autoComplete="email"
                       required
-                      className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-[#FAF8F5] dark:bg-white/[0.03] border border-[#E4E0D8] dark:border-white/10 text-xs text-foreground placeholder:text-[#6E6A63] dark:placeholder:text-[#8E8D8A] focus:outline-none focus:border-[#2383E2] transition"
+                      className="w-full pl-10 pr-4 py-2.5 min-h-[44px] rounded-xl bg-[#FAF8F5] dark:bg-white/[0.03] border border-[#E4E0D8] dark:border-white/10 text-xs text-foreground placeholder:text-[#6E6A63] dark:placeholder:text-[#8E8D8A] focus:outline-none focus:border-[#2383E2] focus-visible:ring-2 focus-visible:ring-[#2383E2] transition"
                     />
                   </div>
                 </div>
@@ -470,7 +470,7 @@ export function LoginV2() {
                       autoComplete={isLogin ? "current-password" : "new-password"}
                       required
                       minLength={isLogin ? undefined : 12}
-                      className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-[#FAF8F5] dark:bg-white/[0.03] border border-[#E4E0D8] dark:border-white/10 text-xs text-foreground placeholder:text-[#6E6A63] dark:placeholder:text-[#8E8D8A] focus:outline-none focus:border-[#2383E2] transition font-mono"
+                      className="w-full pl-10 pr-4 py-2.5 min-h-[44px] rounded-xl bg-[#FAF8F5] dark:bg-white/[0.03] border border-[#E4E0D8] dark:border-white/10 text-xs text-foreground placeholder:text-[#6E6A63] dark:placeholder:text-[#8E8D8A] focus:outline-none focus:border-[#2383E2] focus-visible:ring-2 focus-visible:ring-[#2383E2] transition font-mono"
                     />
                   </div>
                 </div>
@@ -509,7 +509,7 @@ export function LoginV2() {
                 <button
                   type="submit"
                   disabled={loading}
-                  className="w-full py-3 rounded-xl bg-[#191918] dark:bg-white text-white dark:text-[#0C0C0B] font-semibold text-xs font-mono-tabular flex items-center justify-center gap-2 transition active:scale-[0.98] disabled:opacity-50 mt-2"
+                  className="w-full py-3 min-h-[44px] rounded-xl bg-[#191918] dark:bg-white text-white dark:text-[#0C0C0B] font-semibold text-xs font-mono-tabular flex items-center justify-center gap-2 transition active:scale-[0.98] disabled:opacity-50 mt-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#2383E2]"
                 >
                   {loading ? (
                     <Loader2 className="size-4 animate-spin" />
@@ -544,7 +544,7 @@ export function LoginV2() {
                     type="button"
                     disabled={loading}
                     onClick={() => handleOAuth("google")}
-                    className="py-2.5 px-3 rounded-xl border border-[#E4E0D8] dark:border-white/10 bg-[#FAF8F5] dark:bg-white/[0.02] text-xs font-medium flex items-center justify-center gap-2 hover:border-[#2383E2]/40 active:scale-[0.98] transition disabled:opacity-50"
+                    className="py-3 px-3 min-h-[44px] rounded-xl border border-[#E4E0D8] dark:border-white/10 bg-[#FAF8F5] dark:bg-white/[0.02] text-xs font-medium flex items-center justify-center gap-2 hover:border-[#2383E2]/40 active:scale-[0.98] transition disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#2383E2]"
                   >
                     <GoogleIcon />
                     Google
@@ -554,7 +554,7 @@ export function LoginV2() {
                     type="button"
                     disabled={loading}
                     onClick={() => handleOAuth("github")}
-                    className="py-2.5 px-3 rounded-xl border border-[#E4E0D8] dark:border-white/10 bg-[#FAF8F5] dark:bg-white/[0.02] text-xs font-medium flex items-center justify-center gap-2 hover:border-[#2383E2]/40 active:scale-[0.98] transition disabled:opacity-50"
+                    className="py-3 px-3 min-h-[44px] rounded-xl border border-[#E4E0D8] dark:border-white/10 bg-[#FAF8F5] dark:bg-white/[0.02] text-xs font-medium flex items-center justify-center gap-2 hover:border-[#2383E2]/40 active:scale-[0.98] transition disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#2383E2]"
                   >
                     <GitHubIcon />
                     GitHub
@@ -570,7 +570,7 @@ export function LoginV2() {
                     setIsLogin(!isLogin);
                     setPassword("");
                   }}
-                  className="text-xs font-medium text-[#2383E2] hover:underline"
+                  className="min-h-[44px] inline-flex items-center justify-center p-2 rounded-xl text-xs font-medium text-[#2383E2] hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#2383E2]"
                 >
                   {isLogin
                     ? "¿No tienes una cuenta aún? Regístrate aquí"

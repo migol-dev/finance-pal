@@ -355,7 +355,7 @@ export const AnualV2 = memo(function AnualV2() {
         action={
           <button
             onClick={exportCsv}
-            className="size-10 rounded-xl bg-white dark:bg-[#141413] border border-[#E4E0D8] dark:border-white/10 flex items-center justify-center text-muted-foreground hover:text-foreground active:scale-[0.98] transition-all"
+            className="size-11 min-w-[44px] min-h-[44px] rounded-xl bg-white dark:bg-[#141413] border border-[#E4E0D8] dark:border-white/10 flex items-center justify-center text-muted-foreground hover:text-foreground active:scale-[0.98] transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#2383E2]"
             aria-label="Exportar CSV"
           >
             <Download className="size-4" strokeWidth={1.5} />
@@ -370,20 +370,20 @@ export const AnualV2 = memo(function AnualV2() {
             <span className="text-xs uppercase font-mono-tabular tracking-wider text-[#6E6A63] dark:text-[#8E8D8A]">
               EJERCICIO FISCAL
             </span>
-            <div className="inline-flex items-center gap-1 rounded-xl bg-white dark:bg-[#141413] border border-[#E4E0D8] dark:border-white/10 px-1 py-1">
+            <div className="inline-flex items-center gap-1 rounded-xl bg-white dark:bg-[#141413] border border-[#E4E0D8] dark:border-white/10 p-1">
               <button
                 onClick={() => setActive(activeYear - 1, activeMonth)}
-                className="size-7 rounded-lg hover:bg-[#F2EFE9] dark:hover:bg-white/5 flex items-center justify-center transition active:scale-[0.96]"
+                className="size-9 sm:size-8 min-w-[36px] sm:min-w-[32px] h-9 sm:h-8 rounded-lg hover:bg-[#F2EFE9] dark:hover:bg-white/5 flex items-center justify-center transition active:scale-[0.96] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#2383E2]"
                 aria-label="Año anterior"
               >
                 <ChevronLeft className="size-4" strokeWidth={1.75} />
               </button>
-              <span className="px-3 h-7 flex items-center text-sm font-bold font-mono-tabular tracking-tight">
+              <span className="px-3 h-9 sm:h-8 flex items-center text-sm font-bold font-mono-tabular tracking-tight">
                 {activeYear}
               </span>
               <button
                 onClick={() => setActive(activeYear + 1, activeMonth)}
-                className="size-7 rounded-lg hover:bg-[#F2EFE9] dark:hover:bg-white/5 flex items-center justify-center transition active:scale-[0.96]"
+                className="size-9 sm:size-8 min-w-[36px] sm:min-w-[32px] h-9 sm:h-8 rounded-lg hover:bg-[#F2EFE9] dark:hover:bg-white/5 flex items-center justify-center transition active:scale-[0.96] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#2383E2]"
                 aria-label="Año siguiente"
               >
                 <ChevronRight className="size-4" strokeWidth={1.75} />
@@ -497,7 +497,7 @@ export const AnualV2 = memo(function AnualV2() {
                       setActive(activeYear, bestNet.idx);
                       navigate("/");
                     }}
-                    className="p-4 rounded-xl border border-[#E4E0D8] dark:border-white/10 bg-white dark:bg-[#141413] text-left active:scale-[0.98] transition hover:border-[#1F7A5A]/50"
+                    className="p-4 rounded-xl border border-[#E4E0D8] dark:border-white/10 bg-white dark:bg-[#141413] text-left active:scale-[0.98] transition hover:border-[#1F7A5A]/50 min-h-[44px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#1F7A5A]"
                   >
                     <div className="flex items-center justify-between text-xs text-[#1F7A5A] font-bold">
                       <span className="flex items-center gap-1.5">
@@ -519,7 +519,7 @@ export const AnualV2 = memo(function AnualV2() {
                       setActive(activeYear, worstNet.idx);
                       navigate("/");
                     }}
-                    className="p-4 rounded-xl border border-[#E4E0D8] dark:border-white/10 bg-white dark:bg-[#141413] text-left active:scale-[0.98] transition hover:border-[#C86446]/50"
+                    className="p-4 rounded-xl border border-[#E4E0D8] dark:border-white/10 bg-white dark:bg-[#141413] text-left active:scale-[0.98] transition hover:border-[#C86446]/50 min-h-[44px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#C86446]"
                   >
                     <div className="flex items-center justify-between text-xs text-[#C86446] font-bold">
                       <span className="flex items-center gap-1.5">
@@ -541,7 +541,7 @@ export const AnualV2 = memo(function AnualV2() {
                       setActive(activeYear, topExpenseMonth.idx);
                       navigate("/");
                     }}
-                    className="p-4 rounded-xl border border-[#E4E0D8] dark:border-white/10 bg-white dark:bg-[#141413] text-left active:scale-[0.98] transition hover:border-[#D9730D]/50"
+                    className="p-4 rounded-xl border border-[#E4E0D8] dark:border-white/10 bg-white dark:bg-[#141413] text-left active:scale-[0.98] transition hover:border-[#D9730D]/50 min-h-[44px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#D9730D]"
                   >
                     <div className="flex items-center justify-between text-xs text-[#D9730D] font-bold">
                       <span className="flex items-center gap-1.5">
@@ -621,11 +621,21 @@ export const AnualV2 = memo(function AnualV2() {
                       {monthly.map((d) => (
                         <tr
                           key={d.mes}
+                          role="button"
+                          tabIndex={0}
+                          aria-label={`Ver detalle mensual de ${d.mes} ${activeYear}`}
                           onClick={() => {
                             setActive(activeYear, d.idx);
                             navigate("/");
                           }}
-                          className="hover:bg-[#F2EFE9]/50 dark:hover:bg-white/[0.02] cursor-pointer transition-colors group"
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter" || e.key === " ") {
+                              e.preventDefault();
+                              setActive(activeYear, d.idx);
+                              navigate("/");
+                            }
+                          }}
+                          className="hover:bg-[#F2EFE9]/50 dark:hover:bg-white/[0.02] cursor-pointer transition-colors group focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#2383E2]"
                         >
                           <td className="py-2.5 font-bold text-foreground flex items-center gap-2">
                             <span>{d.mes}</span>
@@ -897,10 +907,12 @@ export const AnualV2 = memo(function AnualV2() {
                 {goalsThisYear.map(({ goal, contribsYear }) => {
                   const pct = goal.target > 0 ? Math.min(100, (goal.saved / goal.target) * 100) : 0;
                   return (
-                    <div
+                    <button
                       key={goal.id}
+                      type="button"
+                      aria-label={`Ver meta ${goal.name}`}
                       onClick={() => navigate("/metas")}
-                      className="p-4 rounded-xl border border-[#E4E0D8] dark:border-white/10 bg-[#FAF8F5] dark:bg-white/[0.02] cursor-pointer hover:border-[#2383E2]/50 active:scale-[0.98] transition space-y-3"
+                      className="w-full text-left p-4 rounded-xl border border-[#E4E0D8] dark:border-white/10 bg-[#FAF8F5] dark:bg-white/[0.02] cursor-pointer hover:border-[#2383E2]/50 active:scale-[0.98] transition space-y-3 min-h-[44px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#2383E2]"
                     >
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-2.5 min-w-0">
@@ -923,7 +935,7 @@ export const AnualV2 = memo(function AnualV2() {
                         <span>Aportado en {activeYear}:</span>
                         <span className="font-bold text-foreground">{fmt(contribsYear)}</span>
                       </div>
-                    </div>
+                    </button>
                   );
                 })}
               </div>
@@ -938,8 +950,13 @@ export const AnualV2 = memo(function AnualV2() {
 function YoyBadge({ current, previous }: { current: number; previous: number }) {
   if (previous === 0 && current === 0) return null;
   const diff = current - previous;
-  const pct = previous !== 0 ? (diff / Math.abs(previous)) * 100 : 100;
   const isPositive = diff >= 0;
+  const pct =
+    previous !== 0
+      ? (diff / Math.abs(previous)) * 100
+      : current !== 0
+      ? (current > 0 ? 100 : -100)
+      : 0;
 
   return (
     <span
@@ -968,7 +985,12 @@ function YoyTile({
   const diff = current - previous;
   const isGood = positiveIsGood ? diff >= 0 : diff <= 0;
   const tone = isGood ? "text-[#1F7A5A]" : "text-[#C86446]";
-  const pct = previous !== 0 ? (diff / Math.abs(previous)) * 100 : current === 0 ? 0 : 100;
+  const pct =
+    previous !== 0
+      ? (diff / Math.abs(previous)) * 100
+      : current !== 0
+      ? (current > 0 ? 100 : -100)
+      : 0;
 
   return (
     <div className="p-3 rounded-xl border border-[#E4E0D8]/60 dark:border-white/5 bg-[#FAF8F5] dark:bg-white/[0.02] font-mono-tabular">
@@ -977,7 +999,7 @@ function YoyTile({
       </span>
       <p className="text-sm font-bold text-foreground mt-1">{fmt(current)}</p>
       <p className={`text-[11px] font-semibold mt-0.5 ${tone}`}>
-        {diff >= 0 ? "▲" : "▼"} {Math.abs(pct).toFixed(0)}%{" "}
+        {diff === 0 ? "—" : diff > 0 ? "▲" : "▼"} {Math.abs(pct).toFixed(0)}%{" "}
         <span className="text-[#6E6A63] dark:text-[#8E8D8A] font-normal">· {fmt2(previous)}</span>
       </p>
     </div>

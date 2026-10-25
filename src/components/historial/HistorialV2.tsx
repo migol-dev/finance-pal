@@ -59,7 +59,13 @@ const ACTION_CONFIG: Record<
 
 function fmtVal(v: unknown): string {
   if (v === undefined || v === null) return "—";
-  if (typeof v === "object") return JSON.stringify(v).slice(0, 40);
+  if (typeof v === "object") {
+    try {
+      return JSON.stringify(v).slice(0, 40);
+    } catch {
+      return "[Objeto]";
+    }
+  }
   if (typeof v === "string" && v.length > 40) return v.slice(0, 40) + "…";
   return String(v);
 }
@@ -181,7 +187,7 @@ export const HistorialV2 = memo(function HistorialV2() {
             <Button
               onClick={() => setConfirmOpen(true)}
               variant="ghost"
-              className="h-9 px-3 rounded-xl border border-[#E4E0D8] dark:border-white/10 text-xs font-semibold text-[#C86446] hover:bg-[#C86446]/10 active:scale-[0.98] transition"
+              className="min-h-[44px] px-3.5 rounded-xl border border-[#E4E0D8] dark:border-white/10 text-xs font-semibold text-[#C86446] hover:bg-[#C86446]/10 active:scale-[0.98] transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#C86446]"
               aria-label="Limpiar historial"
             >
               <Trash2 className="size-3.5 mr-1.5" strokeWidth={1.5} />
@@ -212,12 +218,14 @@ export const HistorialV2 = memo(function HistorialV2() {
               placeholder="Buscar por concepto, campo o valor modificado..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="w-full pl-10 pr-4 py-2 rounded-xl bg-[#FAF8F5] dark:bg-white/[0.03] border border-[#E4E0D8] dark:border-white/10 text-xs text-foreground placeholder:text-[#6E6A63] dark:placeholder:text-[#8E8D8A] focus:outline-none focus:border-[#2383E2]"
+              className="w-full pl-10 pr-10 py-2.5 min-h-[44px] rounded-xl bg-[#FAF8F5] dark:bg-white/[0.03] border border-[#E4E0D8] dark:border-white/10 text-xs text-foreground placeholder:text-[#6E6A63] dark:placeholder:text-[#8E8D8A] focus:outline-none focus:border-[#2383E2] focus-visible:ring-2 focus-visible:ring-[#2383E2]"
             />
             {search && (
               <button
+                type="button"
                 onClick={() => setSearch("")}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-[#6E6A63] dark:text-[#8E8D8A] hover:text-foreground"
+                aria-label="Limpiar búsqueda"
+                className="absolute right-2.5 top-1/2 -translate-y-1/2 size-8 rounded-lg text-xs text-[#6E6A63] dark:text-[#8E8D8A] hover:text-foreground flex items-center justify-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#2383E2]"
               >
                 ✕
               </button>
@@ -238,8 +246,10 @@ export const HistorialV2 = memo(function HistorialV2() {
             ].map((f) => (
               <button
                 key={f.id}
+                type="button"
+                aria-pressed={selectedEntity === f.id}
                 onClick={() => setSelectedEntity(f.id)}
-                className={`px-2.5 py-1 rounded-lg text-xs font-medium transition active:scale-[0.96] ${
+                className={`px-3 py-1.5 min-h-[36px] rounded-lg text-xs font-medium transition active:scale-[0.96] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#2383E2] flex items-center justify-center ${
                   selectedEntity === f.id
                     ? "bg-[#191918] dark:bg-white text-white dark:text-[#0C0C0B] font-semibold"
                     : "bg-[#FAF8F5] dark:bg-white/[0.03] border border-[#E4E0D8] dark:border-white/10 text-[#6E6A63] dark:text-[#8E8D8A] hover:text-foreground"
@@ -262,8 +272,10 @@ export const HistorialV2 = memo(function HistorialV2() {
             ].map((f) => (
               <button
                 key={f.id}
+                type="button"
+                aria-pressed={selectedAction === f.id}
                 onClick={() => setSelectedAction(f.id)}
-                className={`px-2.5 py-1 rounded-lg text-xs font-medium transition active:scale-[0.96] ${
+                className={`px-3 py-1.5 min-h-[36px] rounded-lg text-xs font-medium transition active:scale-[0.96] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#2383E2] flex items-center justify-center ${
                   selectedAction === f.id
                     ? "bg-[#191918] dark:bg-white text-white dark:text-[#0C0C0B] font-semibold"
                     : "bg-[#FAF8F5] dark:bg-white/[0.03] border border-[#E4E0D8] dark:border-white/10 text-[#6E6A63] dark:text-[#8E8D8A] hover:text-foreground"
@@ -376,8 +388,10 @@ export const HistorialV2 = memo(function HistorialV2() {
 
                             {changesCount > 2 && (
                               <button
+                                type="button"
+                                aria-expanded={isExpanded}
                                 onClick={() => toggleExpand(entry.id)}
-                                className="text-[11px] font-semibold text-[#2383E2] flex items-center gap-1 pt-0.5 hover:underline"
+                                className="text-[11px] font-semibold text-[#2383E2] flex items-center gap-1 py-1 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#2383E2] rounded"
                               >
                                 {isExpanded ? (
                                   <>
@@ -407,7 +421,7 @@ export const HistorialV2 = memo(function HistorialV2() {
                 <Button
                   onClick={handleLoadMore}
                   variant="outline"
-                  className="rounded-xl border-[#E4E0D8] dark:border-white/10 text-xs font-mono-tabular px-6 py-2 h-auto"
+                  className="rounded-xl border-[#E4E0D8] dark:border-white/10 text-xs font-mono-tabular px-6 py-2.5 min-h-[44px] h-auto focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#2383E2]"
                 >
                   Cargar más registros ({visibleCount} de {filteredEntries.length})
                 </Button>

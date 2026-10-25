@@ -1734,15 +1734,15 @@
     "semantic_hash": ""
   },
   ".agent/workflow/01_ARCHITECT_PLAN.md": {
-    "mtime": 1792889043.7126517,
-    "seen": 1792889662.6897519,
+    "mtime": 1792889736.4414334,
+    "seen": 1792890522.0260255,
     "ast_hash": "645a94f055c10a301ea5d4db53a00382",
     "semantic_hash": ""
   },
   ".agent/workflow/02_OPENCODE_TASKS.md": {
-    "mtime": 1792889057.4596653,
-    "seen": 1792889662.6897535,
-    "ast_hash": "ef0189d3cc84542da0536debdde1d89f",
+    "mtime": 1792890508.7302258,
+    "seen": 1792890522.0260274,
+    "ast_hash": "d8544788b46acb207aab69504b6ace60",
     "semantic_hash": ""
   },
   ".agent/workflow/03_ANTIGRAVITY_REVIEW.md": {
@@ -1986,15 +1986,15 @@
     "semantic_hash": ""
   },
   "src/components/anual/AnualV2.tsx": {
-    "mtime": 1792889494.0441601,
-    "seen": 1792889662.6892965,
-    "ast_hash": "3e93d61a45a131ffa007eaf8270d2fe2",
+    "mtime": 1792890175.7913096,
+    "seen": 1792890522.0253193,
+    "ast_hash": "9c8df0e2f03b661fe2d139b45e784699",
     "semantic_hash": ""
   },
   "src/components/historial/HistorialV2.tsx": {
-    "mtime": 1792889199.6848147,
-    "seen": 1792889662.6893508,
-    "ast_hash": "53dfb9775c40f25bb8a313fc783509d3",
+    "mtime": 1792890246.6277683,
+    "seen": 1792890522.0254219,
+    "ast_hash": "065420d79ab9feed1b666319527474b9",
     "semantic_hash": ""
   },
   "src/pages/AjustesClassic.tsx": {
@@ -2022,15 +2022,15 @@
     "semantic_hash": ""
   },
   "src/pages/LoginV2.tsx": {
-    "mtime": 1792889373.597014,
-    "seen": 1792889662.689569,
-    "ast_hash": "1ef4cec0094efbff18cbcb710278f622",
+    "mtime": 1792890347.6463697,
+    "seen": 1792890522.025781,
+    "ast_hash": "cbee9329690559f10cc72e8fd1ae9d92",
     "semantic_hash": ""
   },
   "src/pages/ajustes/AjustesV2.tsx": {
-    "mtime": 1792889293.39292,
-    "seen": 1792889662.6895857,
-    "ast_hash": "af37b1800cadc1c75a1303b6f9bf4597",
+    "mtime": 1792890285.5370066,
+    "seen": 1792890522.0258036,
+    "ast_hash": "52a8696db7adc2925b63f32274db694a",
     "semantic_hash": ""
   },
   "src/pages/login/auth-helpers.ts": {
@@ -2040,9 +2040,9 @@
     "semantic_hash": ""
   },
   "src/test/ui-version-secondary.test.tsx": {
-    "mtime": 1792889617.0279162,
-    "seen": 1792889662.6897082,
-    "ast_hash": "815bfab212caf01775eed2fe17c94e7b",
+    "mtime": 1792890375.7895277,
+    "seen": 1792890522.0259693,
+    "ast_hash": "2f3b6d2edcbebdfa356a2a11d55b719e",
     "semantic_hash": ""
   }
 }

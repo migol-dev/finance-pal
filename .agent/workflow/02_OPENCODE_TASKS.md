@@ -99,10 +99,10 @@
 
 - [x] **Tarea F6.8 — Verificación Integral, Accesibilidad y Grafo de Conocimiento:**
   - `npx tsc --noEmit`: 0 errores.
-  - `npx vitest run`: 37 archivos de prueba, 263/263 pruebas pasando (100% éxito, 0 regresiones).
+  - `npx vitest run`: 37 archivos de prueba, 269/269 pruebas pasando (100% éxito, 0 regresiones).
   - `npm run lint`: 0 errores.
-  - `npm run build`: Compilación de producción exitosa en 13.91s con optimización de chunks.
-  - Accesibilidad: Contraste AAA (> 14:1) en textos sobre lienzo claro/oscuro, focus rings visibles, aria-labels en botones de icono, labels semánticos en inputs de login.
+  - `npm run build`: Compilación de producción exitosa en 14.81s con optimización de chunks.
+  - Accesibilidad: Contraste AAA (> 14:1) en textos sobre lienzo claro/oscuro, focus rings visibles (`focus-visible:ring-2 focus-visible:ring-[#2383E2]`), aria-labels en botones de icono, touch targets >= 44px, estados `aria-pressed` y `aria-expanded`, y corrección de semántica HTML (`<h2>` reemplazado por `<span>` dentro de `<button>` en AjustesV2).
   - Grafo de conocimiento: Actualizado con `graphify update .` (2053 nodos, 6223 aristas, 140 comunidades).
 
 ---
@@ -114,6 +114,9 @@
 | `S6-ISS-01` | `src/pages/ajustes/AjustesHub.tsx` | `Cannot read properties of undefined (reading 'accentColor')` | Al invocar `AjustesClassic` con `appSettings` indefinido (snapshots/tests legacy), se accedía directamente a propiedades sin fallback | Solucionado con encadenamiento opcional `appSettings?.accentColor ?? "emerald"` |
 | `S6-ISS-02` | `src/components/anual/AnualV2.tsx` | `URL.createObjectURL is not a function` en jsdom | jsdom no implementa `URL.createObjectURL` por defecto | Se añadió guardia defensiva `typeof URL.createObjectURL === "function"` y mock en tests |
 | `S6-ISS-03` | `src/pages/ajustes/AjustesV2.tsx` | Múltiples elementos con texto de categorías en pruebas de renderizado | Renderizar la sección por defecto en la columna de detalle duplicaba el título | Se implementó panel de bienvenida en columna de detalle cuando `seccionParam` es nulo |
+| `S6-ISS-04` | `src/components/historial/HistorialV2.tsx` | `TypeError: Converting circular structure to JSON` | Si un objeto en `changeLog` contiene referencias circulares en `from`/`to`, `JSON.stringify` fallaba | Se protegió con `try/catch` retornando `"[Objeto]"` |
+| `S6-ISS-05` | `src/pages/ajustes/AjustesV2.tsx` | Elemento `<h2>` anidado dentro de `<button>` interactivo | Infracción de especificación W3C HTML5 y accesibilidad de lectores de pantalla | Reemplazado por `<span>` conservando tipografía idéntica |
+| `S6-ISS-06` | Vistas secundarias v2 | Touch targets < 44px y falta de focus rings visibles | Botones con tamaños compactos (`size-7`, `h-9`, `py-1`) no cumplían la meta de 44px ni anillos visibles | Elevados a `min-h-[44px]` y estilizados con `focus-visible:ring-2` |
 
 ---
 
@@ -122,13 +125,14 @@
 | # Checkpoint | Hash Commit | Tareas Cubiertas | Resultado Build / Test | Resumen de Cambios |
 | :--- | :--- | :--- | :--- | :--- |
 | `CP-S6-01` | `1c1b0ae` | `F6.1 - F6.8` | `PASS (tsc + vitest 263/263 + lint + build)` | `Implementación completa de Sprint 6: AnualV2, HistorialV2, AjustesV2 (Master-Detail), LoginV2 (asimetría 5/7), auth-helpers, despachadores duales y suite de 28 tests` |
+| `CP-S6-02` | `f7aef0d` | `F6.1 - F6.8 (A11y & Edge Cases)` | `PASS (tsc + vitest 269/269 + lint + build)` | `Auditoría y pulido final de accesibilidad: touch targets >= 44px, focus rings visibles, corrección de semántica HTML en AjustesV2, protección contra estructuras circulares en HistorialV2 y 6 tests de casos límite` |
 
 ---
 
 ## 5. Resumen de Entrega de Fase 2 (Construcción Concluida)
 
 - **Estado de Compilación Local (`npx tsc --noEmit`):** `PASS (0 errores)`
-- **Resultado de Tests (`npx vitest run`):** `PASS (263/263 passing, 37 archivos de prueba, 100%)`
+- **Resultado de Tests (`npx vitest run`):** `PASS (269/269 passing, 37 archivos de prueba, 100%)`
 - **Resultado de Linter (`npm run lint`):** `PASS (0 errores)`
-- **Resultado de Build (`npm run build`):** `PASS (13.91s, chunks optimizados)`
+- **Resultado de Build (`npm run build`):** `PASS (14.81s, chunks optimizados)`
 - **Grafo de Conocimiento (`graphify`):** Actualizado (`2053 nodos, 6223 edges, 140 comunidades`)

@@ -516,4 +516,99 @@ describe("Sprint 6 — Vistas Secundarias & Despachadores Duales Suite", () => {
       expect(screen.getByRole("button", { name: /Verificar código/i })).toBeInTheDocument();
     });
   });
+
+  /* ─────────────────────────────────────────────────────────────
+     6. CASOS LÍMITE & ACCESIBILIDAD (EDGE CASES & A11Y AUDIT)
+     ───────────────────────────────────────────────────────────── */
+  describe("Casos Límite & Accesibilidad (A11y & Edge Cases)", () => {
+    it("AnualV2 maneja serie anual con ingresos = 0 y gastos > 0 sin mostrar NaN%", () => {
+      mockState.transactions = [
+        {
+          id: "tx-gasto",
+          concept: "Gasto sin ingreso",
+          amount: 5000,
+          type: "expense",
+          category: "Servicios",
+          date: "2026-03-10T10:00:00.000Z",
+          paymentMethod: "card",
+          accountId: "acc-1",
+        },
+      ];
+      mockState.fixedItems = [];
+      mockState.debts = [];
+      mockState.goals = [];
+
+      renderWithProviders(<Anual />);
+      expect(screen.queryByText(/NaN/i)).toBeNull();
+      expect(screen.getByText("0.0%")).toBeInTheDocument();
+    });
+
+    it("AnualV2 permite activar fila mensual con teclado (Enter)", () => {
+      renderWithProviders(<Anual />);
+      const octRow = screen.getByRole("button", { name: /Ver detalle mensual de Oct/i });
+      fireEvent.keyDown(octRow, { key: "Enter", code: "Enter" });
+      expect(mockSetActive).toHaveBeenCalledWith(2026, 9);
+    });
+
+    it("HistorialV2 maneja objetos circulares en 'from' y 'to' sin lanzar excepción", () => {
+      const circularObj: any = { field: "meta" };
+      circularObj.self = circularObj;
+
+      mockState.changeLog = [
+        {
+          id: "log-circular",
+          at: "2026-10-24T19:00:00.000Z",
+          entity: "goal",
+          entityId: "goal-1",
+          action: "update",
+          label: "Cambio con estructura circular",
+          changes: [{ field: "meta_data", from: circularObj, to: circularObj }],
+        },
+      ];
+
+      renderWithProviders(<Historial />);
+      expect(screen.getByText("Cambio con estructura circular")).toBeInTheDocument();
+      expect(screen.getAllByText("[Objeto]").length).toBeGreaterThanOrEqual(1);
+    });
+
+    it("HistorialV2 refleja estado aria-pressed en las píldoras de filtro", () => {
+      renderWithProviders(<Historial />);
+      const movimientosPill = screen.getByRole("button", { name: "Movimientos" });
+      expect(movimientosPill).toHaveAttribute("aria-pressed", "false");
+
+      fireEvent.click(movimientosPill);
+      expect(movimientosPill).toHaveAttribute("aria-pressed", "true");
+    });
+
+    it("HistorialV2 permite paginar con el botón 'Cargar más registros'", () => {
+      // Generar 50 registros para forzar paginación (PAGE_SIZE = 40)
+      const manyLogs: ChangeLogEntry[] = Array.from({ length: 50 }, (_, i) => ({
+        id: `log-batch-${i}`,
+        at: new Date(2026, 9, 20, 10, i).toISOString(),
+        entity: "transaction",
+        entityId: `tx-${i}`,
+        action: "create",
+        label: `Movimiento generado ${i}`,
+        changes: [],
+      }));
+      mockState.changeLog = manyLogs;
+
+      renderWithProviders(<Historial />);
+      const loadMoreBtn = screen.getByRole("button", { name: /Cargar más registros/i });
+      expect(loadMoreBtn).toBeInTheDocument();
+      expect(loadMoreBtn).toHaveTextContent("40 de 50");
+
+      fireEvent.click(loadMoreBtn);
+      // Al cargar más, todos los 50 se muestran y el botón desaparece
+      expect(screen.queryByRole("button", { name: /Cargar más registros/i })).toBeNull();
+      expect(screen.getByText("Movimiento generado 49")).toBeInTheDocument();
+    });
+
+    it("AjustesV2 se renderiza limpiamente cuando appSettings tiene propiedades parciales", () => {
+      mockState.appSettings = { uiVersion: "v2" } as any;
+      renderWithProviders(<Ajustes />);
+      expect(screen.getByRole("heading", { name: "Ajustes" })).toBeInTheDocument();
+      expect(screen.getByText("01")).toBeInTheDocument();
+    });
+  });
 });
