@@ -100,7 +100,7 @@
 | # Checkpoint | Hash Commit | Tareas Cubiertas | Resultado Build / Test | Resumen de Cambios |
 | :--- | :--- | :--- | :--- | :--- |
 | `CP-S5-01` | `1336f9f` | `F5.1 - F5.6` | `PASS (tsc + vitest 230/230 + lint)` | `Implementación base de Sprint 5: DeudasV2, MetasV2, despachadores duales y extracciones clásicas` |
-| `CP-S5-02` | `(En builder)` | `F5.1 - F5.6 (Auditoría & Endurecimiento)` | `PASS (tsc + vitest 235/235 + lint)` | `Corrección de schema en debtPaymentSchema (receipt/transfer), de-boxing Warm Editorial Wealth (cero 3-card grids), subida/vista de comprobantes en abonos, gestión completa de carpetas (editar/eliminar), soporte móvil para deep-linking y 24 tests unitarios e integración` |
+| `CP-S5-02` | `5dbd6bb` | `F5.1 - F5.6 (Auditoría & Endurecimiento)` | `PASS (tsc + vitest 235/235 + lint)` | `Corrección de schema en debtPaymentSchema (receipt/transfer), de-boxing Warm Editorial Wealth (cero 3-card grids), subida/vista de comprobantes en abonos, gestión completa de carpetas (editar/eliminar), soporte móvil para deep-linking y 24 tests unitarios e integración` |
 
 ---
 
