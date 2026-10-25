@@ -121,7 +121,7 @@
 
 | # Checkpoint | Hash Commit | Tareas Cubiertas | Resultado Build / Test | Resumen de Cambios |
 | :--- | :--- | :--- | :--- | :--- |
-| `CP-S6-01` | Pendiente | `F6.1 - F6.8` | `PASS (tsc + vitest 263/263 + lint + build)` | `Implementación completa de Sprint 6: AnualV2, HistorialV2, AjustesV2 (Master-Detail), LoginV2 (asimetría 5/7), auth-helpers, despachadores duales y suite de 28 tests` |
+| `CP-S6-01` | `1c1b0ae` | `F6.1 - F6.8` | `PASS (tsc + vitest 263/263 + lint + build)` | `Implementación completa de Sprint 6: AnualV2, HistorialV2, AjustesV2 (Master-Detail), LoginV2 (asimetría 5/7), auth-helpers, despachadores duales y suite de 28 tests` |
 
 ---
 
