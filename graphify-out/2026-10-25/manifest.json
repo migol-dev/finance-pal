@@ -732,9 +732,9 @@
     "semantic_hash": ""
   },
   "src/hooks/useFinanceData.ts": {
-    "mtime": 1792953515.6615243,
-    "seen": 1792955078.1916225,
-    "ast_hash": "12b98d97fb17617df6751e321702950c",
+    "mtime": 1792955437.4226925,
+    "seen": 1792955497.9756281,
+    "ast_hash": "0a4d42b807aca609072920fffb548feb",
     "semantic_hash": ""
   },
   "src/hooks/useNetwork.ts": {
@@ -786,9 +786,9 @@
     "semantic_hash": ""
   },
   "src/lib/finance.ts": {
-    "mtime": 1792953334.5060897,
-    "seen": 1792955078.1916397,
-    "ast_hash": "43a39377442d9499b4a37cc5d4b0ab0c",
+    "mtime": 1792955412.5636065,
+    "seen": 1792955497.9757118,
+    "ast_hash": "1a0687b982f9cbbd671a152af94a1375",
     "semantic_hash": ""
   },
   "src/lib/framer.tsx": {
@@ -1176,9 +1176,9 @@
     "semantic_hash": "e6cc29d3683c114c1f5884eeab05400d"
   },
   "src/store/slices/settings-slice.ts": {
-    "mtime": 1792953419.7991185,
-    "seen": 1792955078.1918085,
-    "ast_hash": "7b3be1c55ed02c477516dc9744e51815",
+    "mtime": 1792955416.168619,
+    "seen": 1792955497.9760962,
+    "ast_hash": "f2c2d0f9a011cb40392fe812a23407ba",
     "semantic_hash": ""
   },
   "src/store/slices/transaction-slice.ts": {
@@ -1452,9 +1452,9 @@
     "semantic_hash": "343b36c40f47cfcbdc108fe7edccc49a"
   },
   ".agent/task.md": {
-    "mtime": 1792952815.8304594,
-    "seen": 1792955078.1919353,
-    "ast_hash": "096becd93049955e32eda9269228b3a6",
+    "mtime": 1792955189.1318436,
+    "seen": 1792955497.9764233,
+    "ast_hash": "945b80bf1b123fa8a28112eda1613e54",
     "semantic_hash": ""
   },
   ".github/dependabot.yml": {
@@ -1740,9 +1740,9 @@
     "semantic_hash": ""
   },
   ".agent/workflow/02_OPENCODE_TASKS.md": {
-    "mtime": 1792952813.9774506,
-    "seen": 1792955078.191939,
-    "ast_hash": "a2b5a40ad27783f17d25c8aba4320853",
+    "mtime": 1792955171.680785,
+    "seen": 1792955497.9764369,
+    "ast_hash": "02e8ded42094c961c0e56ad9b46faf02",
     "semantic_hash": ""
   },
   ".agent/workflow/03_ANTIGRAVITY_REVIEW.md": {
@@ -1986,9 +1986,9 @@
     "semantic_hash": ""
   },
   "src/components/anual/AnualV2.tsx": {
-    "mtime": 1792953208.390212,
-    "seen": 1792955078.1914027,
-    "ast_hash": "c391d9cec05ad5d4a7c04d5808c5dc14",
+    "mtime": 1792955421.9946392,
+    "seen": 1792955497.9749565,
+    "ast_hash": "c33d7306c15be40ae4ab0b4128f525d9",
     "semantic_hash": ""
   },
   "src/components/historial/HistorialV2.tsx": {
@@ -2079,6 +2079,12 @@
     "mtime": 1792954972.7711263,
     "seen": 1792955078.1918776,
     "ast_hash": "0b8d3bec610de03fd1d18146df20c7f4",
+    "semantic_hash": ""
+  },
+  ".agent/workflow/03_REVIEW_REPORT.md": {
+    "mtime": 1792955494.5538905,
+    "seen": 1792955548.3640864,
+    "ast_hash": "325fbc706749d9281b5e6003f5ea87bd",
     "semantic_hash": ""
   }
 }
