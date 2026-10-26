@@ -110,7 +110,7 @@ export function GoalDetailContent({
             <IconDisplay icon={iconFor(goal)} size="lg" className="bg-white/20 shadow-xl shrink-0" />
           )}
           <div className="min-w-0 flex-1">
-            <h2 className="text-xl sm:text-2xl font-black truncate leading-tight">{goal.name}</h2>
+            <h2 className="text-xl sm:text-2xl font-black line-clamp-2 break-words leading-tight">{goal.name}</h2>
             <p className="text-xs font-bold opacity-80 flex items-center gap-1.5 mt-0.5">
               <CalendarDays className="size-3.5 shrink-0" />
               <span>{parsedDeadline ? fmtDate(parsedDeadline) : "Sin fecha límite"}</span>

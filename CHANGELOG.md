@@ -1,5 +1,14 @@
 # Changelog
 
+## [2.0.0] - 2026-10-25
+
+### Finance Pal v2 — Warm Editorial Wealth & Optimización Nativa Android
+- **Evolución visual y de arquitectura v2 (Warm Editorial Wealth)**: Nueva paleta cromática editorial cálida (`#FAF8F5` Alabaster / `#0C0C0B` Obsidian), tipografías Fraunces y Plus Jakarta Sans con números tabulares en JetBrains Mono, y eliminación de clichés de interfaz genérica (regla del 60% de canvas, sin cards anidadas).
+- **Optimización 60fps y Scroll Táctil en Bottom Sheets (`Drawer`)**: Desactivación del reescalado 3D de fondo en `vaul`, desacoplamiento del drag handle superior respecto al cuerpo interno (`data-vaul-no-drag` y `touch-pan-y`), permitiendo scroll vertical fluido en Deudas, Metas, Movimientos y Registro Rápido sin bloqueos táctiles en Android WebView.
+- **Login Mobile-First**: Reordenamiento responsivo del formulario de autenticación para aparecer inmediatamente al tope en dispositivos móviles sin requerir scroll vertical.
+- **Corrección de Textos y Cabeceras en Móvil**: Eliminación de avatares redundantes, visualización completa sin truncar de títulos y subtítulos largos en Metas, Deudas y Anual, protección del indicador de sincronización en la nube y nuevo selector estilizado de comprobantes.
+- **Actualización de Identidad Nativa Android**: Nuevo icono vectorial de alta resolución v2 (monograma FP esmeralda sobre obsidiana `#121211`), iconos adaptativos Android con safe zone del 66%, splash screens oscuras sincronizadas y actualización a `versionName 2.0.0` (código `20000`).
+
 ## [1.21.0] - 2026-10-11
 
 ### Sistema Integral de Notificaciones Inteligentes y Autonomas (Web/PWA, Android y Nube)

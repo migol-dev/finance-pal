@@ -342,7 +342,7 @@ export function LoginV2() {
       <div className="w-full max-w-6xl mx-auto px-4 sm:px-6 py-8 sm:py-12">
         <div className="grid grid-cols-1 lg:grid-cols-12 rounded-3xl border border-[#E4E0D8] dark:border-white/10 bg-white dark:bg-[#141413] overflow-hidden shadow-sm">
           {/* BRAND COLUMN (5 cols on lg:): Editorial Narrative & Security */}
-          <div className="lg:col-span-5 p-8 sm:p-12 border-b lg:border-b-0 lg:border-r border-[#E4E0D8] dark:border-white/10 flex flex-col justify-between bg-[#FAF8F5]/60 dark:bg-white/[0.01]">
+          <div className="order-2 lg:order-1 lg:col-span-5 p-8 sm:p-12 border-t lg:border-t-0 lg:border-r border-[#E4E0D8] dark:border-white/10 flex flex-col justify-between bg-[#FAF8F5]/60 dark:bg-white/[0.01]">
             <div className="space-y-6">
               <div className="flex items-center gap-3">
                 <BrandLogo size="md" />
@@ -417,8 +417,20 @@ export function LoginV2() {
           </div>
 
           {/* FORM COLUMN (7 cols on lg:): Clean De-boxed Authentication */}
-          <div className="lg:col-span-7 p-8 sm:p-12 flex flex-col justify-center">
+          <div className="order-1 lg:order-2 lg:col-span-7 p-8 sm:p-12 flex flex-col justify-center">
             <div className="w-full max-w-md mx-auto space-y-6">
+              {/* Mobile Brand Header (Visible only on < lg) */}
+              <div className="flex lg:hidden items-center gap-3 pb-5 border-b border-[#E4E0D8] dark:border-white/10">
+                <BrandLogo size="md" />
+                <div>
+                  <h2 className="font-display-v2 text-xl font-normal leading-tight">
+                    Finance Pal
+                  </h2>
+                  <span className="text-[10px] font-mono-tabular uppercase tracking-wider text-[#6E6A63] dark:text-[#8E8D8A]">
+                    Gestión patrimonial privada
+                  </span>
+                </div>
+              </div>
               {/* Form Header with Dynamic Theme Switcher */}
               <div className="flex items-start justify-between gap-3">
                 <div>

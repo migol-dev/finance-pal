@@ -96,7 +96,7 @@ export const QuickTransactionSheet = memo(function QuickTransactionSheet() {
 
   return (
     <Drawer open={isOpen} onOpenChange={(open) => !open && closeQuickTx()}>
-      <DrawerContent className="max-w-lg mx-auto bg-card border-border/80 text-foreground px-4 pb-6 pt-2 rounded-t-[20px] shadow-2xl">
+      <DrawerContent className="max-w-lg mx-auto bg-card border-t border-border text-foreground px-4 pb-8 rounded-t-2xl">
         <DrawerHeader className="text-left px-0 pb-3">
           <div className="flex items-center justify-between">
             <DrawerTitle className="text-lg font-bold font-display-v2 tracking-tight text-foreground">
@@ -168,7 +168,6 @@ export const QuickTransactionSheet = memo(function QuickTransactionSheet() {
                 step="0.01"
                 min="0.01"
                 required
-                autoFocus
                 placeholder="0.00"
                 value={amount}
                 onChange={(e) => setAmount(e.target.value)}

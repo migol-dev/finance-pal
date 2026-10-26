@@ -39,6 +39,7 @@ import {
   ExternalLink,
   SlidersHorizontal,
   Wallet,
+  Upload,
 } from "lucide-react";
 import { motion, AnimatePresence } from "@/lib/framer";
 import { toast } from "sonner";
@@ -427,10 +428,11 @@ export function MovimientosV2() {
           <div className="flex items-center gap-2">
             <Button
               onClick={() => handleOpenNew("expense")}
-              className="h-9 px-3.5 rounded-lg bg-primary text-primary-foreground font-medium text-xs shadow-sm hover:opacity-90 active:scale-[0.98] transition-transform duration-100 ease-[cubic-bezier(0.22,1,0.36,1)] flex items-center gap-1.5"
+              className="h-9 px-2.5 sm:px-3.5 rounded-lg bg-primary text-primary-foreground font-medium text-xs shadow-sm hover:opacity-90 active:scale-[0.98] transition-transform duration-100 ease-[cubic-bezier(0.22,1,0.36,1)] flex items-center gap-1.5 shrink-0"
             >
               <Plus className="size-3.5" strokeWidth={1.75} />
-              <span>Nuevo movimiento</span>
+              <span className="hidden sm:inline">Nuevo movimiento</span>
+              <span className="sm:hidden">Movimiento</span>
             </Button>
           </div>
         }
@@ -975,9 +977,9 @@ export function MovimientosV2() {
 
       {/* DRAWER MÓVIL (< lg): Inspección y Edición al pulsar una fila */}
       <Drawer open={isMobileDrawerOpen} onOpenChange={setIsMobileDrawerOpen}>
-        <DrawerContent className="lg:hidden max-h-[85vh] overflow-y-auto px-4 pb-6">
+        <DrawerContent className="lg:hidden max-h-[90dvh] px-4 pb-10">
           <DrawerHeader className="text-left px-0 pb-2">
-            <DrawerTitle className="font-display-v2 text-lg font-bold truncate">
+            <DrawerTitle className="font-display-v2 text-lg font-bold line-clamp-2 break-words leading-snug">
               {selectedRow?.concept ?? "Detalle"}
             </DrawerTitle>
             <DrawerDescription className="text-xs text-muted-foreground">
@@ -1512,26 +1514,36 @@ function TransactionEditForm({
       {/* Comprobante */}
       <div>
         <Label className="text-[11px]">Comprobante (opcional)</Label>
-        <Input
-          type="file"
-          accept="image/*"
-          onChange={(e) => {
-            const file = e.target.files?.[0];
-            if (!file) return;
-            const reader = new FileReader();
-            reader.onload = () => {
-              setReceipt(typeof reader.result === "string" ? reader.result : undefined);
-            };
-            reader.readAsDataURL(file);
-          }}
-          className="h-8 text-xs rounded-lg mt-1 file:mr-2 file:py-0.5 file:px-2 file:rounded-md file:border-0 file:text-xs file:bg-muted"
-        />
+        <label
+          htmlFor="edit-receipt-upload"
+          className="flex items-center justify-center gap-2 h-8 px-3 rounded-lg border border-dashed border-[#E4E0D8] dark:border-white/15 bg-muted/30 hover:bg-muted/60 text-xs text-muted-foreground hover:text-foreground cursor-pointer transition mt-1 active:scale-[0.99]"
+        >
+          <Upload className="size-3.5 text-primary shrink-0" strokeWidth={1.75} />
+          <span className="truncate">
+            {receipt ? "Comprobante adjuntado (toca para cambiar)" : "Adjuntar comprobante o imagen"}
+          </span>
+          <input
+            id="edit-receipt-upload"
+            type="file"
+            accept="image/*"
+            className="sr-only"
+            onChange={(e) => {
+              const file = e.target.files?.[0];
+              if (!file) return;
+              const reader = new FileReader();
+              reader.onload = () => {
+                setReceipt(typeof reader.result === "string" ? reader.result : undefined);
+              };
+              reader.readAsDataURL(file);
+            }}
+          />
+        </label>
         {receipt && (
           <div className="relative mt-1.5 inline-block">
             <img
               src={receipt}
               alt="Comprobante"
-              className="rounded-lg max-h-24 object-contain bg-black/5 dark:bg-white/5 p-1"
+              className="rounded-lg max-h-24 object-contain bg-black/5 dark:bg-white/5 p-1 border border-[#E4E0D8] dark:border-white/10"
             />
             <button
               type="button"
@@ -1811,26 +1823,36 @@ function TransactionCreateForm({
       {/* Comprobante */}
       <div>
         <Label className="text-xs">Comprobante (opcional)</Label>
-        <Input
-          type="file"
-          accept="image/*"
-          onChange={(e) => {
-            const file = e.target.files?.[0];
-            if (!file) return;
-            const reader = new FileReader();
-            reader.onload = () => {
-              setReceipt(typeof reader.result === "string" ? reader.result : undefined);
-            };
-            reader.readAsDataURL(file);
-          }}
-          className="h-9 text-xs rounded-lg mt-1 file:mr-2 file:py-1 file:px-2 file:rounded-md file:border-0 file:text-xs file:bg-muted"
-        />
+        <label
+          htmlFor="new-receipt-upload"
+          className="flex items-center justify-center gap-2 h-9 px-3 rounded-lg border border-dashed border-[#E4E0D8] dark:border-white/15 bg-muted/30 hover:bg-muted/60 text-xs text-muted-foreground hover:text-foreground cursor-pointer transition mt-1 active:scale-[0.99]"
+        >
+          <Upload className="size-3.5 text-primary shrink-0" strokeWidth={1.75} />
+          <span className="truncate">
+            {receipt ? "Comprobante adjuntado (toca para cambiar)" : "Adjuntar imagen o comprobante"}
+          </span>
+          <input
+            id="new-receipt-upload"
+            type="file"
+            accept="image/*"
+            className="sr-only"
+            onChange={(e) => {
+              const file = e.target.files?.[0];
+              if (!file) return;
+              const reader = new FileReader();
+              reader.onload = () => {
+                setReceipt(typeof reader.result === "string" ? reader.result : undefined);
+              };
+              reader.readAsDataURL(file);
+            }}
+          />
+        </label>
         {receipt && (
           <div className="relative mt-2 inline-block">
             <img
               src={receipt}
               alt="Comprobante"
-              className="rounded-lg max-h-24 object-contain bg-black/5 dark:bg-white/5 p-1"
+              className="rounded-lg max-h-24 object-contain bg-black/5 dark:bg-white/5 p-1 border border-[#E4E0D8] dark:border-white/10"
             />
             <button
               type="button"

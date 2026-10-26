@@ -27,6 +27,7 @@ import {
   ArrowDownLeft,
   Calendar,
   FileText,
+  Upload,
   SlidersHorizontal,
 } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
@@ -209,10 +210,11 @@ export function DeudasV2() {
         action={
           <Button
             onClick={() => setOpenNewModal(true)}
-            className="rounded-xl gradient-primary text-primary-foreground border-0 shadow-glow h-10 text-xs sm:text-sm px-3 sm:px-4 font-medium"
+            className="rounded-xl gradient-primary text-primary-foreground border-0 shadow-glow h-9 sm:h-10 text-xs sm:text-sm px-2.5 sm:px-4 font-medium shrink-0"
           >
-            <Plus className="size-4 mr-1.5" />
-            <span>Nueva Deuda</span>
+            <Plus className="size-3.5 sm:size-4 mr-1 sm:mr-1.5" />
+            <span className="hidden sm:inline">Nueva Deuda</span>
+            <span className="sm:hidden">Deuda</span>
           </Button>
         }
       />
@@ -581,7 +583,7 @@ export function DeudasV2() {
 
       {/* Drawer Móvil (< lg) */}
       <Drawer open={isMobileDrawerOpen} onOpenChange={setIsMobileDrawerOpen}>
-        <DrawerContent className="max-h-[88dvh] overflow-y-auto px-4 pb-8">
+        <DrawerContent className="max-h-[90dvh] px-4 pb-10">
           <DrawerHeader className="text-left px-0 pt-4 pb-2">
             <DrawerTitle className="font-display-v2 text-lg">Detalle de Deuda</DrawerTitle>
             <DrawerDescription className="text-xs text-muted-foreground">
@@ -800,7 +802,7 @@ function DebtInspectorContent({
               </span>
             )}
           </div>
-          <h3 className="font-display-v2 text-xl font-bold tracking-tight text-foreground truncate">
+          <h3 className="font-display-v2 text-lg sm:text-xl font-bold tracking-tight text-foreground line-clamp-2 break-words leading-snug">
             {debt.person}
           </h3>
           <p className="text-xs text-muted-foreground truncate">{debt.concept}</p>
@@ -877,11 +879,11 @@ function DebtInspectorContent({
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-2">
+          <div className="grid grid-cols-1 min-[380px]:grid-cols-2 gap-2">
             <div>
               <Label className="text-[11px]">Método</Label>
               <Select value={paymentMethod} onValueChange={(v) => setPaymentMethod(v as PaymentMethod)}>
-                <SelectTrigger className="h-9 text-xs rounded-lg">
+                <SelectTrigger className="h-9 text-xs rounded-lg px-2.5">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -896,7 +898,7 @@ function DebtInspectorContent({
             <div>
               <Label className="text-[11px]">Cuenta</Label>
               <Select value={accountId} onValueChange={setAccountId}>
-                <SelectTrigger className="h-9 text-xs rounded-lg">
+                <SelectTrigger className="h-9 text-xs rounded-lg px-2.5">
                   <SelectValue placeholder="Seleccionar" />
                 </SelectTrigger>
                 <SelectContent>
@@ -933,28 +935,38 @@ function DebtInspectorContent({
                 </button>
               )}
             </div>
-            <Input
-              type="file"
-              accept="image/*"
-              onChange={(e) => {
-                const file = e.target.files?.[0];
-                if (file) {
-                  const reader = new FileReader();
-                  reader.onload = () => {
-                    if (typeof reader.result === "string") {
-                      setReceiptData(reader.result);
-                    }
-                  };
-                  reader.readAsDataURL(file);
-                }
-              }}
-              className="h-9 text-xs rounded-lg file:mr-2 file:py-1 file:px-2 file:rounded-md file:border-0 file:text-[11px] file:font-semibold file:bg-primary/10 file:text-primary hover:file:bg-primary/20"
-            />
+            <label
+              htmlFor="debt-receipt-upload"
+              className="flex items-center justify-center gap-2 h-9 px-3 rounded-lg border border-dashed border-[#E4E0D8] dark:border-white/15 bg-muted/30 hover:bg-muted/60 text-xs text-muted-foreground hover:text-foreground cursor-pointer transition active:scale-[0.99]"
+            >
+              <Upload className="size-3.5 text-primary shrink-0" strokeWidth={1.75} />
+              <span className="truncate">
+                {receiptData ? "Comprobante adjuntado (toca para cambiar)" : "Adjuntar imagen o comprobante"}
+              </span>
+              <input
+                id="debt-receipt-upload"
+                type="file"
+                accept="image/*"
+                className="sr-only"
+                onChange={(e) => {
+                  const file = e.target.files?.[0];
+                  if (file) {
+                    const reader = new FileReader();
+                    reader.onload = () => {
+                      if (typeof reader.result === "string") {
+                        setReceiptData(reader.result);
+                      }
+                    };
+                    reader.readAsDataURL(file);
+                  }
+                }}
+              />
+            </label>
             {receiptData && (
               <img
                 src={receiptData}
                 alt="Vista previa del comprobante"
-                className="mt-1.5 rounded-lg max-h-24 object-contain border border-[#E4E0D8] dark:border-white/10"
+                className="mt-2 rounded-lg max-h-24 object-contain border border-[#E4E0D8] dark:border-white/10"
               />
             )}
           </div>

@@ -256,13 +256,13 @@ export function MetasV2() {
           </span>
         }
         action={
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1.5 sm:gap-2">
             <Button
               onClick={() => handleOpenNewFolder()}
               variant="outline"
-              className="h-10 rounded-xl px-3 text-xs sm:text-sm font-medium border-[#E4E0D8] dark:border-white/10"
+              className="h-9 sm:h-10 rounded-xl px-2.5 sm:px-3 text-xs sm:text-sm font-medium border-[#E4E0D8] dark:border-white/10 shrink-0"
             >
-              <FolderPlus className="size-4 mr-1.5" />
+              <FolderPlus className="size-3.5 sm:size-4 mr-1 sm:mr-1.5" />
               <span className="hidden sm:inline">Nueva Carpeta</span>
               <span className="sm:hidden">Carpeta</span>
             </Button>
@@ -271,10 +271,11 @@ export function MetasV2() {
                 setEditingGoal(null);
                 setOpenGoalModal(true);
               }}
-              className="rounded-xl gradient-primary text-primary-foreground border-0 shadow-glow h-10 text-xs sm:text-sm px-3 sm:px-4 font-medium"
+              className="rounded-xl gradient-primary text-primary-foreground border-0 shadow-glow h-9 sm:h-10 text-xs sm:text-sm px-2.5 sm:px-4 font-medium shrink-0"
             >
-              <Plus className="size-4 mr-1.5" />
-              <span>Nueva Meta</span>
+              <Plus className="size-3.5 sm:size-4 mr-1 sm:mr-1.5" />
+              <span className="hidden sm:inline">Nueva Meta</span>
+              <span className="sm:hidden">Meta</span>
             </Button>
           </div>
         }
@@ -556,21 +557,21 @@ export function MetasV2() {
                     }`}
                   >
                     <div className="flex items-start justify-between gap-3 mb-2">
-                      <div className="flex items-center gap-3 min-w-0">
+                      <div className="flex items-center gap-3 min-w-0 flex-1">
                         <IconDisplay
                           icon={g.icon ?? { kind: "emoji", value: g.emoji || "🎯" }}
                           size="md"
                         />
-                        <div className="min-w-0">
-                          <div className="flex items-center gap-1.5">
-                            <h4 className="text-sm font-bold truncate text-foreground">
+                        <div className="min-w-0 flex-1">
+                          <div className="flex items-center gap-1.5 flex-wrap">
+                            <h4 className="text-sm font-bold line-clamp-2 break-words text-foreground">
                               {g.name}
                             </h4>
                             {g.pinned && (
                               <Pin className="size-3 text-primary fill-primary shrink-0" />
                             )}
                             {completed && (
-                              <span className="text-[10px] font-bold uppercase bg-emerald-600 text-white px-2 py-0.2 rounded-full flex items-center gap-0.5">
+                              <span className="text-[10px] font-bold uppercase bg-emerald-600 text-white px-2 py-0.2 rounded-full flex items-center gap-0.5 shrink-0">
                                 <CheckCircle2 className="size-2.5" /> Cumplida
                               </span>
                             )}
@@ -685,7 +686,7 @@ export function MetasV2() {
 
       {/* Drawer Móvil (< lg) */}
       <Drawer open={isMobileDrawerOpen} onOpenChange={setIsMobileDrawerOpen}>
-        <DrawerContent className="max-h-[88dvh] overflow-y-auto px-4 pb-8">
+        <DrawerContent className="max-h-[90dvh] px-4 pb-10">
           <DrawerHeader className="text-left px-0 pt-4 pb-2">
             <DrawerTitle className="font-display-v2 text-lg">Detalle de Meta</DrawerTitle>
             <DrawerDescription className="text-xs text-muted-foreground">
@@ -917,53 +918,54 @@ function GoalInspectorContent({
   return (
     <div className="rounded-2xl border border-[#E4E0D8] dark:border-white/10 bg-card p-5 shadow-xs space-y-5">
       {/* Cabecera del Inspector */}
-      <div className="flex items-start justify-between pb-3 border-b border-[#E4E0D8] dark:border-white/10">
-        <div className="flex items-center gap-3 min-w-0 pr-2">
-          <IconDisplay
-            icon={goal.icon ?? { kind: "emoji", value: goal.emoji || "🎯" }}
-            size="lg"
-          />
-          <div className="min-w-0">
-            <h3 className="font-display-v2 text-xl font-bold tracking-tight text-foreground truncate">
-              {goal.name}
-            </h3>
+      <div className="pb-3 border-b border-[#E4E0D8] dark:border-white/10 space-y-2.5">
+        <div className="flex items-center justify-between gap-2">
+          <div className="flex items-center gap-2.5 min-w-0">
+            <IconDisplay
+              icon={goal.icon ?? { kind: "emoji", value: goal.emoji || "🎯" }}
+              size="md"
+            />
             {goal.purchaseUrl && (
               <a
                 href={normalizeUrl(goal.purchaseUrl)}
                 target="_blank"
                 rel="noreferrer"
-                className="inline-flex items-center gap-1 text-[11px] text-primary hover:underline mt-0.5 truncate"
+                className="inline-flex items-center gap-1 text-[11px] text-primary hover:underline truncate"
               >
                 <ExternalLink className="size-3" /> Ver producto
               </a>
             )}
           </div>
+
+          <div className="flex items-center gap-1.5 shrink-0">
+            <button
+              onClick={onTogglePin}
+              className={`size-8 rounded-lg flex items-center justify-center transition ${
+                goal.pinned
+                  ? "bg-primary/10 text-primary"
+                  : "text-muted-foreground hover:text-foreground hover:bg-muted"
+              }`}
+              title={goal.pinned ? "Desfijar meta" : "Fijar meta al inicio"}
+            >
+              <Pin className={`size-3.5 ${goal.pinned ? "fill-primary" : ""}`} />
+            </button>
+            <Button size="sm" variant="outline" onClick={onEdit} className="h-8 text-xs rounded-lg gap-1 px-2.5">
+              <Pencil className="size-3" strokeWidth={1.5} />
+              <span>Editar</span>
+            </Button>
+            <button
+              onClick={onClose}
+              className="size-8 rounded-lg flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted transition"
+              title="Cerrar panel"
+            >
+              <X className="size-4" />
+            </button>
+          </div>
         </div>
 
-        <div className="flex items-center gap-1.5 shrink-0">
-          <button
-            onClick={onTogglePin}
-            className={`size-8 rounded-lg flex items-center justify-center transition ${
-              goal.pinned
-                ? "bg-primary/10 text-primary"
-                : "text-muted-foreground hover:text-foreground hover:bg-muted"
-            }`}
-            title={goal.pinned ? "Desfijar meta" : "Fijar meta al inicio"}
-          >
-            <Pin className={`size-3.5 ${goal.pinned ? "fill-primary" : ""}`} />
-          </button>
-          <Button size="sm" variant="outline" onClick={onEdit} className="h-8 text-xs rounded-lg gap-1">
-            <Pencil className="size-3" strokeWidth={1.5} />
-            <span>Editar</span>
-          </Button>
-          <button
-            onClick={onClose}
-            className="size-8 rounded-lg flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted transition"
-            title="Cerrar panel"
-          >
-            <X className="size-4" />
-          </button>
-        </div>
+        <h3 className="font-display-v2 text-lg sm:text-xl font-bold tracking-tight text-foreground line-clamp-2 break-words leading-snug">
+          {goal.name}
+        </h3>
       </div>
 
       {/* Métricas Principales */}

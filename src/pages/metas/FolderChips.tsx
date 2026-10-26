@@ -101,7 +101,7 @@ export function FolderChips({
               </span>
             </button>
           </DrawerTrigger>
-          <DrawerContent className="max-h-[85dvh] p-4 pt-2">
+          <DrawerContent className="max-h-[90dvh] px-4 pb-8">
             <DrawerHeader className="px-1 text-left pb-2">
               <DrawerTitle className="text-base font-extrabold flex items-center gap-2">
                 <FolderOpen className="size-5 text-primary" />
@@ -112,7 +112,7 @@ export function FolderChips({
               </DrawerDescription>
             </DrawerHeader>
 
-            <div className="overflow-y-auto max-h-[60dvh] pt-2 pb-6 px-1">
+            <div className="pt-2 pb-6 px-1">
               <FolderTree
                 folderTree={folderTree}
                 goals={goals}

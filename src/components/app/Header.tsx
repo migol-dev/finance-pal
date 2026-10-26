@@ -28,14 +28,28 @@ export const Header = memo(function Header({
       className="px-4 sm:px-5 lg:px-6 pt-4 sm:pt-5 pb-3 sm:pb-4 flex items-start justify-between gap-2.5 sm:gap-3"
     >
       <div className="flex items-center gap-2.5 sm:gap-3 min-w-0 flex-1">
-        {profile.avatar && <IconDisplay icon={profile.avatar} size="sm" />}
+        {profile.avatar && (
+          <div className="hidden lg:block shrink-0">
+            <IconDisplay icon={profile.avatar} size="sm" />
+          </div>
+        )}
         <div className="min-w-0 flex-1">
           {greet && <p className="text-xs text-muted-foreground font-medium truncate">{greet}</p>}
           <div className="flex items-center gap-2 min-w-0">
-            <h1 className="text-xl sm:text-2xl lg:text-3xl font-extrabold tracking-tight truncate min-w-0">{title}</h1>
-            {isSupabaseEnabled && <SyncIndicator compact />}
+            <h1 className="text-xl sm:text-2xl lg:text-3xl font-extrabold tracking-tight line-clamp-2 break-words leading-tight min-w-0">
+              {title}
+            </h1>
+            {isSupabaseEnabled && (
+              <div className="shrink-0 flex items-center">
+                <SyncIndicator compact />
+              </div>
+            )}
           </div>
-          {subtitle && <p className="text-xs lg:text-sm text-muted-foreground mt-0.5 truncate">{subtitle}</p>}
+          {subtitle && (
+            <div className="text-xs lg:text-sm text-muted-foreground mt-0.5 line-clamp-2 leading-snug">
+              {subtitle}
+            </div>
+          )}
         </div>
       </div>
       <div className="shrink-0 flex items-center gap-1.5 sm:gap-2">

@@ -87,7 +87,7 @@ export const MoreNavSheet = memo(function MoreNavSheet({
   return (
     <Drawer open={open} onOpenChange={onOpenChange}>
       <DrawerContent
-        className="max-h-[85dvh] px-4 pb-8 focus:outline-none"
+        className="max-h-[90dvh] px-4 pb-10 focus:outline-none"
         aria-label="Menú de navegación extendido"
       >
         <div className="mx-auto w-full max-w-md space-y-5">

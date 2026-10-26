@@ -71,3 +71,17 @@ scratchpad/
 __pycache__/
 .vercel
 .env*
+
+# Android Keystores & Release Binaries (Private keys & build artifacts)
+*.jks
+*.keystore
+*.p12
+*.pem
+android/**/*.jks
+android/**/*.keystore
+android/app/release/release/
+android/app/build/
+
+# Graphify cache
+graphify-out/cache/
+graphify-out/
