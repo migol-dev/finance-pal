@@ -454,8 +454,8 @@ const App = () => {
             {booting && <SplashScreen />}
             <BrowserRouter>
               <AuthGuard />
-              {/* Update notification - non-intrusive, checks GitHub releases */}
-              <UpdateNotification position="bottom" autoHideSeconds={30} />
+              {/* Update notification - non-intrusive, checks GitHub releases on Android */}
+              <UpdateNotification />
             </BrowserRouter>
           </AuthProvider>
         </TooltipProvider>

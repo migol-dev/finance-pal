@@ -1,159 +1,216 @@
-import { useState, useEffect } from 'react';
-import { motion, AnimatePresence } from '@/lib/framer';
+import { useEffect, useState } from 'react';
+import { App as CapApp } from '@capacitor/app';
+import { ChevronDown, Download, Loader2, X } from 'lucide-react';
+import { AnimatePresence, motion } from '@/lib/framer';
+import { BrandLogo } from '@/components/app/BrandLogo';
 import { Button } from '@/components/ui/button';
-import { Github, X, Loader2 } from 'lucide-react';
-import { checkForUpdates, dismissVersion, VersionInfo } from '@/lib/version-check';
+import { useAppUpdate } from '@/hooks/useAppUpdate';
+import { formatApkSize } from '@/lib/version-check';
+import { cn } from '@/lib/utils';
 
-interface UpdateNotificationProps {
-  /** Position of the notification */
-  position?: 'top' | 'bottom';
-  /** Auto-hide after seconds (0 = never) */
+export interface UpdateNotificationProps {
+  /** Auto-hide after seconds (0 = never, default) */
   autoHideSeconds?: number;
-  /** Custom check interval override (hours) */
-  checkIntervalHours?: number;
+}
+
+function formatVersionTag(version: string | undefined | null): string {
+  const clean = (version ?? '').trim().replace(/^v/i, '');
+  return clean ? `v${clean}` : '';
 }
 
 /**
- * Non-intrusive update notification banner
- * Shows at top/bottom of screen when new version available
+ * Non-intrusive top editorial update banner for native Android builds.
+ * Never renders on Web/PC and avoids colliding with BottomNavV2.
  */
 export function UpdateNotification({
-  position = 'bottom',
-  autoHideSeconds = 30,
-  checkIntervalHours: _checkIntervalHours = 6,
+  autoHideSeconds = 0,
 }: UpdateNotificationProps = {}) {
-  const [updateInfo, setUpdateInfo] = useState<VersionInfo | null>(null);
-  const [checking, setChecking] = useState(false);
-  const [dismissed, setDismissed] = useState(false);
+  const {
+    isNativeAndroid,
+    currentVersion,
+    updateInfo,
+    downloading,
+    shouldShowBanner,
+    checkAuto,
+    downloadUpdate,
+    dismissBanner,
+  } = useAppUpdate();
+
+  const [notesOpen, setNotesOpen] = useState(false);
+  const [autoHidden, setAutoHidden] = useState(false);
 
   useEffect(() => {
-    let mounted = true;
-    let hideTimer: ReturnType<typeof setTimeout>;
+    setNotesOpen(false);
+    setAutoHidden(false);
+  }, [updateInfo?.latest]);
 
-    async function check() {
-      if (dismissed) return;
-      setChecking(true);
-      
-      try {
-        const info = await checkForUpdates();
-        if (mounted && info) {
-          setUpdateInfo(info);
-          // Auto-hide timer
-          if (autoHideSeconds > 0) {
-            hideTimer = setTimeout(() => {
-              if (mounted) setUpdateInfo(null);
-            }, autoHideSeconds * 1000);
-          }
-        }
-      } catch (e) {
-        console.warn('Update check failed:', e);
-      } finally {
-        if (mounted) setChecking(false);
+  useEffect(() => {
+    if (!isNativeAndroid) return;
+
+    let cancelled = false;
+    let handle: Awaited<ReturnType<typeof CapApp.addListener>> | undefined;
+
+    const initTimer = setTimeout(() => {
+      if (!cancelled) {
+        void checkAuto();
       }
+    }, 1500);
+
+    try {
+      Promise.resolve(
+        CapApp.addListener('appStateChange', ({ isActive }) => {
+          if (!cancelled && isActive) {
+            void checkAuto();
+          }
+        })
+      )
+        .then((listenerHandle) => {
+          if (cancelled) {
+            void listenerHandle?.remove();
+          } else {
+            handle = listenerHandle;
+          }
+        })
+        .catch(() => {
+          // Ignore listener registration errors in non-native environments
+        });
+    } catch {
+      // Ignore synchronous listener registration errors
     }
 
-    // Initial check after short delay (don't block startup)
-    const initTimer = setTimeout(check, 2000);
-    
     return () => {
-      mounted = false;
+      cancelled = true;
       clearTimeout(initTimer);
-      if (hideTimer) clearTimeout(hideTimer);
+      void handle?.remove();
     };
-  }, [dismissed, autoHideSeconds]);
+  }, [isNativeAndroid, checkAuto]);
 
-  if (!updateInfo || dismissed) return null;
+  useEffect(() => {
+    if (!isNativeAndroid || !shouldShowBanner || !updateInfo || autoHideSeconds <= 0) {
+      return;
+    }
+    const hideTimer = setTimeout(() => {
+      setAutoHidden(true);
+    }, autoHideSeconds * 1000);
+    return () => clearTimeout(hideTimer);
+  }, [isNativeAndroid, shouldShowBanner, updateInfo, autoHideSeconds]);
 
-  const handleDismiss = () => {
-    setDismissed(true);
-    setUpdateInfo(null);
-    dismissVersion(updateInfo.latest);
-  };
+  if (!isNativeAndroid || !shouldShowBanner || !updateInfo || autoHidden) {
+    return null;
+  }
 
-  const handleUpdate = () => {
-    window.open(updateInfo.releaseUrl, '_blank', 'noopener,noreferrer');
-    dismissVersion(updateInfo.latest);
-    setDismissed(true);
-    setUpdateInfo(null);
-  };
-
-  const isTop = position === 'top';
+  const currentTag = formatVersionTag(updateInfo.current || currentVersion);
+  const latestTag = formatVersionTag(updateInfo.latest);
+  const versionBadge =
+    currentTag && latestTag && currentTag !== latestTag
+      ? `${currentTag} -> ${latestTag}`
+      : latestTag || currentTag;
+  const apkSizeLabel = formatApkSize(updateInfo.apkSizeBytes);
+  const releaseNotes = updateInfo.releaseNotes?.trim();
 
   return (
     <AnimatePresence>
       <motion.div
-        initial={{ opacity: 0, translateY: isTop ? -100 : 100 }}
-        animate={{ opacity: 1, translateY: 0 }}
-        exit={{ opacity: 0, translateY: isTop ? -100 : 100 }}
-        transition={{ type: 'spring', damping: 25, stiffness: 300 }}
-        className={`
-          fixed ${isTop ? 'top-0' : 'bottom-0'} left-4 right-4 z-[9999]
-          pointer-events-auto
-          ${isTop ? 'md:top-4 md:left-auto md:right-4 md:w-96' : 'md:bottom-4 md:left-auto md:right-4 md:w-96'}
-        `}
-        style={{ maxWidth: '480px', margin: '0 auto' }}
+        role="region"
+        aria-label="Actualización disponible"
+        initial={{ opacity: 0, y: -16 }}
+        animate={{ opacity: 1, y: 0 }}
+        exit={{ opacity: 0, y: -16 }}
+        transition={{ duration: 0.28, ease: [0.22, 1, 0.36, 1] }}
+        className="fixed top-[max(0.75rem,env(safe-area-inset-top))] inset-x-3 sm:left-auto sm:right-4 sm:w-[400px] z-[90] pointer-events-auto"
       >
-        <div className="relative bg-card border border-border shadow-2xl rounded-2xl overflow-hidden">
-          {/* Gradient accent bar */}
-          <div className="absolute top-0 left-0 right-0 h-1 gradient-primary" />
-          
+        <div className="rounded-xl bg-popover/95 dark:bg-[#141413]/95 backdrop-blur-md text-foreground border border-border dark:border-white/10 dark:border-t-white/15 shadow-lg shadow-black/10 dark:shadow-black/40 overflow-hidden">
           <div className="p-4 space-y-3">
-            <div className="flex items-start justify-between gap-3">
-              <div className="flex items-center gap-2.5 flex-1 min-w-0">
-                <div className="flex-shrink-0 size-9 rounded-xl bg-primary/10 flex items-center justify-center">
-                  <Github className="size-5 text-primary" />
-                </div>
-                <div className="min-w-0">
-                  <p className="font-semibold text-sm truncate">Actualización disponible</p>
-                  <p className="text-xs text-muted-foreground truncate">
-                    Versión {updateInfo.latest} • {updateInfo.isPreRelease ? 'Beta' : 'Estable'}
-                  </p>
-                </div>
+            <div className="flex items-start justify-between gap-2">
+              <div className="flex items-center gap-2.5 min-w-0 flex-1 flex-wrap">
+                <BrandLogo size="xs" />
+                {versionBadge && (
+                  <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-medium font-mono-tabular bg-primary/10 text-primary border border-primary/20">
+                    {versionBadge}
+                  </span>
+                )}
+                {apkSizeLabel && (
+                  <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-medium font-mono-tabular bg-muted text-muted-foreground border border-border/70">
+                    {apkSizeLabel}
+                  </span>
+                )}
               </div>
+
               <button
-                onClick={handleDismiss}
-                className="flex-shrink-0 size-8 rounded-lg hover:bg-accent text-muted-foreground transition-colors"
+                type="button"
+                onClick={dismissBanner}
                 aria-label="Descartar"
+                className="inline-flex items-center justify-center shrink-0 min-h-[44px] min-w-[44px] -mr-2 -mt-2 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted/70 transition-colors tactile-press"
               >
-                <X className="size-4" />
+                <X className="size-4" strokeWidth={1.75} />
               </button>
             </div>
 
-            {updateInfo.releaseNotes && (
-              <details className="group">
-                <summary className="flex items-center gap-2 text-xs text-muted-foreground cursor-pointer list-none">
-                  <Loader2 className="size-3.5 text-primary animate-spin" />
+            <div className="min-w-0">
+              <h2 className="font-display-v2 text-base font-bold tracking-tight text-foreground leading-snug">
+                Actualización disponible
+              </h2>
+              <p className="text-xs text-muted-foreground mt-0.5 leading-relaxed">
+                {updateInfo.apkDownloadUrl
+                  ? 'Descarga directa de financemate.apk'
+                  : 'Disponible en GitHub Releases'}
+              </p>
+            </div>
+
+            {releaseNotes && (
+              <div className="space-y-2">
+                <button
+                  type="button"
+                  aria-expanded={notesOpen}
+                  onClick={() => setNotesOpen((prev) => !prev)}
+                  className="w-full flex items-center justify-between gap-2 px-2.5 py-2 min-h-[44px] rounded-lg text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-muted/60 transition-colors"
+                >
                   <span>Ver novedades</span>
-                  <span className="ml-auto text-[10px] opacity-50">▼</span>
-                </summary>
-                <div className="mt-2 p-3 bg-accent/50 rounded-xl text-xs text-muted-foreground whitespace-pre-line max-h-32 overflow-y-auto">
-                  {updateInfo.releaseNotes.slice(0, 500)}{updateInfo.releaseNotes.length > 500 ? '...' : ''}
-                </div>
-              </details>
+                  <ChevronDown
+                    className={cn(
+                      'size-3.5 transition-transform duration-200',
+                      notesOpen && 'rotate-180'
+                    )}
+                    strokeWidth={1.75}
+                  />
+                </button>
+
+                {notesOpen && (
+                  <div className="bg-muted/50 border-t border-border/60 rounded-lg p-3 text-xs text-muted-foreground whitespace-pre-line max-h-36 overflow-y-auto">
+                    {releaseNotes}
+                  </div>
+                )}
+              </div>
             )}
 
-            <div className="flex gap-2 pt-1">
+            <div className="flex items-center gap-2 pt-0.5">
               <Button
-                onClick={handleUpdate}
-                className="flex-1 h-10 rounded-xl gradient-primary text-primary-foreground border-0 shadow-glow font-medium"
-                disabled={checking}
+                type="button"
+                onClick={() => {
+                  void downloadUpdate();
+                }}
+                disabled={downloading}
+                className="flex-1 h-auto bg-primary text-primary-foreground hover:bg-primary/90 rounded-lg min-h-[44px] px-4 font-medium tactile-press gap-0"
               >
-                {checking ? (
-                  <>
-                    <Loader2 className="size-4 animate-spin mr-2" />
-                    Comprobando...
-                  </>
+                {downloading ? (
+                  <Loader2 className="size-4 mr-2 animate-spin" strokeWidth={1.75} />
                 ) : (
-                  <>
-                    <Github className="size-4 mr-2" />
-                    Ver en GitHub
-                  </>
+                  <Download className="size-4 mr-2" strokeWidth={1.75} />
                 )}
+                <span>
+                  {downloading
+                    ? 'Iniciando descarga...'
+                    : updateInfo.apkDownloadUrl
+                      ? 'Descargar APK'
+                      : 'Ver actualización'}
+                </span>
               </Button>
+
               <Button
+                type="button"
                 variant="ghost"
-                onClick={handleDismiss}
-                className="h-10 rounded-xl px-4 text-sm font-medium"
+                onClick={dismissBanner}
+                className="h-auto rounded-lg min-h-[44px] px-4 text-sm font-medium text-muted-foreground hover:text-foreground tactile-press"
               >
                 Luego
               </Button>
