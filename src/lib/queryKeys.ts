@@ -11,6 +11,7 @@ export const financeKeys = {
   goalFolders: () => ['goal_folders'] as const,
   debts: () => ['debts'] as const,
   userSettings: (userId: string) => ['user_settings', userId] as const,
+  receiptUrl: (path: string) => ['receipt_url', path] as const,
 } as const;
 
 export type FinanceQueryKey =
@@ -20,4 +21,5 @@ export type FinanceQueryKey =
   | ReturnType<typeof financeKeys.fixedItems>
   | ReturnType<typeof financeKeys.goals>
   | ReturnType<typeof financeKeys.goalFolders>
-  | ReturnType<typeof financeKeys.userSettings>;
+  | ReturnType<typeof financeKeys.userSettings>
+  | ReturnType<typeof financeKeys.receiptUrl>;

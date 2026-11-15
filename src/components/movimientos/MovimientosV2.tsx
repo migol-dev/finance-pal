@@ -26,6 +26,9 @@ import { IconDisplay } from "@/components/app/IconDisplay";
 import { IconPicker } from "@/components/app/IconPicker";
 import { ElegantConfirm } from "@/components/app/ElegantConfirm";
 import { CategorySelectWithCreate } from "@/components/app/CategorySelectWithCreate";
+import { ReceiptPreview } from "@/components/app/ReceiptPreview";
+import { prepareReceiptImage } from "@/lib/receipt-pipeline";
+import { isSupabaseEnabled } from "@/lib/supabase";
 import {
   Search,
   Plus,
@@ -112,6 +115,7 @@ export function MovimientosV2() {
     addTx,
     updateTx,
     removeTx,
+    uploadReceipt,
     removeDebt,
     removeDebtPayment,
     activeYear,
@@ -122,6 +126,28 @@ export function MovimientosV2() {
     syncFiltersToURL,
     setSyncFiltersToURL,
   } = useFinanceData();
+
+  const syncInlineReceipt = useCallback(
+    async (txId: string | void, receiptValue?: string) => {
+      if (
+        !txId ||
+        !receiptValue ||
+        !receiptValue.startsWith("data:image/") ||
+        !uploadReceipt ||
+        !isSupabaseEnabled
+      ) {
+        return;
+      }
+      const match = receiptValue.match(/^data:(image\/[^;]+);base64,/);
+      const mimeType = match?.[1] || "image/webp";
+      try {
+        await uploadReceipt({ transactionId: txId, file: receiptValue, mimeType });
+      } catch {
+        // Respaldo local comprimido permanece intacto si no hay red
+      }
+    },
+    [uploadReceipt]
+  );
 
   const categoriesMap = useMemo(
     () => getCategoriesMap(customCategories),
@@ -935,6 +961,7 @@ export function MovimientosV2() {
                     accounts={accounts}
                     onSave={(updated) => {
                       updateTx(selectedRow.id, updated);
+                      void syncInlineReceipt(selectedRow.id, updated.receipt);
                       setIsEditingSelected(false);
                       toast.success("Movimiento actualizado");
                     }}
@@ -1013,6 +1040,7 @@ export function MovimientosV2() {
                   accounts={accounts}
                   onSave={(updated) => {
                     updateTx(selectedRow.id, updated);
+                    void syncInlineReceipt(selectedRow.id, updated.receipt);
                     setIsEditingSelected(false);
                     setIsMobileDrawerOpen(false);
                     toast.success("Movimiento actualizado");
@@ -1077,7 +1105,12 @@ export function MovimientosV2() {
             activeYear={activeYear}
             activeMonth={activeMonth}
             onSave={(newTx) => {
-              addTx(newTx);
+              const maybeIdPromise = addTx(newTx);
+              if (newTx.receipt?.startsWith("data:image/")) {
+                void Promise.resolve(maybeIdPromise).then((createdId) =>
+                  syncInlineReceipt(createdId, newTx.receipt)
+                );
+              }
               setIsNewModalOpen(false);
               toast.success("Movimiento registrado");
             }}
@@ -1233,11 +1266,7 @@ function TransactionDetailView({
           <span className="text-[10px] uppercase font-bold tracking-wider text-muted-foreground block">
             Comprobante adjunto
           </span>
-          <img
-            src={receipt}
-            alt="Comprobante"
-            className="rounded-lg max-h-48 w-full object-contain bg-black/5 dark:bg-white/5 p-1"
-          />
+          <ReceiptPreview receipt={receipt} imgClassName="max-h-48 w-full" />
         </div>
       )}
 
@@ -1525,35 +1554,28 @@ function TransactionEditForm({
           <input
             id="edit-receipt-upload"
             type="file"
-            accept="image/*"
+            accept="image/jpeg,image/png,image/webp"
             className="sr-only"
-            onChange={(e) => {
+            onChange={async (e) => {
               const file = e.target.files?.[0];
+              e.target.value = "";
               if (!file) return;
-              const reader = new FileReader();
-              reader.onload = () => {
-                setReceipt(typeof reader.result === "string" ? reader.result : undefined);
-              };
-              reader.readAsDataURL(file);
+              try {
+                const prepared = await prepareReceiptImage(file);
+                setReceipt(prepared.dataUrl);
+              } catch (err) {
+                toast.error(err instanceof Error ? err.message : "No se pudo procesar el comprobante");
+              }
             }}
           />
         </label>
         {receipt && (
-          <div className="relative mt-1.5 inline-block">
-            <img
-              src={receipt}
-              alt="Comprobante"
-              className="rounded-lg max-h-24 object-contain bg-black/5 dark:bg-white/5 p-1 border border-[#E4E0D8] dark:border-white/10"
-            />
-            <button
-              type="button"
-              onClick={() => setReceipt(undefined)}
-              className="absolute top-1 right-1 size-5 rounded-full bg-black/70 text-white flex items-center justify-center text-xs hover:bg-black"
-              title="Quitar comprobante"
-            >
-              <X className="size-3" />
-            </button>
-          </div>
+          <ReceiptPreview
+            receipt={receipt}
+            compact
+            className="mt-1.5"
+            onRemove={() => setReceipt(undefined)}
+          />
         )}
       </div>
 
@@ -1834,35 +1856,28 @@ function TransactionCreateForm({
           <input
             id="new-receipt-upload"
             type="file"
-            accept="image/*"
+            accept="image/jpeg,image/png,image/webp"
             className="sr-only"
-            onChange={(e) => {
+            onChange={async (e) => {
               const file = e.target.files?.[0];
+              e.target.value = "";
               if (!file) return;
-              const reader = new FileReader();
-              reader.onload = () => {
-                setReceipt(typeof reader.result === "string" ? reader.result : undefined);
-              };
-              reader.readAsDataURL(file);
+              try {
+                const prepared = await prepareReceiptImage(file);
+                setReceipt(prepared.dataUrl);
+              } catch (err) {
+                toast.error(err instanceof Error ? err.message : "No se pudo procesar el comprobante");
+              }
             }}
           />
         </label>
         {receipt && (
-          <div className="relative mt-2 inline-block">
-            <img
-              src={receipt}
-              alt="Comprobante"
-              className="rounded-lg max-h-24 object-contain bg-black/5 dark:bg-white/5 p-1 border border-[#E4E0D8] dark:border-white/10"
-            />
-            <button
-              type="button"
-              onClick={() => setReceipt(undefined)}
-              className="absolute top-1 right-1 size-5 rounded-full bg-black/70 text-white flex items-center justify-center text-xs hover:bg-black"
-              title="Quitar comprobante"
-            >
-              <X className="size-3" />
-            </button>
-          </div>
+          <ReceiptPreview
+            receipt={receipt}
+            compact
+            className="mt-2"
+            onRemove={() => setReceipt(undefined)}
+          />
         )}
       </div>
 

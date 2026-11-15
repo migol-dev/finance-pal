@@ -356,13 +356,17 @@ export function useFinanceData() {
       accountM.mergeAccounts.mutateAsync({ fromIds, intoId }),
 
     // transactions
-    addTx: (t: Omit<Transaction, 'id'>) => {
-      const payload = { ...t, id: generateSecureId() } as Transaction;
-      return txM.addTransaction.mutateAsync(payload);
+    addTx: async (t: Omit<Transaction, 'id'> & { id?: string }): Promise<string> => {
+      const id = t.id ?? generateSecureId();
+      const payload = { ...t, id } as Transaction;
+      await txM.addTransaction.mutateAsync(payload);
+      return id;
     },
-    addTransaction: (t: Omit<Transaction, 'id'>) => {
-      const payload = { ...t, id: generateSecureId() } as Transaction;
-      return txM.addTransaction.mutateAsync(payload);
+    addTransaction: async (t: Omit<Transaction, 'id'> & { id?: string }): Promise<string> => {
+      const id = t.id ?? generateSecureId();
+      const payload = { ...t, id } as Transaction;
+      await txM.addTransaction.mutateAsync(payload);
+      return id;
     },
     updateTx: (id: string, p: Partial<Transaction>) =>
       txM.updateTransaction.mutateAsync({ id, patch: p }),

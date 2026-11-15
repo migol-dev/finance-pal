@@ -6,6 +6,7 @@ import { uploadReceipt, deleteReceipt } from '@/services/storage.service';
 import type { ReceiptUploadInput, ReceiptUploadResult } from '@/services/storage.service';
 import { supabase } from '@/lib/supabase';
 import { financeKeys } from '@/lib/queryKeys';
+import { parseReceiptRef } from '@/lib/receipt-ref';
 import { updateTransaction } from '@/services/transactions.service';
 
 // Input para subir el recibo de una transacción específica
@@ -78,8 +79,9 @@ export function useReceiptMutations(): ReceiptMutations {
       };
       const result = await uploadReceipt(payload);
 
-      await updateTransaction(userId, input.transactionId, { receipt: result.publicUrl });
-      useFinance.getState().updateTx(input.transactionId, { receipt: result.publicUrl });
+      await updateTransaction(userId, input.transactionId, { receipt: result.receiptRef });
+      useFinance.getState().updateTx(input.transactionId, { receipt: result.receiptRef });
+      queryClient.setQueryData(financeKeys.receiptUrl(result.storagePath), result.publicUrl);
 
       return result;
     },
@@ -104,7 +106,14 @@ export function useReceiptMutations(): ReceiptMutations {
       const userId = data.user?.id;
       if (!userId) throw new Error('No user');
 
-      await deleteReceipt(input.storagePath);
+      const parsed = parseReceiptRef(input.storagePath);
+      const targetPath =
+        parsed?.kind === 'storage' ? parsed.path : input.storagePath.replace(/^\/+/, '');
+
+      if (targetPath) {
+        await deleteReceipt(targetPath);
+        queryClient.removeQueries({ queryKey: financeKeys.receiptUrl(targetPath) });
+      }
 
       await updateTransaction(userId, input.transactionId, { receipt: undefined });
       useFinance.getState().updateTx(input.transactionId, { receipt: undefined });

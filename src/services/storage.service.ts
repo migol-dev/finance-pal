@@ -1,5 +1,7 @@
 import { supabase } from '@/lib/supabase';
 import { AppError, ErrorCodes } from '@/lib/app-error';
+import { extensionForReceiptMime } from '@/lib/receipt-pipeline';
+import { toReceiptRef } from '@/lib/receipt-ref';
 // NO importar React, NO importar hooks, NO importar Zustand
 
 // Nombre del bucket en Supabase Storage
@@ -23,22 +25,27 @@ export interface ReceiptUploadInput {
 
 // Resultado de una subida exitosa
 export interface ReceiptUploadResult {
-  /** Ruta relativa dentro del bucket: "{userId}/{receiptId}" */
+  /** Ruta relativa dentro del bucket: "{userId}/{receiptId}.{ext}" */
   storagePath: string;
-  /** URL pública firmada o anónima servida por Supabase CDN */
+  /** Referencia persistente no-expirable: "sb:receipts/{userId}/{receiptId}.{ext}" */
+  receiptRef: string;
+  /** URL firmada efímera para previsualización inmediata */
   publicUrl: string;
 }
 
 /**
  * Sube un recibo a Supabase Storage.
  * Si el archivo es un data URL base64, lo convierte a Blob antes de subir.
- * Retorna la ruta de Storage y la URL pública.
+ * Retorna storagePath, receiptRef persistente (`sb:receipts/...`) y signed URL efímera.
  * Lanza AppError(ErrorCodes.STORAGE_UPLOAD_FAILED) si falla.
  */
 export async function uploadReceipt(
   input: ReceiptUploadInput
 ): Promise<ReceiptUploadResult> {
-  const storagePath = `${input.userId}/${input.receiptId}`;
+  const ext = extensionForReceiptMime(input.mimeType);
+  const hasExt = /\.(webp|jpg|jpeg|png)$/i.test(input.receiptId);
+  const fileName = hasExt ? input.receiptId : `${input.receiptId}.${ext}`;
+  const storagePath = `${input.userId}/${fileName}`;
   const blob: Blob =
     typeof input.file === 'string' ? dataUrlToBlob(input.file) : input.file;
 
@@ -54,8 +61,9 @@ export async function uploadReceipt(
     });
   }
 
-  const publicUrl = await getReceiptSignedUrl(storagePath);
-  return { storagePath, publicUrl };
+  const receiptRef = toReceiptRef(storagePath);
+  const publicUrl = await getReceiptSignedUrl(storagePath, 3600);
+  return { storagePath, receiptRef, publicUrl };
 }
 
 /**
