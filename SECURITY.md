@@ -65,8 +65,8 @@ Una vez publicada la corrección:
 
 - Código fuente de este repositorio (aplicación React/TypeScript).
 - App Android construida con Capacitor a partir de este repositorio.
-- La instancia web oficial: `https://financepal-web.vercel.app`.
-- Esquema de base de datos, políticas RLS, migraciones y Edge Functions incluidas en `supabase/`.
+- La instancia web oficial: `https://financepal-web.vercel.app` y el endpoint MCP remoto (`https://finance-pal.app/mcp`, `/.well-known/*`, `/oauth/*`) en `api/`.
+- Esquema de base de datos, políticas RLS, migraciones, Gateway RPCs MCP y Edge Functions incluidas en `supabase/`.
 - Problemas como:
   - Acceso a datos de otros usuarios (IDOR, fallos de RLS).
   - Evasión de autenticación, MFA o gestión de sesiones.
@@ -117,6 +117,7 @@ Para dar contexto a los investigadores, estas son las principales medidas de seg
 - **Validación de entradas** con esquemas Zod.
 - **Verificación de contraseñas comprometidas** (Have I Been Pwned, k-anonymity).
 - **URLs firmadas** de corta duración para comprobantes almacenados.
+- **Servidor MCP Remoto con OAuth 2.1 + PKCE (`S256`) y RFC 8707/9728**: tokens JWT de acceso corto (15 min) vinculados al recurso `https://finance-pal.app/mcp`, rotación de refresh tokens con detección de reuso, step-up MFA `aal2` obligatorio cuando el usuario tiene 2FA activo, default de **Solo Lectura (`read_only = true`)**, interruptor maestro (Kill Switch), límite de 5 conectores activos, Gateway RPCs `SECURITY DEFINER` cero-PII en PostgreSQL 17, aislamiento `<untrusted_user_note>` contra prompt injection indirecto, confirmación en 2 pasos (`prepare_soft_delete` / `confirm_soft_delete` TTL 120 s) y **Papelera de recuperación (30 días)**.
 - **Escaneo de secretos** con gitleaks y actualizaciones automáticas de dependencias con Dependabot.
 
 ---
