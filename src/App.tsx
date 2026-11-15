@@ -255,6 +255,22 @@ function AuthGuard() {
   // eslint-disable-next-line react-hooks/exhaustive-deps -- run startup sync once per session/cloudHasData transition
   }, [session?.user?.id, mfaRequired, cloudHasData]);
 
+  useEffect(() => {
+    if (!isSupabaseEnabled || !session || mfaRequired) return;
+    try {
+      const returnTo = sessionStorage.getItem('fp_oauth_return_to');
+      if (returnTo && returnTo.startsWith('/oauth/consent')) {
+        sessionStorage.removeItem('fp_oauth_return_to');
+        const current = `${window.location.pathname}${window.location.search}`;
+        if (current !== returnTo) {
+          navigate(returnTo, { replace: true });
+        }
+      }
+    } catch {
+      // Ignore storage errors in private contexts.
+    }
+  }, [isSupabaseEnabled, session, mfaRequired, navigate]);
+
   if (isSupabaseEnabled) {
     if (loading) {
       return <PageSkeleton />;
