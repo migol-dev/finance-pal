@@ -1,17 +1,17 @@
 // @vitest-environment node
 import { randomUUID } from 'node:crypto';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { resetServerEnvCacheForTests } from '../_lib/env';
-import { resetAnomalyBucketsForTests } from '../_lib/mcp/audit';
-import { sha256Base64Url, sha256Hex } from '../_lib/oauth/crypto';
+import { resetServerEnvCacheForTests } from '../_lib/env.js';
+import { resetAnomalyBucketsForTests } from '../_lib/mcp/audit.js';
+import { sha256Base64Url, sha256Hex } from '../_lib/oauth/crypto.js';
 import {
   setSupabaseAdminForTests,
   type SupabaseAdminClient,
   type VerifiedSupabaseUser,
-} from '../_lib/supabase-admin';
-import { handleMcpRequest } from '../mcp';
-import { handleOAuthRequest } from '../oauth';
-import { handleWellKnownRequest } from '../well-known';
+} from '../_lib/supabase-admin.js';
+import { handleMcpRequest } from '../mcp.js';
+import { handleOAuthRequest } from '../oauth.js';
+import { handleWellKnownRequest } from '../well-known.js';
 
 interface E2ETransactionRow {
   id: string;

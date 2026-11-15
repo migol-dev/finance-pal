@@ -1,29 +1,29 @@
 // @vitest-environment node
 import { randomUUID } from 'node:crypto';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { resetServerEnvCacheForTests } from '../_lib/env';
+import { resetServerEnvCacheForTests } from '../_lib/env.js';
 import {
   registerDynamicClient,
   resolveOAuthClient,
   OAuthClientError,
-} from '../_lib/oauth/clients';
+} from '../_lib/oauth/clients.js';
 import {
   sha256Base64Url,
   signMcpAccessToken,
   verifyMcpAccessToken,
   verifyPkceS256,
-} from '../_lib/oauth/crypto';
+} from '../_lib/oauth/crypto.js';
 import {
   assertPublicFetchableHttpsUrl,
   isAllowedCorsOrigin,
-} from '../_lib/security';
+} from '../_lib/security.js';
 import {
   setSupabaseAdminForTests,
   type SupabaseAdminClient,
   type VerifiedSupabaseUser,
-} from '../_lib/supabase-admin';
-import { handleWellKnownRequest } from '../well-known';
-import { handleOAuthRequest } from '../oauth';
+} from '../_lib/supabase-admin.js';
+import { handleWellKnownRequest } from '../well-known.js';
+import { handleOAuthRequest } from '../oauth.js';
 
 interface MockDbState {
   clients: Array<Record<string, unknown>>;

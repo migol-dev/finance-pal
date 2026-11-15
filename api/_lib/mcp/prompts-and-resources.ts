@@ -1,8 +1,8 @@
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { z } from 'zod';
-import type { McpTokenPayload } from '../oauth/crypto';
-import { getSupabaseAdmin } from '../supabase-admin';
-import { mapRpcError, recordMcpAuditLog, sanitizeUntrustedFields } from './audit';
+import type { McpTokenPayload } from '../oauth/crypto.js';
+import { getSupabaseAdmin } from '../supabase-admin.js';
+import { mapRpcError, recordMcpAuditLog, sanitizeUntrustedFields } from './audit.js';
 
 const PAYMENT_RULES_DOC = {
   payment_methods_by_account_type: {

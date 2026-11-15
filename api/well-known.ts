@@ -1,6 +1,6 @@
-import { getServerEnv } from './_lib/env';
-import { MCP_ALL_SCOPES } from './_lib/oauth/scopes';
-import { applySecurityHeaders } from './_lib/security';
+import { getServerEnv } from './_lib/env.js';
+import { MCP_ALL_SCOPES } from './_lib/oauth/scopes.js';
+import { applySecurityHeaders } from './_lib/security.js';
 
 export async function handleWellKnownRequest(request: Request): Promise<Response> {
   const env = getServerEnv();

@@ -1,8 +1,8 @@
 import net from 'node:net';
 import { z } from 'zod';
-import { assertPublicFetchableHttpsUrl, isLocalhostHostname, isPrivateOrReservedIp } from '../security';
-import type { SupabaseAdminClient } from '../supabase-admin';
-import { generateOpaqueToken } from './crypto';
+import { assertPublicFetchableHttpsUrl, isLocalhostHostname, isPrivateOrReservedIp } from '../security.js';
+import type { SupabaseAdminClient } from '../supabase-admin.js';
+import { generateOpaqueToken } from './crypto.js';
 
 export const MAX_REDIRECT_URIS = 12;
 

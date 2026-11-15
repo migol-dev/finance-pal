@@ -1,10 +1,10 @@
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { WebStandardStreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/webStandardStreamableHttp.js';
-import { getServerEnv } from './_lib/env';
-import { registerMcpResourcesAndPrompts } from './_lib/mcp/prompts-and-resources';
-import { registerReadTools } from './_lib/mcp/tools-read';
-import { MCP_WRITE_TOOL_NAMES, registerWriteTools } from './_lib/mcp/tools-write';
-import { verifyMcpAccessToken, type McpTokenPayload } from './_lib/oauth/crypto';
+import { getServerEnv } from './_lib/env.js';
+import { registerMcpResourcesAndPrompts } from './_lib/mcp/prompts-and-resources.js';
+import { registerReadTools } from './_lib/mcp/tools-read.js';
+import { MCP_WRITE_TOOL_NAMES, registerWriteTools } from './_lib/mcp/tools-write.js';
+import { verifyMcpAccessToken, type McpTokenPayload } from './_lib/oauth/crypto.js';
 import {
   PayloadTooLargeError,
   applySecurityHeaders,
@@ -12,8 +12,8 @@ import {
   isAllowedCorsOrigin,
   jsonResponse,
   readTextBodyWithLimit,
-} from './_lib/security';
-import { getSupabaseAdmin } from './_lib/supabase-admin';
+} from './_lib/security.js';
+import { getSupabaseAdmin } from './_lib/supabase-admin.js';
 
 const MAX_MCP_REQUEST_BODY_BYTES = 32 * 1024;
 const MCP_GENERAL_LIMIT_PER_MIN = 60;

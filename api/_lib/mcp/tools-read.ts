@@ -1,6 +1,6 @@
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
-import type { McpTokenPayload } from '../oauth/crypto';
-import { executeRpcTool } from './audit';
+import type { McpTokenPayload } from '../oauth/crypto.js';
+import { executeRpcTool } from './audit.js';
 import {
   getBudget602020StatusSchema,
   getFinancialOverviewSchema,
@@ -10,7 +10,7 @@ import {
   listFixedItemsSchema,
   listGoalsSchema,
   listTransactionsSchema,
-} from './schemas';
+} from './schemas.js';
 
 const READ_ANNOTATIONS = {
   readOnlyHint: true,

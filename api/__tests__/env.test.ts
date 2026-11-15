@@ -2,7 +2,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { parseServerEnv } from '../_lib/env';
+import { parseServerEnv } from '../_lib/env.js';
 
 const BASE_ENV = {
   SUPABASE_URL: 'https://rjforcrdyfuodsqtopvp.supabase.co',

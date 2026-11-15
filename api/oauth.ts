@@ -1,26 +1,26 @@
 import { randomUUID } from 'node:crypto';
 import { z } from 'zod';
-import { getServerEnv, type ServerEnv } from './_lib/env';
+import { getServerEnv, type ServerEnv } from './_lib/env.js';
 import {
   MAX_REDIRECT_URIS,
   OAuthClientError,
   registerDynamicClient,
   resolveOAuthClient,
   type OAuthClientRecord,
-} from './_lib/oauth/clients';
+} from './_lib/oauth/clients.js';
 import {
   generateOpaqueToken,
   sha256Hex,
   signMcpAccessToken,
   verifyMcpAccessToken,
   verifyPkceS256,
-} from './_lib/oauth/crypto';
+} from './_lib/oauth/crypto.js';
 import {
   MCP_READ_SCOPES,
   enforceReadOnlyScopes,
   filterValidMcpScopes,
   normalizeCanonicalResource,
-} from './_lib/oauth/scopes';
+} from './_lib/oauth/scopes.js';
 import {
   PayloadTooLargeError,
   applySecurityHeaders,
@@ -29,8 +29,8 @@ import {
   isLocalhostHostname,
   jsonResponse,
   readTextBodyWithLimit,
-} from './_lib/security';
-import { getSupabaseAdmin, type SupabaseAdminClient } from './_lib/supabase-admin';
+} from './_lib/security.js';
+import { getSupabaseAdmin, type SupabaseAdminClient } from './_lib/supabase-admin.js';
 
 const MAX_ACTIVE_GRANTS_PER_USER = 5;
 const MAX_STATE_LENGTH = 4096;

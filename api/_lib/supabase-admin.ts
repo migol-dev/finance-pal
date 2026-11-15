@@ -1,4 +1,4 @@
-import { getServerEnv, type ServerEnv } from './env';
+import { getServerEnv, type ServerEnv } from './env.js';
 
 export interface PostgrestError {
   message: string;

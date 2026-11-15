@@ -1,6 +1,6 @@
-import type { McpTokenPayload } from '../oauth/crypto';
-import type { McpScope } from '../oauth/scopes';
-import { getSupabaseAdmin } from '../supabase-admin';
+import type { McpTokenPayload } from '../oauth/crypto.js';
+import type { McpScope } from '../oauth/scopes.js';
+import { getSupabaseAdmin } from '../supabase-admin.js';
 
 const UNTRUSTED_KEYS = new Set(['concept', 'note', 'person', 'subtitle']);
 const DEFAULT_MAX_RESPONSE_BYTES = 64 * 1024;

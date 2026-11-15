@@ -1,7 +1,7 @@
 import { createHash, randomBytes, timingSafeEqual } from 'node:crypto';
 import { SignJWT, jwtVerify } from 'jose';
-import type { ServerEnv } from '../env';
-import { filterValidMcpScopes, type McpScope } from './scopes';
+import type { ServerEnv } from '../env.js';
+import { filterValidMcpScopes, type McpScope } from './scopes.js';
 
 const PKCE_VERIFIER_RE = /^[A-Za-z0-9\-._~]{43,128}$/;
 

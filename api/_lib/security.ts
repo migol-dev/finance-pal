@@ -1,6 +1,6 @@
 import { lookup } from 'node:dns/promises';
 import net from 'node:net';
-import type { ServerEnv } from './env';
+import type { ServerEnv } from './env.js';
 
 const ALLOWED_EXTERNAL_ORIGINS = new Set([
   'https://financepal-web.vercel.app',

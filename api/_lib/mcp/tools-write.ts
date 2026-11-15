@@ -1,6 +1,6 @@
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
-import { generateOpaqueToken, sha256Hex, type McpTokenPayload } from '../oauth/crypto';
-import { executeRpcTool } from './audit';
+import { generateOpaqueToken, sha256Hex, type McpTokenPayload } from '../oauth/crypto.js';
+import { executeRpcTool } from './audit.js';
 import {
   confirmSoftDeleteSchema,
   contributeGoalSchema,
@@ -12,7 +12,7 @@ import {
   recordDebtPaymentSchema,
   toggleFixedItemSchema,
   updateTransactionSchema,
-} from './schemas';
+} from './schemas.js';
 
 const WRITE_ANNOTATIONS = {
   readOnlyHint: false,

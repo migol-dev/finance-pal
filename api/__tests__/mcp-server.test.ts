@@ -1,17 +1,17 @@
 // @vitest-environment node
 import { randomUUID } from 'node:crypto';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { resetServerEnvCacheForTests, getServerEnv } from '../_lib/env';
+import { resetServerEnvCacheForTests, getServerEnv } from '../_lib/env.js';
 import {
   enforceResponseByteCap,
   resetAnomalyBucketsForTests,
   sanitizeUntrustedFields,
   wrapUntrustedUserText,
-} from '../_lib/mcp/audit';
-import { sha256Hex, signMcpAccessToken } from '../_lib/oauth/crypto';
-import { MCP_ALL_SCOPES, MCP_READ_SCOPES, type McpScope } from '../_lib/oauth/scopes';
-import { setSupabaseAdminForTests, type SupabaseAdminClient } from '../_lib/supabase-admin';
-import { handleMcpRequest } from '../mcp';
+} from '../_lib/mcp/audit.js';
+import { sha256Hex, signMcpAccessToken } from '../_lib/oauth/crypto.js';
+import { MCP_ALL_SCOPES, MCP_READ_SCOPES, type McpScope } from '../_lib/oauth/scopes.js';
+import { setSupabaseAdminForTests, type SupabaseAdminClient } from '../_lib/supabase-admin.js';
+import { handleMcpRequest } from '../mcp.js';
 
 interface RpcCallRecord {
   fnName: string;
