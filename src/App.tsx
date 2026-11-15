@@ -34,6 +34,7 @@ import { useFinance } from '@/store/finance-store';
 import { useSyncStore } from '@/store/sync-store';
 import { useSessionManager } from '@/hooks/useSessionManager';
 import { useCloudSyncMutations } from '@/hooks/mutations/useCloudSyncMutations';
+import { useRealtimeCloudSync } from '@/hooks/useRealtimeCloudSync';
 import { handleError } from '@/lib/app-error';
 import { saveEncryptedState, loadEncryptedState, isEncryptionAvailable, migrateReceiptsToEncrypted } from '@/lib/encrypted-storage';
 
@@ -137,6 +138,7 @@ function AuthGuard() {
   }, [appSettings.conflictResolved, resolved]);
   const [cloudHasData, setCloudHasData] = React.useState<boolean | null>(null);
   const { sessionState, otherDevice, resume, requestTakeover } = useSessionManager();
+  useRealtimeCloudSync(session?.user?.id, !mfaRequired);
   const set = useFinance.setState;
   const navigate = useNavigate();
   const checkingCloudRef = useRef(false);

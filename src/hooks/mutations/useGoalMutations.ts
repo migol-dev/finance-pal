@@ -19,6 +19,19 @@ export interface ContributeToGoalInput {
   amount: number;
   date?: string;
   accountId?: string;
+  txId?: string;
+}
+
+const pendingContributionTxIds = new WeakMap<ContributeToGoalInput, string>();
+
+function resolveContributionTxId(input: ContributeToGoalInput): string {
+  if (input.txId) return input.txId;
+  let existing = pendingContributionTxIds.get(input);
+  if (!existing) {
+    existing = crypto.randomUUID();
+    pendingContributionTxIds.set(input, existing);
+  }
+  return existing;
 }
 
 export interface GoalMutations {
@@ -108,6 +121,7 @@ export function useGoalMutations(): GoalMutations {
       const state = useFinance.getState();
       const updatedGoal = state.goals.find(g => g.id === input.id);
       const goalName = updatedGoal?.name ?? 'Meta';
+      const txId = resolveContributionTxId(input);
 
       if (!isSupabaseEnabled || isOffline()) {
         if (updatedGoal) {
@@ -123,8 +137,9 @@ export function useGoalMutations(): GoalMutations {
         useSyncStore.getState().addMutation({
           table: 'transactions',
           action: 'INSERT',
-          recordId: crypto.randomUUID(),
+          recordId: txId,
           payload: {
+            id: txId,
             type: input.amount >= 0 ? 'saving' : 'income',
             category: 'Meta',
             concept: `${input.amount >= 0 ? 'Aporte' : 'Retiro'} ${goalName}`,
@@ -142,11 +157,13 @@ export function useGoalMutations(): GoalMutations {
 
       await addGoalContributionService(data.user.id, input.id, {
         ...input,
+        txId,
         goalName,
       });
     },
-    onMutate: async ({ id, amount, date, accountId }) => {
-      useFinance.getState().contributeGoal(id, amount, date, accountId);
+    onMutate: async (input) => {
+      const txId = resolveContributionTxId(input);
+      useFinance.getState().contributeGoal(input.id, input.amount, input.date, input.accountId, txId);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: financeKeys.goals() });

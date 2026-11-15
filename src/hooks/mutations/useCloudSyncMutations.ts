@@ -1,9 +1,8 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import type { UseMutationResult } from '@tanstack/react-query';
 import { useFinance } from '@/store/finance-store';
-import { isSupabaseEnabled } from '@/lib/supabase';
-import { supabase } from '@/lib/supabase';
-import { financeKeys } from '@/lib/queryKeys';
+import { isSupabaseEnabled, supabase } from '@/lib/supabase';
+import { invalidateAllFinanceEntityQueries } from '@/lib/queryKeys';
 import {
   downloadAllFromCloud,
   syncAllToCloud,
@@ -12,6 +11,17 @@ import {
   type CloudSnapshot,
   type CloudSettings,
 } from '@/services/cloudSync.service';
+
+export function applyCloudSnapshotToStore(snapshot: CloudSnapshot): void {
+  useFinance.setState({
+    accounts: snapshot.accounts,
+    transactions: snapshot.transactions,
+    fixedItems: snapshot.fixedItems,
+    goals: snapshot.goals,
+    goalFolders: snapshot.goalFolders,
+    debts: snapshot.debts,
+  });
+}
 
 export interface CloudSyncMutations {
   /**
@@ -42,22 +52,11 @@ export function useCloudSyncMutations(): CloudSyncMutations {
       if (!userId) throw new Error('No user');
 
       const snapshot = await downloadAllFromCloud(userId);
-
-      // Aplicar snapshot al store Zustand:
-      useFinance.setState({
-        accounts: snapshot.accounts,
-        transactions: snapshot.transactions,
-        fixedItems: snapshot.fixedItems,
-        goals: snapshot.goals,
-        goalFolders: snapshot.goalFolders,
-        debts: snapshot.debts,
-      });
-
+      applyCloudSnapshotToStore(snapshot);
       return snapshot;
     },
-    onSuccess: () => {
-      // Invalida TODAS las entidades de una sola vez (financeKeys.all es array raíz).
-      queryClient.invalidateQueries({ queryKey: financeKeys.all });
+    onSuccess: async () => {
+      await invalidateAllFinanceEntityQueries(queryClient);
     },
     // No hace rollback (la descarga no modifica Supabase, solo el estado local).
   });
@@ -85,8 +84,8 @@ export function useCloudSyncMutations(): CloudSyncMutations {
 
       return syncAllToCloud(input);
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: financeKeys.all });
+    onSuccess: async () => {
+      await invalidateAllFinanceEntityQueries(queryClient);
     },
   });
 

@@ -9,7 +9,7 @@ export interface GoalSlice {
     addGoal: (g: Omit<Goal, 'id'>) => void;
     updateGoal: (id: string, p: Partial<Goal>) => void;
     removeGoal: (id: string) => void;
-    contributeGoal: (id: string, amount: number, date?: string, accountId?: string) => void;
+    contributeGoal: (id: string, amount: number, date?: string, accountId?: string, txId?: string) => void;
 
     addGoalFolder: (f: Omit<GoalFolder, 'id'>) => void;
     updateGoalFolder: (id: string, p: Partial<GoalFolder>) => void;
@@ -86,10 +86,10 @@ export const createGoalSlice: StateCreator<
         });
     },
 
-    contributeGoal: (idv, amount, date, accountId) =>
+    contributeGoal: (idv, amount, date, accountId, providedTxId) =>
         set((s) => {
             const g = s.goals.find((x) => x.id === idv);
-            const txId = generateSecureId();
+            const txId = providedTxId ?? generateSecureId();
             const when = date ?? new Date().toISOString();
             const entry = { id: generateSecureId(), date: when, amount };
             const method = s.accounts.find((a) => a.id === accountId)?.type === 'bank' ? 'transfer' : 'cash';

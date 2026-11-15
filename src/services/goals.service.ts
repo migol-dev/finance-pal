@@ -166,6 +166,7 @@ export async function addGoalContribution(
     .from('goals')
     .select('saved, contributions')
     .eq('id', goalId)
+    .eq('user_id', userId)
     .single();
 
   if (fetchError || !goals) {
@@ -190,7 +191,8 @@ export async function addGoalContribution(
       saved: newSaved,
       contributions: [...currentContributions, newContribution]
     })
-    .eq('id', goalId);
+    .eq('id', goalId)
+    .eq('user_id', userId);
 
   if (updateError) {
     throw new AppError(ErrorCodes.DB_UPDATE_FAILED, 'Error adding goal contribution', {
