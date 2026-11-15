@@ -1,17 +1,24 @@
 import { memo, useState, useMemo } from "react";
 import { useFinanceData } from "@/hooks/useFinanceData";
 import { Account, Denomination, cashTotalFromDenominations, fmt, computeBalances } from "@/lib/finance";
+import {
+  computeAccountsDistribution,
+  computeDenominationsDistribution,
+} from "@/lib/distribution";
 import { AjustesHeader } from "../AjustesHeader";
 import { SectionProps } from "../types";
 import DenominationsEditor from "@/components/ui/DenominationsEditor";
+import { DonutChart } from "@/components/charts/DonutChart";
+import { AppIcon } from "@/components/icons/AppIcon";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Plus, HandCoins, Database, Landmark, Trash2, Pencil } from "lucide-react";
+import { Plus, Landmark, Trash2, Pencil, ChevronDown, PieChart } from "lucide-react";
 import { toast } from "sonner";
 import { ElegantConfirm } from "@/components/app/ElegantConfirm";
+import { cn } from "@/lib/utils";
 
 function AccountForm({
   initial,
@@ -136,11 +143,33 @@ export const CuentasSection = memo(function CuentasSection({ onBack }: SectionPr
   const [defaultAccountType, setDefaultAccountType] = useState<Account["type"]>("bank");
   const [cashDenomsState, setCashDenomsState] = useState<Denomination[] | undefined>(undefined);
   const [accountToDelete, setAccountToDelete] = useState<Account | null>(null);
+  const [statsOpen, setStatsOpen] = useState(false);
+  const [cashChartOpen, setCashChartOpen] = useState(false);
 
   const balances = useMemo(() => {
     const endOfMonth = new Date(2099, 11, 31, 23, 59, 59);
     return computeBalances(accounts, transactions, debts, endOfMonth);
   }, [accounts, transactions, debts]);
+
+  const cashAccount = useMemo(
+    () => accounts.find((a) => a.type === "cash"),
+    [accounts]
+  );
+
+  const activeCashDenoms = useMemo(
+    () => cashDenomsState ?? cashAccount?.denominations,
+    [cashDenomsState, cashAccount]
+  );
+
+  const accountsDist = useMemo(
+    () => computeAccountsDistribution(accounts, balances),
+    [accounts, balances]
+  );
+
+  const cashDist = useMemo(
+    () => computeDenominationsDistribution(activeCashDenoms),
+    [activeCashDenoms]
+  );
 
   return (
     <div className="space-y-6">
@@ -148,115 +177,262 @@ export const CuentasSection = memo(function CuentasSection({ onBack }: SectionPr
         title="Cuentas y Efectivo"
         description="Administra tus cuentas bancarias, billeteras de efectivo y desglose físico"
         icon={Landmark}
-        iconColorClass="bg-emerald-500/10 text-emerald-500"
+        iconColorClass="bg-primary/10 text-primary"
         onBack={onBack}
       />
 
       {/* Top Action Bar */}
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between gap-2">
         <h2 className="text-xs uppercase tracking-wider font-bold text-muted-foreground">Tus Cuentas</h2>
         <Button
           size="sm"
           onClick={() => { setEditingAccount(null); setDefaultAccountType("bank"); setAccountsOpen(true); }}
-          className="rounded-xl h-9 text-xs font-semibold gradient-primary text-primary-foreground border-0"
+          className="rounded-xl h-9 text-xs font-semibold bg-primary text-primary-foreground hover:bg-primary/90 active:scale-[0.98] transition"
         >
           <Plus className="size-3.5 mr-1.5" /> Nueva cuenta
         </Button>
       </div>
 
-      {/* Accounts List */}
-      <div className="space-y-2.5">
-        {accounts.map((a) => {
-          const denomTotal = a.denominations && a.denominations.length > 0 ? cashTotalFromDenominations(a.denominations) : null;
-          const computed = balances[a.id] ?? a.initialBalance ?? 0;
-          return (
-            <div key={a.id} className="rounded-2xl bg-card border border-border p-4 shadow-soft flex flex-col min-[380px]:flex-row min-[380px]:items-center justify-between gap-3">
-              <div className="flex items-center gap-3 min-w-0">
-                <div className="size-11 rounded-2xl bg-primary/10 text-primary flex items-center justify-center shrink-0">
-                  {a.type === "cash" ? <HandCoins className="size-5.5" /> : <Database className="size-5.5" />}
+      {/* Lista de Cuentas — Saldo siempre legible en cualquier ancho */}
+      {accounts.length === 0 ? (
+        <div className="rounded-2xl border border-dashed border-border bg-card/50 p-6 text-center text-xs text-muted-foreground">
+          Aún no tienes cuentas registradas. Agrega una cuenta bancaria o de efectivo para comenzar.
+        </div>
+      ) : (
+        <div className="rounded-2xl bg-card border border-border/80 divide-y divide-border/70 overflow-hidden shadow-soft">
+          {accounts.map((a) => {
+            const denomTotal =
+              a.denominations && a.denominations.length > 0
+                ? cashTotalFromDenominations(a.denominations)
+                : null;
+            const computed = balances[a.id] ?? a.initialBalance ?? 0;
+            const typeLabel =
+              a.type === "cash" ? "Efectivo" : a.type === "bank" ? "Cuenta bancaria" : "Otra cuenta";
+
+            return (
+              <div key={a.id} className="p-3.5 sm:p-4 space-y-2.5">
+                <div className="flex items-start justify-between gap-2.5">
+                  <div className="flex items-center gap-3 min-w-0 flex-1">
+                    <div className="size-10 rounded-xl bg-primary/10 text-primary flex items-center justify-center shrink-0">
+                      <AppIcon
+                        name={a.type === "cash" ? "cash" : a.type === "bank" ? "bank" : "wallet"}
+                        className="size-5"
+                      />
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <p className="font-bold text-sm sm:text-base text-foreground truncate leading-tight">
+                        {a.name}
+                      </p>
+                      <p className="text-[11px] text-muted-foreground mt-0.5">
+                        {typeLabel} · {a.currency ?? "MXN"}
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-1 shrink-0">
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => { setEditingAccount(a); setAccountsOpen(true); }}
+                      className="size-9 min-[380px]:size-8 p-0 rounded-xl"
+                      aria-label={`Editar cuenta ${a.name}`}
+                    >
+                      <Pencil className="size-3.5" />
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      onClick={() => setAccountToDelete(a)}
+                      className="size-9 min-[380px]:size-8 p-0 rounded-xl text-destructive hover:bg-destructive/10"
+                      aria-label={`Eliminar cuenta ${a.name}`}
+                    >
+                      <Trash2 className="size-3.5" />
+                    </Button>
+                  </div>
                 </div>
-                <div className="min-w-0">
-                  <p className="font-bold text-sm sm:text-base text-foreground truncate">{a.name}</p>
-                  <p className="text-xs text-muted-foreground truncate mt-0.5">
-                    {a.type === "cash" ? "Efectivo" : "Cuenta bancaria"} • {a.currency ?? "MXN"} • Saldo actual:{" "}
-                    <span className="font-bold text-foreground">{fmt(computed)}</span>
-                    {denomTotal != null && <span className="ml-1 text-primary">· Desglose: {fmt(denomTotal)}</span>}
-                  </p>
+
+                {/* Saldo disponible completo sin truncado */}
+                <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1 pl-0 min-[380px]:pl-[52px]">
+                  <span className="text-[11px] uppercase tracking-wider font-semibold text-muted-foreground">
+                    Saldo disponible
+                  </span>
+                  <div className="flex flex-wrap items-baseline gap-2">
+                    <span
+                      data-testid={`account-balance-${a.id}`}
+                      className={cn(
+                        "text-base sm:text-lg font-extrabold font-mono-tabular tracking-tight",
+                        computed < 0 ? "text-destructive" : "text-foreground"
+                      )}
+                    >
+                      {fmt(computed)}
+                    </span>
+                    {denomTotal != null && (
+                      <span className="text-[11px] font-mono-tabular text-primary font-medium">
+                        (Desglose: {fmt(denomTotal)})
+                      </span>
+                    )}
+                  </div>
                 </div>
               </div>
+            );
+          })}
+        </div>
+      )}
 
-              <div className="flex items-center justify-end gap-1.5 shrink-0 w-full min-[380px]:w-auto pt-2 min-[380px]:pt-0 border-t min-[380px]:border-t-0 border-border/50">
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={() => { setEditingAccount(a); setAccountsOpen(true); }}
-                  className="size-9 min-[380px]:size-8 p-0 rounded-xl"
-                  aria-label={`Editar cuenta ${a.name}`}
-                >
-                  <Pencil className="size-3.5" />
-                </Button>
-                <Button
-                  size="sm"
-                  variant="ghost"
-                  onClick={() => setAccountToDelete(a)}
-                  className="size-9 min-[380px]:size-8 p-0 rounded-xl text-destructive hover:bg-destructive/10"
-                  aria-label={`Eliminar cuenta ${a.name}`}
-                >
-                  <Trash2 className="size-3.5" />
-                </Button>
+      {/* Estadísticas y distribución de cuentas (Desplegable) */}
+      {accounts.length > 0 && (
+        <div className="rounded-2xl bg-card border border-border/80 shadow-soft overflow-hidden">
+          <button
+            type="button"
+            aria-expanded={statsOpen}
+            onClick={() => setStatsOpen((prev) => !prev)}
+            className="w-full px-4 py-3.5 flex items-center justify-between gap-3 text-left hover:bg-muted/35 transition-colors active:scale-[0.99]"
+          >
+            <div className="flex items-center gap-3 min-w-0">
+              <div className="size-9 rounded-xl bg-primary/10 text-primary flex items-center justify-center shrink-0">
+                <PieChart className="size-4" strokeWidth={1.75} />
+              </div>
+              <div className="min-w-0">
+                <p className="text-sm font-semibold text-foreground truncate">Estadísticas</p>
+                <p className="text-[11px] text-muted-foreground font-mono-tabular truncate">
+                  {accountsDist.slices.length > 0
+                    ? `Distribución entre ${accountsDist.slices.length} ${accountsDist.slices.length === 1 ? "cuenta" : "cuentas"} · ${fmt(accountsDist.total)}`
+                    : "Distribución del saldo por cuenta"}
+                </p>
               </div>
             </div>
-          );
-        })}
-      </div>
+            <ChevronDown
+              className={cn(
+                "size-4 text-muted-foreground transition-transform duration-200 shrink-0",
+                statsOpen && "rotate-180"
+              )}
+              strokeWidth={1.75}
+            />
+          </button>
+
+          {statsOpen && (
+            <div className="px-4 pb-4 pt-2 border-t border-border/70 space-y-2.5">
+              <DonutChart
+                slices={accountsDist.slices}
+                total={accountsDist.total}
+                totalLabel="Saldo positivo total"
+                ariaLabel="Distribución de dinero por cuenta"
+                emptyMessage="Agrega saldo positivo a tus cuentas para visualizar la distribución."
+              />
+              {accountsDist.excludedNegativeCount > 0 && (
+                <p className="text-[11px] text-muted-foreground">
+                  {accountsDist.excludedNegativeCount}{" "}
+                  {accountsDist.excludedNegativeCount === 1
+                    ? "cuenta con saldo negativo se omite"
+                    : "cuentas con saldo negativo se omiten"}{" "}
+                  del gráfico circular.
+                </p>
+              )}
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Desglose de efectivo */}
-      <div className="space-y-3 pt-2">
+      <div className="space-y-3 pt-1">
         <h3 className="text-xs uppercase tracking-wider font-bold text-muted-foreground">Desglose de efectivo físico</h3>
-        {accounts.find((a) => a.type === "cash") ? (
+        {cashAccount ? (
           (() => {
-            const cash = accounts.find((a) => a.type === "cash")!;
-            const denomTotal = (cashDenomsState && cashDenomsState.length > 0)
-              ? cashTotalFromDenominations(cashDenomsState)
-              : (cash.denominations ? cashTotalFromDenominations(cash.denominations) : 0);
+            const denomTotal =
+              cashDenomsState && cashDenomsState.length > 0
+                ? cashTotalFromDenominations(cashDenomsState)
+                : cashAccount.denominations
+                ? cashTotalFromDenominations(cashAccount.denominations)
+                : 0;
             return (
-              <div className="rounded-2xl bg-card border border-border p-4 sm:p-5 shadow-soft space-y-3">
-                <div className="flex items-center justify-between">
+              <div className="rounded-2xl bg-card border border-border/80 p-4 sm:p-5 shadow-soft space-y-3">
+                <div className="flex flex-wrap items-center justify-between gap-2">
                   <div>
-                    <p className="text-sm font-bold text-foreground">Cuenta: {cash.name} ({cash.currency ?? "MXN"})</p>
-                    <p className="text-xs text-muted-foreground">
-                      Saldo inicial: {fmt(cash.initialBalance ?? 0)} • Total en desglose:{" "}
+                    <p className="text-sm font-bold text-foreground">
+                      Cuenta: {cashAccount.name} ({cashAccount.currency ?? "MXN"})
+                    </p>
+                    <p className="text-xs text-muted-foreground font-mono-tabular">
+                      Saldo inicial: {fmt(cashAccount.initialBalance ?? 0)} · Total en desglose:{" "}
                       <span className="font-bold text-primary">{fmt(denomTotal)}</span>
                     </p>
                   </div>
                 </div>
 
                 <div className="pt-1">
-                  <DenominationsEditor value={cashDenomsState ?? cash.denominations} onChange={(d) => setCashDenomsState(d)} />
+                  <DenominationsEditor
+                    value={cashDenomsState ?? cashAccount.denominations}
+                    onChange={(d) => setCashDenomsState(d)}
+                  />
                 </div>
 
-                <div className="flex gap-2 justify-end pt-2">
+                {/* Gráfico desplegable del desglose en billetes y monedas */}
+                {cashDist.slices.length > 0 && (
+                  <div className="rounded-xl border border-border/70 bg-muted/20 overflow-hidden">
+                    <button
+                      type="button"
+                      aria-expanded={cashChartOpen}
+                      onClick={() => setCashChartOpen((prev) => !prev)}
+                      className="w-full px-3.5 py-2.5 flex items-center justify-between gap-2 text-left text-xs font-semibold text-foreground hover:bg-muted/40 transition-colors"
+                    >
+                      <span className="inline-flex items-center gap-2 min-w-0">
+                        <PieChart className="size-3.5 text-primary shrink-0" strokeWidth={1.75} />
+                        <span className="truncate">Mostrar distribución en gráfico</span>
+                        <span className="text-[10px] font-mono-tabular text-muted-foreground shrink-0">
+                          ({cashDist.totalPieces} pzas)
+                        </span>
+                      </span>
+                      <ChevronDown
+                        className={cn(
+                          "size-4 text-muted-foreground transition-transform duration-200 shrink-0",
+                          cashChartOpen && "rotate-180"
+                        )}
+                        strokeWidth={1.75}
+                      />
+                    </button>
+
+                    {cashChartOpen && (
+                      <div className="p-3.5 pt-2 border-t border-border/60">
+                        <DonutChart
+                          slices={cashDist.slices}
+                          total={cashDist.total}
+                          totalLabel="Total en efectivo"
+                          ariaLabel="Distribución de efectivo por denominación"
+                        />
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                <div className="flex flex-wrap gap-2 justify-end pt-2">
                   <Button
                     variant="outline"
-                    onClick={() => { setEditingAccount(cash); setAccountsOpen(true); }}
+                    onClick={() => { setEditingAccount(cashAccount); setAccountsOpen(true); }}
                     className="rounded-xl h-10 text-xs"
                   >
                     Editar cuenta
                   </Button>
                   <Button
                     onClick={async () => {
-                      const total = cashDenomsState && cashDenomsState.length > 0
-                        ? cashTotalFromDenominations(cashDenomsState)
-                        : (cash.denominations ? cashTotalFromDenominations(cash.denominations) : 0);
-                      const bal = Number(cash.initialBalance ?? 0);
+                      const total =
+                        cashDenomsState && cashDenomsState.length > 0
+                          ? cashTotalFromDenominations(cashDenomsState)
+                          : cashAccount.denominations
+                          ? cashTotalFromDenominations(cashAccount.denominations)
+                          : 0;
+                      const bal = Number(cashAccount.initialBalance ?? 0);
                       if (total !== bal) {
-                        toast.error("El total del desglose no coincide con el saldo registrado. Ajusta los valores.");
+                        toast.error(
+                          "El total del desglose no coincide con el saldo registrado. Ajusta los valores."
+                        );
                         return;
                       }
-                      updateAccount(cash.id, { denominations: cashDenomsState && cashDenomsState.length > 0 ? cashDenomsState : undefined });
+                      updateAccount(cashAccount.id, {
+                        denominations:
+                          cashDenomsState && cashDenomsState.length > 0 ? cashDenomsState : undefined,
+                      });
                       toast.success("Desglose guardado correctamente");
                     }}
-                    className="rounded-xl h-10 gradient-primary text-primary-foreground border-0 shadow-glow font-bold text-xs"
+                    className="rounded-xl h-10 bg-primary text-primary-foreground hover:bg-primary/90 font-bold text-xs"
                   >
                     Guardar desglose
                   </Button>
@@ -269,7 +445,7 @@ export const CuentasSection = memo(function CuentasSection({ onBack }: SectionPr
             <p className="text-sm text-muted-foreground">No tienes ninguna cuenta de tipo <span className="font-bold text-foreground">Efectivo</span> configurada.</p>
             <Button
               onClick={() => { setEditingAccount(null); setDefaultAccountType("cash"); setAccountsOpen(true); }}
-              className="rounded-xl gradient-primary text-primary-foreground font-bold text-xs h-9"
+              className="rounded-xl bg-primary text-primary-foreground font-bold text-xs h-9"
             >
               Crear cuenta de efectivo
             </Button>
