@@ -1,5 +1,26 @@
 # Changelog
 
+## [2.1.0] - 2026-11-14
+
+### Actualizaciones In-App Nativas en Android (GitHub Releases y `financemate.apk`)
+- **Motor endurecido de detección de versiones (`src/lib/version-check.ts`, `src/hooks/useAppUpdate.ts`)**: Comprobación automática restringida exclusivamente a la app nativa Android (`Capacitor.isNativePlatform()`), resolución de la versión instalada tomando el semver mayor entre `VITE_APP_VERSION` y `CapApp.getInfo().version`, comparación semántica con soporte para sufijos pre-release y consulta directa a GitHub Releases (`/releases/latest` con respaldo en `/releases?per_page=10` filtrando borradores y pre-releases).
+- **Descarga segura y directa de `financemate.apk`**: Extracción automática del asset `financemate.apk` verificando esquema HTTPS y dominios confiables de GitHub/CDN antes de abrir la descarga con `@capacitor/browser`, deduplicación de peticiones simultáneas, caché de 6 horas con persistencia real de versiones descartadas (`dismissedVersion`) y re-evaluación automática al volver al primer plano (`appStateChange`).
+- **Banner editorial `UpdateNotification` e integración en Ajustes**: Nuevo banner superior V2 respetando `safe-area-inset-top` con `BrandLogo`, transición de versiones en tipografía tabular, tamaño del APK, acordeón `Ver novedades`, botón directo `Descargar APK` y botón `Luego`. En **Ajustes -> Seguridad y Sistema** (`SeguridadSection`, `AjustesV2`, `AjustesHub`) se integra el botón manual **Buscar actualización**, acceso directo a **Descargar financemate.apk** y distintivos discretos cuando hay actualización disponible en Android (manteniendo solo vista informativa en Web/PC).
+- **Sincronización de versión de lanzamiento**: Actualización de `package.json`, `src/lib/version-check.ts` y `android/app/build.gradle` a `2.1.0` (`versionCode 20100`).
+
+### Iconos Vectoriales SVG y Eliminación de Emojis en Interfaz V2
+- **Registro tipado SVG y `AppIcon`**: Incorporación de `src/lib/icon-ids.ts`, `src/components/icons/registry.tsx`, `FinanceCustomIcons` y `AppIcon` con iconos vectoriales adaptables al tema (`currentColor`), manteniendo traducción transparente para iconos heredados.
+- **Selectores sin emojis y guardia en pruebas**: Reemplazo de los selectores de emojis en `IconPicker`, `CategoriasSection` y `CategorySelectWithCreate`, limpieza completa de emojis en vistas V2 y notificaciones, y prueba automatizada `no-emoji-guard.test.ts`.
+
+### Registro Rápido, Comprobantes Seguros y Distribución Visual en Cuentas
+- **Reglas de métodos de pago en `QuickTransactionSheet`**: Filtrado inteligente de métodos por tipo de cuenta (`cash` solo `Efectivo · Automático`; `bank` limitado a `Tarjeta` y `Transferencia`; `other` para el resto), eliminación de campos innecesarios de clave de rastreo/referencia en transferencias y validación opcional de 4 dígitos o CLABE de 18 dígitos.
+- **Pipeline de comprobantes y bucket privado en Supabase**: Compresión cliente con validación de firmas binarias reales (JPEG, PNG, WebP hasta 5 MB finales), almacenamiento mediante referencias persistentes `sb:receipts/<userId>/...` resueltas bajo demanda con URLs firmadas temporales (`useReceiptUrl`, `ReceiptPreview`) y migración `20261115005656_receipts_hardening.sql` restringiendo tamaño (`5 MB`) y tipos MIME permitidos en Storage.
+- **Cuentas y gráfico SVG `DonutChart`**: Corrección de visibilidad de saldos en móvil dentro de `CuentasSection` e incorporación de gráficos SVG interactivos de distribución por cuenta y denominaciones de efectivo con suma exacta al `100.0%`.
+
+### Navegación Móvil, Seguridad y Optimizaciones Nativas Android
+- **Reorganización de navegación móvil**: Promoción de **Deudas** al dock inferior `BottomNavV2`, orden secuencial de gestos *swipe* ajustado a `Inicio -> Movimientos -> Metas -> Deudas` y nuevo menú compacto `HeaderMoreButton` en la cabecera móvil/tablet para `Anual`, `Historial` y `Ajustes`.
+- **Política de seguridad y experiencia táctil Android**: Publicación de `SECURITY.md`, optimización de *drawers* (`Drawer` / `vaul`), scroll táctil fluido sin congelamientos, corrección de títulos truncados e identidad de lanzador nativo v2.
+
 ## [2.0.0] - 2026-10-25
 
 ### Finance Pal v2 — Warm Editorial Wealth & Optimización Nativa Android

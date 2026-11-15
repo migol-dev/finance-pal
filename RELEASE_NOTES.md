@@ -1,81 +1,61 @@
-# FinancePal v2.0.0 — Warm Editorial Wealth 🏛️✨
+# FinancePal v2.1.0 - Release Notes
 
-> **La evolución generacional de FinancePal:** Gestión patrimonial serena, privada y en alta fidelidad.  
-> Diseñada bajo arquitectura **Local-First**, cifrado cliente con **WebCrypto AES-GCM 256-bit**, una estética editorial de alta gama y accesibilidad certificada **WCAG AAA/AA**.
-
----
-
-## 🌟 Lo Nuevo en FinancePal v2.0.0
-
-### 🏛️ 1. Sistema de Diseño V2: *Warm Editorial Wealth*
-- **Nueva atmósfera visual:** Canvas cálido en alabastro (`#FAF8F5`) para el modo claro y obsidiana profundo (`#0C0C0B` / `#141413`) para el modo oscuro, con separadores milimétricos de 1px (`#E4E0D8` / `rgba(255,255,255,0.1)`).
-- **Tipografía Editorial:** Encabezados en tipografía serif de alta jerarquía visual (`Instrument Serif`), cuerpo en `Plus Jakarta Sans` y cifras numéricas en `JetBrains Mono` con alineación tabular (`tabular-nums`) para evitar saltos de diseño.
-- **Microfísica e Interacción Táctil:** Transiciones basadas en curvas cubic-bezier elásticas, retroalimentación al toque (`active:scale-[0.98]`), micro-física sin librerías pesadas y rendimiento optimizado a **60–120 fps**.
-- **Alternancia V2 y Classic:** Quienes prefieran el diseño anterior pueden cambiar a la interfaz clásica en cualquier momento desde **Ajustes → Apariencia**.
+Actualización enfocada en la experiencia nativa de Android, coherencia visual sin emojis bajo la estética Warm Editorial Wealth, registro rápido inteligente, comprobantes seguros en la nube y herramientas visuales para tus cuentas.
 
 ---
 
-### 🗂️ 2. Metas Financieras con Carpetas Jerárquicas y Drag & Drop
-- **Subcarpetas multinivel:** Organiza tus metas en carpetas y subcarpetas ilimitadas (ej. *Vacaciones*, *Fondo de Emergencia*, *Inversiones*).
-- **Reorganización táctil:** Soporte completo de arrastrar y soltar (Drag & Drop con HTML5 y puntero táctil) tanto en escritorio como en móviles.
-- **Barra móvil simplificada:** En pantallas móviles, la barra superior muestra limpiamente 3 opciones fijas (`Todas`, `Sin carpeta` y `Carpetas`), abriendo un cajón lateral (*drawer*) completo para navegar sin que los botones se desborden.
+## Lo Nuevo en FinancePal v2.1.0
+
+### 1. Actualización Automática In-App en Android y Descarga Directa (`financemate.apk`)
+- **Detección exclusiva para Android nativo**: La app verifica automáticamente nuevas versiones estables en GitHub Releases únicamente cuando se ejecuta en Android (`Capacitor`), manteniendo la versión Web/PWA sin avisos innecesarios.
+- **Comparación semántica y control de caché**: Compara la versión nativa instalada contra las releases publicadas de forma semántica (incluyendo pre-releases como `alpha`, `beta` y `rc`), ignora borradores o pre-releases en el canal estable, cachea resultados durante 6 horas para cuidar datos y batería, y respeta el descarte de una versión (`Luego`) hasta que salga una versión superior.
+- **Descarga segura en un toque**: Identifica automáticamente el archivo `financemate.apk` de la última release, valida que el enlace pertenezca estrictamente a dominios HTTPS confiables de GitHub/CDN y abre la descarga directamente en el navegador del sistema.
+- **Banner editorial integrado (`UpdateNotification`)**: Nuevo banner superior adaptado a la paleta `Warm Editorial Wealth` con margen seguro (`safe-area-inset-top`), logotipo oficial, transición de versiones en monospace, tamaño exacto del paquete APK, acordeón `Ver novedades` y acciones directas (`Descargar APK` y `Luego`), además de re-verificación al volver la app a primer plano.
+- **Centro de actualizaciones en Ajustes -> Seguridad y Sistema**:
+  - En **Android**: botón interactivo **Buscar actualización**, visualización de novedades, tamaño del APK y descarga directa de `financemate.apk`, junto con un distintivo de actualización en el hub de Ajustes.
+  - En **Web / Escritorio**: tarjeta informativa con la versión activa de la aplicación web sin controles de APK.
+
+### 2. Sistema Completo de Iconos Vectoriales SVG (Cero Emojis en Interfaz V2)
+- **Registro tipado de iconos (`AppIcon`)**: Nueva biblioteca vectorial SVG con iconos financieros personalizados y categorías cotidianas adaptables automáticamente a modo claro, oscuro y alto contraste.
+- **Selectores unificados sin emojis**: Tanto `IconPicker` al crear o editar categorías como el selector rápido de transacciones ahora utilizan iconos SVG limpios en lugar de emojis.
+- **Limpieza integral y compatibilidad**: Eliminación completa de emojis en todas las vistas V2 (`Inicio`, `Movimientos`, `Deudas`, `Metas`, `Anual`, `Ajustes`) y en notificaciones locales/push, traduciendo al vuelo cualquier icono legado que el usuario tuviera guardado y respaldado por una verificación automática anti-emojis en el código V2.
+
+### 3. Registro Rápido Inteligente (`QuickTransactionSheet`)
+- **Métodos de pago guiados por cuenta**:
+  - Las cuentas de **Efectivo** asignan automáticamente el método `Efectivo · Automático`.
+  - Las cuentas **Bancarias** muestran únicamente opciones válidas (`Tarjeta` y `Transferencia`).
+  - Otras cuentas habilitan `Tarjeta`, `Transferencia` y `Otro`.
+- **Detalles de transferencia más limpios y colapsables**: Campos opcionales ordenados para destinatario/remitente, banco y cuenta de origen/destino (validando últimos 4 dígitos o CLABE de 18 dígitos), eliminando campos ruidosos como clave de rastreo y referencia.
+- **Adjunto de comprobantes desde el flujo rápido**: Carga y vista previa inmediata sin salir de la hoja de registro.
+
+### 4. Comprobantes Seguros y Almacenamiento Endurecido en Supabase
+- **Pipeline de validación y compresión en el dispositivo**: Verifica la firma binaria real (*magic bytes*) para aceptar únicamente imágenes JPEG, PNG o WebP válidas (hasta 10 MB de entrada), las optimiza/redimensiona en el cliente y limita el archivo final a un máximo de 5 MB antes de subirlo.
+- **Referencias persistentes sin caducidad**: Las transacciones guardan referencias lógicas estables (`sb:receipts/<userId>/...`) en lugar de URLs firmadas expirables; la aplicación genera y cachea URLs firmadas frescas bajo demanda al visualizar el comprobante (manteniendo lectura retrocompatible para comprobantes legados).
+- **Bucket privado reforzado**: Migración aplicada en Supabase Storage que asegura el bucket privado `receipts` por usuario con límite estricto de 5 MB por objeto y restricción de tipos MIME permitidos a `image/webp`, `image/jpeg` e `image/png`.
+
+### 5. Gráficos SVG Interactivos y Visibilidad de Cuentas
+- **Gráfico `DonutChart` en SVG**: Nuevo componente vectorial tema-adaptativo con selección interactiva por segmento y cálculo de porcentajes exactos que suman `100.0%`.
+- **Ajustes -> Cuentas mejorado**: Corrección de visibilidad del saldo de cuentas en pantallas móviles e integración de gráficos interactivos para visualizar la distribución del saldo entre cuentas positivas y el desglose del efectivo por denominaciones.
+
+### 6. Navegación Móvil Refinada y Experiencia Nativa Android
+- **Deudas en la navegación principal**: Promoción de **Deudas** a la barra inferior móvil junto con **Inicio**, **Movimientos** y **Metas**, facilitando el acceso directo en un toque.
+- **Orden lógico de gestos *swipe***: Secuencia alineada entre vistas principales: `Inicio` -> `Movimientos` -> `Metas` -> `Deudas`.
+- **Menú `Más opciones` en cabecera**: Nuevo botón compacto en la barra superior para pantallas móviles y tablets que abre el panel hacia `Anual`, `Historial` y `Ajustes`.
+- **Pulido nativo Android y seguridad**: Desplazamiento táctil fluido en *drawers* y hojas inferiores sin bloqueos de WebView, corrección de encabezados truncados en móviles, icono de lanzador nativo v2 y publicación de la política de divulgación responsable de vulnerabilidades (`SECURITY.md`).
 
 ---
 
-### 🏷️ 3. Sistema de Categorías Cotidianas y Personalizadas
-- **15 Categorías Universales por Defecto:** Selección renovada con categorías generales y cotidianas (*Alimentación*, *Transporte*, *Vivienda*, *Servicios*, *Salud*, *Educación*, *Entretenimiento*, *Compras*, *Familia y Mascotas*, *Trabajo / Sueldo*, *Negocio / Ventas*, *Ahorro e Inversión*, *Deudas*, *Regalos*, *Otros*).
-- **Categorías Personalizadas con Límite Inteligente:** Crea tus propias categorías con nombre (máximo 20 caracteres para asegurar legibilidad perfecta en cualquier pantalla) y un emoji personalizado.
-- **Creación Inline:** Opción rápida `+ Crear nueva categoría...` directamente en el selector de transacciones y movimientos recurrentes, sin tener que salir del formulario.
-- **Administrador en Ajustes:** Sección dedicada en **Ajustes → Categorías** con edición, eliminación segura y confirmación elegante.
-- **Retrocompatibilidad Histórica:** Las transacciones registradas con categorías de versiones anteriores conservan su ícono automáticamente.
+## Verificación y Calidad Técnica
+
+- **Pruebas automatizadas**: 52 archivos de prueba y 382 pruebas unitarias e integradas pasando al 100% con Vitest y React Testing Library.
+- **Compilación de producción**: Build de producción web/Capacitor verificado limpiamente con Vite 8.
+- **Versionado sincronizado**: Identificadores actualizados a `2.1.0` (`versionCode 20100` en Android Gradle y `package.json`).
 
 ---
 
-### ⚡ 4. Arranque Estricto y Motor de Tema desde el Segundo 1
-- **Cero destellos de luz (Zero-Flash):** Detección síncrona en el `<head>` del HTML que lee las preferencias del usuario o el tema del sistema operativo antes del primer renderizado de React, evitando parpadeos blancos.
-- **Selector en Login y Registro:** Selector dinámico de tema (`Auto` / `Claro` / `Oscuro`) disponible inmediatamente en las pantallas de inicio de sesión y registro.
-- **Secuencia de bienvenida:** Al abrir o recargar la aplicación, la animación de bienvenida (`SplashScreen`) se presenta desde el milisegundo 0; los esqueletos de carga (*skeletons*) únicamente se muestran si los datos aún continúan sincronizándose tras finalizar la bienvenida.
+## Notas de Actualización y Publicación
 
----
-
-### 📊 5. Resumen Anual Macroeconómico Rediseñado
-- **Navegación de Ancho Completo:** Selector segmentado de 4 columnas (*General*, *Categorías*, *Métodos*, *Metas*) con pastillas activas de alto contraste y botones táctiles holgados.
-- **Desglose de Categorías:** Visualización de porcentajes, barras de progreso y emojis identificadores por cada rubro de gasto anual.
-- **Detección de Anomalías:** Indicadores de mejor mes, mes con déficit y mayor gasto, con navegación directa en un solo toque.
-
----
-
-### 🔐 6. Seguridad y Arquitectura Local-First
-- **Almacenamiento Local Cifrado:** Toda la base de datos local en IndexedDB se cifra mediante WebCrypto con claves derivadas por PBKDF2 y salting/peppering.
-- **Autenticación Fuerte:** Soporte de 2FA TOTP con verificación forzada, límite de intentos (*rate limiting*) y protección contra contraseñas filtradas mediante la API k-Anonymity de *Have I Been Pwned*.
-- **Control de Sesiones Multi-dispositivo:** Detección de sesiones activas en otros equipos con diálogo de resolución de conflictos y migración segura.
-- **Respaldo en la Nube Bajo Demanda:** Sincronización opcional con Supabase y respaldo exportable en JSON encriptado.
-
----
-
-### 🎨 7. Nueva Identidad Visual y Tarjetas Sociales (OpenGraph)
-- **Favicon Vectorial V2:** Nuevo isotipo oficial con el monograma continuo FP y la moneda dorada/esmeralda, disponible en SVG, ICO multi-resolución y PNG para PWA/Android.
-- **Social Share Card (1200 x 630 px):** Tarjeta OpenGraph y Twitter Card integrada que genera previsualizaciones ricas y atractivas al compartir el enlace en WhatsApp, Telegram, Twitter/X, Discord, LinkedIn y Facebook.
-- **Título Web Limpio:** El título de la pestaña ahora es conciso: **`FinancePal`**.
-
----
-
-## 🧪 Métricas de Calidad y Testing
-
-- **Tests Automatizados:** **40 suites de prueba · 299 tests pasando (100% en verde)** con Vitest y React Testing Library.
-- **TypeScript:** Cero errores en modo estricto (`npx tsc --noEmit`).
-- **Accesibilidad:** Pruebas automatizadas de contraste WCAG AAA/AA, áreas de toque mínimas de 44x44px y navegación por teclado con anillos de foco visibles.
-- **Compilación de Producción:** Compilación limpia en Vite 8 con división óptima de módulos vendor (*bundle splitting*).
-
----
-
-## 📦 Instrucciones de Actualización
-
-Si tienes una versión anterior instalada:
-1. **Web:** La actualización se aplica automáticamente al recargar. Los datos almacenados localmente se migran de forma transparente a los nuevos esquemas.
-2. **PWA / Android:** La aplicación notificará la actualización disponible o actualizará el Service Worker en segundo plano.
-3. Tus transacciones, cuentas, presupuestos y metas existentes se conservan intactos.
-
----
-
-*FinancePal · Hecho con dedicación para darte soberanía sobre tu dinero.*
+1. **Web / PWA**: Disponible automáticamente al desplegar la rama principal (`main`) sin pérdida ni migración destructiva de datos locales.
+2. **Android (`financemate.apk`)**:
+   - Al generar e instalar el nuevo `financemate.apk` firmado correspondiente al tag `v2.1.0`, la aplicación reconocerá internamente la versión `2.1.0` (`20100`) y no volverá a mostrar el aviso hasta que exista una versión superior (como `v2.1.1` o `v2.2.0`).
+   - Recuerda adjuntar el archivo compilado con el nombre exacto `financemate.apk` dentro de los assets de la release `v2.1.0` en GitHub.

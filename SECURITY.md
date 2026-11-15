@@ -10,8 +10,8 @@ Solo la línea de versiones más reciente recibe parches de seguridad.
 
 | Versión  | Soporte de seguridad |
 | -------- | -------------------- |
-| 2.0.x    | ✅ Soportada          |
-| < 2.0    | ❌ Sin soporte        |
+| 2.1.x    | ✅ Soportada          |
+| < 2.1    | ❌ Sin soporte        |
 
 Si usas una versión anterior, actualiza a la última [release](https://github.com/migol-dev/finance-pal/releases) antes de reportar un problema. Puede que ya esté corregido.
 

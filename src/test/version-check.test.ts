@@ -381,14 +381,14 @@ describe('version-check engine & useAppUpdate store', () => {
 
     it('preserva dismissedVersion tras pasar el intervalo de 6h y reaparece solo ante una versión mayor', async () => {
       mockIsNativePlatform.mockReturnValue(true);
-      mockFetch.mockResolvedValue(jsonResponse(buildGitHubRelease({ tag_name: 'v2.1.0' })));
+      mockFetch.mockResolvedValue(jsonResponse(buildGitHubRelease({ tag_name: 'v9.1.0' })));
 
       const first = await checkForUpdates();
-      expect(first?.latest).toBe('2.1.0');
+      expect(first?.latest).toBe('9.1.0');
       expect(first?.hasUpdate).toBe(true);
 
-      dismissVersion('2.1.0');
-      expect(isVersionDismissed('2.1.0')).toBe(true);
+      dismissVersion('9.1.0');
+      expect(isVersionDismissed('9.1.0')).toBe(true);
 
       // Avanzar 7 horas (> CHECK_INTERVAL_HOURS)
       nowMs += (CHECK_INTERVAL_HOURS + 1) * 60 * 60 * 1000;
@@ -397,24 +397,24 @@ describe('version-check engine & useAppUpdate store', () => {
       const afterInterval = await checkForUpdates();
       expect(mockFetch).toHaveBeenCalledTimes(2);
       expect(afterInterval).toBeNull();
-      expect(isVersionDismissed('2.1.0')).toBe(true);
+      expect(isVersionDismissed('9.1.0')).toBe(true);
 
       const stored = JSON.parse(localStorage.getItem(VERSION_CHECK_KEY) || '{}');
-      expect(stored.dismissedVersion).toBe('2.1.0');
-      expect(stored.cachedInfo?.latest).toBe('2.1.0');
+      expect(stored.dismissedVersion).toBe('9.1.0');
+      expect(stored.cachedInfo?.latest).toBe('9.1.0');
 
-      // Avanzar otras 7 horas cuando aparece v2.2.0
+      // Avanzar otras 7 horas cuando aparece v9.2.0
       nowMs += (CHECK_INTERVAL_HOURS + 1) * 60 * 60 * 1000;
-      mockFetch.mockResolvedValueOnce(jsonResponse(buildGitHubRelease({ tag_name: 'v2.2.0' })));
+      mockFetch.mockResolvedValueOnce(jsonResponse(buildGitHubRelease({ tag_name: 'v9.2.0' })));
 
       const newer = await checkForUpdates();
-      expect(newer?.latest).toBe('2.2.0');
+      expect(newer?.latest).toBe('9.2.0');
       expect(newer?.hasUpdate).toBe(true);
     });
 
     it('usa caché dentro de las 6h recalculando hasUpdate contra versión instalada', async () => {
       mockIsNativePlatform.mockReturnValue(true);
-      mockFetch.mockResolvedValueOnce(jsonResponse(buildGitHubRelease({ tag_name: 'v2.1.0' })));
+      mockFetch.mockResolvedValueOnce(jsonResponse(buildGitHubRelease({ tag_name: 'v9.1.0' })));
 
       const first = await checkForUpdates();
       expect(first?.hasUpdate).toBe(true);
@@ -423,13 +423,13 @@ describe('version-check engine & useAppUpdate store', () => {
       // 1 hora después, sin force: usa caché, sin fetch
       nowMs += 60 * 60 * 1000;
       const cached = await checkForUpdates();
-      expect(cached?.latest).toBe('2.1.0');
+      expect(cached?.latest).toBe('9.1.0');
       expect(mockFetch).toHaveBeenCalledTimes(1);
 
-      // Si el usuario ya actualizó nativamente a 2.1.0, caché debe devolver null sin fetch
+      // Si el usuario ya actualizó nativamente a 9.1.0, caché debe devolver null sin fetch
       mockAppGetInfo.mockResolvedValueOnce({
-        version: '2.1.0',
-        build: '20100',
+        version: '9.1.0',
+        build: '90100',
         id: 'app.financepal.com',
         name: 'Finance Pal',
       });
@@ -439,17 +439,18 @@ describe('version-check engine & useAppUpdate store', () => {
     });
 
     it('con force: true retorna VersionInfo incluso al día o descartado si includeDismissed es true', async () => {
+      const current = getCurrentVersion();
       mockIsNativePlatform.mockReturnValue(true);
-      mockFetch.mockResolvedValueOnce(jsonResponse(buildGitHubRelease({ tag_name: 'v2.0.0' })));
+      mockFetch.mockResolvedValueOnce(jsonResponse(buildGitHubRelease({ tag_name: `v${current}` })));
 
       const upToDate = await checkForUpdates({ force: true });
-      expect(upToDate?.latest).toBe('2.0.0');
+      expect(upToDate?.latest).toBe(current);
       expect(upToDate?.hasUpdate).toBe(false);
 
-      dismissVersion('2.1.0');
-      mockFetch.mockResolvedValueOnce(jsonResponse(buildGitHubRelease({ tag_name: 'v2.1.0' })));
+      dismissVersion('9.1.0');
+      mockFetch.mockResolvedValueOnce(jsonResponse(buildGitHubRelease({ tag_name: 'v9.1.0' })));
       const forcedDismissed = await checkForUpdates({ force: true, includeDismissed: true });
-      expect(forcedDismissed?.latest).toBe('2.1.0');
+      expect(forcedDismissed?.latest).toBe('9.1.0');
       expect(forcedDismissed?.hasUpdate).toBe(true);
     });
   });
@@ -530,7 +531,7 @@ describe('version-check engine & useAppUpdate store', () => {
       mockIsNativePlatform.mockReturnValue(true);
       useAppUpdateStore.getState().resetForTest();
 
-      mockFetch.mockResolvedValue(jsonResponse(buildGitHubRelease({ tag_name: 'v2.1.0' })));
+      mockFetch.mockResolvedValue(jsonResponse(buildGitHubRelease({ tag_name: 'v9.1.0' })));
 
       const { result } = renderHook(() => useAppUpdate());
       expect(result.current.isNativeAndroid).toBe(true);
@@ -541,7 +542,7 @@ describe('version-check engine & useAppUpdate store', () => {
 
       // Solo 1 petición HTTP gracias a la deduplicación concurrente
       expect(mockFetch).toHaveBeenCalledTimes(1);
-      expect(result.current.updateInfo?.latest).toBe('2.1.0');
+      expect(result.current.updateInfo?.latest).toBe('9.1.0');
       expect(result.current.shouldShowBanner).toBe(true);
       expect(result.current.lastCheckedAt).toBe(nowMs);
 
@@ -551,12 +552,12 @@ describe('version-check engine & useAppUpdate store', () => {
 
       expect(result.current.bannerDismissedInSession).toBe(true);
       expect(result.current.shouldShowBanner).toBe(false);
-      expect(isVersionDismissed('2.1.0')).toBe(true);
+      expect(isVersionDismissed('9.1.0')).toBe(true);
     });
 
     it('checkManual muestra error legible en fallo y no reabre banner si la versión fue descartada', async () => {
       mockIsNativePlatform.mockReturnValue(true);
-      dismissVersion('2.1.0');
+      dismissVersion('9.1.0');
       useAppUpdateStore.getState().resetForTest();
 
       const { result } = renderHook(() => useAppUpdate());
@@ -573,10 +574,10 @@ describe('version-check engine & useAppUpdate store', () => {
       );
 
       // Respuesta exitosa de versión previamente descartada
-      mockFetch.mockResolvedValueOnce(jsonResponse(buildGitHubRelease({ tag_name: 'v2.1.0' })));
+      mockFetch.mockResolvedValueOnce(jsonResponse(buildGitHubRelease({ tag_name: 'v9.1.0' })));
       await act(async () => {
         const res = await result.current.checkManual();
-        expect(res?.latest).toBe('2.1.0');
+        expect(res?.latest).toBe('9.1.0');
       });
       expect(result.current.error).toBeNull();
       expect(result.current.updateInfo?.hasUpdate).toBe(true);
@@ -587,7 +588,7 @@ describe('version-check engine & useAppUpdate store', () => {
     it('downloadUpdate abre Browser.open, cierra banner y muestra toast.error si falla', async () => {
       mockIsNativePlatform.mockReturnValue(true);
       useAppUpdateStore.getState().resetForTest();
-      mockFetch.mockResolvedValueOnce(jsonResponse(buildGitHubRelease({ tag_name: 'v2.1.0' })));
+      mockFetch.mockResolvedValueOnce(jsonResponse(buildGitHubRelease({ tag_name: 'v9.1.0' })));
 
       const { result } = renderHook(() => useAppUpdate());
 

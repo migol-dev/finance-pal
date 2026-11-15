@@ -207,7 +207,7 @@ export function getCurrentVersion(): string {
   if (typeof import.meta !== 'undefined' && import.meta.env?.VITE_APP_VERSION) {
     return import.meta.env.VITE_APP_VERSION;
   }
-  return '2.0.0';
+  return '2.1.0';
 }
 
 /**
