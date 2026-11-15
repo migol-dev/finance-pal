@@ -1,10 +1,9 @@
-import { memo, useState } from "react";
-import { NavLink, useLocation } from "react-router-dom";
-import { Home, ListTree, Target, Plus, MoreHorizontal } from "lucide-react";
+import { memo } from "react";
+import { NavLink } from "react-router-dom";
+import { Home, ListTree, Target, HandCoins, Plus } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { motion } from "@/lib/framer";
 import { useQuickTxModal } from "@/store/ui-quick-tx-store";
-import { MoreNavSheet } from "./MoreNavSheet";
 
 const PRIMARY_LEFT_NAV = [
   { to: "/", icon: Home, label: "Inicio" },
@@ -13,21 +12,13 @@ const PRIMARY_LEFT_NAV = [
 
 const PRIMARY_RIGHT_NAV = [
   { to: "/metas", icon: Target, label: "Metas" },
+  { to: "/deudas", icon: HandCoins, label: "Deudas" },
 ];
-
-const MORE_ROUTES = ["/deudas", "/anual", "/historial", "/ajustes"];
 
 export const BottomNavV2 = memo(function BottomNavV2() {
   const openQuickTx = useQuickTxModal((s) => s.openQuickTx);
-  const [moreOpen, setMoreOpen] = useState(false);
-  const location = useLocation();
-
-  const isMoreActive = MORE_ROUTES.some((route) =>
-    location.pathname === route || location.pathname.startsWith(`${route}/`)
-  );
 
   return (
-    <>
       <nav
         aria-label="Navegación principal inferior v2"
         className="fixed bottom-0 inset-x-0 z-50 safe-bottom lg:hidden"
@@ -124,46 +115,8 @@ export const BottomNavV2 = memo(function BottomNavV2() {
                 )}
               </NavLink>
             ))}
-
-            {/* Enlace accesible para lectores de pantalla a Deudas */}
-            <NavLink to="/deudas" aria-label="Deudas" className="sr-only">
-              Deudas
-            </NavLink>
-
-            {/* Item 5: Más ••• que abre MoreNavSheet */}
-            <button
-              type="button"
-              onClick={() => setMoreOpen(true)}
-              aria-label="Más opciones"
-              aria-expanded={moreOpen}
-              className={cn(
-                "flex-1 min-h-[48px] flex flex-col items-center justify-center gap-0.5 px-1 py-1.5 rounded-xl text-[11px] font-medium transition-all relative min-w-[44px]",
-                isMoreActive
-                  ? "text-primary font-semibold"
-                  : "text-muted-foreground/70 hover:text-foreground active:scale-95"
-              )}
-            >
-              {isMoreActive && (
-                <motion.div
-                  layoutId="activeNavV2"
-                  className="absolute inset-0 bg-primary/10 rounded-xl"
-                  transition={{ type: "spring", stiffness: 380, damping: 30 }}
-                />
-              )}
-              <MoreHorizontal
-                className={cn("size-5 relative z-10", isMoreActive && "text-primary")}
-                strokeWidth={isMoreActive ? 2 : 1.75}
-              />
-              <span className="relative z-10 text-[11px] tracking-[-0.025em] font-medium text-center leading-tight whitespace-nowrap overflow-visible">
-                Más
-              </span>
-            </button>
           </motion.div>
         </div>
       </nav>
-
-      {/* Hoja deslizante de navegación táctil para móvil */}
-      <MoreNavSheet open={moreOpen} onOpenChange={setMoreOpen} />
-    </>
   );
 });

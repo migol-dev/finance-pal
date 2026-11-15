@@ -4,6 +4,7 @@ import { MemoryRouter } from "react-router-dom";
 import fs from "fs";
 import path from "path";
 import { MoreNavSheet } from "@/components/app/MoreNavSheet";
+import { HeaderMoreButton } from "@/components/app/HeaderMoreButton";
 import { BottomNavV2 } from "@/components/app/BottomNavV2";
 import { MovimientosV2 } from "@/components/movimientos/MovimientosV2";
 import { MetasV2 } from "@/components/metas/MetasV2";
@@ -103,9 +104,9 @@ describe("Sprint 7 — Mobile Usability & WCAG AAA Verification Suite", () => {
         </MemoryRouter>
       );
 
-      // Verify header and primary links
+      // Verify header and secondary links (Deudas was promoted to primary bottom nav)
       expect(screen.getByText("Más opciones")).toBeInTheDocument();
-      expect(screen.getByText("Deudas y Préstamos")).toBeInTheDocument();
+      expect(screen.queryByText("Deudas y Préstamos")).not.toBeInTheDocument();
       expect(screen.getByText("Balance Anual")).toBeInTheDocument();
       expect(screen.getByText("Historial de Actividades")).toBeInTheDocument();
       expect(screen.getByText("Ajustes y Personalización")).toBeInTheDocument();
@@ -116,20 +117,20 @@ describe("Sprint 7 — Mobile Usability & WCAG AAA Verification Suite", () => {
       expect(screen.getByRole("button", { name: "Sistema" })).toBeInTheDocument();
 
       // Verify touch targets: all navigation buttons must satisfy min-h-[44px]
-      const deudasButton = screen.getByText("Deudas y Préstamos").closest("button");
-      expect(deudasButton).toHaveClass("min-h-[52px]");
+      const anualButton = screen.getByText("Balance Anual").closest("button");
+      expect(anualButton).toHaveClass("min-h-[52px]");
 
       const ajustesButton = screen.getByText("Ajustes y Personalización").closest("button");
       expect(ajustesButton).toHaveClass("min-h-[52px]");
 
       // Clicking navigation button triggers onOpenChange(false)
-      fireEvent.click(deudasButton!);
+      fireEvent.click(anualButton!);
       expect(handleOpenChange).toHaveBeenCalledWith(false);
     });
   });
 
   describe("BottomNavV2 5-Item Navigation Hierarchy", () => {
-    it("renders 5 primary touch controls [Inicio, Movimientos, (+), Metas, Más]", () => {
+    it("renders 5 primary touch controls [Inicio, Movimientos, (+), Metas, Deudas]", () => {
       render(
         <MemoryRouter>
           <BottomNavV2 />
@@ -138,9 +139,10 @@ describe("Sprint 7 — Mobile Usability & WCAG AAA Verification Suite", () => {
 
       expect(screen.getByLabelText("Inicio")).toBeInTheDocument();
       expect(screen.getByLabelText("Movimientos")).toBeInTheDocument();
-      expect(screen.getByLabelText("Metas")).toBeInTheDocument();
       expect(screen.getByLabelText("Registrar movimiento rápido")).toBeInTheDocument();
-      expect(screen.getByLabelText("Más opciones")).toBeInTheDocument();
+      expect(screen.getByLabelText("Metas")).toBeInTheDocument();
+      expect(screen.getByLabelText("Deudas")).toBeInTheDocument();
+      expect(screen.queryByLabelText("Más opciones")).not.toBeInTheDocument();
 
       // Test elevated FAB
       const fab = screen.getByLabelText("Registrar movimiento rápido");
@@ -148,12 +150,27 @@ describe("Sprint 7 — Mobile Usability & WCAG AAA Verification Suite", () => {
         fireEvent.click(fab);
       });
       expect(useQuickTxModal.getState().isOpen).toBe(true);
+    });
+  });
 
-      // Test tapping 'Más' opens MoreNavSheet
-      const moreBtn = screen.getByLabelText("Más opciones");
+  describe("HeaderMoreButton Component", () => {
+    it("renders compact header trigger with >=44px touch target and opens MoreNavSheet", () => {
+      render(
+        <MemoryRouter initialEntries={["/anual"]}>
+          <HeaderMoreButton />
+        </MemoryRouter>
+      );
+
+      const moreBtn = screen.getByTestId("header-more-button");
+      expect(moreBtn).toHaveClass("min-h-[44px]", "min-w-[44px]");
       expect(moreBtn).toHaveAttribute("aria-expanded", "false");
+
       fireEvent.click(moreBtn);
       expect(moreBtn).toHaveAttribute("aria-expanded", "true");
+      expect(screen.getByText("Más opciones")).toBeInTheDocument();
+      expect(screen.getByText("Balance Anual")).toBeInTheDocument();
+      expect(screen.getByText("Historial de Actividades")).toBeInTheDocument();
+      expect(screen.getByText("Ajustes y Personalización")).toBeInTheDocument();
     });
   });
 

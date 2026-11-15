@@ -14,3 +14,14 @@ export const navItems: NavItem[] = [
   { to: "/metas", icon: Target, label: "Metas" },
   { to: "/ajustes", icon: Settings, label: "Ajustes" },
 ];
+
+/**
+ * Rutas primarias y secundarias compartidas entre AppShell (gestos swipe y botón atrás),
+ * BottomNavV2, DesktopSidebarV2 y HeaderMoreButton.
+ */
+
+export const MOBILE_PRIMARY_ROUTES_V2 = ["/", "/movimientos", "/metas", "/deudas"] as const;
+
+export const SWIPE_ROUTES_CLASSIC = ["/", "/movimientos", "/deudas", "/metas", "/ajustes"] as const;
+
+export const MORE_SECONDARY_ROUTES_V2 = ["/anual", "/historial", "/ajustes"] as const;

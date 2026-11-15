@@ -38,6 +38,7 @@ import { MonthSwitcher } from "@/components/app/MonthSwitcher";
 import { IconDisplay } from "@/components/app/IconDisplay";
 import { BrandLogo } from "@/components/app/BrandLogo";
 import { AppIcon } from "@/components/icons/AppIcon";
+import { HeaderMoreButton } from "@/components/app/HeaderMoreButton";
 
 export function DashboardV2() {
   const {
@@ -475,6 +476,7 @@ export function DashboardV2() {
               <Settings className="size-4" strokeWidth={1.5} />
             )}
           </Link>
+          <HeaderMoreButton className="border-[#E4E0D8] dark:border-white/10 rounded-lg" />
         </div>
       </header>
 

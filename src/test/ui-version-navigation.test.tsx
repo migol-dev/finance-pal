@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, vi } from "vitest";
 import { render, screen, fireEvent, act } from "@testing-library/react";
-import { MemoryRouter } from "react-router-dom";
+import { MemoryRouter, useLocation } from "react-router-dom";
 import { useQuickTxModal } from "@/store/ui-quick-tx-store";
 import { BottomNavV2 } from "@/components/app/BottomNavV2";
 import { DesktopSidebarV2 } from "@/components/app/DesktopSidebarV2";
@@ -78,8 +78,14 @@ describe("Sprint 2 Navigation & AppShell v2 Suite", () => {
 
       expect(screen.getByLabelText("Inicio")).toBeInTheDocument();
       expect(screen.getByLabelText("Movimientos")).toBeInTheDocument();
-      expect(screen.getByLabelText("Deudas")).toBeInTheDocument();
       expect(screen.getByLabelText("Metas")).toBeInTheDocument();
+      expect(screen.getByLabelText("Deudas")).toBeInTheDocument();
+      expect(screen.queryByLabelText("Más opciones")).not.toBeInTheDocument();
+
+      const navLabels = screen
+        .getAllByRole("link")
+        .map((el) => el.getAttribute("aria-label"));
+      expect(navLabels).toEqual(["Inicio", "Movimientos", "Metas", "Deudas"]);
 
       const fab = screen.getByLabelText("Registrar movimiento rápido");
       expect(fab).toBeInTheDocument();
@@ -274,6 +280,43 @@ describe("Sprint 2 Navigation & AppShell v2 Suite", () => {
       expect(screen.getByTestId("child-content")).toBeInTheDocument();
       expect(screen.queryByLabelText("Navegación principal inferior v2")).not.toBeInTheDocument();
       expect(screen.queryByLabelText("Navegación lateral de escritorio v2")).not.toBeInTheDocument();
+    });
+
+    it("swipes in V2 route order: /movimientos -> /metas -> /deudas (and back)", () => {
+      act(() => {
+        useFinance.getState().setUIVersion("v2");
+      });
+
+      function LocationSpy() {
+        const location = useLocation();
+        return <div data-testid="current-route">{location.pathname}</div>;
+      }
+
+      render(
+        <MemoryRouter initialEntries={["/movimientos"]}>
+          <AppShell>
+            <LocationSpy />
+          </AppShell>
+        </MemoryRouter>
+      );
+
+      const spy = screen.getByTestId("current-route");
+      expect(spy).toHaveTextContent("/movimientos");
+
+      // Swipe left: /movimientos -> /metas (NOT /deudas)
+      fireEvent.touchStart(spy, { touches: [{ clientX: 280, clientY: 100 }] });
+      fireEvent.touchEnd(spy, { changedTouches: [{ clientX: 110, clientY: 100 }] });
+      expect(spy).toHaveTextContent("/metas");
+
+      // Swipe left: /metas -> /deudas
+      fireEvent.touchStart(spy, { touches: [{ clientX: 280, clientY: 100 }] });
+      fireEvent.touchEnd(spy, { changedTouches: [{ clientX: 110, clientY: 100 }] });
+      expect(spy).toHaveTextContent("/deudas");
+
+      // Swipe right: /deudas -> /metas
+      fireEvent.touchStart(spy, { touches: [{ clientX: 110, clientY: 100 }] });
+      fireEvent.touchEnd(spy, { changedTouches: [{ clientX: 280, clientY: 100 }] });
+      expect(spy).toHaveTextContent("/metas");
     });
   });
 });

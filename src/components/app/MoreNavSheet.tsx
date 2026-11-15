@@ -1,7 +1,6 @@
 import { memo } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import {
-  HandCoins,
   BarChart3,
   History,
   Settings,
@@ -30,14 +29,6 @@ interface MoreNavSheetProps {
 }
 
 const MORE_NAV_LINKS = [
-  {
-    to: "/deudas",
-    label: "Deudas y Préstamos",
-    description: "Amortizaciones, cobros y pagos pendientes",
-    icon: HandCoins,
-    color: "text-[#C86446] dark:text-[#E07A5F]",
-    bg: "bg-[#C86446]/10",
-  },
   {
     to: "/anual",
     label: "Balance Anual",
@@ -102,7 +93,7 @@ export const MoreNavSheet = memo(function MoreNavSheet({
                   </span>
                 </DrawerTitle>
                 <DrawerDescription className="text-xs text-muted-foreground mt-0.5">
-                  Accesos directos rápidos y configuración de la aplicación
+                  Accesos rápidos a vistas secundarias y configuración
                 </DrawerDescription>
               </div>
               {isSupabaseEnabled && (

@@ -6,6 +6,7 @@ import { IconDisplay } from "./IconDisplay";
 import { motion } from "@/lib/framer";
 import { isSupabaseEnabled } from "@/lib/supabase";
 import { SyncIndicator } from "./SyncIndicator";
+import { HeaderMoreButton } from "./HeaderMoreButton";
 
 export const Header = memo(function Header({
   title,
@@ -68,6 +69,7 @@ export const Header = memo(function Header({
             )}
           </Link>
         )}
+        <HeaderMoreButton />
       </div>
     </motion.header>
   );

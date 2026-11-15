@@ -1,4 +1,4 @@
-import { ReactNode, useEffect, useRef, useState } from "react";
+import { ReactNode, useEffect, useRef } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { BottomNav } from "./BottomNav";
 import { DesktopSidebar } from "./DesktopSidebar";
@@ -6,6 +6,7 @@ import { BottomNavV2 } from "./BottomNavV2";
 import { DesktopSidebarV2 } from "./DesktopSidebarV2";
 import { CommandPalette } from "./CommandPalette";
 import { QuickTransactionSheet } from "./QuickTransactionSheet";
+import { MOBILE_PRIMARY_ROUTES_V2, SWIPE_ROUTES_CLASSIC } from "./nav-items";
 import { useFinanceData } from "@/hooks/useFinanceData";
 import { useSystemTheme } from "@/hooks/useSystemTheme";
 import { useNotificationScheduler } from "@/hooks/useNotificationScheduler";
@@ -56,8 +57,6 @@ function applyAccentVars(root: HTMLElement, color: AccentColor, uiVersion: UIVer
   });
 }
 
-const SWIPE_ROUTES = ["/", "/movimientos", "/deudas", "/metas", "/ajustes"];
-
 export function AppShell({ children }: { children: ReactNode }) {
   const { setActive, appSettings, goals, fixedItems } = useFinanceData();
   const { resolvedTheme } = useSystemTheme();
@@ -66,6 +65,8 @@ export function AppShell({ children }: { children: ReactNode }) {
   const glassEffect = appSettings.glassEffect;
   const a11y = appSettings.accessibility;
   const uiVersion = appSettings.uiVersion ?? "v2";
+  const activeSwipeRoutes: readonly string[] =
+    uiVersion === "v2" ? MOBILE_PRIMARY_ROUTES_V2 : SWIPE_ROUTES_CLASSIC;
 
   // Activar motor reactivo autónomo de notificaciones
   useNotificationScheduler();
@@ -161,7 +162,7 @@ export function AppShell({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (!Capacitor.isNativePlatform()) return;
     const listener = CapacitorApp.addListener('backButton', () => {
-      const topRoutes = SWIPE_ROUTES;
+      const topRoutes = activeSwipeRoutes;
       if (!topRoutes.includes(location.pathname)) {
         navigate(-1);
         return;
@@ -176,7 +177,7 @@ export function AppShell({ children }: { children: ReactNode }) {
       setTimeout(() => { lastBackPressRef.current = null; }, 2000);
     });
     return () => { listener.then(h => h.remove()); };
-  }, [location.pathname, navigate]);
+  }, [location.pathname, navigate, activeSwipeRoutes]);
 
   const onTouchStart = (e: React.TouchEvent) => {
     const t = e.touches[0];
@@ -192,11 +193,11 @@ export function AppShell({ children }: { children: ReactNode }) {
     if (Math.abs(dx) < 70 || Math.abs(dx) < Math.abs(dy) * 1.5 || dt > 600) return;
     const target = e.target as HTMLElement | null;
     if (target?.closest('input,textarea,select,[role="dialog"],.no-swipe')) return;
-    const idx = SWIPE_ROUTES.indexOf(location.pathname);
+    const idx = activeSwipeRoutes.indexOf(location.pathname);
     if (idx === -1) return;
     const next = dx < 0 ? idx + 1 : idx - 1;
-    if (next < 0 || next >= SWIPE_ROUTES.length) return;
-    navigate(SWIPE_ROUTES[next]);
+    if (next < 0 || next >= activeSwipeRoutes.length) return;
+    navigate(activeSwipeRoutes[next]);
   };
 
   return (

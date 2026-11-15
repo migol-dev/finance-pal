@@ -28,8 +28,8 @@ import { useQuickTxModal } from "@/store/ui-quick-tx-store";
 const PRIMARY_NAV = [
   { to: "/", icon: Home, label: "Inicio" },
   { to: "/movimientos", icon: ListTree, label: "Movimientos" },
-  { to: "/deudas", icon: HandCoins, label: "Deudas" },
   { to: "/metas", icon: Target, label: "Metas" },
+  { to: "/deudas", icon: HandCoins, label: "Deudas" },
 ];
 
 const SECONDARY_NAV = [
