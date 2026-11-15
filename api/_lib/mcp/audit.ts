@@ -247,6 +247,13 @@ const RPC_ERROR_MAP: Array<{ pattern: RegExp; code: string; message: string; sta
     status: 'error',
   },
   {
+    pattern: /PGRST202|Could not find the function|schema cache/i,
+    code: 'MCP_SCHEMA_OUT_OF_DATE',
+    message:
+      'La base de datos no tiene aplicada la migración MCP más reciente (faltan RPCs). Ejecuta supabase/migrations/20261116000001_mcp_soft_delete_rpc_hotfix.sql en el SQL Editor de Supabase.',
+    status: 'error',
+  },
+  {
     pattern: /INVALID_TRANSFER_TARGET/,
     code: 'INVALID_TRANSFER_TARGET',
     message: 'Las transferencias requieren cuenta origen y cuenta destino distintas y activas.',
