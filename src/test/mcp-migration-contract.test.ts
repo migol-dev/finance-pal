@@ -15,9 +15,16 @@ describe('Phase 1 Migration Contract (20261116000000_mcp_oauth_and_security.sql)
     expect(sqlNoComments).not.toMatch(/SET\s+(LOCAL\s+)?ROLE\b/i);
   });
 
-  it('adds mcp_enabled kill switch and hardens goal_folders RLS', () => {
+  it('adds mcp_enabled kill switch, ensures deleted_at columns and hardens goal_folders RLS', () => {
     expect(sql).toContain('ADD COLUMN IF NOT EXISTS mcp_enabled BOOLEAN NOT NULL DEFAULT true');
+    expect(sql).toContain('ALTER TABLE public.transactions ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMPTZ;');
     expect(sql).toContain('ALTER TABLE public.goal_folders ENABLE ROW LEVEL SECURITY');
+  });
+
+  it('schedules daily pg_cron cleanup for mcp_cleanup_expired()', () => {
+    expect(sql).toContain('CREATE EXTENSION IF NOT EXISTS pg_cron;');
+    expect(sql).toContain("'mcp-cleanup-expired-daily'");
+    expect(sql).toContain('SELECT public.mcp_cleanup_expired();');
   });
 
   it('creates all 8 mcp_* tables with ENABLE and FORCE ROW LEVEL SECURITY', () => {

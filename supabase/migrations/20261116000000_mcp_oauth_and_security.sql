@@ -12,7 +12,105 @@
 ALTER TABLE public.user_settings
   ADD COLUMN IF NOT EXISTS mcp_enabled BOOLEAN NOT NULL DEFAULT true;
 
+-- Ensure soft-delete columns exist in live database before partial indexes and RLS filters
+ALTER TABLE public.accounts ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMPTZ;
+ALTER TABLE public.fixed_items ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMPTZ;
+ALTER TABLE public.transactions ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMPTZ;
+ALTER TABLE public.goals ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMPTZ;
+ALTER TABLE public.goal_folders ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMPTZ;
+ALTER TABLE public.debts ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMPTZ;
+ALTER TABLE public.debt_payments ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMPTZ;
+
+-- Enforce deleted_at IS NULL across user-facing RLS policies
+DROP POLICY IF EXISTS "Users can view their own accounts" ON public.accounts;
+CREATE POLICY "Users can view their own accounts"
+  ON public.accounts FOR SELECT TO authenticated
+  USING (auth.uid() = user_id AND deleted_at IS NULL);
+DROP POLICY IF EXISTS "Users can update their own accounts" ON public.accounts;
+CREATE POLICY "Users can update their own accounts"
+  ON public.accounts FOR UPDATE TO authenticated
+  USING (auth.uid() = user_id AND deleted_at IS NULL)
+  WITH CHECK (auth.uid() = user_id);
+DROP POLICY IF EXISTS "Users can delete their own accounts" ON public.accounts;
+CREATE POLICY "Users can delete their own accounts"
+  ON public.accounts FOR DELETE TO authenticated
+  USING (auth.uid() = user_id AND deleted_at IS NULL);
+
+DROP POLICY IF EXISTS "Users can view their own fixed items" ON public.fixed_items;
+CREATE POLICY "Users can view their own fixed items"
+  ON public.fixed_items FOR SELECT TO authenticated
+  USING (auth.uid() = user_id AND deleted_at IS NULL);
+DROP POLICY IF EXISTS "Users can update their own fixed items" ON public.fixed_items;
+CREATE POLICY "Users can update their own fixed items"
+  ON public.fixed_items FOR UPDATE TO authenticated
+  USING (auth.uid() = user_id AND deleted_at IS NULL)
+  WITH CHECK (auth.uid() = user_id);
+DROP POLICY IF EXISTS "Users can delete their own fixed items" ON public.fixed_items;
+CREATE POLICY "Users can delete their own fixed items"
+  ON public.fixed_items FOR DELETE TO authenticated
+  USING (auth.uid() = user_id AND deleted_at IS NULL);
+
+DROP POLICY IF EXISTS "Users can view their own transactions" ON public.transactions;
+CREATE POLICY "Users can view their own transactions"
+  ON public.transactions FOR SELECT TO authenticated
+  USING (auth.uid() = user_id AND deleted_at IS NULL);
+DROP POLICY IF EXISTS "Users can update their own transactions" ON public.transactions;
+CREATE POLICY "Users can update their own transactions"
+  ON public.transactions FOR UPDATE TO authenticated
+  USING (auth.uid() = user_id AND deleted_at IS NULL)
+  WITH CHECK (auth.uid() = user_id);
+DROP POLICY IF EXISTS "Users can delete their own transactions" ON public.transactions;
+CREATE POLICY "Users can delete their own transactions"
+  ON public.transactions FOR DELETE TO authenticated
+  USING (auth.uid() = user_id AND deleted_at IS NULL);
+
+DROP POLICY IF EXISTS "Users can view their own goals" ON public.goals;
+CREATE POLICY "Users can view their own goals"
+  ON public.goals FOR SELECT TO authenticated
+  USING (auth.uid() = user_id AND deleted_at IS NULL);
+DROP POLICY IF EXISTS "Users can update their own goals" ON public.goals;
+CREATE POLICY "Users can update their own goals"
+  ON public.goals FOR UPDATE TO authenticated
+  USING (auth.uid() = user_id AND deleted_at IS NULL)
+  WITH CHECK (auth.uid() = user_id);
+DROP POLICY IF EXISTS "Users can delete their own goals" ON public.goals;
+CREATE POLICY "Users can delete their own goals"
+  ON public.goals FOR DELETE TO authenticated
+  USING (auth.uid() = user_id AND deleted_at IS NULL);
+
+DROP POLICY IF EXISTS "Users can view their own debts" ON public.debts;
+CREATE POLICY "Users can view their own debts"
+  ON public.debts FOR SELECT TO authenticated
+  USING (auth.uid() = user_id AND deleted_at IS NULL);
+DROP POLICY IF EXISTS "Users can update their own debts" ON public.debts;
+CREATE POLICY "Users can update their own debts"
+  ON public.debts FOR UPDATE TO authenticated
+  USING (auth.uid() = user_id AND deleted_at IS NULL)
+  WITH CHECK (auth.uid() = user_id);
+DROP POLICY IF EXISTS "Users can delete their own debts" ON public.debts;
+CREATE POLICY "Users can delete their own debts"
+  ON public.debts FOR DELETE TO authenticated
+  USING (auth.uid() = user_id AND deleted_at IS NULL);
+
+DROP POLICY IF EXISTS "Users can view their own debt payments" ON public.debt_payments;
+CREATE POLICY "Users can view their own debt payments"
+  ON public.debt_payments FOR SELECT TO authenticated
+  USING (auth.uid() = user_id AND deleted_at IS NULL);
+DROP POLICY IF EXISTS "Users can update their own debt payments" ON public.debt_payments;
+CREATE POLICY "Users can update their own debt payments"
+  ON public.debt_payments FOR UPDATE TO authenticated
+  USING (auth.uid() = user_id AND deleted_at IS NULL)
+  WITH CHECK (auth.uid() = user_id);
+DROP POLICY IF EXISTS "Users can delete their own debt payments" ON public.debt_payments;
+CREATE POLICY "Users can delete their own debt payments"
+  ON public.debt_payments FOR DELETE TO authenticated
+  USING (auth.uid() = user_id AND deleted_at IS NULL);
+
 ALTER TABLE public.goal_folders ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Users can view own goal_folders" ON public.goal_folders;
+DROP POLICY IF EXISTS "Users can insert own goal_folders" ON public.goal_folders;
+DROP POLICY IF EXISTS "Users can update own goal_folders" ON public.goal_folders;
+DROP POLICY IF EXISTS "Users can delete own goal_folders" ON public.goal_folders;
 DROP POLICY IF EXISTS "Users can view their own goal folders" ON public.goal_folders;
 CREATE POLICY "Users can view their own goal folders"
   ON public.goal_folders FOR SELECT TO authenticated
@@ -2301,3 +2399,24 @@ $$;
 
 REVOKE ALL ON FUNCTION public.purge_soft_deleted_item(TEXT, UUID) FROM PUBLIC, anon;
 GRANT EXECUTE ON FUNCTION public.purge_soft_deleted_item(TEXT, UUID) TO authenticated, service_role;
+
+-- ----------------------------------------------------------------------------
+-- Automatic Daily Cleanup Job via pg_cron (03:15 UTC)
+-- ----------------------------------------------------------------------------
+CREATE EXTENSION IF NOT EXISTS pg_cron;
+
+DO $$
+BEGIN
+  IF EXISTS (
+    SELECT 1 FROM cron.job WHERE jobname = 'mcp-cleanup-expired-daily'
+  ) THEN
+    PERFORM cron.unschedule('mcp-cleanup-expired-daily');
+  END IF;
+
+  PERFORM cron.schedule(
+    'mcp-cleanup-expired-daily',
+    '15 3 * * *',
+    $cron$SELECT public.mcp_cleanup_expired();$cron$
+  );
+END;
+$$;
