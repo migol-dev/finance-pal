@@ -55,7 +55,7 @@ FinancePal es un proyecto mantenido de forma independiente, así que estos plazo
 Una vez publicada la corrección:
 
 - Se publicará un **GitHub Security Advisory** y, si corresponde, se solicitará un CVE.
-- Se te dará **crédito** en el advisory y en el [CHANGELOG](CHANGELOG.md), salvo que prefieras permanecer anónimo.
+- Se te dará **crédito** en el advisory y en las [notas de la versión](https://github.com/migol-dev/finance-pal/releases), salvo que prefieras permanecer anónimo.
 
 ---
 
@@ -101,7 +101,7 @@ Consideramos autorizada y de buena fe toda investigación que:
 Mientras cumplas estas reglas, no emprenderemos acciones legales en tu contra por tu investigación.
 
 > [!NOTE]
-> Actualmente FinancePal **no ofrece recompensas económicas** (_bug bounty_). El reconocimiento público se da en los advisories y en el changelog.
+> Actualmente FinancePal **no ofrece recompensas económicas** (_bug bounty_). El reconocimiento público se da en los advisories y en las notas de la versión.
 
 ---
 
