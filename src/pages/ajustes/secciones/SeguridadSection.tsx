@@ -2,10 +2,25 @@ import { memo, useState } from "react";
 import { useFinanceData } from "@/hooks/useFinanceData";
 import { useFinance } from "@/store/finance-store";
 import { isEncryptionAvailable } from "@/lib/encrypted-storage";
-import { getCurrentVersion } from "@/lib/version-check";
+import { formatApkSize, getCurrentVersion } from "@/lib/version-check";
+import { useAppUpdate } from "@/hooks/useAppUpdate";
+import { cn } from "@/lib/utils";
 import { AjustesHeader } from "../AjustesHeader";
 import { SectionProps } from "../types";
-import { ShieldCheck, RotateCcw, AlertTriangle, Lock, Cpu, Sparkles } from "lucide-react";
+import {
+  ShieldCheck,
+  RotateCcw,
+  AlertTriangle,
+  AlertCircle,
+  Lock,
+  Cpu,
+  Sparkles,
+  RefreshCw,
+  Download,
+  ChevronDown,
+  Loader2,
+  CheckCircle2,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { ElegantConfirm } from "@/components/app/ElegantConfirm";
@@ -14,8 +29,36 @@ export const SeguridadSection = memo(function SeguridadSection({ onBack }: Secti
   const { resetAll } = useFinanceData();
   const changeLog = useFinance((s) => s.changeLog);
   const [resetConfirm, setResetConfirm] = useState(false);
+  const [notesOpen, setNotesOpen] = useState(false);
+
+  const {
+    isNativeAndroid,
+    currentVersion,
+    updateInfo,
+    checking,
+    downloading,
+    error,
+    lastCheckedAt,
+    checkManual,
+    downloadUpdate,
+  } = useAppUpdate();
 
   const encryptionStatus = isEncryptionAvailable();
+  const displayVersion = currentVersion || getCurrentVersion();
+  const hasUpdate = Boolean(isNativeAndroid && updateInfo?.hasUpdate);
+  const apkSizeLabel = updateInfo ? formatApkSize(updateInfo.apkSizeBytes) : null;
+  const hasChecked = Boolean(updateInfo || lastCheckedAt !== null);
+
+  let androidStatusText = "Verifica si hay una nueva versión en GitHub";
+  if (checking) {
+    androidStatusText = "Comprobando actualizaciones...";
+  } else if (error) {
+    androidStatusText = error;
+  } else if (hasUpdate) {
+    androidStatusText = "Actualización disponible";
+  } else if (hasChecked) {
+    androidStatusText = "Estás en la última versión";
+  }
 
   return (
     <div className="space-y-6">
@@ -62,18 +105,159 @@ export const SeguridadSection = memo(function SeguridadSection({ onBack }: Secti
         </div>
       </div>
 
-      {/* Version Card */}
-      <div className="rounded-2xl bg-card border border-border p-4 sm:p-5 shadow-soft space-y-2">
-        <h3 className="font-bold text-sm text-foreground">Información de la aplicación</h3>
-        <p className="text-xs text-muted-foreground">
-          Finance Pal es una aplicación de finanzas personales diseñada con arquitectura local-first, cifrado de datos y accesibilidad universal.
-        </p>
-        <div className="pt-2">
-          <span className="px-3 py-1 rounded-full bg-primary/10 text-primary font-mono text-xs font-bold">
-            Versión actual: v{getCurrentVersion()}
-          </span>
+      {/* Version & Updates */}
+      <section
+        aria-labelledby="seguridad-version-heading"
+        className="rounded-xl bg-card border border-border divide-y divide-border/70"
+      >
+        <div className="p-4 sm:p-5 space-y-2.5">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <h3
+              id="seguridad-version-heading"
+              className="font-bold text-sm text-foreground tracking-tight"
+            >
+              Versión y Actualizaciones
+            </h3>
+            <span className="inline-flex items-center px-2.5 py-1 rounded-md bg-muted/70 border border-border/70 text-xs font-mono-tabular font-semibold text-foreground">
+              Versión actual: v{displayVersion}
+            </span>
+          </div>
+          <p className="text-xs text-muted-foreground leading-relaxed">
+            Finance Pal es una aplicación de finanzas personales diseñada con arquitectura local-first, cifrado de datos y accesibilidad universal.
+          </p>
         </div>
-      </div>
+
+        {isNativeAndroid && (
+          <div className="p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div className="flex items-start gap-2.5 min-w-0">
+              {error ? (
+                <AlertCircle
+                  className="size-4 text-destructive shrink-0 mt-0.5"
+                  strokeWidth={1.75}
+                  aria-hidden="true"
+                />
+              ) : hasUpdate ? (
+                <Download
+                  className="size-4 text-primary shrink-0 mt-0.5"
+                  strokeWidth={1.75}
+                  aria-hidden="true"
+                />
+              ) : (
+                <CheckCircle2
+                  className={cn(
+                    "size-4 shrink-0 mt-0.5",
+                    !checking && hasChecked ? "text-primary" : "text-muted-foreground"
+                  )}
+                  strokeWidth={1.75}
+                  aria-hidden="true"
+                />
+              )}
+              <div className="min-w-0 space-y-0.5">
+                <p
+                  className={cn(
+                    "text-xs font-semibold",
+                    error ? "text-destructive" : "text-foreground"
+                  )}
+                >
+                  {androidStatusText}
+                </p>
+                <p className="text-[11px] text-muted-foreground font-mono-tabular">
+                  Instalada: v{displayVersion}
+                </p>
+              </div>
+            </div>
+
+            <button
+              type="button"
+              disabled={checking}
+              onClick={() => void checkManual()}
+              className="inline-flex items-center justify-center gap-2 rounded-lg border border-border bg-background/80 hover:bg-muted/70 px-3.5 py-2 text-xs font-semibold text-foreground min-h-[44px] tactile-press disabled:opacity-50 disabled:pointer-events-none transition-colors shrink-0"
+            >
+              <RefreshCw
+                className={cn("size-4 shrink-0", checking && "animate-spin")}
+                strokeWidth={1.75}
+                aria-hidden="true"
+              />
+              <span>Buscar actualización</span>
+            </button>
+          </div>
+        )}
+
+        {hasUpdate && updateInfo && (
+          <div className="p-4 sm:p-5 space-y-3 bg-primary/[0.03]">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="inline-flex items-center px-2.5 py-1 rounded-md bg-primary/10 border border-primary/30 text-primary text-xs font-mono-tabular font-bold">
+                  v{updateInfo.latest}
+                </span>
+                {apkSizeLabel && (
+                  <span className="inline-flex items-center px-2 py-0.5 rounded-md bg-muted border border-border/70 text-[11px] font-mono-tabular font-medium text-muted-foreground">
+                    {apkSizeLabel}
+                  </span>
+                )}
+              </div>
+              <span className="text-[11px] text-muted-foreground">
+                {updateInfo.apkDownloadUrl
+                  ? "Paquete directo financemate.apk"
+                  : "Disponible en GitHub Releases"}
+              </span>
+            </div>
+
+            {updateInfo.releaseNotes && (
+              <div className="space-y-2">
+                <button
+                  type="button"
+                  aria-expanded={notesOpen}
+                  onClick={() => setNotesOpen((prev) => !prev)}
+                  className="inline-flex items-center justify-between w-full rounded-lg px-2.5 py-2 text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-muted/50 min-h-[44px] tactile-press transition-colors"
+                >
+                  <span>Ver novedades</span>
+                  <ChevronDown
+                    className={cn(
+                      "size-4 shrink-0 transition-transform duration-200",
+                      notesOpen && "rotate-180"
+                    )}
+                    strokeWidth={1.75}
+                    aria-hidden="true"
+                  />
+                </button>
+                {notesOpen && (
+                  <div className="rounded-lg bg-muted/50 border border-border/60 p-3 text-xs text-muted-foreground whitespace-pre-line max-h-40 overflow-y-auto leading-relaxed">
+                    {updateInfo.releaseNotes}
+                  </div>
+                )}
+              </div>
+            )}
+
+            <div>
+              <button
+                type="button"
+                disabled={downloading}
+                onClick={() => void downloadUpdate(updateInfo)}
+                aria-label="Descargar financemate.apk"
+                className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-primary text-primary-foreground rounded-lg min-h-[44px] text-xs font-semibold tactile-press hover:opacity-95 disabled:opacity-60 disabled:pointer-events-none transition-opacity"
+              >
+                {downloading ? (
+                  <Loader2
+                    className="size-4 animate-spin shrink-0"
+                    strokeWidth={1.75}
+                    aria-hidden="true"
+                  />
+                ) : (
+                  <Download
+                    className="size-4 shrink-0"
+                    strokeWidth={1.75}
+                    aria-hidden="true"
+                  />
+                )}
+                <span>
+                  {downloading ? "Iniciando descarga..." : "Descargar financemate.apk"}
+                </span>
+              </button>
+            </div>
+          </div>
+        )}
+      </section>
 
       {/* Danger Zone */}
       <div className="rounded-2xl bg-destructive/5 border border-destructive/20 p-4 sm:p-5 shadow-soft space-y-3">

@@ -1,4 +1,4 @@
-import React, { memo, useCallback, useMemo } from "react";
+import { memo, useCallback, useMemo } from "react";
 import { useSearchParams } from "react-router-dom";
 import {
   User,
@@ -17,7 +17,8 @@ import { useFinanceData } from "@/hooks/useFinanceData";
 import { useAuth } from "@/context/AuthContext";
 import { isSupabaseEnabled } from "@/lib/supabase";
 import { getCurrentVersion } from "@/lib/version-check";
-import { AjustesSectionId, AjustesCategoryMeta } from "./types";
+import { useAppUpdate } from "@/hooks/useAppUpdate";
+import { AjustesSectionId } from "./types";
 import { SyncIndicator } from "@/components/app/SyncIndicator";
 
 // Secciones modulares de configuración
@@ -122,6 +123,9 @@ export const AjustesV2 = memo(function AjustesV2() {
   const a11y = appSettings?.accessibility;
   const notifications = appSettings?.notifications;
   const { session } = useAuth();
+  const { isNativeAndroid, currentVersion, updateInfo } = useAppUpdate();
+  const displayVersion = currentVersion || getCurrentVersion();
+  const hasPendingUpdate = Boolean(isNativeAndroid && updateInfo?.hasUpdate);
 
   const textScalePercent = a11y?.textScalePercent ?? 100;
 
@@ -156,7 +160,11 @@ export const AjustesV2 = memo(function AjustesV2() {
         badge = notifications?.enabled ? "Activas" : "Pausadas";
       else if (cat.id === "datos")
         badge = isSupabaseEnabled && session ? "Nube activa" : "Local";
-      else if (cat.id === "seguridad") badge = `v${getCurrentVersion()}`;
+      else if (cat.id === "seguridad")
+        badge =
+          hasPendingUpdate && updateInfo
+            ? `Actualización v${updateInfo.latest}`
+            : `v${displayVersion}`;
 
       return { ...cat, badge };
     });
@@ -164,10 +172,14 @@ export const AjustesV2 = memo(function AjustesV2() {
     profile?.currency,
     accounts?.length,
     fixedItems?.length,
+    customCategories?.length,
     accentColor,
     textScalePercent,
     notifications?.enabled,
     session,
+    hasPendingUpdate,
+    updateInfo,
+    displayVersion,
   ]);
 
   const renderActiveSection = (id: AjustesSectionId) => {
@@ -281,7 +293,13 @@ export const AjustesV2 = memo(function AjustesV2() {
                               {cat.title}
                             </span>
                             {cat.badge && (
-                              <span className="px-1.5 py-0.5 rounded bg-[#FAF8F5] dark:bg-white/5 border border-[#E4E0D8]/60 dark:border-white/5 text-[9px] font-mono-tabular font-bold text-[#6E6A63] dark:text-[#8E8D8A] shrink-0">
+                              <span
+                                className={`px-1.5 py-0.5 rounded border text-[9px] font-mono-tabular font-bold shrink-0 ${
+                                  cat.id === "seguridad" && hasPendingUpdate
+                                    ? "text-primary bg-primary/10 border-primary/30"
+                                    : "bg-[#FAF8F5] dark:bg-white/5 border-[#E4E0D8]/60 dark:border-white/5 text-[#6E6A63] dark:text-[#8E8D8A]"
+                                }`}
+                              >
                                 {cat.badge}
                               </span>
                             )}
@@ -302,7 +320,7 @@ export const AjustesV2 = memo(function AjustesV2() {
             {/* Subtle Footer info */}
             <div className="pt-2 text-xs text-[#6E6A63] dark:text-[#8E8D8A] flex items-center gap-1.5 px-1 font-mono-tabular">
               <Sparkles className="size-3 text-[#1F7A5A]" />
-              <span>Finance Pal v{getCurrentVersion()}</span>
+              <span>Finance Pal v{displayVersion}</span>
             </div>
           </div>
 

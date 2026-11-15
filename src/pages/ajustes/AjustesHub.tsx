@@ -16,6 +16,7 @@ import { useFinanceData } from "@/hooks/useFinanceData";
 import { useAuth } from "@/context/AuthContext";
 import { isSupabaseEnabled } from "@/lib/supabase";
 import { getCurrentVersion } from "@/lib/version-check";
+import { useAppUpdate } from "@/hooks/useAppUpdate";
 import { AjustesSectionId, AjustesCategoryMeta } from "./types";
 import { Header } from "@/components/app/Header";
 
@@ -29,6 +30,9 @@ export const AjustesHub = memo(function AjustesHub({ onSelectSection }: AjustesH
   const a11y = appSettings?.accessibility;
   const notifications = appSettings?.notifications;
   const { session } = useAuth();
+  const { isNativeAndroid, currentVersion, updateInfo } = useAppUpdate();
+  const displayVersion = currentVersion || getCurrentVersion();
+  const hasPendingUpdate = Boolean(isNativeAndroid && updateInfo?.hasUpdate);
 
   const textScalePercent = a11y?.textScalePercent ?? 100;
 
@@ -102,7 +106,10 @@ export const AjustesHub = memo(function AjustesHub({ onSelectSection }: AjustesH
       title: "Seguridad y Sistema",
       description: "Restablecer datos, diagnóstico y versión",
       icon: ShieldCheck,
-      badge: `v${getCurrentVersion()}`,
+      badge:
+        hasPendingUpdate && updateInfo
+          ? `Actualización v${updateInfo.latest}`
+          : `v${displayVersion}`,
       colorClass: "bg-orange-500/10 text-orange-500",
     },
   ];
@@ -165,7 +172,15 @@ export const AjustesHub = memo(function AjustesHub({ onSelectSection }: AjustesH
                     <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5">
                       <span className="font-bold text-sm text-foreground truncate">{cat.title}</span>
                       {cat.badge && (
-                        <span className="px-2 py-0.5 rounded-full bg-muted text-[10px] font-bold text-muted-foreground shrink-0 capitalize">
+                        <span
+                          className={`px-2 py-0.5 rounded-full text-[10px] font-bold shrink-0 ${
+                            cat.id === "seguridad" && hasPendingUpdate
+                              ? "border text-primary bg-primary/10 border-primary/30 font-mono-tabular"
+                              : cat.id === "seguridad"
+                                ? "bg-muted text-muted-foreground font-mono-tabular"
+                                : "bg-muted text-muted-foreground capitalize"
+                          }`}
+                        >
                           {cat.badge}
                         </span>
                       )}
@@ -186,7 +201,7 @@ export const AjustesHub = memo(function AjustesHub({ onSelectSection }: AjustesH
       {/* Footer Info */}
       <div className="text-center pt-4 pb-12 text-xs text-muted-foreground flex items-center justify-center gap-2">
         <Sparkles className="size-3.5 text-primary" />
-        <span>Finance Pal v{getCurrentVersion()} • Todos tus datos son seguros y locales</span>
+        <span>Finance Pal v{displayVersion} • Todos tus datos son seguros y locales</span>
       </div>
     </div>
   );
