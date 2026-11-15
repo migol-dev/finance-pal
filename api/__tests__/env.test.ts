@@ -47,6 +47,22 @@ describe('MCP Server Env & Vercel Routing Contract', () => {
     expect(env.mcpResource).toBe('https://finance-pal.app/mcp');
   });
 
+  it('uses VITE_PUBLIC_URL when non-preview and MCP_ISSUER is unset, falling back to financepal-web.vercel.app', () => {
+    const withPublicUrl = parseServerEnv({
+      ...BASE_ENV,
+      VERCEL_ENV: 'production',
+      VITE_PUBLIC_URL: 'https://custom.financepal.app/',
+    });
+    expect(withPublicUrl.mcpIssuer).toBe('https://custom.financepal.app');
+    expect(withPublicUrl.mcpResource).toBe('https://custom.financepal.app/mcp');
+
+    const withDefault = parseServerEnv({
+      ...BASE_ENV,
+    });
+    expect(withDefault.mcpIssuer).toBe('https://financepal-web.vercel.app');
+    expect(withDefault.mcpResource).toBe('https://financepal-web.vercel.app/mcp');
+  });
+
   it('routes /oauth/consent to /index.html before /oauth/(.*) in vercel.json', () => {
     const vercelConfigPath = path.resolve(__dirname, '../../vercel.json');
     const config = JSON.parse(fs.readFileSync(vercelConfigPath, 'utf8')) as {

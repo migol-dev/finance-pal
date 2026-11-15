@@ -3,6 +3,7 @@ import net from 'node:net';
 import type { ServerEnv } from './env';
 
 const ALLOWED_EXTERNAL_ORIGINS = new Set([
+  'https://financepal-web.vercel.app',
   'https://finance-pal.app',
   'https://www.finance-pal.app',
   'https://claude.ai',

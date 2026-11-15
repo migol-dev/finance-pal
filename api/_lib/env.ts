@@ -1,6 +1,6 @@
 import { z } from 'zod';
 
-const DEFAULT_ISSUER = 'https://finance-pal.app';
+const DEFAULT_ISSUER = 'https://financepal-web.vercel.app';
 
 const nonEmptyUrl = z
   .string()
@@ -50,6 +50,11 @@ function resolveDefaultIssuer(rawEnv: Record<string, string | undefined>): strin
     if (previewHost) {
       return `https://${previewHost}`;
     }
+  }
+
+  if (rawEnv.VERCEL_ENV !== 'preview') {
+    const publicUrl = rawEnv.VITE_PUBLIC_URL?.trim().replace(/\/+$/, '');
+    if (publicUrl) return publicUrl;
   }
 
   return DEFAULT_ISSUER;
