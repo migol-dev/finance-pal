@@ -6,10 +6,14 @@ import {
 } from '@/lib/finance';
 
 const iconRefSchema: z.ZodType<IconRef> = z.object({
-  kind: z.enum(['emoji', 'image']),
+  kind: z.enum(['icon', 'emoji', 'image']),
   value: z.string().max(200000),
 }).refine(
-  (v) => v.kind === 'emoji' ? v.value.length <= 8 : v.value.startsWith('data:image/'),
+  (v) => {
+    if (v.kind === 'icon') return v.value.length >= 1 && v.value.length <= 40;
+    if (v.kind === 'emoji') return v.value.length <= 16;
+    return v.value.startsWith('data:image/');
+  },
   { message: 'Invalid icon format' }
 );
 
@@ -66,7 +70,7 @@ export const transactionSchema = z.object({
   accountId: z.string().uuid().optional(),
   transferToAccountId: z.string().uuid().optional(),
   externalPayee: z.object({
-    clabe: z.string().regex(/^\d{18}$/).optional(),
+    clabe: z.string().regex(/^(\d{4}|\d{18})$/).optional(),
     bank: z.string().max(100).optional(),
     name: z.string().max(100).optional(),
   }).strict().optional(),

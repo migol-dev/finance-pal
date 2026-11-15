@@ -132,7 +132,7 @@ export function inSet<T extends string>(set: readonly T[], v: unknown): v is T {
 
 export function sanitizeIcon(v: unknown): IconRef | undefined {
     if (!isObj(v)) return undefined;
-    const kind = v.kind === "image" ? "image" : v.kind === "emoji" ? "emoji" : null;
+    const kind = v.kind === "image" ? "image" : v.kind === "icon" ? "icon" : v.kind === "emoji" ? "emoji" : null;
     if (!kind || !isStr(v.value)) return undefined;
     return { kind, value: v.value };
 }

@@ -1,3 +1,5 @@
+import { type AppIconId, isAppIconId, resolveIconId } from "./icon-ids";
+
 export type ItemType = "income_fixed" | "expense_fixed" | "expense_variable" | "saving_fixed";
 export type Frequency =
   | "monthly"
@@ -26,6 +28,13 @@ export const PAYMENT_METHOD_EMOJI: Record<PaymentMethod, string> = {
   other: "🔁",
 };
 
+export const PAYMENT_METHOD_ICON: Record<PaymentMethod, AppIconId> = {
+  cash: "cash",
+  transfer: "transfer",
+  card: "card",
+  other: "repeat",
+};
+
 export type AccountType = "bank" | "cash" | "other";
 
 export interface Denomination {
@@ -48,10 +57,10 @@ export interface Account {
   holderName?: string;  // Titular de la cuenta
 }
 
-/** Visual identity: either an emoji OR a cropped image (dataURL) */
+/** Visual identity: typed SVG icon, legacy emoji, or cropped image (dataURL) */
 export interface IconRef {
-  kind: "emoji" | "image";
-  value: string; // emoji char or dataURL
+  kind: "icon" | "emoji" | "image";
+  value: string; // AppIconId, legacy emoji char, or dataURL
 }
 
 export interface FixedItem {
@@ -387,9 +396,10 @@ export function getDueOccurrencesForFixedItem(
     });
     if (already) continue;
 
-    const validIcon =
+    const validIcon: IconRef | undefined =
       f.icon &&
-      ((f.icon.kind === "emoji" && typeof f.icon.value === "string" && f.icon.value.length <= 8) ||
+      ((f.icon.kind === "icon" && typeof f.icon.value === "string" && isAppIconId(f.icon.value)) ||
+        (f.icon.kind === "emoji" && typeof f.icon.value === "string" && f.icon.value.length <= 8) ||
         (f.icon.kind === "image" &&
           typeof f.icon.value === "string" &&
           f.icon.value.startsWith("data:image/") &&
@@ -571,6 +581,7 @@ export interface CustomCategory {
   id: string;
   name: string; // Máximo 20 caracteres
   emoji: string;
+  icon?: AppIconId;
   createdAt?: string;
 }
 
@@ -593,6 +604,24 @@ export const DEFAULT_CATEGORY_EMOJI: Record<string, string> = {
   Otros: "✨",
 };
 
+export const DEFAULT_CATEGORY_ICON: Record<string, AppIconId> = {
+  Alimentación: "cart",
+  Transporte: "car",
+  Vivienda: "home",
+  Servicios: "bulb",
+  Salud: "pill",
+  Educación: "book",
+  Entretenimiento: "movie",
+  Compras: "bag",
+  "Familia y Mascotas": "paw",
+  "Trabajo / Sueldo": "briefcase",
+  "Negocio / Ventas": "trend_up",
+  "Ahorro e Inversión": "bank",
+  Deudas: "handshake",
+  Regalos: "gift",
+  Otros: "sparkles",
+};
+
 /** Categorías legadas para retrocompatibilidad de transacciones históricas */
 export const LEGACY_CATEGORY_EMOJI: Record<string, string> = {
   Trabajo: "💼",
@@ -611,9 +640,31 @@ export const LEGACY_CATEGORY_EMOJI: Record<string, string> = {
   Mascotas: "🐾",
 };
 
+export const LEGACY_CATEGORY_ICON: Record<string, AppIconId> = {
+  Trabajo: "briefcase",
+  Servicios: "wrench",
+  Transporte: "fuel",
+  Salud: "dumbbell",
+  Conectividad: "smartphone",
+  "Apoyo familiar": "users",
+  Ocio: "party",
+  "Cuidado personal": "spray",
+  Moto: "bike",
+  Fondo: "lifebuoy",
+  Hogar: "home",
+  Ropa: "shirt",
+  Café: "coffee",
+  Mascotas: "paw",
+};
+
 export const CATEGORY_EMOJI: Record<string, string> = {
   ...DEFAULT_CATEGORY_EMOJI,
   ...LEGACY_CATEGORY_EMOJI,
+};
+
+export const CATEGORY_ICON: Record<string, AppIconId> = {
+  ...DEFAULT_CATEGORY_ICON,
+  ...LEGACY_CATEGORY_ICON,
 };
 
 export const COMMON_EMOJIS = [
@@ -995,6 +1046,29 @@ export function getCategoriesMap(customCategories?: CustomCategory[]): Record<st
   return map;
 }
 
+export function getCategoriesIconMap(customCategories?: CustomCategory[]): Record<string, AppIconId> {
+  if (Array.isArray(customCategories)) {
+    _cachedCustomCategories = customCategories;
+  }
+  const map: Record<string, AppIconId> = { ...DEFAULT_CATEGORY_ICON };
+  const list = Array.isArray(customCategories) ? customCategories : _cachedCustomCategories;
+  for (const c of list) {
+    if (c && c.name) {
+      map[c.name] = c.icon ?? resolveIconId(c.emoji, "tag");
+    }
+  }
+  return map;
+}
+
+export function iconIdFor(cat: string, customCategories?: CustomCategory[]): AppIconId {
+  const list = Array.isArray(customCategories) ? customCategories : _cachedCustomCategories;
+  if (list.length > 0) {
+    const custom = list.find((c) => c && c.name.toLowerCase() === cat.toLowerCase());
+    if (custom) return custom.icon ?? resolveIconId(custom.emoji, "tag");
+  }
+  return CATEGORY_ICON[cat] ?? "cash";
+}
+
 export function emojiFor(cat: string, customCategories?: CustomCategory[]): string {
   const list = Array.isArray(customCategories) ? customCategories : _cachedCustomCategories;
   if (list.length > 0) {
@@ -1004,13 +1078,27 @@ export function emojiFor(cat: string, customCategories?: CustomCategory[]): stri
   return CATEGORY_EMOJI[cat] ?? "💸";
 }
 
-/** Resolve display info for any record that might carry an icon. */
+/** Resolve display info for any record that might carry an icon (translating legacy emojis to SVG IDs). */
 export function iconFor(
   rec: { icon?: IconRef; category?: string; emoji?: string },
   customCategories?: CustomCategory[]
 ): IconRef {
-  if (rec.icon) return rec.icon;
-  if (rec.emoji) return { kind: "emoji", value: rec.emoji };
-  return { kind: "emoji", value: emojiFor(rec.category ?? "", customCategories) };
+  if (rec.icon?.kind === "image") return rec.icon;
+  if (rec.icon?.kind === "icon") {
+    return {
+      kind: "icon",
+      value: isAppIconId(rec.icon.value) ? rec.icon.value : resolveIconId(rec.icon.value, "sparkles"),
+    };
+  }
+  if (rec.icon?.kind === "emoji") {
+    return {
+      kind: "icon",
+      value: resolveIconId(rec.icon.value, iconIdFor(rec.category ?? "", customCategories)),
+    };
+  }
+  if (rec.emoji) {
+    return { kind: "icon", value: resolveIconId(rec.emoji, "sparkles") };
+  }
+  return { kind: "icon", value: iconIdFor(rec.category ?? "", customCategories) };
 }
 

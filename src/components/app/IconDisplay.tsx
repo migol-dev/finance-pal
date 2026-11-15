@@ -1,5 +1,7 @@
 import { forwardRef, memo } from "react";
 import { IconRef } from "@/lib/finance";
+import { resolveIconId } from "@/lib/icon-ids";
+import { AppIcon } from "@/components/icons/AppIcon";
 import { cn } from "@/lib/utils";
 
 interface Props {
@@ -8,8 +10,17 @@ interface Props {
   size?: "xs" | "sm" | "md" | "lg" | "xl";
 }
 
+const iconSizeMap: Record<NonNullable<Props["size"]>, string> = {
+  xs: "size-3.5",
+  sm: "size-4",
+  md: "size-5",
+  lg: "size-6",
+  xl: "size-9",
+};
+
 /**
- * Renders an icon (emoji or cropped image thumbnail) with consistent sizing.
+ * Renders an SVG vector icon or cropped image thumbnail with consistent sizing
+ * and theme-adaptive colors. Legacy emoji refs are resolved to AppIconId on the fly.
  * forwardRef so it works inside framer-motion <AnimatePresence>.
  */
 export const IconDisplay = memo(forwardRef<HTMLDivElement, Props>(function IconDisplay(
@@ -23,10 +34,10 @@ export const IconDisplay = memo(forwardRef<HTMLDivElement, Props>(function IconD
     lg: "size-14 text-2xl",
     xl: "size-20 text-4xl",
   };
-  // Defensive: handle missing/invalid icon refs gracefully
-  const safe: IconRef = icon && (icon.kind === "image" || icon.kind === "emoji") && typeof icon.value === "string"
-    ? icon
-    : { kind: "emoji", value: "✨" };
+  const safe: IconRef =
+    icon && (icon.kind === "icon" || icon.kind === "image" || icon.kind === "emoji") && typeof icon.value === "string"
+      ? icon
+      : { kind: "icon", value: "sparkles" };
 
   if (safe.kind === "image") {
     return (
@@ -35,9 +46,17 @@ export const IconDisplay = memo(forwardRef<HTMLDivElement, Props>(function IconD
       </div>
     );
   }
+  const iconId = resolveIconId(safe.value, "sparkles");
   return (
-    <div ref={ref} className={cn("rounded-2xl bg-muted flex items-center justify-center shrink-0", sizeMap[size], className)}>
-      <span aria-hidden>{safe.value}</span>
+    <div
+      ref={ref}
+      className={cn(
+        "rounded-2xl bg-primary/10 text-primary flex items-center justify-center shrink-0",
+        sizeMap[size],
+        className
+      )}
+    >
+      <AppIcon name={iconId} className={iconSizeMap[size]} />
     </div>
   );
 }));
