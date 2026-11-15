@@ -44,6 +44,16 @@ function applyAccentVars(root: HTMLElement, color: AccentColor, uiVersion: UIVer
   root.style.setProperty("--g-secondary", p.gradients.secondary);
   root.style.setProperty("--g-sunset", p.gradients.sunset);
   root.style.setProperty("--g-ocean", p.gradients.ocean);
+
+  const lPrimary = theme === "dark" ? "58%" : "46%";
+  const lAlt = theme === "dark" ? "62%" : "49%";
+  const chartOffsets = [0, 38, 128, 185, 238, 295];
+  chartOffsets.forEach((offset, idx) => {
+    const hue = (p.hue + offset) % 360;
+    const sat = idx === 0 ? p.saturation : idx % 2 === 1 ? "74%" : "68%";
+    const lig = idx === 0 ? p.lightness : idx % 2 === 1 ? lAlt : lPrimary;
+    root.style.setProperty(`--chart-${idx + 1}`, `hsl(${hue} ${sat} ${lig})`);
+  });
 }
 
 const SWIPE_ROUTES = ["/", "/movimientos", "/deudas", "/metas", "/ajustes"];
