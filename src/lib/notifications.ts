@@ -8,7 +8,6 @@ import {
   NotificationPreferences,
   NotificationPermissionState,
   NotificationRepeatFrequency,
-  DEFAULT_NOTIFICATION_PREFS,
   startOfDay,
   parseDateLocal,
   parseGoalDeadline,

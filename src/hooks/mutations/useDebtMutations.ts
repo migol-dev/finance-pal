@@ -36,7 +36,7 @@ export function useDebtMutations(): DebtMutations {
   const queryClient = useQueryClient();
 
   const addDebt = useMutation<void, Error, Omit<Debt, 'id' | 'payments'>>({
-    mutationFn: async (payload) => {
+    mutationFn: async (_payload) => {
       const state = useFinance.getState();
       const debt = state.debts[0];
       

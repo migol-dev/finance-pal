@@ -13,7 +13,6 @@ import {
   ShieldCheck,
   Key,
   ArrowLeft,
-  Sparkles,
   Shield,
   Database,
   Smartphone,
@@ -108,7 +107,7 @@ export function LoginV2() {
         .then(({ data, error }) => {
           if (!error && data?.all) {
             const totp = data.all.find(
-              (f: any) => f.factor_type === "totp" && f.status === "verified"
+              (f: { id: string; factor_type: string; status: string }) => f.factor_type === "totp" && f.status === "verified"
             );
             if (totp) setMfaFactorId(totp.id);
           }
@@ -131,7 +130,12 @@ export function LoginV2() {
         const redirectTo = getValidatedRedirectUri(provider);
         const isNative = Capacitor.isNativePlatform();
 
-        const options: any = { redirectTo };
+        const options: {
+          redirectTo: string;
+          skipBrowserRedirect?: boolean;
+          queryParams?: Record<string, string>;
+          scopes?: string;
+        } = { redirectTo };
         if (isNative) {
           options.skipBrowserRedirect = true;
         }
@@ -148,7 +152,7 @@ export function LoginV2() {
           Browser.open({ url: data.url });
         }
         setLoading(false);
-      } catch (error: any) {
+      } catch (error: unknown) {
         toast.error(getSafeAuthError(error, `Error al iniciar sesión con ${provider}`));
         setLoading(false);
       }
@@ -194,7 +198,7 @@ export function LoginV2() {
           if (error) throw error;
           toast.success("Cuenta creada. Revisa tu correo para verificar.");
         }
-      } catch (error: any) {
+      } catch (error: unknown) {
         toast.error(getSafeAuthError(error, "Error de autenticación"));
       } finally {
         setLoading(false);
@@ -220,7 +224,7 @@ export function LoginV2() {
           const { data, error } = await supabase.auth.mfa.listFactors();
           if (error) throw error;
           const totp = data?.all?.find(
-            (f: any) => f.factor_type === "totp" && f.status === "verified"
+            (f: { id: string; factor_type: string; status: string }) => f.factor_type === "totp" && f.status === "verified"
           );
           if (!totp) throw new Error("No se encontró el factor de autenticación");
           factorId = totp.id;
@@ -249,7 +253,7 @@ export function LoginV2() {
           });
         }
         toast.success("Autenticación de dos factores verificada");
-      } catch (error: any) {
+      } catch (error: unknown) {
         toast.error(getSafeAuthError(error, "Código 2FA incorrecto o expirado"));
       } finally {
         setVerifyingMfa(false);

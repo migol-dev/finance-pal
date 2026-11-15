@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useCallback, memo } from "react";
 import { useFinanceData } from "@/hooks/useFinanceData";
-import { ChangeAction, ChangeEntity, ChangeLogEntry } from "@/lib/finance";
+import { ChangeAction, ChangeEntity, ChangeLogEntry, formatChangeLogLabel } from "@/lib/finance";
 import { Header } from "@/components/app/Header";
 import { Button } from "@/components/ui/button";
 import { ElegantConfirm } from "@/components/app/ElegantConfirm";
@@ -15,7 +15,6 @@ import {
   ChevronDown,
   ChevronUp,
   Layers,
-  Filter,
   Receipt,
   CalendarClock,
   Target,
@@ -25,7 +24,7 @@ import { toast } from "sonner";
 
 const ENTITY_CONFIG: Record<
   ChangeEntity,
-  { label: string; icon: React.ComponentType<{ className?: string }> }
+  { label: string; icon: React.ComponentType<{ className?: string; strokeWidth?: number | string }> }
 > = {
   transaction: { label: "Movimiento", icon: Receipt },
   fixed: { label: "Fijo", icon: CalendarClock },
@@ -35,7 +34,7 @@ const ENTITY_CONFIG: Record<
 
 const ACTION_CONFIG: Record<
   ChangeAction,
-  { label: string; tone: string; bgTone: string; icon: React.ComponentType<{ className?: string }> }
+  { label: string; tone: string; bgTone: string; icon: React.ComponentType<{ className?: string; strokeWidth?: number | string }> }
 > = {
   create: {
     label: "Creado",
@@ -68,14 +67,6 @@ function fmtVal(v: unknown): string {
   }
   if (typeof v === "string" && v.length > 40) return v.slice(0, 40) + "…";
   return String(v);
-}
-
-/** Formats and sanitizes changeLog entry labels, ensuring transfers are displayed as traspaso */
-export function formatChangeLogLabel(label: string): string {
-  if (/^Agregó gasto "(.*traspaso.*)"$/i.test(label) || /^Agregó gasto "(.*transferencia.*)"$/i.test(label)) {
-    return label.replace(/^Agregó gasto /i, "Agregó traspaso ");
-  }
-  return label;
 }
 
 function getDayHeader(dateStr: string): string {

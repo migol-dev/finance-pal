@@ -8,6 +8,7 @@ import {
   MAX_CUSTOM_CATEGORY_NAME_LENGTH,
   DEFAULT_CATEGORY_EMOJI,
   LEGACY_CATEGORY_EMOJI,
+  DEFAULT_APP_SETTINGS,
   CustomCategory,
 } from "@/lib/finance";
 import { readInitialThemePref, writeThemePref } from "@/lib/theme-sync";
@@ -127,6 +128,7 @@ describe("Sprint 8 — Bloque 2: Custom Categories & Universal Everyday Defaults
   beforeEach(() => {
     useFinance.setState({
       appSettings: {
+        ...DEFAULT_APP_SETTINGS,
         uiVersion: "v2",
         accentColor: "emerald",
         customCategories: [],

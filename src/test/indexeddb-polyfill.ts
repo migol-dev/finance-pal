@@ -108,6 +108,7 @@ class FakeRequest<T = any> {
   transaction: any = null;
   onsuccess: ((event: any) => void) | null = null;
   onerror: ((event: any) => void) | null = null;
+  onupgradeneeded: ((event: any) => void) | null = null;
 }
 
 class FakeCursor {

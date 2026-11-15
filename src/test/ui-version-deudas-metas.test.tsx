@@ -3,7 +3,7 @@ import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import Deudas from "@/pages/Deudas";
 import Metas from "@/pages/Metas";
-import type { Debt, Goal, GoalFolder, Account, AppSettings } from "@/lib/finance";
+import { DEFAULT_APP_SETTINGS, type Debt, type Goal, type GoalFolder, type Account, type AppSettings } from "@/lib/finance";
 import { debtPaymentSchema, validateEntity } from "@/lib/validators";
 
 // Mock de ResizeObserver
@@ -72,11 +72,6 @@ describe("Sprint 5 — DeudasV2, MetasV2 & Dual Dispatchers Suite", () => {
           type: "bank",
           currency: "MXN",
           initialBalance: 15000,
-          color: "blue",
-          isDefault: true,
-          showInSummary: true,
-          order: 0,
-          createdAt: "2026-01-01T00:00:00.000Z",
         },
       ],
       debts: [
@@ -151,7 +146,7 @@ describe("Sprint 5 — DeudasV2, MetasV2 & Dual Dispatchers Suite", () => {
           createdAt: "2026-01-01T00:00:00.000Z",
         },
       ],
-      appSettings: { uiVersion: "v2", accentColor: "emerald" },
+      appSettings: { ...DEFAULT_APP_SETTINGS, uiVersion: "v2", accentColor: "emerald" },
     };
   });
 
@@ -173,7 +168,7 @@ describe("Sprint 5 — DeudasV2, MetasV2 & Dual Dispatchers Suite", () => {
     });
 
     it("renders DeudasClassic when uiVersion === 'classic'", () => {
-      mockState.appSettings = { uiVersion: "classic" };
+      mockState.appSettings = { ...DEFAULT_APP_SETTINGS, uiVersion: "classic" };
       render(
         <MemoryRouter>
           <Deudas />
@@ -355,7 +350,7 @@ describe("Sprint 5 — DeudasV2, MetasV2 & Dual Dispatchers Suite", () => {
     });
 
     it("renders MetasClassic when uiVersion === 'classic'", () => {
-      mockState.appSettings = { uiVersion: "classic" };
+      mockState.appSettings = { ...DEFAULT_APP_SETTINGS, uiVersion: "classic" };
       render(
         <MemoryRouter>
           <Metas />

@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach } from "vitest";
 import { useFinance } from "@/store/finance-store";
-import { getAccentPalette, ACCENT_PALETTES, ACCENT_PALETTES_V2 } from "@/lib/accent-palette";
+import { getAccentPalette, ACCENT_PALETTES, ACCENT_PALETTES_V2, type AccentColor } from "@/lib/accent-palette";
 
 describe("UIVersion dual design settings & palette engine", () => {
   beforeEach(() => {

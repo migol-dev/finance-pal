@@ -1,7 +1,6 @@
 import { renderHook } from "@testing-library/react";
 import { describe, it, expect, vi } from "vitest";
 import { useNetwork } from "@/hooks/useNetwork";
-import { Network } from "@capacitor/network";
 
 vi.mock("@capacitor/network", () => ({
   Network: {

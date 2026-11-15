@@ -3,7 +3,7 @@ import { render, screen, fireEvent, within } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import Movimientos from "@/pages/Movimientos";
 import { MovimientosV2 } from "@/components/movimientos/MovimientosV2";
-import type { Account, Transaction, Debt, AppSettings } from "@/lib/finance";
+import { DEFAULT_APP_SETTINGS, type Account, type Transaction, type Debt, type AppSettings } from "@/lib/finance";
 
 // Mock de ResizeObserver
 class MockResizeObserver {
@@ -61,14 +61,12 @@ describe("Sprint 4 — MovimientosV2 & Dual Dispatcher Suite", () => {
           name: "BBVA Nómina",
           type: "bank",
           initialBalance: 20000,
-          color: "blue",
         },
         {
           id: "acc-2",
           name: "Cartera Efectivo",
           type: "cash",
           initialBalance: 2500,
-          color: "emerald",
         },
       ],
       transactions: [
@@ -116,14 +114,14 @@ describe("Sprint 4 — MovimientosV2 & Dual Dispatcher Suite", () => {
       ],
       activeYear: 2026,
       activeMonth: 9, // Octubre
-      appSettings: { uiVersion: "v2", accentColor: "emerald" },
+      appSettings: { ...DEFAULT_APP_SETTINGS, uiVersion: "v2", accentColor: "emerald" },
       syncFiltersToURL: false,
     };
   });
 
   // 1. Despachador dual
   it("renderiza MovimientosV2 cuando appSettings.uiVersion es 'v2'", () => {
-    mockState.appSettings = { uiVersion: "v2" };
+    mockState.appSettings = { ...DEFAULT_APP_SETTINGS, uiVersion: "v2" };
     render(
       <MemoryRouter>
         <Movimientos />
@@ -136,7 +134,7 @@ describe("Sprint 4 — MovimientosV2 & Dual Dispatcher Suite", () => {
   });
 
   it("renderiza MovimientosClassic cuando appSettings.uiVersion es 'classic'", () => {
-    mockState.appSettings = { uiVersion: "classic" };
+    mockState.appSettings = { ...DEFAULT_APP_SETTINGS, uiVersion: "classic" };
     render(
       <MemoryRouter>
         <Movimientos />

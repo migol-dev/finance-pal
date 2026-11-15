@@ -648,8 +648,8 @@ export function DeudasV2() {
                 }
                 setOpenNewModal(false);
                 setEditingDebt(null);
-              } catch (e: any) {
-                toast.error(e.message || "Error al guardar la deuda");
+              } catch (e: unknown) {
+                toast.error(e instanceof Error ? e.message : "Error al guardar la deuda");
               }
             }}
           />
@@ -674,8 +674,8 @@ export function DeudasV2() {
               await removeDebt(deleteDebt.id);
               toast.success("Deuda eliminada");
               if (selectedId === deleteDebt.id) setSelectedId(null);
-            } catch (e: any) {
-              toast.error(e.message || "Error al eliminar");
+            } catch (e: unknown) {
+              toast.error(e instanceof Error ? e.message : "Error al eliminar");
             }
             setDeleteDebt(null);
           }
@@ -703,8 +703,8 @@ export function DeudasV2() {
             try {
               await removeDebtPayment(deletePayment.debtId, deletePayment.paymentId);
               toast.success("Abono eliminado");
-            } catch (e: any) {
-              toast.error(e.message || "Error al eliminar abono");
+            } catch (e: unknown) {
+              toast.error(e instanceof Error ? e.message : "Error al eliminar abono");
             }
             setDeletePayment(null);
           }
@@ -775,8 +775,8 @@ function DebtInspectorContent({
       toast.success("¡Abono registrado exitosamente!");
       setNote("");
       setReceiptData(undefined);
-    } catch (err: any) {
-      toast.error(err.message || "Error al registrar el abono");
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : "Error al registrar el abono");
     } finally {
       setIsSubmittingPay(false);
     }

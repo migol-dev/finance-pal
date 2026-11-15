@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { validateEntity, sanitizeForLog, accountSchema, transactionSchema } from "../lib/validators";
+import { validateEntity, sanitizeForLog, accountSchema } from "../lib/validators";
 
 describe("validators", () => {
   describe("validateEntity", () => {

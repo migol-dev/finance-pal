@@ -11,15 +11,16 @@ import {
   calculatePasswordStrength,
   getSafeAuthError,
 } from "@/pages/login/auth-helpers";
-import type {
-  Transaction,
-  FixedItem,
-  Goal,
-  Debt,
-  Account,
-  AppSettings,
-  Profile,
-  ChangeLogEntry,
+import {
+  DEFAULT_APP_SETTINGS,
+  type Transaction,
+  type FixedItem,
+  type Goal,
+  type Debt,
+  type Account,
+  type AppSettings,
+  type UserProfile,
+  type ChangeLogEntry,
 } from "@/lib/finance";
 
 // Mock ResizeObserver
@@ -39,11 +40,11 @@ let mockState = {
   debts: [] as Debt[],
   goals: [] as Goal[],
   accounts: [] as Account[],
-  profile: { name: "Usuario Prueba", currency: "MXN" } as Profile,
+  profile: { name: "Usuario Prueba", currency: "MXN" } as UserProfile,
   activeYear: 2026,
   activeMonth: 9,
   changeLog: [] as ChangeLogEntry[],
-  appSettings: { uiVersion: "v2", accentColor: "emerald" } as AppSettings | undefined,
+  appSettings: { ...DEFAULT_APP_SETTINGS, uiVersion: "v2", accentColor: "emerald" } as AppSettings | undefined,
 };
 
 vi.mock("@/hooks/useFinanceData", () => ({
@@ -141,11 +142,6 @@ describe("Sprint 6 — Vistas Secundarias & Despachadores Duales Suite", () => {
           type: "bank",
           currency: "MXN",
           initialBalance: 20000,
-          color: "blue",
-          isDefault: true,
-          showInSummary: true,
-          order: 0,
-          createdAt: "2026-01-01T00:00:00.000Z",
         },
       ],
       fixedItems: [
@@ -156,8 +152,10 @@ describe("Sprint 6 — Vistas Secundarias & Despachadores Duales Suite", () => {
           type: "income_fixed",
           category: "Trabajo",
           frequency: "monthly",
-          startYear: 2026,
-          startMonth: 0,
+          active: true,
+          startDate: "2026-01-01",
+          endDate: "2026-12-31",
+          priority: "high",
           paymentMethod: "transfer",
           accountId: "acc-1",
         },
@@ -168,8 +166,10 @@ describe("Sprint 6 — Vistas Secundarias & Despachadores Duales Suite", () => {
           type: "expense_fixed",
           category: "Vivienda",
           frequency: "monthly",
-          startYear: 2026,
-          startMonth: 0,
+          active: true,
+          startDate: "2026-01-01",
+          endDate: "2026-12-31",
+          priority: "high",
           paymentMethod: "transfer",
           accountId: "acc-1",
         },
@@ -210,8 +210,8 @@ describe("Sprint 6 — Vistas Secundarias & Despachadores Duales Suite", () => {
           name: "Fondo Emergencia",
           target: 50000,
           saved: 25000,
+          emoji: "🛡️",
           color: "emerald",
-          category: "Seguridad",
           contributions: [
             { id: "c-1", amount: 5000, date: "2026-08-01T00:00:00.000Z" },
           ],
@@ -237,7 +237,7 @@ describe("Sprint 6 — Vistas Secundarias & Despachadores Duales Suite", () => {
           changes: [{ field: "saved", from: 20000, to: 25000 }],
         },
       ],
-      appSettings: { uiVersion: "v2", accentColor: "emerald" },
+      appSettings: { ...DEFAULT_APP_SETTINGS, uiVersion: "v2", accentColor: "emerald" },
     };
   });
 
@@ -246,14 +246,14 @@ describe("Sprint 6 — Vistas Secundarias & Despachadores Duales Suite", () => {
      ───────────────────────────────────────────────────────────── */
   describe("Despachadores Duales (Anual, Historial, Ajustes, Login)", () => {
     it("renderiza AnualV2 cuando uiVersion === 'v2'", () => {
-      mockState.appSettings = { uiVersion: "v2", accentColor: "emerald" };
+      mockState.appSettings = { ...DEFAULT_APP_SETTINGS, uiVersion: "v2", accentColor: "emerald" };
       renderWithProviders(<Anual />);
       expect(screen.getByRole("heading", { name: /Resumen Anual/i })).toBeInTheDocument();
       expect(screen.getByText(/SUPERÁVIT \/ FLUJO NETO ACUMULADO/i)).toBeInTheDocument();
     });
 
     it("renderiza AnualClassic cuando uiVersion === 'classic'", () => {
-      mockState.appSettings = { uiVersion: "classic", accentColor: "emerald" };
+      mockState.appSettings = { ...DEFAULT_APP_SETTINGS, uiVersion: "classic", accentColor: "emerald" };
       renderWithProviders(<Anual />);
       expect(screen.getByRole("heading", { name: /Resumen anual/i })).toBeInTheDocument();
       expect(screen.getByText(/Neto del año/i)).toBeInTheDocument();
@@ -266,14 +266,14 @@ describe("Sprint 6 — Vistas Secundarias & Despachadores Duales Suite", () => {
     });
 
     it("renderiza HistorialV2 cuando uiVersion === 'v2'", () => {
-      mockState.appSettings = { uiVersion: "v2", accentColor: "emerald" };
+      mockState.appSettings = { ...DEFAULT_APP_SETTINGS, uiVersion: "v2", accentColor: "emerald" };
       renderWithProviders(<Historial />);
       expect(screen.getByRole("heading", { name: /Historial/i })).toBeInTheDocument();
       expect(screen.getByPlaceholderText(/Buscar por concepto, campo/i)).toBeInTheDocument();
     });
 
     it("renderiza HistorialClassic cuando uiVersion === 'classic'", () => {
-      mockState.appSettings = { uiVersion: "classic", accentColor: "emerald" };
+      mockState.appSettings = { ...DEFAULT_APP_SETTINGS, uiVersion: "classic", accentColor: "emerald" };
       renderWithProviders(<Historial />);
       expect(screen.getByRole("heading", { name: /Historial/i })).toBeInTheDocument();
       expect(screen.queryByPlaceholderText(/Buscar por concepto, campo/i)).toBeNull();
@@ -286,7 +286,7 @@ describe("Sprint 6 — Vistas Secundarias & Despachadores Duales Suite", () => {
     });
 
     it("renderiza AjustesV2 cuando uiVersion === 'v2'", () => {
-      mockState.appSettings = { uiVersion: "v2", accentColor: "emerald" };
+      mockState.appSettings = { ...DEFAULT_APP_SETTINGS, uiVersion: "v2", accentColor: "emerald" };
       renderWithProviders(<Ajustes />);
       expect(screen.getByRole("heading", { name: "Ajustes" })).toBeInTheDocument();
       expect(screen.getByText("Categorías de configuración")).toBeInTheDocument();
@@ -294,7 +294,7 @@ describe("Sprint 6 — Vistas Secundarias & Despachadores Duales Suite", () => {
     });
 
     it("renderiza AjustesClassic cuando uiVersion === 'classic'", () => {
-      mockState.appSettings = { uiVersion: "classic", accentColor: "emerald" };
+      mockState.appSettings = { ...DEFAULT_APP_SETTINGS, uiVersion: "classic", accentColor: "emerald" };
       renderWithProviders(<Ajustes />);
       expect(screen.getByRole("heading", { name: "Ajustes" })).toBeInTheDocument();
       expect(screen.queryByText("01")).toBeNull();
@@ -307,14 +307,14 @@ describe("Sprint 6 — Vistas Secundarias & Despachadores Duales Suite", () => {
     });
 
     it("renderiza LoginV2 cuando uiVersion === 'v2'", () => {
-      mockState.appSettings = { uiVersion: "v2", accentColor: "emerald" };
+      mockState.appSettings = { ...DEFAULT_APP_SETTINGS, uiVersion: "v2", accentColor: "emerald" };
       renderWithProviders(<Login />);
       expect(screen.getByText(/WARM EDITORIAL WEALTH/i)).toBeInTheDocument();
       expect(screen.getByText(/01 \/ PRIVACIDAD LOCAL-FIRST/i)).toBeInTheDocument();
     });
 
     it("renderiza LoginClassic cuando uiVersion === 'classic'", () => {
-      mockState.appSettings = { uiVersion: "classic", accentColor: "emerald" };
+      mockState.appSettings = { ...DEFAULT_APP_SETTINGS, uiVersion: "classic", accentColor: "emerald" };
       renderWithProviders(<Login />);
       expect(screen.getByText(/Bienvenido de nuevo/i)).toBeInTheDocument();
       expect(screen.queryByText(/01 \/ PRIVACIDAD LOCAL-FIRST/i)).toBeNull();

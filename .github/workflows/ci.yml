@@ -21,7 +21,7 @@ jobs:
       - name: Security Audit
         run: npm audit --audit-level=high || true
       - name: Typecheck
-        run: node ./node_modules/typescript/bin/tsc --noEmit
+        run: npm run typecheck
       - name: Lint
         run: npm run lint --if-present
       - name: Run tests with coverage

@@ -1,7 +1,7 @@
 import React from "react";
 
 export default function useRecharts() {
-  const [Recharts, setRecharts] = React.useState<any | null>(null);
+  const [Recharts, setRecharts] = React.useState<typeof import("recharts") | null>(null);
 
   React.useEffect(() => {
     let mounted = true;

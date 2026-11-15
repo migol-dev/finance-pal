@@ -1,4 +1,4 @@
-import React, { useMemo, useState, useCallback, memo } from "react";
+import { useMemo, useState, useCallback, memo } from "react";
 import { useNavigate } from "react-router-dom";
 import { useFinanceData } from "@/hooks/useFinanceData";
 import {
@@ -13,11 +13,11 @@ import {
   PAYMENT_METHOD_LABEL,
   PAYMENT_METHOD_ICON,
   PaymentMethod,
+  Transaction,
   parseDateLocal,
   isIOweDebt,
 } from "@/lib/finance";
 import { Header } from "@/components/app/Header";
-import { PillTabs } from "@/components/app/PillTabs";
 import { IconDisplay } from "@/components/app/IconDisplay";
 import { AppIcon } from "@/components/icons/AppIcon";
 import SimpleAreaChart from "@/components/ui/SimpleAreaChart";
@@ -27,18 +27,13 @@ import {
   TrendingUp,
   TrendingDown,
   PiggyBank,
-  Wallet,
   Trophy,
   AlertTriangle,
-  Sparkles,
   Download,
   Target,
-  HandCoins,
   ArrowUpRight,
   ArrowDownRight,
-  Layers,
 } from "lucide-react";
-import { motion } from "@/lib/framer";
 import { toast } from "sonner";
 
 type Tab = "general" | "categorias" | "metodos" | "metas";
@@ -226,7 +221,7 @@ export const AnualV2 = memo(function AnualV2() {
   }, [fixedItems, transactions, activeYear, accounts]);
 
   const topConcepts = useMemo(() => {
-    const map: Record<string, { amount: number; count: number; sample: any }> = {};
+    const map: Record<string, { amount: number; count: number; sample: Transaction }> = {};
     transactions
       .filter((t) => t.type === "expense" && parseDateLocal(t.date).getFullYear() === activeYear)
       .forEach((t) => {
@@ -297,8 +292,8 @@ export const AnualV2 = memo(function AnualV2() {
     () =>
       goals.map((g) => {
         const contribsYear = (g.contributions ?? [])
-          .filter((c: any) => parseDateLocal(c.date).getFullYear() === activeYear)
-          .reduce((s: number, c: any) => s + c.amount, 0);
+          .filter((c) => parseDateLocal(c.date).getFullYear() === activeYear)
+          .reduce((s, c) => s + c.amount, 0);
         return { goal: g, contribsYear };
       }),
     [goals, activeYear]

@@ -787,6 +787,17 @@ export const DEFAULT_NOTIFICATION_PREFS: NotificationPreferences = {
   hideAmountsInNotifications: false,
 };
 
+export const DEFAULT_APP_SETTINGS: AppSettings = {
+  uiVersion: "v2",
+  accentColor: "emerald",
+  compactMode: false,
+  glassEffect: true,
+  conflictResolved: false,
+  notifications: DEFAULT_NOTIFICATION_PREFS,
+  accessibility: DEFAULT_ACCESSIBILITY_SETTINGS,
+  customCategories: [],
+};
+
 export interface GoalPaceInfo {
   remaining: number;
   days: number;
@@ -1100,5 +1111,13 @@ export function iconFor(
     return { kind: "icon", value: resolveIconId(rec.emoji, "sparkles") };
   }
   return { kind: "icon", value: iconIdFor(rec.category ?? "", customCategories) };
+}
+
+/** Formats and sanitizes changeLog entry labels, ensuring transfers are displayed as traspaso. */
+export function formatChangeLogLabel(label: string): string {
+  if (/^Agregó gasto "(.*traspaso.*)"$/i.test(label) || /^Agregó gasto "(.*transferencia.*)"$/i.test(label)) {
+    return label.replace(/^Agregó gasto /i, "Agregó traspaso ");
+  }
+  return label;
 }
 

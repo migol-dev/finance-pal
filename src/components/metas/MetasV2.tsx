@@ -752,8 +752,8 @@ export function MetasV2() {
                 }
                 setOpenGoalModal(false);
                 setEditingGoal(null);
-              } catch (e: any) {
-                toast.error(e.message || "Ocurrió un error");
+              } catch (e: unknown) {
+                toast.error(e instanceof Error ? e.message : "Ocurrió un error");
               }
             }}
           />
@@ -792,8 +792,8 @@ export function MetasV2() {
                 }
                 setOpenFolderModal(false);
                 setEditingFolder(null);
-              } catch (e: any) {
-                toast.error(e.message || "Ocurrió un error");
+              } catch (e: unknown) {
+                toast.error(e instanceof Error ? e.message : "Ocurrió un error");
               }
             }}
           />
@@ -818,8 +818,8 @@ export function MetasV2() {
               await removeGoal(deleteGoal.id);
               toast.success("Meta eliminada");
               if (selectedId === deleteGoal.id) setSelectedId(null);
-            } catch (e: any) {
-              toast.error(e.message || "Error al eliminar");
+            } catch (e: unknown) {
+              toast.error(e instanceof Error ? e.message : "Error al eliminar");
             }
             setDeleteGoal(null);
           }
@@ -846,8 +846,8 @@ export function MetasV2() {
               await removeGoalFolder(deleteFolder.id);
               toast.success("Carpeta eliminada");
               if (selectedFolderId === deleteFolder.id) setSelectedFolderId(null);
-            } catch (e: any) {
-              toast.error(e.message || "Error al eliminar la carpeta");
+            } catch (e: unknown) {
+              toast.error(e instanceof Error ? e.message : "Error al eliminar la carpeta");
             }
             setDeleteFolder(null);
           }
@@ -909,8 +909,8 @@ function GoalInspectorContent({
       await onContribute(a, new Date(`${date}T12:00:00`).toISOString(), accountId || undefined);
       toast.success(`¡Aportación de ${fmt(a)} registrada!`);
       setAmount("");
-    } catch (err: any) {
-      toast.error(err.message || "Error al registrar la aportación");
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : "Error al registrar la aportación");
     } finally {
       setIsSubmitting(false);
     }

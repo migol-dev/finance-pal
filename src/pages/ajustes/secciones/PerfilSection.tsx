@@ -13,7 +13,6 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { User, Pencil, LogOut, ShieldCheck, ShieldOff, Key, Mail } from "lucide-react";
 import { toast } from "sonner";
-import { ElegantConfirm } from "@/components/app/ElegantConfirm";
 import { useAuth } from "@/context/AuthContext";
 import { supabase, isSupabaseEnabled, supabaseUrl, supabaseAnonKey } from "@/lib/supabase";
 import { createClient } from "@supabase/supabase-js";

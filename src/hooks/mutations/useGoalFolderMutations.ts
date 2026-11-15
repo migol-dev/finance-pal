@@ -25,7 +25,7 @@ export function useGoalFolderMutations(): GoalFolderMutations {
   const queryClient = useQueryClient();
 
   const addGoalFolder = useMutation<void, Error, Omit<GoalFolder, 'id'>>({
-    mutationFn: async (payload) => {
+    mutationFn: async (_payload) => {
       const state = useFinance.getState();
       const folder = state.goalFolders[0];
       

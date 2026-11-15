@@ -30,7 +30,7 @@ export function useFixedItemMutations(): FixedItemMutations {
   const queryClient = useQueryClient();
 
   const addFixedItem = useMutation<void, Error, Omit<FixedItem, 'id'>>({
-    mutationFn: async (payload) => {
+    mutationFn: async (_payload) => {
       const state = useFinance.getState();
       const fixedItem = state.fixedItems[0];
       

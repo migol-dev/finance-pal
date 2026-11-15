@@ -169,7 +169,7 @@ export function AppShell({ children }: { children: ReactNode }) {
       }
       const now = Date.now();
       if (lastBackPressRef.current && now - lastBackPressRef.current < 2000) {
-        try { CapacitorApp.exitApp(); } catch { (navigator as any)['app']?.exitApp?.(); }
+        try { CapacitorApp.exitApp(); } catch { (navigator as Navigator & { app?: { exitApp?: () => void } }).app?.exitApp?.(); }
         return;
       }
       lastBackPressRef.current = now;

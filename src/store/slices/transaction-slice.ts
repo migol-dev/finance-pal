@@ -7,7 +7,7 @@ import { Filesystem, Directory, Encoding } from '@capacitor/filesystem';
 
 export interface TransactionSlice {
     transactions: Transaction[];
-    addTx: (t: Transaction) => void;
+    addTx: (t: Omit<Transaction, "id"> & { id?: string }) => void;
     updateTx: (id: string, p: Partial<Transaction>) => void;
     removeTx: (id: string) => void;
     saveReceiptFile: (receiptId: string, dataUrl: string) => Promise<string | undefined>;

@@ -27,7 +27,7 @@ const mockAddTx = vi.fn().mockResolvedValue(undefined);
 const mockAddGoal = vi.fn().mockResolvedValue(undefined);
 const mockAddGoalFolder = vi.fn().mockResolvedValue(undefined);
 
-let mockState = {
+const mockState = {
   transactions: [
     {
       id: "tx-1",
@@ -47,6 +47,7 @@ let mockState = {
       name: "Fondo de Emergencia",
       target: 20000,
       saved: 10000,
+      emoji: "🎯",
       color: "gradient-emerald",
       createdAt: "2026-01-01T00:00:00.000Z",
       contributions: [],
@@ -61,7 +62,7 @@ let mockState = {
       createdAt: "2026-01-01T00:00:00.000Z",
     },
   ] as GoalFolder[],
-  accounts: [{ id: "acc-1", name: "Efectivo", type: "cash", balance: 5000 }] as Account[],
+  accounts: [{ id: "acc-1", name: "Efectivo", type: "cash", initialBalance: 5000 }] as Account[],
   appSettings: { uiVersion: "v2", accentColor: "emerald" } as AppSettings | undefined,
 };
 

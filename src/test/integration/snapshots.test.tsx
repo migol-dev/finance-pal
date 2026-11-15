@@ -3,7 +3,7 @@ import Dashboard from "@/pages/Dashboard";
 import { BottomNav } from "@/components/app/BottomNav";
 import { MemoryRouter } from "react-router-dom";
 import { describe, it, expect, vi } from "vitest";
-import { QueryClientProvider } from "@tanstack/react-query";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 
 // Mock zustand store to provide consistent state
 vi.mock("@/store/finance-store", () => {
@@ -38,8 +38,6 @@ vi.mock("@/hooks/useAuth", () => ({
 }));
 
 // react-query is not mocked to avoid Provider issues
-
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 
 const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
 

@@ -144,8 +144,8 @@ export async function migrateLocalDataToSupabase(
         receipts: receiptsUploaded,
       },
     };
-  } catch (error: any) {
-    const errMsg = error?.message || 'Error desconocido durante la migración';
+  } catch (error: unknown) {
+    const errMsg = error instanceof Error ? error.message : 'Error desconocido durante la migración';
     console.error('Migration error:', error);
     return {
       success: false,

@@ -57,21 +57,18 @@ describe("Sprint 3 DashboardV2 & Dual Dispatcher Suite", () => {
           name: "BBVA Nómina",
           type: "bank",
           initialBalance: 20000,
-          color: "blue",
         },
         {
           id: "acc-2",
           name: "Cartera Efectivo",
           type: "cash",
           initialBalance: 2500,
-          color: "emerald",
         },
         {
           id: "acc-3",
           name: "Tarjeta de Crédito",
           type: "bank",
           initialBalance: -4000, // Pasivo
-          color: "red",
         },
       ],
       transactions: [
@@ -110,7 +107,10 @@ describe("Sprint 3 DashboardV2 & Dual Dispatcher Suite", () => {
           amount: 650,
           type: "expense_fixed",
           category: "Servicios",
+          active: true,
           startDate: "2026-01-01",
+          endDate: "2026-12-31",
+          priority: "medium",
           frequency: "monthly",
           payDay: 28,
         },
@@ -121,6 +121,7 @@ describe("Sprint 3 DashboardV2 & Dual Dispatcher Suite", () => {
           name: "Fondo de Emergencia",
           target: 50000,
           saved: 25000,
+          emoji: "🛡️",
           pinned: true,
           color: "gradient-primary",
         },
@@ -256,6 +257,7 @@ describe("Sprint 3 DashboardV2 & Dual Dispatcher Suite", () => {
         {
           id: "tx-eq-1",
           concept: "Ingreso igual",
+          category: "Otros",
           amount: 5000,
           type: "income",
           date: "2026-10-10",
@@ -263,6 +265,7 @@ describe("Sprint 3 DashboardV2 & Dual Dispatcher Suite", () => {
         {
           id: "tx-eq-2",
           concept: "Gasto igual",
+          category: "Otros",
           amount: 5000,
           type: "expense",
           date: "2026-10-12",
@@ -328,10 +331,13 @@ describe("Sprint 3 DashboardV2 & Dual Dispatcher Suite", () => {
         {
           id: "fix-today",
           concept: "Suscripción Nube",
+          category: "Servicios",
           amount: 299,
           type: "expense_fixed",
           active: true,
           startDate: `${today.getFullYear()}-01-01`,
+          endDate: `${today.getFullYear()}-12-31`,
+          priority: "medium",
           frequency: "monthly",
           payDay: today.getDate(), // hoy
         },

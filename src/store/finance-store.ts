@@ -417,7 +417,9 @@ export const useFinance = create<State>()(
             uiVersion: mergedState.appSettings.uiVersion,
             accentColor: mergedState.appSettings.accentColor,
           });
-        } catch {}
+        } catch {
+          /* ignore storage quota errors */
+        }
         return mergedState;
       },
     }

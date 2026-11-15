@@ -32,7 +32,7 @@ export function useGoalMutations(): GoalMutations {
   const queryClient = useQueryClient();
 
   const addGoal = useMutation<void, Error, Omit<Goal, 'id'>>({
-    mutationFn: async (payload) => {
+    mutationFn: async (_payload) => {
       const state = useFinance.getState();
       const goal = state.goals[0];
       

@@ -9,6 +9,7 @@
     "build:dev": "vite build --mode development",
     "browserslist:update-db": "npx update-browserslist-db@latest --update-db",
     "lint": "eslint .",
+    "typecheck": "tsc -p tsconfig.app.json --noEmit && tsc -p tsconfig.node.json --noEmit",
     "preview": "vite preview",
     "test": "vitest run",
     "test:watch": "vitest",

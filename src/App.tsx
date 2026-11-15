@@ -190,6 +190,7 @@ function AuthGuard() {
         // or just let it time out and resolve.
         setCloudHasData(true);
       });
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- cloudSync.loadSettingsFromCloud mutates reference each render
   }, [session?.user?.id, mfaRequired]);
 
   // Auto-resolve conflict when we know cloud state
@@ -221,6 +222,7 @@ function AuthGuard() {
       setResolved(true);
     }
     // Both have data → dialog will show (no action needed)
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- cloudSync mutations recreate each render
   }, [session?.user?.id, mfaRequired, cloudHasData, hasLocalData, resolved, navigate, set]);
 
   // Background startup sync for multi-device harmony
@@ -236,6 +238,7 @@ function AuthGuard() {
         console.log('[StartupSync] Successfully fetched latest data from cloud');
       });
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- run startup sync once per session/cloudHasData transition
   }, [session?.user?.id, mfaRequired, cloudHasData]);
 
   if (isSupabaseEnabled) {
@@ -423,7 +426,7 @@ const App = () => {
   useEffect(() => {
     if (!Capacitor.isNativePlatform()) return;
 
-    let handle: any;
+    let handle: { remove: () => Promise<void> } | undefined;
     CapApp.addListener('appUrlOpen', async (event) => {
       const url = event.url;
       if (!isAllowedAuthCallbackUrl(url) || containsImplicitTokens(url)) {

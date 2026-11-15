@@ -4,28 +4,34 @@ import React from "react";
 
 type AnyProps = Record<string, any> & { children?: React.ReactNode };
 
+const ANIM_PROP_KEYS = new Set([
+  "initial",
+  "animate",
+  "exit",
+  "transition",
+  "variants",
+  "layout",
+  "layoutId",
+  "whileHover",
+  "whileTap",
+  "whileInView",
+  "onViewportEnter",
+  "onViewportLeave",
+  "custom",
+  "pathLength",
+  "pathOffset",
+  "onAnimationStart",
+  "onAnimationComplete",
+]);
+
 function stripAnimProps(props: AnyProps) {
-  const {
-    initial,
-    animate,
-    exit,
-    transition,
-    variants,
-    layout,
-    layoutId,
-    whileHover,
-    whileTap,
-    whileInView,
-    onViewportEnter,
-    onViewportLeave,
-    custom,
-    pathLength,
-    pathOffset,
-    onAnimationStart,
-    onAnimationComplete,
-    ...rest
-  } = props;
-  return rest;
+  const domProps: AnyProps = {};
+  for (const [key, value] of Object.entries(props)) {
+    if (!ANIM_PROP_KEYS.has(key)) {
+      domProps[key] = value;
+    }
+  }
+  return domProps;
 }
 
 function make(Tag: keyof JSX.IntrinsicElements) {

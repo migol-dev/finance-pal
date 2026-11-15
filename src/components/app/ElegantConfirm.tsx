@@ -14,6 +14,7 @@ interface ElegantConfirmProps {
   cancelText?: string;
   icon?: LucideIcon;
   iconColor?: string;
+  destructive?: boolean;
 }
 
 export function ElegantConfirm({
@@ -26,14 +27,16 @@ export function ElegantConfirm({
   confirmText = "Confirmar",
   cancelText = "Cancelar",
   icon: Icon,
-  iconColor = "bg-primary"
+  iconColor,
+  destructive = false,
 }: ElegantConfirmProps) {
+  const effectiveColor = iconColor ?? (destructive ? "bg-destructive" : "bg-primary");
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="rounded-2xl max-w-[90vw] w-[320px] p-6 border border-border bg-card shadow-2xl overflow-hidden">
         <div className="text-center space-y-4">
           {Icon && (
-            <div className={cn("size-16 rounded-2xl mx-auto flex items-center justify-center shadow-lg", iconColor)}>
+            <div className={cn("size-16 rounded-2xl mx-auto flex items-center justify-center shadow-lg", effectiveColor)}>
               <Icon className="size-8 text-white" />
             </div>
           )}
@@ -49,7 +52,14 @@ export function ElegantConfirm({
               {cancelText}
             </Button>
             <Button
-              className={cn("flex-1 h-11 rounded-xl font-bold text-white shadow-md border-0", iconColor === "gradient-primary" ? "gradient-primary" : iconColor)}
+              className={cn(
+                "flex-1 h-11 rounded-xl font-bold text-white shadow-md border-0",
+                destructive
+                  ? "bg-destructive hover:bg-destructive/90"
+                  : effectiveColor === "gradient-primary"
+                    ? "gradient-primary"
+                    : effectiveColor
+              )}
               onClick={() => {
                 onConfirm();
                 onOpenChange(false);

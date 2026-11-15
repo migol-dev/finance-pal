@@ -14,7 +14,7 @@ vi.mock('@capacitor/core', () => ({ Capacitor: { isNativePlatform: () => true } 
 
 import { Filesystem } from '@capacitor/filesystem';
 import { useFinance } from "../store/finance-store";
-import { formatChangeLogLabel } from "@/components/historial/HistorialV2";
+import { formatChangeLogLabel } from "@/lib/finance";
 
 describe('receipt filesystem persistence', () => {
   beforeEach(() => {
