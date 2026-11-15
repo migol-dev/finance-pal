@@ -28,6 +28,16 @@ export default tseslint.config(
     },
   },
   {
+    files: ["api/**/*.ts"],
+    languageOptions: {
+      ecmaVersion: 2022,
+      globals: globals.node,
+    },
+    rules: {
+      "react-refresh/only-export-components": "off",
+    },
+  },
+  {
     files: [
       "src/pages/*Classic.tsx",
       "src/test/**/*.{ts,tsx}",

@@ -3,10 +3,27 @@ import path from "path";
 
 export default defineConfig({
   test: {
-    environment: "jsdom",
     globals: true,
-    setupFiles: ["./src/test/setup.ts"],
-    include: ["src/**/*.{test,spec}.{ts,tsx}"],
+    projects: [
+      {
+        extends: true,
+        test: {
+          name: "app",
+          environment: "jsdom",
+          setupFiles: ["./src/test/setup.ts"],
+          include: ["src/**/*.{test,spec}.{ts,tsx}"],
+        },
+      },
+      {
+        extends: true,
+        test: {
+          name: "api",
+          environment: "node",
+          setupFiles: [],
+          include: ["api/**/*.{test,spec}.ts"],
+        },
+      },
+    ],
     env: {
       VITE_SUPABASE_URL: process.env.VITE_SUPABASE_URL || "https://mock.supabase.co",
       VITE_SUPABASE_ANON_KEY: process.env.VITE_SUPABASE_ANON_KEY || "mock-anon-key",
