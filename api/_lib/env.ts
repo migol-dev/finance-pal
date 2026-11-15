@@ -38,8 +38,25 @@ export class ServerEnvError extends Error {
   }
 }
 
+function resolveDefaultIssuer(rawEnv: Record<string, string | undefined>): string {
+  const explicit = rawEnv.MCP_ISSUER?.trim();
+  if (explicit) return explicit;
+
+  if (rawEnv.VERCEL_ENV === 'preview') {
+    const previewHost = (rawEnv.VERCEL_BRANCH_URL?.trim() || rawEnv.VERCEL_URL?.trim() || '').replace(
+      /^https?:\/\//i,
+      '',
+    );
+    if (previewHost) {
+      return `https://${previewHost}`;
+    }
+  }
+
+  return DEFAULT_ISSUER;
+}
+
 export function parseServerEnv(rawEnv: Record<string, string | undefined>): ServerEnv {
-  const issuerInput = rawEnv.MCP_ISSUER?.trim() || DEFAULT_ISSUER;
+  const issuerInput = resolveDefaultIssuer(rawEnv);
   const normalizedIssuer = issuerInput.replace(/\/+$/, '');
   const resourceInput = rawEnv.MCP_RESOURCE_URL?.trim() || `${normalizedIssuer}/mcp`;
 

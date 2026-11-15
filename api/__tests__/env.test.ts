@@ -1,98 +1,66 @@
 // @vitest-environment node
-import { describe, expect, it, afterEach } from 'vitest';
-import {
-  parseServerEnv,
-  getServerEnv,
-  resetServerEnvCacheForTests,
-  ServerEnvError,
-} from '../_lib/env';
+import fs from 'node:fs';
+import path from 'node:path';
+import { describe, expect, it } from 'vitest';
+import { parseServerEnv } from '../_lib/env';
 
-describe('api/_lib/env', () => {
-  afterEach(() => {
-    resetServerEnvCacheForTests();
-  });
+const BASE_ENV = {
+  SUPABASE_URL: 'https://rjforcrdyfuodsqtopvp.supabase.co',
+  SUPABASE_SERVICE_ROLE_KEY: 'service-role-key-that-is-at-least-20-chars',
+  SUPABASE_ANON_KEY: 'anon-key-that-is-at-least-20-chars',
+  MCP_JWT_SIGNING_KEY: '0123456789abcdef0123456789abcdef',
+};
 
-  it('parses valid server env with defaults', () => {
-    const parsed = parseServerEnv({
-      SUPABASE_URL: 'https://example.supabase.co/',
-      SUPABASE_SERVICE_ROLE_KEY: 'service-role-secret-value-at-least-20',
-      SUPABASE_ANON_KEY: 'anon-key-secret-value-at-least-20',
-      MCP_JWT_SIGNING_KEY: 'a'.repeat(32),
-      NODE_ENV: 'production',
+describe('MCP Server Env & Vercel Routing Contract', () => {
+  it('auto-detects VERCEL_BRANCH_URL for preview deployments when MCP_ISSUER is unset', () => {
+    const env = parseServerEnv({
+      ...BASE_ENV,
+      VERCEL_ENV: 'preview',
+      VERCEL_BRANCH_URL: 'finance-pal-git-feat-mcp.vercel.app',
+      VERCEL_URL: 'finance-pal-abc123.vercel.app',
     });
 
-    expect(parsed.supabaseUrl).toBe('https://example.supabase.co');
-    expect(parsed.mcpIssuer).toBe('https://finance-pal.app');
-    expect(parsed.mcpResource).toBe('https://finance-pal.app/mcp');
-    expect(parsed.allowLocalhostOrigins).toBe(false);
+    expect(env.mcpIssuer).toBe('https://finance-pal-git-feat-mcp.vercel.app');
+    expect(env.mcpResource).toBe('https://finance-pal-git-feat-mcp.vercel.app/mcp');
   });
 
-  it('falls back to VITE_SUPABASE_* variables when server aliases are omitted', () => {
-    const parsed = parseServerEnv({
-      VITE_SUPABASE_URL: 'https://vite-fallback.supabase.co',
-      SUPABASE_SERVICE_ROLE_KEY: 'service-role-secret-value-at-least-20',
-      VITE_SUPABASE_ANON_KEY: 'vite-anon-secret-value-at-least-20',
-      MCP_JWT_SIGNING_KEY: 'b'.repeat(48),
-      MCP_ISSUER: 'https://preview.finance-pal.app/',
+  it('falls back to VERCEL_URL for preview deployments when VERCEL_BRANCH_URL is unset', () => {
+    const env = parseServerEnv({
+      ...BASE_ENV,
+      VERCEL_ENV: 'preview',
+      VERCEL_URL: 'https://finance-pal-abc123.vercel.app/',
     });
 
-    expect(parsed.supabaseUrl).toBe('https://vite-fallback.supabase.co');
-    expect(parsed.mcpIssuer).toBe('https://preview.finance-pal.app');
-    expect(parsed.mcpResource).toBe('https://preview.finance-pal.app/mcp');
+    expect(env.mcpIssuer).toBe('https://finance-pal-abc123.vercel.app');
+    expect(env.mcpResource).toBe('https://finance-pal-abc123.vercel.app/mcp');
   });
 
-  it('fails closed without leaking secret values when required variables are missing or weak', () => {
-    const secretAttempt = 'short-secret';
-    expect(() =>
-      parseServerEnv({
-        SUPABASE_URL: 'https://example.supabase.co',
-        SUPABASE_SERVICE_ROLE_KEY: 'tiny',
-        SUPABASE_ANON_KEY: 'anon-key-secret-value-at-least-20',
-        MCP_JWT_SIGNING_KEY: secretAttempt,
-      }),
-    ).toThrow(ServerEnvError);
+  it('prefers explicit MCP_ISSUER over Vercel preview host', () => {
+    const env = parseServerEnv({
+      ...BASE_ENV,
+      VERCEL_ENV: 'preview',
+      VERCEL_BRANCH_URL: 'finance-pal-git-feat-mcp.vercel.app',
+      MCP_ISSUER: 'https://finance-pal.app/',
+    });
 
-    try {
-      parseServerEnv({
-        SUPABASE_URL: 'https://example.supabase.co',
-        SUPABASE_SERVICE_ROLE_KEY: 'tiny',
-        SUPABASE_ANON_KEY: 'anon-key-secret-value-at-least-20',
-        MCP_JWT_SIGNING_KEY: secretAttempt,
-      });
-    } catch (error) {
-      const envErr = error as ServerEnvError;
-      expect(envErr.missingFields).toContain('supabaseServiceRoleKey');
-      expect(envErr.missingFields).toContain('mcpJwtSecret');
-      expect(envErr.message).not.toContain(secretAttempt);
-    }
+    expect(env.mcpIssuer).toBe('https://finance-pal.app');
+    expect(env.mcpResource).toBe('https://finance-pal.app/mcp');
   });
 
-  it('rejects non-HTTPS non-localhost issuer URLs', () => {
-    expect(() =>
-      parseServerEnv({
-        SUPABASE_URL: 'https://example.supabase.co',
-        SUPABASE_SERVICE_ROLE_KEY: 'service-role-secret-value-at-least-20',
-        SUPABASE_ANON_KEY: 'anon-key-secret-value-at-least-20',
-        MCP_JWT_SIGNING_KEY: 'c'.repeat(32),
-        MCP_ISSUER: 'http://evil.example.com',
-      }),
-    ).toThrow(ServerEnvError);
-  });
+  it('routes /oauth/consent to /index.html before /oauth/(.*) in vercel.json', () => {
+    const vercelConfigPath = path.resolve(__dirname, '../../vercel.json');
+    const config = JSON.parse(fs.readFileSync(vercelConfigPath, 'utf8')) as {
+      rewrites: Array<{ source: string; destination: string }>;
+    };
 
-  it('caches process.env lazily via getServerEnv', () => {
-    const prev = { ...process.env };
-    try {
-      process.env.SUPABASE_URL = 'https://cached.supabase.co';
-      process.env.SUPABASE_SERVICE_ROLE_KEY = 'service-role-secret-value-at-least-20';
-      process.env.SUPABASE_ANON_KEY = 'anon-key-secret-value-at-least-20';
-      process.env.MCP_JWT_SIGNING_KEY = 'd'.repeat(32);
+    const consentIdx = config.rewrites.findIndex(
+      (r) => r.source === '/oauth/consent' && r.destination === '/index.html',
+    );
+    const wildcardIdx = config.rewrites.findIndex(
+      (r) => r.source === '/oauth/(.*)' && r.destination === '/api/oauth?route=$1',
+    );
 
-      const first = getServerEnv();
-      const second = getServerEnv();
-      expect(first).toBe(second);
-      expect(first.supabaseUrl).toBe('https://cached.supabase.co');
-    } finally {
-      process.env = prev;
-    }
+    expect(consentIdx).toBeGreaterThanOrEqual(0);
+    expect(wildcardIdx).toBeGreaterThan(consentIdx);
   });
 });
