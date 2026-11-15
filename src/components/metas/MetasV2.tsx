@@ -11,6 +11,7 @@ import {
   Account,
 } from "@/lib/finance";
 import { Header } from "@/components/app/Header";
+import { resolveIconId } from "@/lib/icon-ids";
 import {
   Plus,
   Pencil,
@@ -447,7 +448,7 @@ export function MetasV2() {
                     onClick={() => setSelectedFolderId(f.id)}
                     className="p-3 rounded-2xl bg-card border border-[#E4E0D8] dark:border-white/10 flex flex-col items-start gap-2 text-left hover:border-primary/40 hover:bg-muted/20 active:scale-95 transition min-w-0 shadow-soft"
                   >
-                    <IconDisplay icon={f.icon ?? { kind: "emoji", value: "📁" }} size="sm" className="bg-muted shrink-0" />
+                    <IconDisplay icon={f.icon ?? { kind: "icon", value: "folder" }} size="sm" className="bg-muted shrink-0" />
                     <div className="w-full min-w-0">
                       <p className="font-bold text-xs truncate w-full">{f.name}</p>
                       <p className="text-[10px] text-muted-foreground">{getFolderGoalCount(f.id)} metas</p>
@@ -559,7 +560,7 @@ export function MetasV2() {
                     <div className="flex items-start justify-between gap-3 mb-2">
                       <div className="flex items-center gap-3 min-w-0 flex-1">
                         <IconDisplay
-                          icon={g.icon ?? { kind: "emoji", value: g.emoji || "🎯" }}
+                          icon={g.icon ?? { kind: "icon", value: resolveIconId(g.emoji, "target") }}
                           size="md"
                         />
                         <div className="min-w-0 flex-1">
@@ -747,7 +748,7 @@ export function MetasV2() {
                   toast.success("Meta actualizada");
                 } else {
                   await addGoal(g);
-                  toast.success("Meta creada ✨");
+                  toast.success("Meta creada");
                 }
                 setOpenGoalModal(false);
                 setEditingGoal(null);
@@ -787,7 +788,7 @@ export function MetasV2() {
                   toast.success("Carpeta actualizada");
                 } else {
                   await addGoalFolder(f);
-                  toast.success("Carpeta creada ✨");
+                  toast.success("Carpeta creada");
                 }
                 setOpenFolderModal(false);
                 setEditingFolder(null);
@@ -906,7 +907,7 @@ function GoalInspectorContent({
     setIsSubmitting(true);
     try {
       await onContribute(a, new Date(`${date}T12:00:00`).toISOString(), accountId || undefined);
-      toast.success(`¡Aportación de ${fmt(a)} registrada! 🎉`);
+      toast.success(`¡Aportación de ${fmt(a)} registrada!`);
       setAmount("");
     } catch (err: any) {
       toast.error(err.message || "Error al registrar la aportación");
@@ -922,7 +923,7 @@ function GoalInspectorContent({
         <div className="flex items-center justify-between gap-2">
           <div className="flex items-center gap-2.5 min-w-0">
             <IconDisplay
-              icon={goal.icon ?? { kind: "emoji", value: goal.emoji || "🎯" }}
+              icon={goal.icon ?? { kind: "icon", value: resolveIconId(goal.emoji, "target") }}
               size="md"
             />
             {goal.purchaseUrl && (

@@ -8,9 +8,8 @@ import {
   IconRef,
   PaymentMethod,
   Account,
-  CATEGORY_EMOJI,
   PAYMENT_METHOD_LABEL,
-  PAYMENT_METHOD_EMOJI,
+  PAYMENT_METHOD_ICON,
   FREQ_LABEL,
   TYPE_LABEL,
   monthlyAmount,
@@ -18,6 +17,7 @@ import {
   fmt,
   parseDateLocal,
 } from "@/lib/finance";
+import { AppIcon } from "@/components/icons/AppIcon";
 import { AjustesHeader } from "../AjustesHeader";
 import { SectionProps } from "../types";
 import { IconPicker } from "@/components/app/IconPicker";
@@ -139,10 +139,30 @@ function FixedForm({
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="income_fixed">💰 Ingreso fijo</SelectItem>
-            <SelectItem value="expense_fixed">🧾 Gasto fijo</SelectItem>
-            <SelectItem value="expense_variable">🛍️ Gasto variable</SelectItem>
-            <SelectItem value="saving_fixed">🐷 Ahorro fijo</SelectItem>
+            <SelectItem value="income_fixed">
+              <span className="inline-flex items-center gap-1.5">
+                <AppIcon name="dollar" className="w-3.5 h-3.5 shrink-0" />
+                <span>Ingreso fijo</span>
+              </span>
+            </SelectItem>
+            <SelectItem value="expense_fixed">
+              <span className="inline-flex items-center gap-1.5">
+                <AppIcon name="receipt" className="w-3.5 h-3.5 shrink-0" />
+                <span>Gasto fijo</span>
+              </span>
+            </SelectItem>
+            <SelectItem value="expense_variable">
+              <span className="inline-flex items-center gap-1.5">
+                <AppIcon name="bag" className="w-3.5 h-3.5 shrink-0" />
+                <span>Gasto variable</span>
+              </span>
+            </SelectItem>
+            <SelectItem value="saving_fixed">
+              <span className="inline-flex items-center gap-1.5">
+                <AppIcon name="piggy" className="w-3.5 h-3.5 shrink-0" />
+                <span>Ahorro fijo</span>
+              </span>
+            </SelectItem>
           </SelectContent>
         </Select>
       </div>
@@ -242,7 +262,10 @@ function FixedForm({
             <SelectContent>
               {(["transfer", "cash", "card", "other"] as PaymentMethod[]).map((m) => (
                 <SelectItem key={m} value={m}>
-                  {PAYMENT_METHOD_EMOJI[m]} {PAYMENT_METHOD_LABEL[m]}
+                  <span className="inline-flex items-center gap-1.5">
+                    <AppIcon name={PAYMENT_METHOD_ICON[m]} className="w-3.5 h-3.5 shrink-0" />
+                    <span>{PAYMENT_METHOD_LABEL[m]}</span>
+                  </span>
                 </SelectItem>
               ))}
             </SelectContent>

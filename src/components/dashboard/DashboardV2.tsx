@@ -37,6 +37,7 @@ import { motion } from "@/lib/framer";
 import { MonthSwitcher } from "@/components/app/MonthSwitcher";
 import { IconDisplay } from "@/components/app/IconDisplay";
 import { BrandLogo } from "@/components/app/BrandLogo";
+import { AppIcon } from "@/components/icons/AppIcon";
 
 export function DashboardV2() {
   const {
@@ -687,9 +688,9 @@ export function DashboardV2() {
 
             {recent.length === 0 ? (
               <div className="py-10 text-center border border-dashed border-[#E4E0D8] dark:border-white/10 rounded-xl space-y-2">
-                <p className="text-3xl" aria-hidden="true">
-                  🕊️
-                </p>
+                <div className="flex justify-center" aria-hidden="true">
+                  <AppIcon name="feather" className="w-6 h-6 text-primary" />
+                </div>
                 <p className="text-sm font-semibold text-foreground">
                   Sin transacciones en este mes
                 </p>

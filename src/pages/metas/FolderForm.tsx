@@ -15,7 +15,7 @@ interface FolderFormProps {
 export function FolderForm({ initial, onSave }: FolderFormProps) {
   const [name, setName] = useState(initial?.name ?? "");
   const [color, setColor] = useState(initial?.color ?? PALETTES[0]);
-  const [icon, setIcon] = useState<IconRef>(initial?.icon ?? { kind: "emoji", value: "📁" });
+  const [icon, setIcon] = useState<IconRef>(initial?.icon ?? { kind: "icon", value: "folder" });
 
   return (
     <form

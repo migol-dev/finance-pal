@@ -4,16 +4,15 @@ import { cn } from "@/lib/utils";
 import { useFinanceData } from "@/hooks/useFinanceData";
 import {
   fmt,
-  CATEGORY_EMOJI,
   MONTHS,
   iconFor,
-  emojiFor,
+  iconIdFor,
   getCategoriesMap,
   IconRef,
   Transaction,
   PaymentMethod,
   PAYMENT_METHOD_LABEL,
-  PAYMENT_METHOD_EMOJI,
+  PAYMENT_METHOD_ICON,
   fmtDate,
   parseDateLocal,
   Account,
@@ -23,6 +22,7 @@ import {
 import { Header } from "@/components/app/Header";
 import { MonthSwitcher } from "@/components/app/MonthSwitcher";
 import { IconDisplay } from "@/components/app/IconDisplay";
+import { AppIcon } from "@/components/icons/AppIcon";
 import { IconPicker } from "@/components/app/IconPicker";
 import { ElegantConfirm } from "@/components/app/ElegantConfirm";
 import { CategorySelectWithCreate } from "@/components/app/CategorySelectWithCreate";
@@ -44,7 +44,6 @@ import {
   Wallet,
   Upload,
 } from "lucide-react";
-import { motion, AnimatePresence } from "@/lib/framer";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -611,9 +610,15 @@ export function MovimientosV2() {
                       </SelectTrigger>
                       <SelectContent>
                         <SelectItem value="all">Todas las categorías</SelectItem>
-                        {Object.entries(categoriesMap).map(([cat, emoji]) => (
+                        {Object.keys(categoriesMap).map((cat) => (
                           <SelectItem key={cat} value={cat}>
-                            {emoji} {cat}
+                            <span className="inline-flex items-center gap-1.5">
+                              <AppIcon
+                                name={iconIdFor(cat, customCategories)}
+                                className="w-3.5 h-3.5 shrink-0"
+                              />
+                              <span>{cat}</span>
+                            </span>
                           </SelectItem>
                         ))}
                       </SelectContent>
@@ -1186,9 +1191,12 @@ function TransactionDetailView({
       <div className="grid grid-cols-2 gap-3 py-1">
         <div>
           <span className="text-muted-foreground block text-[11px]">Categoría</span>
-          <span className="font-medium text-foreground flex items-center gap-1 mt-0.5">
-            <span>{emojiFor(row.category, customCategories)}</span>
-            {row.category}
+          <span className="font-medium text-foreground flex items-center gap-1.5 mt-0.5">
+            <AppIcon
+              name={iconIdFor(row.category, customCategories)}
+              className="w-3.5 h-3.5 shrink-0 text-primary"
+            />
+            <span>{row.category}</span>
           </span>
         </div>
 
@@ -1218,9 +1226,12 @@ function TransactionDetailView({
         {row.paymentMethod && (
           <div>
             <span className="text-muted-foreground block text-[11px]">Método</span>
-            <span className="font-medium text-foreground mt-0.5 block">
-              {PAYMENT_METHOD_EMOJI[row.paymentMethod]}{" "}
-              {PAYMENT_METHOD_LABEL[row.paymentMethod]}
+            <span className="font-medium text-foreground mt-0.5 inline-flex items-center gap-1.5">
+              <AppIcon
+                name={PAYMENT_METHOD_ICON[row.paymentMethod]}
+                className="w-3.5 h-3.5 shrink-0 text-muted-foreground"
+              />
+              <span>{PAYMENT_METHOD_LABEL[row.paymentMethod]}</span>
             </span>
           </div>
         )}
@@ -1522,7 +1533,10 @@ function TransactionEditForm({
             <SelectContent>
               {(Object.keys(PAYMENT_METHOD_LABEL) as PaymentMethod[]).map((m) => (
                 <SelectItem key={m} value={m}>
-                  {PAYMENT_METHOD_EMOJI[m]} {PAYMENT_METHOD_LABEL[m]}
+                  <span className="inline-flex items-center gap-1.5">
+                    <AppIcon name={PAYMENT_METHOD_ICON[m]} className="w-3.5 h-3.5 shrink-0" />
+                    <span>{PAYMENT_METHOD_LABEL[m]}</span>
+                  </span>
                 </SelectItem>
               ))}
             </SelectContent>
@@ -1824,7 +1838,10 @@ function TransactionCreateForm({
             <SelectContent>
               {(Object.keys(PAYMENT_METHOD_LABEL) as PaymentMethod[]).map((m) => (
                 <SelectItem key={m} value={m}>
-                  {PAYMENT_METHOD_EMOJI[m]} {PAYMENT_METHOD_LABEL[m]}
+                  <span className="inline-flex items-center gap-1.5">
+                    <AppIcon name={PAYMENT_METHOD_ICON[m]} className="w-3.5 h-3.5 shrink-0" />
+                    <span>{PAYMENT_METHOD_LABEL[m]}</span>
+                  </span>
                 </SelectItem>
               ))}
             </SelectContent>

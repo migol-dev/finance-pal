@@ -78,7 +78,7 @@ export function FolderTreeItem({
           className="flex-1 min-w-0 flex items-center gap-2 text-left focus:outline-none"
         >
           <IconDisplay
-            icon={folder.icon ?? { kind: "emoji", value: "📁" }}
+            icon={folder.icon ?? { kind: "icon", value: "folder" }}
             size="xs"
             className="size-7 text-xs rounded-lg shrink-0 bg-background/80 shadow-xs"
           />

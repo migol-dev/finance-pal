@@ -9,12 +9,13 @@ import {
   DebtPayment,
   PaymentMethod,
   PAYMENT_METHOD_LABEL,
-  PAYMENT_METHOD_EMOJI,
+  PAYMENT_METHOD_ICON,
   fmtDate,
   Account,
   isIOweDebt,
 } from "@/lib/finance";
 import { Header } from "@/components/app/Header";
+import { AppIcon } from "@/components/icons/AppIcon";
 import {
   Plus,
   Pencil,
@@ -889,7 +890,10 @@ function DebtInspectorContent({
                 <SelectContent>
                   {(Object.keys(PAYMENT_METHOD_LABEL) as PaymentMethod[]).map((k) => (
                     <SelectItem key={k} value={k} className="text-xs">
-                      {PAYMENT_METHOD_EMOJI[k]} {PAYMENT_METHOD_LABEL[k]}
+                      <span className="inline-flex items-center gap-1.5">
+                        <AppIcon name={PAYMENT_METHOD_ICON[k]} className="w-3.5 h-3.5 shrink-0" />
+                        <span>{PAYMENT_METHOD_LABEL[k]}</span>
+                      </span>
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -1003,7 +1007,10 @@ function DebtInspectorContent({
               >
                 <div className="min-w-0 pr-2">
                   <div className="flex items-center gap-1.5">
-                    <span className="text-xs">{PAYMENT_METHOD_EMOJI[p.paymentMethod ?? "other"]}</span>
+                    <AppIcon
+                      name={PAYMENT_METHOD_ICON[p.paymentMethod ?? "other"]}
+                      className="w-3.5 h-3.5 shrink-0 text-muted-foreground"
+                    />
                     <span className="text-xs font-bold font-mono-tabular text-foreground">
                       {fmt(p.amount)}
                     </span>

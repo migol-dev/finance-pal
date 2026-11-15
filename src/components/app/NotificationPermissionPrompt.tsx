@@ -78,7 +78,7 @@ export function NotificationPermissionPrompt() {
           subscribeToWebPush().catch(console.warn);
         }
         await scheduleAllNotifications(goals, fixedItems, { ...prefs, enabled: true }, transactions);
-        toast.success("¡Notificaciones activadas correctamente! 🔔");
+        toast.success("¡Notificaciones activadas correctamente!");
         setVisible(false);
       } else if (res.display === "denied") {
         toast.error(

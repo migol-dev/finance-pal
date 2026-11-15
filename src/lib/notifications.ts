@@ -552,7 +552,7 @@ export async function sendTestNotification(
         {
           id: 999999,
           title: "Finance Pal — Notificación activa",
-          body: "¡Tus recordatorios de pagos, ingresos y metas están listos en Android! 🎉",
+          body: "¡Tus recordatorios de pagos, ingresos y metas están listos en Android!",
           channelId: ANDROID_CHANNEL_ID,
           schedule: { at: new Date(Date.now() + 1000), allowWhileIdle: true },
           extra: { test: true, url: "/ajustes?seccion=notificaciones" },
@@ -578,7 +578,7 @@ export async function sendTestNotification(
       type: "goal_deadline_upcoming",
       entityId: "test",
       title: "Finance Pal — Notificación activa",
-      body: "¡Tus recordatorios de gastos, ingresos y metas funcionan correctamente! 🎉",
+      body: "¡Tus recordatorios de gastos, ingresos y metas funcionan correctamente!",
       scheduledAt: new Date(),
       url: "/ajustes?seccion=notificaciones",
       payload: { test: true },

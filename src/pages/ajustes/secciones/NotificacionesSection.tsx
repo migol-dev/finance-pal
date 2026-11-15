@@ -88,7 +88,7 @@ export const NotificacionesSection = memo(function NotificacionesSection({
       try {
         const res = await requestPermission();
         if (res.status === "granted") {
-          toast.success("Permiso de notificaciones concedido 🎉");
+          toast.success("Permiso de notificaciones concedido");
         }
       } catch (e) {
         console.warn("Permission request failed:", e);
@@ -101,7 +101,7 @@ export const NotificacionesSection = memo(function NotificacionesSection({
       const res = await requestPermission();
       if (res.status === "granted") {
         setNotificationPrefs({ enabled: true });
-        toast.success("¡Permiso concedido! Tus recordatorios están activos 🔔");
+        toast.success("¡Permiso concedido! Tus recordatorios están activos");
       } else if (res.status === "denied") {
         toast.error(
           "El navegador o sistema bloqueó el permiso. Habilítalo desde los ajustes del sitio o de Android.",
@@ -161,7 +161,7 @@ export const NotificacionesSection = memo(function NotificacionesSection({
     try {
       await sendTestNotification(prefs);
       await rescheduleNow();
-      toast.success("Notificación de prueba enviada 🎉");
+      toast.success("Notificación de prueba enviada");
     } catch (e: any) {
       toast.error(e?.message || "No se pudo enviar la notificación de prueba");
     } finally {

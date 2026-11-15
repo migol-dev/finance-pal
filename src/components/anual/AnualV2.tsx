@@ -9,9 +9,9 @@ import {
   MONTHS_SHORT,
   isFixedActiveInMonth,
   iconFor,
-  emojiFor,
+  iconIdFor,
   PAYMENT_METHOD_LABEL,
-  PAYMENT_METHOD_EMOJI,
+  PAYMENT_METHOD_ICON,
   PaymentMethod,
   parseDateLocal,
   isIOweDebt,
@@ -19,6 +19,7 @@ import {
 import { Header } from "@/components/app/Header";
 import { PillTabs } from "@/components/app/PillTabs";
 import { IconDisplay } from "@/components/app/IconDisplay";
+import { AppIcon } from "@/components/icons/AppIcon";
 import SimpleAreaChart from "@/components/ui/SimpleAreaChart";
 import {
   ChevronLeft,
@@ -285,7 +286,7 @@ export const AnualV2 = memo(function AnualV2() {
       .map((k) => ({
         key: k,
         name: PAYMENT_METHOD_LABEL[k],
-        emoji: PAYMENT_METHOD_EMOJI[k],
+        iconId: PAYMENT_METHOD_ICON[k],
         value: Math.round(map[k]),
       }))
       .filter((x) => x.value > 0)
@@ -815,7 +816,10 @@ export const AnualV2 = memo(function AnualV2() {
                                 className="size-2.5 rounded-full shrink-0"
                                 style={{ backgroundColor: color }}
                               />
-                              <span className="select-none">{emojiFor(c.name, customCategories)}</span>
+                              <AppIcon
+                                name={iconIdFor(c.name, customCategories)}
+                                className="w-3.5 h-3.5 shrink-0 text-muted-foreground"
+                              />
                               <span>{c.name}</span>
                             </span>
                             <div className="flex items-center gap-2">
@@ -898,7 +902,7 @@ export const AnualV2 = memo(function AnualV2() {
                     >
                       <div className="flex items-center justify-between">
                         <span className="text-sm font-sans font-semibold flex items-center gap-1.5">
-                          <span>{m.emoji}</span>
+                          <AppIcon name={m.iconId} className="w-3.5 h-3.5 shrink-0 text-primary" />
                           {m.name}
                         </span>
                         <span className="text-xs text-[#6E6A63] dark:text-[#8E8D8A]">

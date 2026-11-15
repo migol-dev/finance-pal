@@ -132,7 +132,7 @@ export function GoalCompactCard({
             onContribute(confirmOpen.amount, undefined, defaultAccountId);
           }
           setConfirmOpen(null);
-          toast.success("¡Aporte registrado! 🚀");
+          toast.success("¡Aporte registrado!");
         }}
         icon={Plus}
         iconColor={goal.color}

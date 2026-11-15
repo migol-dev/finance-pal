@@ -20,7 +20,7 @@ export function GoalForm({ initial, defaultFolderId, folders, onSave }: GoalForm
   const [name, setName] = useState(initial?.name ?? "");
   const [target, setTarget] = useState(initial?.target ? String(initial.target) : "");
   const [saved, setSaved] = useState(initial?.saved ? String(initial.saved) : "0");
-  const [icon, setIcon] = useState<IconRef>(initial?.icon ?? { kind: "emoji", value: "🎯" });
+  const [icon, setIcon] = useState<IconRef>(initial?.icon ?? { kind: "icon", value: "target" });
   const [color, setColor] = useState(initial?.color ?? PALETTES[0]);
   const [deadline, setDeadline] = useState(initial?.deadline?.slice(0, 10) ?? "");
   const [purchaseUrl, setPurchaseUrl] = useState(initial?.purchaseUrl ?? "");
@@ -54,7 +54,7 @@ export function GoalForm({ initial, defaultFolderId, folders, onSave }: GoalForm
           name: name.trim(),
           target: t,
           saved: s,
-          emoji: icon.kind === "emoji" ? icon.value : "🎯",
+          emoji: icon.kind === "emoji" ? icon.value : "target",
           color,
           deadline: deadline || undefined,
           icon,

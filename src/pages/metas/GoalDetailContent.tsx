@@ -193,7 +193,7 @@ export function GoalDetailContent({
               onContribute(confirmOpen.amount, undefined, defaultAccountId);
             }
             setConfirmOpen(null);
-            toast.success("¡Aporte registrado! 🚀");
+            toast.success("¡Aporte registrado!");
           }}
           icon={Plus}
           iconColor={goal.color}
@@ -246,7 +246,7 @@ function StatusBanner({ status }: { status: ReturnType<typeof statusFor> }) {
     return (
       <div className="flex items-center gap-1.5 rounded-full bg-white/25 px-2.5 py-0.5">
         <CheckCircle2 className="size-3.5 shrink-0" />
-        <span className="text-[10px] font-bold">🎉 Cumplida</span>
+        <span className="text-[10px] font-bold">Cumplida</span>
       </div>
     );
   }
@@ -308,9 +308,14 @@ function ResumenTab({ goal }: { goal: Goal }) {
             <PaceBox label="Por semana" value={fmt2(pace.perWeek)} />
             <PaceBox label="Por mes" value={fmt2(pace.perMonth)} />
           </div>
-          <p className="text-[10px] text-center opacity-80 tabular-nums">
-            {pace.overdue ? "⚠️ Fecha vencida — " : ""}
-            Faltan {fmt(pace.remaining)} en {pace.days} día{pace.days === 1 ? "" : "s"}
+          <p className="text-[10px] text-center opacity-80 tabular-nums flex items-center justify-center gap-1 flex-wrap">
+            {pace.overdue ? (
+              <span className="inline-flex items-center gap-1">
+                <AlertTriangle className="size-3 shrink-0" strokeWidth={1.75} />
+                Fecha vencida —
+              </span>
+            ) : null}
+            <span>Faltan {fmt(pace.remaining)} en {pace.days} día{pace.days === 1 ? "" : "s"}</span>
           </p>
         </>
       )}
@@ -515,11 +520,17 @@ function SimularTab({ goal }: { goal: Goal }) {
             <span className="font-bold tabular-nums">{fmt(projection.projected)}</span>
           </div>
           {projection.surplus >= 0 ? (
-            <p className="font-bold">
-              ✅ Llegas {projection.hitDate ? `el ${fmtDate(projection.hitDate)}` : "a tiempo"} con {fmt(projection.surplus)} extra
+            <p className="font-bold flex items-center gap-1">
+              <CheckCircle2 className="size-3.5 shrink-0" strokeWidth={1.75} />
+              <span>
+                Llegas {projection.hitDate ? `el ${fmtDate(projection.hitDate)}` : "a tiempo"} con {fmt(projection.surplus)} extra
+              </span>
             </p>
           ) : (
-            <p className="font-bold">⚠️ Te faltarán {fmt(Math.abs(projection.surplus))}</p>
+            <p className="font-bold flex items-center gap-1">
+              <AlertTriangle className="size-3.5 shrink-0" strokeWidth={1.75} />
+              <span>Te faltarán {fmt(Math.abs(projection.surplus))}</span>
+            </p>
           )}
         </div>
       )}
