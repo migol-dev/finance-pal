@@ -57,6 +57,7 @@ describe("Ajustes Modular Page", () => {
     expect(screen.getByText("Notificaciones")).toBeInTheDocument();
     expect(screen.getByText("Nube y Respaldos")).toBeInTheDocument();
     expect(screen.getByText("Seguridad y Sistema")).toBeInTheDocument();
+    expect(screen.getByText("Conectores IA (MCP)")).toBeInTheDocument();
   });
 
   it("navigates into Accesibilidad section when clicking on its card", async () => {

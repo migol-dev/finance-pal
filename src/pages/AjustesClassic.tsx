@@ -12,6 +12,7 @@ import { AccesibilidadSection } from "./ajustes/secciones/AccesibilidadSection";
 import { NotificacionesSection } from "./ajustes/secciones/NotificacionesSection";
 import { DatosSection } from "./ajustes/secciones/DatosSection";
 import { SeguridadSection } from "./ajustes/secciones/SeguridadSection";
+import { ConectoresSection } from "./ajustes/secciones/ConectoresSection";
 
 const sectionVariants = {
   initial: { opacity: 0, y: 12, filter: "blur(4px)" },
@@ -53,6 +54,8 @@ export const Ajustes = memo(function Ajustes() {
         return <DatosSection onBack={handleBack} />;
       case "seguridad":
         return <SeguridadSection onBack={handleBack} />;
+      case "conectores":
+        return <ConectoresSection onBack={handleBack} />;
       default:
         return <AjustesHub onSelectSection={handleSelectSection} />;
     }

@@ -83,6 +83,8 @@ function PageFade({ children }: { children: React.ReactNode }) {
 
 import { PageSkeleton } from '@/components/app/PageSkeleton';
 
+const OAuthConsent = lazy(() => import("./pages/OAuthConsent"));
+
 function AnimatedRoutes() {
   const location = useLocation();
 
@@ -91,6 +93,16 @@ function AnimatedRoutes() {
       <Suspense fallback={<PageSkeleton />}>
         <Routes location={location}>
           <Route path="/auth/callback" element={<AuthCallback />} />
+        </Routes>
+      </Suspense>
+    );
+  }
+
+  if (location.pathname === "/oauth/consent") {
+    return (
+      <Suspense fallback={<PageSkeleton />}>
+        <Routes location={location}>
+          <Route path="/oauth/consent" element={<OAuthConsent />} />
         </Routes>
       </Suspense>
     );
@@ -248,6 +260,16 @@ function AuthGuard() {
       return <PageSkeleton />;
     }
     if (!session || mfaRequired) {
+      if (typeof window !== 'undefined' && window.location.pathname === '/oauth/consent') {
+        try {
+          sessionStorage.setItem(
+            'fp_oauth_return_to',
+            `${window.location.pathname}${window.location.search}`,
+          );
+        } catch {
+          // Ignore storage errors in private contexts.
+        }
+      }
       return (
         <Suspense fallback={<PageSkeleton />}>
           <Login />
@@ -408,13 +430,16 @@ function containsImplicitTokens(url: string): boolean {
 }
 
 const App = () => {
-  const [booting, setBooting] = useState(true);
+  const isOAuthConsent =
+    typeof window !== 'undefined' && window.location.pathname === '/oauth/consent';
+  const [booting, setBooting] = useState(!isOAuthConsent);
 
   useEffect(() => {
+    if (isOAuthConsent) return;
     // 1.5s (1500ms) boot screen timeout per Warm Editorial Wealth Labor Illusion
     const t = setTimeout(() => setBooting(false), 1500);
     return () => clearTimeout(t);
-  }, []);
+  }, [isOAuthConsent]);
 
   useEffect(() => {
     if (isSupabaseEnabled) {

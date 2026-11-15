@@ -11,6 +11,7 @@ import {
   ChevronRight,
   Sparkles,
   Tag,
+  Bot,
 } from "lucide-react";
 import { useFinanceData } from "@/hooks/useFinanceData";
 import { useAuth } from "@/context/AuthContext";
@@ -111,6 +112,14 @@ export const AjustesHub = memo(function AjustesHub({ onSelectSection }: AjustesH
           ? `Actualización v${updateInfo.latest}`
           : `v${displayVersion}`,
       colorClass: "bg-orange-500/10 text-orange-500",
+    },
+    {
+      id: "conectores",
+      title: "Conectores IA (MCP)",
+      description: "Claude, ChatGPT, Gemini CLI, OAuth 2.1 y papelera 30d",
+      icon: Bot,
+      badge: "OAuth 2.1",
+      colorClass: "bg-emerald-500/10 text-emerald-500",
     },
   ];
 

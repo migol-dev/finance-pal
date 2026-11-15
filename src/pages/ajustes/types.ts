@@ -9,7 +9,8 @@ export type AjustesSectionId =
   | "accesibilidad"
   | "notificaciones"
   | "datos"
-  | "seguridad";
+  | "seguridad"
+  | "conectores";
 
 export interface AjustesCategoryMeta {
   id: AjustesSectionId;

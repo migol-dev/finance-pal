@@ -12,6 +12,7 @@ import {
   ChevronRight,
   Sparkles,
   Tag,
+  Bot,
 } from "lucide-react";
 import { useFinanceData } from "@/hooks/useFinanceData";
 import { useAuth } from "@/context/AuthContext";
@@ -31,6 +32,7 @@ import { AccesibilidadSection } from "./secciones/AccesibilidadSection";
 import { NotificacionesSection } from "./secciones/NotificacionesSection";
 import { DatosSection } from "./secciones/DatosSection";
 import { SeguridadSection } from "./secciones/SeguridadSection";
+import { ConectoresSection } from "./secciones/ConectoresSection";
 
 const CATEGORIES_DEF: {
   id: AjustesSectionId;
@@ -112,6 +114,14 @@ const CATEGORIES_DEF: {
     icon: ShieldCheck,
     accent: "text-[#C86446]",
   },
+  {
+    id: "conectores",
+    code: "10",
+    title: "Conectores IA (MCP)",
+    description: "Claude, ChatGPT, Gemini CLI, OAuth 2.1 y papelera 30d",
+    icon: Bot,
+    accent: "text-[#16A34A]",
+  },
 ];
 
 export const AjustesV2 = memo(function AjustesV2() {
@@ -165,6 +175,7 @@ export const AjustesV2 = memo(function AjustesV2() {
           hasPendingUpdate && updateInfo
             ? `Actualización v${updateInfo.latest}`
             : `v${displayVersion}`;
+      else if (cat.id === "conectores") badge = "MCP · OAuth 2.1";
 
       return { ...cat, badge };
     });
@@ -202,6 +213,8 @@ export const AjustesV2 = memo(function AjustesV2() {
         return <DatosSection onBack={handleBack} />;
       case "seguridad":
         return <SeguridadSection onBack={handleBack} />;
+      case "conectores":
+        return <ConectoresSection onBack={handleBack} />;
       default:
         return <PerfilSection onBack={handleBack} />;
     }

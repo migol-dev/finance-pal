@@ -69,6 +69,19 @@ export default function AuthCallback() {
         return;
       }
 
+      try {
+        const returnTo = sessionStorage.getItem('fp_oauth_return_to');
+        if (returnTo) {
+          sessionStorage.removeItem('fp_oauth_return_to');
+          if (returnTo.startsWith('/oauth/consent')) {
+            navigate(returnTo, { replace: true });
+            return;
+          }
+        }
+      } catch {
+        // Ignore storage access errors in restricted browser contexts.
+      }
+
       navigate('/', { replace: true });
     };
 
