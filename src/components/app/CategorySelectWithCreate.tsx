@@ -1,10 +1,15 @@
 import { useState, useMemo, memo } from "react";
 import { useFinanceData } from "@/hooks/useFinanceData";
 import {
-  getCategoriesMap,
+  getCategoriesIconMap,
   MAX_CUSTOM_CATEGORY_NAME_LENGTH,
-  COMMON_EMOJIS,
 } from "@/lib/finance";
+import {
+  ICON_GROUPS,
+  ICON_LABELS,
+  type AppIconId,
+} from "@/lib/icon-ids";
+import { AppIcon } from "@/components/icons/AppIcon";
 import {
   Select,
   SelectContent,
@@ -35,6 +40,21 @@ interface CategorySelectWithCreateProps {
   disabled?: boolean;
 }
 
+const QUICK_CATEGORY_ICONS: AppIconId[] = [
+  "tag",
+  "cart",
+  "coffee",
+  "car",
+  "home",
+  "dumbbell",
+  "heart_pulse",
+  "book",
+  "gamepad",
+  "paw",
+  "plane",
+  "sparkles",
+];
+
 export const CategorySelectWithCreate = memo(function CategorySelectWithCreate({
   value,
   onChange,
@@ -45,17 +65,17 @@ export const CategorySelectWithCreate = memo(function CategorySelectWithCreate({
   const { customCategories = [], addCustomCategory } = useFinanceData();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [newCatName, setNewCatName] = useState("");
-  const [newCatEmoji, setNewCatEmoji] = useState("🏷️");
+  const [newCatIcon, setNewCatIcon] = useState<AppIconId>("tag");
 
-  const categoriesMap = useMemo(
-    () => getCategoriesMap(customCategories),
+  const categoriesIconMap = useMemo(
+    () => getCategoriesIconMap(customCategories),
     [customCategories]
   );
 
   const handleSelectChange = (val: string) => {
     if (val === "__create_new__") {
       setNewCatName("");
-      setNewCatEmoji("🏷️");
+      setNewCatIcon("tag");
       setIsModalOpen(true);
       return;
     }
@@ -69,8 +89,7 @@ export const CategorySelectWithCreate = memo(function CategorySelectWithCreate({
       toast.error("Ingresa un nombre para la categoría");
       return;
     }
-    const cleanEmoji = newCatEmoji.trim() || "🏷️";
-    const created = addCustomCategory({ name: trimmed, emoji: cleanEmoji });
+    const created = addCustomCategory({ name: trimmed, emoji: "", icon: newCatIcon });
     if (created) {
       onChange(created.name);
       toast.success(`Categoría "${created.name}" creada y seleccionada`);
@@ -78,24 +97,26 @@ export const CategorySelectWithCreate = memo(function CategorySelectWithCreate({
     setIsModalOpen(false);
   };
 
-  const currentEmoji = categoriesMap[value] || "🏷️";
+  const currentIcon: AppIconId = categoriesIconMap[value] ?? "tag";
 
   return (
     <div className={cn("relative w-full", className)}>
       <Select value={value} onValueChange={handleSelectChange} disabled={disabled}>
-        <SelectTrigger className={cn("h-10 text-xs bg-background/50 border-border", triggerClassName)}>
+        <SelectTrigger
+          className={cn("h-10 text-xs bg-background/50 border-border", triggerClassName)}
+        >
           <SelectValue placeholder="Selecciona categoría">
             <span className="flex items-center gap-1.5 truncate">
-              <span>{currentEmoji}</span>
+              <AppIcon name={currentIcon} className="size-3.5 text-primary shrink-0" />
               <span className="truncate">{value || "Selecciona categoría"}</span>
             </span>
           </SelectValue>
         </SelectTrigger>
         <SelectContent className="max-h-64">
-          {Object.entries(categoriesMap).map(([catName, catEmoji]) => (
+          {Object.entries(categoriesIconMap).map(([catName, iconId]) => (
             <SelectItem key={catName} value={catName} className="text-xs">
-              <span className="flex items-center gap-1.5">
-                <span>{catEmoji}</span>
+              <span className="flex items-center gap-2">
+                <AppIcon name={iconId} className="size-3.5 text-muted-foreground shrink-0" />
                 <span>{catName}</span>
               </span>
             </SelectItem>
@@ -127,43 +148,68 @@ export const CategorySelectWithCreate = memo(function CategorySelectWithCreate({
           </DialogHeader>
 
           <form onSubmit={handleCreateAndSelect} className="space-y-3.5 pt-2">
-            {/* Emoji Selector */}
+            {/* Selector de icono SVG */}
             <div className="space-y-1.5">
               <Label className="text-[11px] font-semibold text-muted-foreground uppercase">
-                Emoji
+                Icono
               </Label>
               <div className="flex items-center gap-2.5">
-                <div className="size-11 rounded-xl bg-muted/60 border border-border flex items-center justify-center text-2xl select-none shrink-0 shadow-xs">
-                  {newCatEmoji}
+                <div className="size-11 rounded-xl bg-primary/10 text-primary border border-primary/25 flex items-center justify-center shrink-0">
+                  <AppIcon name={newCatIcon} className="size-5" />
                 </div>
-                <Input
-                  type="text"
-                  value={newCatEmoji}
-                  onChange={(e) => setNewCatEmoji(e.target.value.slice(0, 4))}
-                  placeholder="Emoji"
-                  className="h-10 text-xs bg-background border-border w-24"
-                />
-                <div className="flex items-center gap-1 overflow-x-auto no-scrollbar py-0.5">
-                  {COMMON_EMOJIS.slice(0, 6).map((em) => (
+                <div className="flex-1 grid grid-cols-6 gap-1">
+                  {QUICK_CATEGORY_ICONS.map((iconId) => (
                     <button
-                      key={em}
+                      key={iconId}
                       type="button"
-                      onClick={() => setNewCatEmoji(em)}
-                      className={`size-7 rounded-lg text-sm flex items-center justify-center transition hover:scale-105 shrink-0 ${
-                        newCatEmoji === em ? "bg-primary/20 ring-1 ring-primary" : "bg-muted/40"
-                      }`}
+                      aria-label={ICON_LABELS[iconId] ?? iconId}
+                      title={ICON_LABELS[iconId] ?? iconId}
+                      onClick={() => setNewCatIcon(iconId)}
+                      className={cn(
+                        "size-8 rounded-lg flex items-center justify-center transition hover:scale-105",
+                        newCatIcon === iconId
+                          ? "bg-primary/15 text-primary ring-1 ring-primary"
+                          : "bg-muted/50 text-muted-foreground hover:text-foreground"
+                      )}
                     >
-                      {em}
+                      <AppIcon name={iconId} className="size-4" />
                     </button>
                   ))}
                 </div>
               </div>
+              <details className="text-[11px]">
+                <summary className="cursor-pointer text-primary font-medium select-none py-0.5">
+                  Ver todos los iconos
+                </summary>
+                <div className="mt-1.5 max-h-32 overflow-y-auto grid grid-cols-7 gap-1 p-1 rounded-xl bg-muted/30 border border-border/60">
+                  {ICON_GROUPS.flatMap((g) => g.ids).map((id) => (
+                    <button
+                      key={id}
+                      type="button"
+                      aria-label={ICON_LABELS[id] ?? id}
+                      title={ICON_LABELS[id] ?? id}
+                      onClick={() => setNewCatIcon(id)}
+                      className={cn(
+                        "aspect-square rounded-lg flex items-center justify-center transition",
+                        newCatIcon === id
+                          ? "bg-primary/15 text-primary ring-1 ring-primary"
+                          : "text-muted-foreground hover:bg-muted hover:text-foreground"
+                      )}
+                    >
+                      <AppIcon name={id} className="size-4" />
+                    </button>
+                  ))}
+                </div>
+              </details>
             </div>
 
             {/* Nombre con límite de 20 caracteres */}
             <div className="space-y-1">
               <div className="flex items-center justify-between">
-                <Label htmlFor="quick-cat-name" className="text-[11px] font-semibold text-muted-foreground uppercase">
+                <Label
+                  htmlFor="quick-cat-name"
+                  className="text-[11px] font-semibold text-muted-foreground uppercase"
+                >
                   Nombre
                 </Label>
                 <span

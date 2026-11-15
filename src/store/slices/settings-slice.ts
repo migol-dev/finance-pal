@@ -16,6 +16,7 @@ import {
 } from '@/lib/finance';
 import { sanitizeNotificationPrefs, generateSecureId } from '@/lib/sanitizers';
 import { readInitialThemePref, writeThemePref } from '@/lib/theme-sync';
+import { resolveIconId, type AppIconId } from '@/lib/icon-ids';
 
 export interface SettingsSlice {
     theme: ThemeMode;
@@ -42,8 +43,8 @@ export interface SettingsSlice {
     resetToToday: () => void;
     clearChangeLog: () => void;
     addLogEntry: (entry: ChangeLogEntry) => void;
-    addCustomCategory: (cat: { name: string; emoji: string }) => CustomCategory | null;
-    updateCustomCategory: (id: string, patch: { name?: string; emoji?: string }) => void;
+    addCustomCategory: (cat: { name: string; emoji?: string; icon?: AppIconId }) => CustomCategory | null;
+    updateCustomCategory: (id: string, patch: { name?: string; emoji?: string; icon?: AppIconId }) => void;
     removeCustomCategory: (id: string) => void;
 }
 
@@ -159,10 +160,11 @@ export const createSettingsSlice: StateCreator<
             changeLog: [entry, ...s.changeLog].slice(0, 500),
         })),
 
-    addCustomCategory: ({ name, emoji }) => {
+    addCustomCategory: ({ name, emoji, icon }) => {
         const trimmed = (name || '').trim().slice(0, MAX_CUSTOM_CATEGORY_NAME_LENGTH);
         if (!trimmed) return null;
-        const cleanEmoji = (emoji || '').trim() || '🏷️';
+        const cleanEmoji = (emoji || '').trim();
+        const resolvedIcon: AppIconId = icon ?? resolveIconId(cleanEmoji, 'tag');
         const existing = (get().appSettings?.customCategories ?? []).find(
             (c) => c && c.name.toLowerCase() === trimmed.toLowerCase()
         );
@@ -172,6 +174,7 @@ export const createSettingsSlice: StateCreator<
             id: generateSecureId(),
             name: trimmed,
             emoji: cleanEmoji,
+            icon: resolvedIcon,
             createdAt: new Date().toISOString(),
         };
 
@@ -193,14 +196,22 @@ export const createSettingsSlice: StateCreator<
             const list = s.appSettings?.customCategories ?? [];
             const nextList = list.map((c) => {
                 if (c.id !== id) return c;
+                const nextEmoji =
+                    patch.emoji !== undefined ? patch.emoji.trim() : c.emoji;
+                const nextIcon =
+                    patch.icon !== undefined
+                        ? patch.icon
+                        : patch.emoji !== undefined
+                        ? resolveIconId(nextEmoji, c.icon ?? 'tag')
+                        : c.icon;
                 return {
                     ...c,
                     name:
                         patch.name !== undefined
                             ? patch.name.trim().slice(0, MAX_CUSTOM_CATEGORY_NAME_LENGTH) || c.name
                             : c.name,
-                    emoji:
-                        patch.emoji !== undefined ? patch.emoji.trim() || c.emoji : c.emoji,
+                    emoji: nextEmoji,
+                    icon: nextIcon,
                 };
             });
             setCachedCustomCategories(nextList);

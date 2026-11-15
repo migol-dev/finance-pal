@@ -82,8 +82,8 @@ type UiSelection = {
   setNotificationPrefs: (prefs: Partial<NotificationPreferences>) => void;
   setAccessibilitySettings: (prefs: Partial<AccessibilitySettings>) => void;
   clearChangeLog: () => void;
-  addCustomCategory: (cat: { name: string; emoji: string }) => CustomCategory | null;
-  updateCustomCategory: (id: string, patch: { name?: string; emoji?: string }) => void;
+  addCustomCategory: (cat: { name: string; emoji?: string; icon?: import('@/lib/icon-ids').AppIconId }) => CustomCategory | null;
+  updateCustomCategory: (id: string, patch: { name?: string; emoji?: string; icon?: import('@/lib/icon-ids').AppIconId }) => void;
   removeCustomCategory: (id: string) => void;
   exportData: (scopes?: ExportScopes) => string;
   importData: (
