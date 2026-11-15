@@ -72,16 +72,44 @@ __pycache__/
 .vercel
 .env*
 
-# Android Keystores & Release Binaries (Private keys & build artifacts)
+# Agent, AI & Workflow files (internal / never publish to public repo)
+.agent/
+.agents/
+.agentignore
+AGENTS.md
+GEMINI.md
+CLAUDE.md
+.gemini/
+.claude/
+.codex/
+.cursor/
+.windsurf/
+
+# Cloud credentials, local deploy state & secrets
+.env*
+!.env.template
+.aws/
+.netlify/
+secrets/
+*.tsbuildinfo
+
+# Android Keystores, Signing, Firebase Configs & Release Binaries
 *.jks
 *.keystore
 *.p12
 *.pem
+*.pfx
+*.key
 android/**/*.jks
 android/**/*.keystore
+android/local.properties
+android/key.properties
+android/**/google-services.json
+google-services.json
+ios/**/GoogleService-Info.plist
 android/app/release/release/
 android/app/build/
 
-# Graphify cache
+# Graphify knowledge graph & cache
 graphify-out/cache/
 graphify-out/
