@@ -1325,6 +1325,36 @@ function TransactionDetailView({
 }
 
 // -----------------------------------------------------------------------------
+// Reglas de Compatibilidad Cuenta <-> Método de Pago (solo página /movimientos)
+// -----------------------------------------------------------------------------
+function getEligibleAccountsForMethod(
+  accounts: Account[],
+  type: TxType,
+  paymentMethod: PaymentMethod
+): Account[] {
+  if (type === "transfer") return accounts;
+  if (paymentMethod === "cash") {
+    return accounts.filter((a) => a.type === "cash");
+  }
+  return accounts.filter((a) => a.type !== "cash");
+}
+
+function resolveAccountForMethod(
+  accounts: Account[],
+  paymentMethod: PaymentMethod,
+  currentAccountId?: string
+): string {
+  const eligible = getEligibleAccountsForMethod(accounts, "expense", paymentMethod);
+  if (currentAccountId && eligible.some((a) => a.id === currentAccountId)) {
+    return currentAccountId;
+  }
+  if (eligible.length === 1) {
+    return eligible[0].id;
+  }
+  return "";
+}
+
+// -----------------------------------------------------------------------------
 // Formulario de Edición en Vivo
 // -----------------------------------------------------------------------------
 function TransactionEditForm({
@@ -1352,8 +1382,10 @@ function TransactionEditForm({
   const [icon, setIcon] = useState<IconRef | undefined>(transaction.icon);
   const [receipt, setReceipt] = useState<string | undefined>(transaction.receipt);
 
-  const cashAccount = accounts.find((a: Account) => a.type === "cash");
-  const bankAccounts = accounts.filter((a: Account) => a.type !== "cash");
+  const eligibleAccounts = useMemo(
+    () => getEligibleAccountsForMethod(accounts, type, paymentMethod),
+    [accounts, type, paymentMethod]
+  );
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -1388,6 +1420,9 @@ function TransactionEditForm({
         toast.error("La cuenta origen y destino no pueden ser la misma");
         return;
       }
+    } else if (eligibleAccounts.length > 0 && !accountId) {
+      toast.error("Selecciona una cuenta");
+      return;
     }
 
     onSave({
@@ -1414,7 +1449,13 @@ function TransactionEditForm({
           <button
             key={tab.k}
             type="button"
-            onClick={() => setType(tab.k as TxType)}
+            onClick={() => {
+              const nextType = tab.k as TxType;
+              setType(nextType);
+              if (nextType !== "transfer") {
+                setAccountId((prev) => resolveAccountForMethod(accounts, paymentMethod, prev));
+              }
+            }}
             className={`py-1.5 rounded-lg text-[11px] font-medium transition ${
               type === tab.k
                 ? "bg-foreground text-background font-semibold"
@@ -1480,15 +1521,26 @@ function TransactionEditForm({
         <div>
           <Label className="text-[11px]">Cuenta {type === "transfer" ? "origen" : ""}</Label>
           <Select value={accountId} onValueChange={setAccountId}>
-            <SelectTrigger className="h-8 text-xs rounded-lg mt-1">
-              <SelectValue placeholder="Selecciona" />
+            <SelectTrigger
+              className={cn(
+                "h-8 text-xs rounded-lg mt-1",
+                !accountId && "text-muted-foreground/65 font-normal"
+              )}
+            >
+              <SelectValue placeholder="Selecciona una..." />
             </SelectTrigger>
             <SelectContent>
-              {accounts.map((a: Account) => (
-                <SelectItem key={a.id} value={a.id}>
-                  {a.name}
-                </SelectItem>
-              ))}
+              {eligibleAccounts.length > 0 ? (
+                eligibleAccounts.map((a: Account) => (
+                  <SelectItem key={a.id} value={a.id}>
+                    {a.name}
+                  </SelectItem>
+                ))
+              ) : (
+                <div className="px-2.5 py-2 text-xs text-muted-foreground">
+                  Sin cuentas compatibles
+                </div>
+              )}
             </SelectContent>
           </Select>
         </div>
@@ -1498,8 +1550,13 @@ function TransactionEditForm({
         <div>
           <Label className="text-[11px]">Cuenta destino</Label>
           <Select value={transferToAccountId} onValueChange={setTransferToAccountId}>
-            <SelectTrigger className="h-8 text-xs rounded-lg mt-1">
-              <SelectValue placeholder="Selecciona destino" />
+            <SelectTrigger
+              className={cn(
+                "h-8 text-xs rounded-lg mt-1",
+                !transferToAccountId && "text-muted-foreground/65 font-normal"
+              )}
+            >
+              <SelectValue placeholder="Selecciona una..." />
             </SelectTrigger>
             <SelectContent>
               {accounts
@@ -1520,11 +1577,7 @@ function TransactionEditForm({
             onValueChange={(v) => {
               const m = v as PaymentMethod;
               setPaymentMethod(m);
-              if (m === "cash" && cashAccount) {
-                setAccountId(cashAccount.id);
-              } else if ((m === "card" || m === "transfer") && accountId === cashAccount?.id) {
-                if (bankAccounts[0]) setAccountId(bankAccounts[0].id);
-              }
+              setAccountId((prev) => resolveAccountForMethod(accounts, m, prev));
             }}
           >
             <SelectTrigger className="h-8 text-xs rounded-lg mt-1">
@@ -1640,20 +1693,34 @@ function TransactionCreateForm({
   const today = new Date();
   const defaultDateStr = `${activeYear}-${pad(activeMonth + 1)}-${pad(Math.min(today.getDate(), 28))}`;
 
+  const bankAccounts = accounts.filter((a: Account) => a.type !== "cash");
+  const initialMethod: PaymentMethod =
+    bankAccounts.length === 0 && accounts.some((a: Account) => a.type === "cash")
+      ? "cash"
+      : "card";
+
   const [type, setType] = useState<TxType>(defaultType);
   const [concept, setConcept] = useState("");
   const [amount, setAmount] = useState("");
   const [category, setCategory] = useState(defaultType === "income" ? "Trabajo / Sueldo" : "Alimentación");
   const [date, setDate] = useState(defaultDateStr);
-  const [accountId, setAccountId] = useState(accounts[0]?.id ?? "");
+  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>(initialMethod);
+  const [accountId, setAccountId] = useState(() =>
+    defaultType === "transfer"
+      ? accounts.length <= 2
+        ? accounts[0]?.id ?? ""
+        : ""
+      : resolveAccountForMethod(accounts, initialMethod)
+  );
   const [transferToAccountId, setTransferToAccountId] = useState(accounts[1]?.id ?? "");
-  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("card");
   const [note, setNote] = useState("");
   const [icon, setIcon] = useState<IconRef | undefined>(undefined);
   const [receipt, setReceipt] = useState<string | undefined>(undefined);
 
-  const cashAccount = accounts.find((a: Account) => a.type === "cash");
-  const bankAccounts = accounts.filter((a: Account) => a.type !== "cash");
+  const eligibleAccounts = useMemo(
+    () => getEligibleAccountsForMethod(accounts, type, paymentMethod),
+    [accounts, type, paymentMethod]
+  );
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -1688,6 +1755,9 @@ function TransactionCreateForm({
         toast.error("La cuenta origen y destino no pueden ser la misma");
         return;
       }
+    } else if (eligibleAccounts.length > 0 && !accountId) {
+      toast.error("Selecciona una cuenta");
+      return;
     }
 
     onSave({
@@ -1714,10 +1784,23 @@ function TransactionCreateForm({
             key={tab.k}
             type="button"
             onClick={() => {
-              setType(tab.k as TxType);
+              const nextType = tab.k as TxType;
+              setType(nextType);
               if (tab.k === "income") setCategory("Trabajo / Sueldo");
               else if (tab.k === "saving") setCategory("Ahorro e Inversión");
               else setCategory("Alimentación");
+              if (nextType === "transfer") {
+                setAccountId((prev) => {
+                  const nextOrigin = prev || (accounts.length <= 2 ? accounts[0]?.id ?? "" : "");
+                  if (nextOrigin && transferToAccountId === nextOrigin) {
+                    const alt = accounts.find((a) => a.id !== nextOrigin);
+                    setTransferToAccountId(alt?.id ?? "");
+                  }
+                  return nextOrigin;
+                });
+              } else {
+                setAccountId((prev) => resolveAccountForMethod(accounts, paymentMethod, prev));
+              }
             }}
             className={`py-2 rounded-lg text-xs font-medium transition ${
               type === tab.k
@@ -1785,15 +1868,26 @@ function TransactionCreateForm({
         <div>
           <Label className="text-xs">Cuenta {type === "transfer" ? "origen" : ""}</Label>
           <Select value={accountId} onValueChange={setAccountId}>
-            <SelectTrigger className="h-9 text-xs rounded-lg mt-1">
-              <SelectValue placeholder="Selecciona cuenta" />
+            <SelectTrigger
+              className={cn(
+                "h-9 text-xs rounded-lg mt-1",
+                !accountId && "text-muted-foreground/65 font-normal"
+              )}
+            >
+              <SelectValue placeholder="Selecciona una..." />
             </SelectTrigger>
             <SelectContent>
-              {accounts.map((a: Account) => (
-                <SelectItem key={a.id} value={a.id}>
-                  {a.name}
-                </SelectItem>
-              ))}
+              {eligibleAccounts.length > 0 ? (
+                eligibleAccounts.map((a: Account) => (
+                  <SelectItem key={a.id} value={a.id}>
+                    {a.name}
+                  </SelectItem>
+                ))
+              ) : (
+                <div className="px-2.5 py-2 text-xs text-muted-foreground">
+                  Sin cuentas compatibles
+                </div>
+              )}
             </SelectContent>
           </Select>
         </div>
@@ -1803,8 +1897,13 @@ function TransactionCreateForm({
         <div>
           <Label className="text-xs">Cuenta destino</Label>
           <Select value={transferToAccountId} onValueChange={setTransferToAccountId}>
-            <SelectTrigger className="h-9 text-xs rounded-lg mt-1">
-              <SelectValue placeholder="Selecciona cuenta destino" />
+            <SelectTrigger
+              className={cn(
+                "h-9 text-xs rounded-lg mt-1",
+                !transferToAccountId && "text-muted-foreground/65 font-normal"
+              )}
+            >
+              <SelectValue placeholder="Selecciona una..." />
             </SelectTrigger>
             <SelectContent>
               {accounts
@@ -1825,11 +1924,7 @@ function TransactionCreateForm({
             onValueChange={(v) => {
               const m = v as PaymentMethod;
               setPaymentMethod(m);
-              if (m === "cash" && cashAccount) {
-                setAccountId(cashAccount.id);
-              } else if ((m === "card" || m === "transfer") && accountId === cashAccount?.id) {
-                if (bankAccounts[0]) setAccountId(bankAccounts[0].id);
-              }
+              setAccountId((prev) => resolveAccountForMethod(accounts, m, prev));
             }}
           >
             <SelectTrigger className="h-9 text-xs rounded-lg mt-1">

@@ -553,6 +553,55 @@ describe("Sprint 4 — MovimientosV2 & Dual Dispatcher Suite", () => {
     );
   });
 
+  // 12b. Filtrado de cuentas por método de pago y placeholder "Selecciona una..."
+  it("filtra cuentas compatibles según método de pago y no autoselecciona con >1 cuenta bancaria", () => {
+    mockState.accounts = [
+      { id: "acc-bank-1", name: "Santander Junior", type: "bank", initialBalance: 5000 },
+      { id: "acc-bank-2", name: "BBVA Débito", type: "bank", initialBalance: 3000 },
+      { id: "acc-cash", name: "Dinero Físico", type: "cash", initialBalance: 800 },
+    ];
+
+    render(
+      <MemoryRouter>
+        <MovimientosV2 />
+      </MemoryRouter>
+    );
+
+    fireEvent.click(screen.getAllByRole("button", { name: /nuevo movimiento/i })[0]);
+
+    const dialog = screen.getByRole("dialog");
+    // Al haber 2 cuentas bancarias y método "Tarjeta", no debe autoseleccionarse ninguna ni Dinero Físico
+    expect(within(dialog).getByText("Selecciona una...")).toBeInTheDocument();
+    expect(within(dialog).queryByText("Dinero Físico")).not.toBeInTheDocument();
+
+    // Abrir selector de Cuenta y verificar que solo aparecen cuentas bancarias
+    const accountTrigger = within(dialog).getByText("Selecciona una...").closest("button")!;
+    fireEvent.click(accountTrigger);
+    expect(screen.getByRole("option", { name: "Santander Junior" })).toBeInTheDocument();
+    expect(screen.getByRole("option", { name: "BBVA Débito" })).toBeInTheDocument();
+    expect(screen.queryByRole("option", { name: "Dinero Físico" })).not.toBeInTheDocument();
+
+    // Seleccionar Santander Junior y luego cambiar método a Efectivo -> debe cambiar a Dinero Físico (única de efectivo)
+    fireEvent.click(screen.getByRole("option", { name: "Santander Junior" }));
+
+    const methodTrigger = within(dialog)
+      .getAllByText("Tarjeta")
+      .map((el) => el.closest("button"))
+      .find(Boolean)!;
+    fireEvent.click(methodTrigger);
+    fireEvent.click(screen.getByRole("option", { name: "Efectivo" }));
+
+    // Al elegir Efectivo solo existe Dinero Físico, se selecciona y al abrir Cuenta no aparecen bancarias
+    const cashTrigger = within(dialog)
+      .getAllByText("Dinero Físico")
+      .map((el) => el.closest("button"))
+      .find(Boolean)!;
+    expect(cashTrigger).toBeInTheDocument();
+    fireEvent.click(cashTrigger);
+    expect(screen.queryByRole("option", { name: "Santander Junior" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("option", { name: "BBVA Débito" })).not.toBeInTheDocument();
+  });
+
   // 13. Búsqueda por notas
   it("busca transacciones por texto presente en notas además de concepto", () => {
     mockState.transactions.push({

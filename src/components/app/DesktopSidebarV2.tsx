@@ -96,23 +96,23 @@ export const DesktopSidebarV2 = memo(function DesktopSidebarV2() {
       </div>
 
       {/* Gatillo de Command Palette (⌘K) */}
-      <div className="mb-4">
+      <div className="mb-3">
         <button
           type="button"
           onClick={triggerCommandPalette}
           className={cn(
-            "w-full flex items-center rounded-xl border border-border/70 bg-background/50 text-muted-foreground hover:text-foreground hover:bg-muted/40 transition-colors text-xs font-medium",
-            isCollapsed ? "justify-center h-10 p-0" : "justify-between h-9 px-2.5"
+            "w-full flex items-center rounded-xl border border-border/70 bg-background/60 dark:bg-white/[0.03] text-muted-foreground hover:text-foreground hover:bg-muted/40 transition-colors text-xs font-medium",
+            isCollapsed ? "justify-center h-10 p-0" : "justify-between h-9 px-3"
           )}
-          title="Buscar o comandos (⌘K)"
+          title={isCollapsed ? "Buscar o comandos (⌘K)" : undefined}
           aria-label="Buscar o comandos (⌘K)"
         >
-          <div className="flex items-center gap-2">
-            <Search className="size-3.5" strokeWidth={1.75} />
-            {!isCollapsed && <span>Buscar...</span>}
+          <div className="flex items-center gap-3 min-w-0">
+            <Search className="size-4 shrink-0" strokeWidth={1.75} />
+            {!isCollapsed && <span className="truncate">Buscar...</span>}
           </div>
           {!isCollapsed && (
-            <kbd className="font-mono text-[10px] tracking-widest bg-muted/80 text-muted-foreground px-1.5 py-0.5 rounded border border-border/50">
+            <kbd className="inline-flex items-center justify-center h-5 px-1.5 rounded-md font-mono-tabular text-[10px] font-medium tracking-normal leading-none bg-muted/80 dark:bg-white/[0.06] text-muted-foreground border border-border/60 shrink-0">
               ⌘K
             </kbd>
           )}
@@ -128,7 +128,7 @@ export const DesktopSidebarV2 = memo(function DesktopSidebarV2() {
             "w-full flex items-center justify-center gap-2 rounded-xl bg-primary text-primary-foreground font-semibold text-xs shadow-md shadow-primary/20 hover:bg-primary/90 active:scale-[0.98] transition-all",
             isCollapsed ? "h-10 px-0" : "h-9 px-3"
           )}
-          title="Registrar nuevo movimiento"
+          title={isCollapsed ? "Registrar nuevo movimiento" : undefined}
           aria-label="Registrar nuevo movimiento"
         >
           <Plus className="size-4" strokeWidth={2.5} />
